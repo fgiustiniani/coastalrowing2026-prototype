@@ -351,12 +351,17 @@ select {
 }
 
 .hero__subtitle {
-  margin: 20px 0 16px;
+  margin: 20px 0 0;
   max-width: 40ch;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.65;
+}
+
+.hero__subtitle--secondary {
+  margin-top: 2px;
+  color: rgba(251, 253, 255, 0.8);
 }
 
 .hero__statement {
@@ -553,6 +558,12 @@ select {
   margin-bottom: 16px;
 }
 
+.paths__intro {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
 .paths__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -638,6 +649,24 @@ select {
   line-height: 1.72;
 }
 
+.path-card a {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 18px;
+  color: var(--navy-820);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.path-card a::after {
+  content: ">";
+  margin-left: 8px;
+  color: var(--sand-500);
+}
+
 .pesaro {
   display: grid;
   grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
@@ -701,8 +730,14 @@ select {
 }
 
 .mini-card h3 {
-  margin-bottom: 0;
+  margin-bottom: 8px;
   font-size: 1.15rem;
+}
+
+.mini-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .sustainability {
@@ -738,10 +773,25 @@ select {
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(16, 34, 53, 0.08);
   color: var(--navy-900);
+}
+
+.sustainability__point strong {
+  display: block;
+  margin-bottom: 8px;
+  font-family: Arial, Helvetica, sans-serif;
   font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.sustainability__point p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
 }
 
 .partners {
@@ -851,6 +901,14 @@ select {
 
 .updates__text {
   color: rgba(251, 253, 255, 0.86);
+}
+
+.updates__note {
+  margin: 14px 0 0;
+  color: rgba(251, 253, 255, 0.72);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.65;
 }
 
 .updates__form {
