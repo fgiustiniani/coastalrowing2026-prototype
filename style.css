@@ -19,7 +19,8 @@
   --radius-xl: 34px;
   --radius-lg: 24px;
   --radius-md: 18px;
-  --content-width: 1240px;
+  --content-width: 1200px;
+  --section-width: 1180px;
 }
 
 * {
@@ -52,9 +53,9 @@ select {
 }
 
 .site-frame {
-  width: min(calc(100% - 32px), var(--content-width));
+  width: min(calc(100% - 48px), var(--content-width));
   margin: 0 auto;
-  padding: 20px 0 40px;
+  padding: 20px 0 64px;
 }
 
 .site-header,
@@ -76,7 +77,7 @@ select {
   justify-content: space-between;
   gap: 24px;
   padding: 18px 24px;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
   background: rgba(251, 253, 255, 0.76);
   border: 1px solid rgba(255, 255, 255, 0.74);
   border-radius: 999px;
@@ -143,10 +144,11 @@ select {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 18px;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  opacity: 0.78;
 }
 
 .site-nav a {
@@ -175,10 +177,10 @@ select {
 .hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+  align-items: stretch;
   min-height: 82vh;
-  padding: 44px;
+  padding: 52px;
   overflow: hidden;
   border-radius: 42px;
   background:
@@ -285,12 +287,12 @@ select {
 }
 
 .hero__boat--one {
-  left: 54%;
+  left: 62%;
   transform: rotate(-8deg);
 }
 
 .hero__boat--two {
-  left: 68%;
+  left: 76%;
   bottom: 23%;
   width: 130px;
   opacity: 0.72;
@@ -301,6 +303,15 @@ select {
 .hero__meta {
   position: relative;
   z-index: 1;
+}
+
+.hero__content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 620px;
+  padding-right: 24px;
 }
 
 .eyebrow {
@@ -340,7 +351,7 @@ select {
 
 .hero__subtitle {
   margin: 20px 0 16px;
-  max-width: 44ch;
+  max-width: 40ch;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 1.02rem;
   font-weight: 700;
@@ -348,7 +359,7 @@ select {
 }
 
 .hero__statement {
-  max-width: 34ch;
+  max-width: 31ch;
   margin: 0;
   font-size: 1.3rem;
   line-height: 1.55;
@@ -363,6 +374,7 @@ select {
 
 .hero__actions {
   margin: 34px 0 20px;
+  max-width: 560px;
 }
 
 .button {
@@ -377,6 +389,7 @@ select {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: center;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -396,7 +409,7 @@ select {
 }
 
 .button--secondary {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.22);
   color: var(--white);
 }
@@ -431,11 +444,13 @@ select {
 .hero__meta {
   display: flex;
   justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .hero__meta-card {
-  max-width: 340px;
-  padding: 28px;
+  width: min(100%, 360px);
+  min-height: 360px;
+  padding: 32px 30px;
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -472,7 +487,8 @@ select {
 .sustainability,
 .updates,
 .site-footer {
-  margin-top: 26px;
+  width: min(100%, var(--section-width));
+  margin: 40px auto 0;
   border-radius: var(--radius-xl);
 }
 
@@ -491,7 +507,7 @@ select {
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  padding: 30px 32px;
+  padding: 34px 36px;
 }
 
 .fic-box__content {
@@ -521,11 +537,12 @@ select {
 .paths,
 .sustainability,
 .updates {
-  padding: 38px;
+  padding: 46px 40px;
 }
 
 .section-heading {
-  margin-bottom: 24px;
+  margin-bottom: 30px;
+  max-width: 760px;
 }
 
 .section-heading--compact {
@@ -535,7 +552,9 @@ select {
 .paths__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: 24px;
+  align-items: start;
+  justify-items: center;
 }
 
 .path-card {
@@ -543,6 +562,7 @@ select {
   border-radius: 28px;
   background: var(--surface-strong);
   border: 1px solid var(--line);
+  max-width: 360px;
 }
 
 .path-card__visual {
@@ -597,7 +617,7 @@ select {
 }
 
 .path-card__body {
-  padding: 26px;
+  padding: 28px;
 }
 
 .path-card h3,
@@ -617,8 +637,8 @@ select {
 .pesaro {
   display: grid;
   grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
-  gap: 28px;
-  padding: 32px;
+  gap: 36px;
+  padding: 40px;
 }
 
 .pesaro__visual {
@@ -659,6 +679,7 @@ select {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  max-width: 560px;
 }
 
 .pesaro__mini-grid {
@@ -703,8 +724,8 @@ select {
 .sustainability__points {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin: 26px 0;
+  gap: 16px;
+  margin: 30px 0;
 }
 
 .sustainability__point {
@@ -722,7 +743,7 @@ select {
 .updates {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
-  gap: 28px;
+  gap: 36px;
   color: var(--white);
   background:
     linear-gradient(140deg, var(--navy-980), #123554 60%, #1f6387 100%);
@@ -736,6 +757,7 @@ select {
 
 .updates__content {
   max-width: 52ch;
+  align-self: center;
 }
 
 .updates__text {
@@ -806,7 +828,6 @@ select {
   .hero,
   .pesaro,
   .updates,
-  .paths__grid,
   .sustainability__points {
     grid-template-columns: 1fr;
   }
@@ -820,6 +841,14 @@ select {
     justify-content: flex-start;
   }
 
+  .paths__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .path-card {
+    max-width: none;
+  }
+
   .pesaro__visual {
     min-height: 420px;
   }
@@ -827,7 +856,7 @@ select {
 
 @media (max-width: 900px) {
   .site-frame {
-    width: min(calc(100% - 20px), var(--content-width));
+    width: min(calc(100% - 36px), var(--content-width));
     padding-top: 14px;
   }
 
@@ -851,8 +880,14 @@ select {
   .sustainability,
   .updates,
   .site-footer {
-    padding: 24px 20px;
+    width: 100%;
+    padding: 28px 20px;
     border-radius: 28px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 30px 20px 24px;
   }
 
   .hero h1 {
@@ -862,6 +897,20 @@ select {
 
   .hero__statement {
     font-size: 1.12rem;
+  }
+
+  .hero__content {
+    max-width: none;
+    padding-right: 0;
+  }
+
+  .hero__meta {
+    min-height: 260px;
+    align-items: flex-end;
+  }
+
+  .hero__meta-card {
+    min-height: auto;
   }
 
   .hero__actions,
@@ -878,6 +927,12 @@ select {
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .paths__grid,
+  .pesaro__mini-grid,
+  .sustainability__points {
+    grid-template-columns: 1fr;
   }
 
   .site-footer__links {
