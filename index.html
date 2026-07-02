@@ -5,30 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta
     name="description"
-    content="Homepage prototipo dei Campionati Italiani Coastal Rowing 2026 a Pesaro, con informazioni per atleti, societa, spettatori e visitatori."
+    content="Landing page prototipo dei Campionati Italiani Coastal Rowing 2026 a Pesaro: informazioni locali, logistiche, turistiche e organizzative."
   >
   <title>Campionati Italiani Coastal Rowing 2026 - Pesaro</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  >
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="page-shell">
-    <header class="site-header">
-      <div class="brand-block">
-        <span class="brand-kicker">Canottieri Pesaro</span>
-        <a class="brand-mark" href="#top" aria-label="Canottieri Pesaro, torna all'inizio">
-          <span class="brand-mark__crest">CP</span>
-          <span class="brand-mark__text">
-            <strong>Campionati Italiani</strong>
-            <span>Coastal Rowing 2026 &middot; Pesaro</span>
-          </span>
-        </a>
-      </div>
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <a class="brand" href="#top" aria-label="Canottieri Pesaro">
+        <span class="brand__crest">CP</span>
+        <span class="brand__text">
+          <strong>Canottieri Pesaro</strong>
+          <span>Campionati Italiani Coastal Rowing 2026</span>
+        </span>
+      </a>
 
       <nav class="site-nav" aria-label="Navigazione principale">
         <a href="#top">Home</a>
@@ -36,27 +27,34 @@
         <a href="#atleti">Atleti e societa</a>
         <a href="#logistica">Logistica</a>
         <a href="#pesaro">Vivi Pesaro</a>
+        <a href="#sostenibilita">Sostenibilita</a>
         <a href="#contatti">Contatti</a>
       </nav>
     </header>
 
-    <main id="top">
+    <main>
       <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__backdrop" aria-hidden="true">
+          <div class="hero__sea"></div>
+          <div class="hero__sun"></div>
+          <div class="hero__boat hero__boat--one"></div>
+          <div class="hero__boat hero__boat--two"></div>
+        </div>
+
         <div class="hero__content">
-          <p class="eyebrow">Canottieri Pesaro presenta</p>
+          <p class="eyebrow">Evento nazionale 2026</p>
           <h1 id="hero-title">Il mare di Pesaro assegna il Tricolore</h1>
-          <p class="hero__lead">
-            Campionati Italiani Coastal Rowing 2026 &middot; Pesaro &middot; Baia Flaminia &middot; 3-4 ottobre 2026
+          <p class="hero__subtitle">
+            Campionati Italiani Coastal Rowing 2026 &middot; Pesaro &middot; 3-4 ottobre 2026
           </p>
-          <p class="hero__text">
-            Una regata nazionale nel punto in cui sport, accoglienza e paesaggio si incontrano.
-            Un hub informativo pensato per chi gareggia, accompagna una societa o desidera vivere l'evento dal vivo.
+          <p class="hero__statement">
+            Sport, mare e citta si incontrano in un evento nazionale da vivere dentro e fuori dall'acqua.
           </p>
 
           <div class="hero__actions">
             <a class="button button--primary" href="#atleti">Gareggio</a>
             <a class="button button--secondary" href="#logistica">Vengo a vedere</a>
-            <a class="button button--ghost" href="#pesaro">Scopro Pesaro</a>
+            <a class="button button--secondary" href="#pesaro">Vivo Pesaro</a>
           </div>
 
           <a class="hero__link" href="https://www.canottaggio.org/" target="_blank" rel="noreferrer">
@@ -64,99 +62,121 @@
           </a>
         </div>
 
-        <aside class="hero__panel">
-          <p class="hero__panel-label">Pesaro 2026</p>
-          <div class="hero__panel-card">
-            <span class="hero__panel-date">3-4 ottobre</span>
-            <strong>Baia Flaminia</strong>
+        <div class="hero__meta">
+          <div class="hero__meta-card">
+            <span class="hero__meta-label">Pesaro 2026</span>
+            <strong>Il sito ufficiale locale dell'evento</strong>
             <p>
-              Due giornate di gare tricolori, ospitalita sul mare e servizi pensati per societa, tecnici, famiglie e pubblico.
+              Informazioni per sportivi, pubblico e ospiti in una landing page pensata per raccontare gara, territorio e accoglienza.
             </p>
           </div>
-          <div class="hero__panel-detail">
-            <span>Scenario</span>
-            <strong>Adriatico, costa, citta e identita sportiva</strong>
-          </div>
-        </aside>
+        </div>
       </section>
 
-      <section class="notice" id="evento" aria-label="Informazioni ufficiali">
-        <p>
-          <strong>Programma gare, iscrizioni, risultati e comunicazioni tecniche</strong> sono pubblicati sul sito FIC.
-          Questo sito raccoglie informazioni locali, logistiche, turistiche e organizzative a supporto dell'evento.
-        </p>
+      <section class="fic-box" id="evento" aria-labelledby="fic-title">
+        <div class="fic-box__content">
+          <p class="eyebrow">Canale federale</p>
+          <h2 id="fic-title">Informazioni sportive ufficiali</h2>
+          <p>
+            Programma gare, iscrizioni, risultati, avvisi e documenti tecnici saranno pubblicati e aggiornati dalla Federazione Italiana Canottaggio.
+            Questo sito raccoglie informazioni locali, logistiche, turistiche e organizzative a supporto dell'evento.
+          </p>
+        </div>
+        <a class="button button--dark" href="https://www.canottaggio.org/" target="_blank" rel="noreferrer">Vai al sito FIC</a>
       </section>
 
       <section class="paths" aria-labelledby="paths-title">
         <div class="section-heading">
-          <p class="eyebrow">Tre percorsi chiari</p>
-          <h2 id="paths-title">Ogni visitatore ha un accesso dedicato</h2>
+          <p class="eyebrow">Percorsi principali</p>
+          <h2 id="paths-title">Scegli il tuo percorso</h2>
         </div>
 
         <div class="paths__grid">
           <article class="path-card" id="atleti">
-            <span class="path-card__index">01</span>
-            <h3>Atleti e societa</h3>
-            <p>
-              Indicazioni su arrivo, aree di supporto, riferimenti organizzativi e accesso rapido alle informazioni utili nel weekend di gara.
-            </p>
-            <a href="#updates">Vai alle informazioni essenziali</a>
+            <div class="path-card__visual path-card__visual--athletes" aria-hidden="true"></div>
+            <div class="path-card__body">
+              <h3>Gareggio</h3>
+              <p>Informazioni locali per societa, atleti e tecnici: accessi, area barche, parcheggi, servizi e link ufficiali.</p>
+            </div>
           </article>
 
           <article class="path-card" id="logistica">
-            <span class="path-card__index">02</span>
-            <h3>Spettatori</h3>
-            <p>
-              Come raggiungere il campo di gara, dove posizionarsi, come vivere la manifestazione e orientarsi tra servizi e citta.
-            </p>
-            <a href="#pesaro">Organizza la visita</a>
+            <div class="path-card__visual path-card__visual--spectators" aria-hidden="true"></div>
+            <div class="path-card__body">
+              <h3>Vengo a vedere</h3>
+              <p>Indicazioni per pubblico, famiglie e accompagnatori: dove seguire l'evento, come arrivare e cosa trovare nell'area gara.</p>
+            </div>
           </article>
 
           <article class="path-card" id="pesaro">
-            <span class="path-card__index">03</span>
-            <h3>Vivi Pesaro</h3>
-            <p>
-              Una guida sintetica per trasformare la trasferta in esperienza: mare, cultura, ospitalita e appuntamenti in citta.
-            </p>
-            <a href="#experience">Scopri il territorio</a>
+            <div class="path-card__visual path-card__visual--city" aria-hidden="true"></div>
+            <div class="path-card__body">
+              <h3>Vivo Pesaro</h3>
+              <p>Arte, cultura, mare, natura, eventi e ospitalita per vivere Pesaro durante i Campionati.</p>
+            </div>
           </article>
         </div>
       </section>
 
-      <section class="experience" id="experience" aria-labelledby="experience-title">
-        <div class="section-heading">
-          <p class="eyebrow">Non solo gare</p>
-          <h2 id="experience-title">Vivi Pesaro tra mare, cultura e accoglienza</h2>
+      <section class="pesaro" aria-labelledby="pesaro-title">
+        <div class="pesaro__visual" aria-hidden="true">
+          <div class="pesaro__visual-inner"></div>
         </div>
 
-        <div class="experience__grid">
-          <article class="experience-card">
-            <h3>Arte e cultura</h3>
-            <p>Musei, centro storico, musica e itinerari che raccontano l'identita della citta.</p>
-          </article>
-          <article class="experience-card">
-            <h3>Mare e natura</h3>
-            <p>Baia Flaminia, passeggiate sul litorale, Monte San Bartolo e panorami da vivere tutto il giorno.</p>
-          </article>
-          <article class="experience-card">
-            <h3>Eventi in citta</h3>
-            <p>Un calendario da coordinare con il fine settimana di gara per ampliare l'esperienza degli ospiti.</p>
-          </article>
-          <article class="experience-card">
-            <h3>Ospitalita</h3>
-            <p>Hotel, ristorazione e servizi per squadre, famiglie, accompagnatori e visitatori in arrivo a Pesaro.</p>
-          </article>
-        </div>
-      </section>
+        <div class="pesaro__content">
+          <p class="eyebrow">Destinazione evento</p>
+          <h2 id="pesaro-title">Pesaro ti aspetta</h2>
+          <p class="pesaro__text">
+            Non solo gare: durante i Campionati, Pesaro diventa una citta da scoprire tra mare, centro storico, musica, musei, natura, eventi e accoglienza.
+          </p>
 
-      <section class="updates" id="updates" aria-labelledby="updates-title">
-        <div class="updates__content">
-          <div class="section-heading section-heading--light">
-            <p class="eyebrow">Aggiornamenti evento</p>
-            <h2 id="updates-title">Ricevi gli aggiornamenti dell'evento</h2>
+          <div class="pesaro__mini-grid">
+            <article class="mini-card">
+              <h3>Arte e cultura</h3>
+            </article>
+            <article class="mini-card">
+              <h3>Mare e natura</h3>
+            </article>
+            <article class="mini-card">
+              <h3>Eventi in citta</h3>
+            </article>
+            <article class="mini-card">
+              <h3>Ospitalita</h3>
+            </article>
           </div>
+
+          <div class="pesaro__actions">
+            <a class="button button--primary" href="#pesaro">Scopri Pesaro</a>
+            <a class="button button--ghost" href="#pesaro">Eventi in citta</a>
+            <a class="button button--ghost" href="https://www.comune.pesaro.pu.it/" target="_blank" rel="noreferrer">Comune di Pesaro</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="sustainability" id="sostenibilita" aria-labelledby="sustainability-title">
+        <div class="section-heading section-heading--compact">
+          <p class="eyebrow">Sostenibilita</p>
+          <h2 id="sustainability-title">Un evento sul mare, con rispetto per il mare</h2>
+        </div>
+        <p class="sustainability__text">
+          Il coastal rowing vive nel mare e dal mare. Per questo i Campionati vogliono promuovere attenzione all'ambiente, cura degli spazi comuni, riduzione degli sprechi e valorizzazione della mobilita dolce.
+        </p>
+
+        <div class="sustainability__points">
+          <article class="sustainability__point">Mare e ambiente</article>
+          <article class="sustainability__point">Raccolta e pulizia</article>
+          <article class="sustainability__point">Mobilita sostenibile</article>
+        </div>
+
+        <a class="button button--dark" href="#sostenibilita">Scopri l'impegno per la sostenibilita</a>
+      </section>
+
+      <section class="updates" aria-labelledby="updates-title">
+        <div class="updates__content">
+          <p class="eyebrow">Contatto utile</p>
+          <h2 id="updates-title">Ricevi gli aggiornamenti dell'evento</h2>
           <p class="updates__text">
-            Mockup del modulo newsletter: uno spazio pensato per avvisi organizzativi, informazioni pratiche e novita locali.
+            Iscriviti per ricevere informazioni su logistica, ospitalita, prova barche, mappe, servizi, viabilita e aggiornamenti utili.
           </p>
         </div>
 
@@ -170,7 +190,7 @@
             <input type="email" name="email" placeholder="nome@email.it">
           </label>
           <label>
-            Sono
+            Sono...
             <select name="profilo">
               <option>Atleta</option>
               <option>Societa sportiva</option>
@@ -178,25 +198,15 @@
               <option>Operatore locale</option>
             </select>
           </label>
-          <button class="button button--primary" type="button">Ricevi aggiornamenti</button>
+          <button class="button button--primary" type="button">Iscrivimi</button>
         </form>
-      </section>
-
-      <section class="trial-box" aria-labelledby="trial-title">
-        <div class="trial-box__content">
-          <p class="eyebrow">In valutazione</p>
-          <h2 id="trial-title">Prova barche</h2>
-          <p>
-            E' allo studio un'area informativa dedicata a eventuali sessioni di prova barche e attivazioni collaterali per team e partner tecnici.
-          </p>
-        </div>
       </section>
     </main>
 
     <footer class="site-footer" id="contatti">
       <div class="site-footer__brand">
         <strong>Canottieri Pesaro</strong>
-        <p>Prototipo homepage per i Campionati Italiani Coastal Rowing 2026.</p>
+        <p>Landing page prototipo per i Campionati Italiani Coastal Rowing 2026.</p>
       </div>
 
       <div class="site-footer__links" aria-label="Link utili">
@@ -205,6 +215,8 @@
         <a href="https://www.pesarocultura.it/" target="_blank" rel="noreferrer">IAT Pesaro</a>
         <a href="#">Privacy</a>
         <a href="#">Cookie</a>
+        <a href="#contatti">Contatti</a>
+        <a href="#">Social</a>
       </div>
     </footer>
   </div>
