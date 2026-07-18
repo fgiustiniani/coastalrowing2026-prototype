@@ -19,8 +19,8 @@
   --radius-xl: 34px;
   --radius-lg: 24px;
   --radius-md: 18px;
-  --content-width: 1200px;
-  --section-width: 1180px;
+  --content-width: 1440px;
+  --section-width: 1360px;
 }
 
 * {
@@ -53,7 +53,7 @@ select {
 }
 
 .site-frame {
-  width: min(calc(100% - 48px), var(--content-width));
+  width: min(calc(100% - 56px), var(--content-width));
   margin: 0 auto;
   padding: 20px 0 64px;
 }
@@ -75,11 +75,14 @@ select {
   z-index: 20;
   display: grid;
   gap: 18px;
-  padding: 18px 24px;
+  width: min(100%, var(--section-width));
+  padding: 20px 28px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 32px;
   background: rgba(251, 253, 255, 0.76);
   border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 999px;
+  border-radius: 36px;
   box-shadow: 0 18px 40px rgba(4, 17, 31, 0.08);
 }
 
@@ -87,7 +90,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 32px;
 }
 
 .brand {
@@ -149,7 +152,7 @@ select {
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid rgba(16, 34, 53, 0.08);
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 248, 251, 0.78));
@@ -224,7 +227,7 @@ select {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 16px 18px;
+  gap: 16px 24px;
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -260,8 +263,10 @@ select {
   display: grid;
   grid-template-columns: 1fr;
   align-items: stretch;
-  min-height: 82vh;
-  padding: 52px;
+  width: min(100%, var(--section-width));
+  min-height: 72vh;
+  margin: 0 auto;
+  padding: 56px 64px;
   overflow: hidden;
   border-radius: 42px;
   background:
@@ -387,7 +392,7 @@ select {
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  max-width: 720px;
+  max-width: 860px;
   padding-right: 0;
 }
 
@@ -421,9 +426,9 @@ select {
 }
 
 .hero h1 {
-  max-width: 9ch;
+  max-width: 12ch;
   color: var(--white);
-  font-size: clamp(4rem, 8vw, 7rem);
+  font-size: clamp(4.2rem, 7vw, 7.2rem);
 }
 
 .hero__subtitle,
@@ -435,7 +440,7 @@ select {
 
 .hero__subtitle {
   margin: 20px 0 0;
-  max-width: 40ch;
+  max-width: 48ch;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 1.02rem;
   font-weight: 700;
@@ -448,7 +453,7 @@ select {
 }
 
 .hero__statement {
-  max-width: 42ch;
+  max-width: 58ch;
   margin: 10px 0 0;
   font-size: 1.3rem;
   line-height: 1.55;
@@ -1024,6 +1029,7 @@ select {
 
   .hero {
     min-height: auto;
+    padding: 44px 36px;
   }
 
   .paths__grid {
@@ -1047,6 +1053,7 @@ select {
 
   .site-header {
     position: static;
+    width: 100%;
     border-radius: 28px;
     padding: 20px;
   }
