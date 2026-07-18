@@ -60,7 +60,6 @@ select {
 
 .site-header,
 .fic-box,
-.paths,
 .pesaro,
 .sustainability,
 .partners,
@@ -627,7 +626,6 @@ select {
 }
 
 .fic-box,
-.paths,
 .pesaro,
 .sustainability,
 .partners,
@@ -639,7 +637,6 @@ select {
 }
 
 .fic-box,
-.paths,
 .pesaro,
 .sustainability,
 .partners,
@@ -651,14 +648,14 @@ select {
 
 .fic-box {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 34px 36px;
+  gap: 20px;
+  padding: 24px 28px;
 }
 
 .fic-box__content {
-  max-width: 68ch;
+  max-width: 72ch;
 }
 
 .fic-box h2,
@@ -681,7 +678,6 @@ select {
   line-height: 1.8;
 }
 
-.paths,
 .sustainability,
 .partners,
 .updates {
@@ -697,186 +693,35 @@ select {
   margin-bottom: 16px;
 }
 
-.paths__intro {
-  margin: 12px 0 0;
-  color: var(--muted);
-  line-height: 1.8;
-}
-
-.paths__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  align-items: start;
-  justify-items: center;
-}
-
-.path-card {
-  overflow: hidden;
-  border-radius: 28px;
-  background: var(--surface-strong);
-  border: 1px solid var(--line);
-  max-width: 360px;
-}
-
-.path-card__visual {
-  min-height: 240px;
-  position: relative;
-  background-color: var(--navy-940);
-}
-
-.path-card__visual::before,
-.path-card__visual::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.path-card__visual::before {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 34%),
-    linear-gradient(180deg, rgba(4, 17, 31, 0.06), rgba(4, 17, 31, 0.55)),
-    radial-gradient(circle at top right, rgba(228, 210, 174, 0.22), transparent 26%);
-}
-
-.path-card__visual::after {
-  inset: auto 0 0 0;
-  height: 52%;
-  background:
-    repeating-linear-gradient(
-      -5deg,
-      rgba(159, 216, 231, 0.22) 0,
-      rgba(159, 216, 231, 0.22) 14px,
-      rgba(14, 44, 70, 0.08) 14px,
-      rgba(14, 44, 70, 0.08) 28px
-    );
-}
-
-.path-card__visual--athletes {
-  background:
-    radial-gradient(circle at 22% 22%, rgba(255, 255, 255, 0.18), transparent 18%),
-    linear-gradient(135deg, #0a243b 0%, #16476d 52%, #5cb2d1 100%);
-}
-
-.path-card__visual--spectators {
-  background:
-    radial-gradient(circle at 78% 22%, rgba(228, 210, 174, 0.26), transparent 22%),
-    linear-gradient(135deg, #0d2943 0%, #1b4f77 44%, #7fc6dc 100%);
-}
-
-.path-card__visual--city {
-  background:
-    radial-gradient(circle at 68% 16%, rgba(255, 255, 255, 0.12), transparent 18%),
-    linear-gradient(135deg, #081d31 0%, #18405f 38%, #c8a66d 100%);
-}
-
-.path-card__body {
-  padding: 28px;
-}
-
-.path-card h3,
-.mini-card h3 {
-  margin: 0 0 10px;
-  color: var(--navy-940);
-  font-size: 1.55rem;
-  line-height: 1.1;
-}
-
-.path-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.72;
-}
-
-.path-card a {
-  display: inline-flex;
-  align-items: center;
-  margin-top: 18px;
-  color: var(--navy-820);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 0.9rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.path-card a::after {
-  content: ">";
-  margin-left: 8px;
-  color: var(--sand-500);
-}
-
 .pesaro {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.05fr);
-  gap: 36px;
-  padding: 40px;
-}
-
-.pesaro__visual {
-  min-height: 560px;
-  border-radius: 30px;
+  position: relative;
+  padding: 34px 40px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
-    linear-gradient(145deg, #0a2238 0%, #1b4a6e 34%, #5ab0d0 74%, #e6d3ae 100%);
-  position: relative;
+    linear-gradient(180deg, rgba(251, 253, 255, 0.9), rgba(251, 253, 255, 0.84)),
+    radial-gradient(circle at top right, rgba(79, 169, 202, 0.14), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(228, 210, 174, 0.14), transparent 24%);
 }
 
-.pesaro__visual::before {
+.pesaro::before {
   content: "";
-  position: absolute;
-  inset: 0;
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 3px;
+  margin-bottom: 24px;
+  border-radius: 999px;
   background:
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.15), transparent 16%),
-    radial-gradient(circle at 74% 22%, rgba(228, 210, 174, 0.3), transparent 22%),
-    linear-gradient(180deg, rgba(4, 17, 31, 0.06), rgba(4, 17, 31, 0.36));
-}
-
-.pesaro__visual-inner {
-  position: absolute;
-  inset: 34% 0 0 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
-    repeating-linear-gradient(
-      -4deg,
-      rgba(255, 255, 255, 0.16) 0,
-      rgba(255, 255, 255, 0.16) 16px,
-      rgba(13, 40, 65, 0.05) 16px,
-      rgba(13, 40, 65, 0.05) 32px
-    );
+    linear-gradient(90deg, var(--sea-500), rgba(185, 150, 87, 0.86));
 }
 
 .pesaro__content {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 560px;
-}
-
-.pesaro__mini-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: flex-start;
+  max-width: 760px;
   gap: 14px;
-  margin: 28px 0;
-}
-
-.mini-card {
-  padding: 20px 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(16, 34, 53, 0.08);
-}
-
-.mini-card h3 {
-  margin-bottom: 8px;
-  font-size: 1.15rem;
-}
-
-.mini-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.7;
 }
 
 .sustainability {
@@ -1142,7 +987,6 @@ select {
   }
 
   .hero,
-  .pesaro,
   .updates,
   .sustainability__points {
     grid-template-columns: 1fr;
@@ -1155,18 +999,6 @@ select {
 
   .hero__actions {
     flex-wrap: wrap;
-  }
-
-  .paths__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .path-card {
-    max-width: none;
-  }
-
-  .pesaro__visual {
-    min-height: 420px;
   }
 }
 
@@ -1212,7 +1044,6 @@ select {
 
   .hero,
   .fic-box,
-  .paths,
   .pesaro,
   .sustainability,
   .partners,
@@ -1260,8 +1091,6 @@ select {
     align-items: flex-start;
   }
 
-  .paths__grid,
-  .pesaro__mini-grid,
   .partner-group__logos,
   .sustainability__points {
     grid-template-columns: 1fr;
