@@ -33,7 +33,7 @@ html {
 body {
   margin: 0;
   color: var(--text);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: Arial, Helvetica, sans-serif;
   background:
     radial-gradient(circle at top left, rgba(79, 169, 202, 0.18), transparent 26%),
     radial-gradient(circle at top right, rgba(228, 210, 174, 0.24), transparent 30%),
@@ -462,61 +462,51 @@ select:focus-visible {
 }
 
 .hero h1 {
-  max-width: 12ch;
+  max-width: 10ch;
   color: var(--white);
-  font-size: clamp(4.2rem, 7vw, 7.2rem);
+  font-size: clamp(4.5rem, 8vw, 7.8rem);
+  text-transform: uppercase;
 }
 
 .hero__subtitle,
+.hero__claim,
 .hero__statement {
   color: rgba(251, 253, 255, 0.92);
 }
 
 .hero__subtitle {
   margin: 20px 0 0;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 1.04rem;
-  font-weight: 700;
-  line-height: 1.65;
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(251, 253, 255, 0.82);
 }
 
-.hero__subtitle--secondary {
-  margin-top: 2px;
-  color: rgba(251, 253, 255, 0.8);
+.hero__claim {
+  max-width: 20ch;
+  margin: 20px 0 0;
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
 
 .hero__statement {
   max-width: 58ch;
-  margin: 12px 0 0;
-  font-size: 1.3rem;
-  line-height: 1.55;
+  margin: 16px 0 0;
+  font-size: 1.18rem;
+  line-height: 1.65;
 }
 
 .hero__supporting {
   display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
+  flex-wrap: nowrap;
+  gap: 12px;
   margin-top: 28px;
 }
 
-.hero__support-card {
-  display: grid;
-  gap: 8px;
-  max-width: 30rem;
-  padding: 18px 20px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.hero__support-card strong {
-  color: var(--white);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.hero__support-card span,
 .hero__support-logos span {
   color: rgba(251, 253, 255, 0.78);
   line-height: 1.6;
@@ -691,6 +681,11 @@ select:focus-visible {
   color: var(--sand-500);
 }
 
+.path-card__link--pending {
+  opacity: 0.9;
+  cursor: default;
+}
+
 .partners {
   background:
     linear-gradient(180deg, rgba(250, 246, 238, 0.92), rgba(251, 253, 255, 0.9)),
@@ -765,6 +760,13 @@ select:focus-visible {
   margin-top: 14px;
   color: rgba(251, 253, 255, 0.72);
   font-size: 0.88rem;
+}
+
+.updates__helper {
+  margin: 2px 0 -2px;
+  color: rgba(251, 253, 255, 0.78);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .updates__actions {
@@ -961,13 +963,21 @@ select:focus-visible {
     font-size: clamp(3.2rem, 13vw, 5rem);
   }
 
+  .hero__subtitle {
+    font-size: 0.96rem;
+  }
+
+  .hero__claim {
+    max-width: 100%;
+    font-size: clamp(1.55rem, 7vw, 2rem);
+  }
+
   .hero__statement {
-    font-size: 1.12rem;
+    font-size: 1.05rem;
   }
 
   .hero__supporting {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
   }
 
   .partner-group__logos {
