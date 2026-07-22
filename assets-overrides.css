@@ -40,6 +40,36 @@
   max-width: 760px;
 }
 
+/* Fotografie delle tre sezioni principali */
+.path-card__visual {
+  min-height: 240px;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.path-card__visual::before {
+  background: linear-gradient(180deg, rgba(4, 17, 31, 0.02) 45%, rgba(4, 17, 31, 0.18) 100%);
+}
+
+.path-card__visual::after {
+  display: none;
+}
+
+.path-card__visual--athletes {
+  background-image: url("assets/images/info-gare.jpg");
+  background-position: center center;
+}
+
+.path-card__visual--spectators {
+  background-image: url("assets/images/vivi-pesaro.jpg");
+  background-position: center center;
+}
+
+.path-card__visual--sustainability {
+  background-image: url("assets/images/sostenibilità.jpg");
+  background-position: center center;
+}
+
 @media (max-width: 820px) {
   .site-header {
     padding: 12px 14px;
@@ -54,6 +84,10 @@
     padding: 40px 28px;
     background-position: 62% center;
   }
+
+  .path-card__visual {
+    min-height: 260px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -61,5 +95,9 @@
     min-height: 620px;
     padding: 34px 22px;
     background-position: 66% center;
+  }
+
+  .path-card__visual {
+    min-height: 220px;
   }
 }
