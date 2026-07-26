@@ -23,7 +23,13 @@
 .partnership-band--singleline h2 { max-width: none; white-space: nowrap; font-size: clamp(2.4rem, 4.4vw, 4.4rem); }
 
 .site-footer__brand--with-logo { display: flex; align-items: center; gap: 18px; }
-.site-footer__brand--with-logo img { width: 64px; height: 64px; object-fit: contain; padding: 5px; border-radius: 12px; background: #fff; }
+.footer-logo-link { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 12px; }
+.footer-logo-link:hover,.footer-logo-link:focus-visible { transform: translateY(-1px); }
+.site-footer__brand--with-logo img { display: block; width: 64px; height: 64px; object-fit: contain; padding: 5px; border-radius: 12px; background: #fff; }
+.site-footer__links .social-link { display: inline-flex; align-items: center; gap: 6px; }
+.site-footer__links .social-link svg { width: 18px; height: 18px; flex: 0 0 auto; fill: currentColor; stroke: none; }
+.site-footer__links .social-link svg rect,
+.site-footer__links .social-link svg circle { fill: none; stroke: currentColor; stroke-width: 1.8; }
 
 @media (max-width: 1180px) {
   .hero #hero-title { font-size: clamp(3.6rem, 6.2vw, 5.4rem); }
