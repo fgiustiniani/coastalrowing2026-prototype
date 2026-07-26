@@ -74,7 +74,7 @@
     "intro logo"
     "note logo";
   column-gap: 24px;
-  row-gap: 10px;
+  row-gap: 4px;
   align-items: center;
 }
 .help-band--contacts .help-band__brand > div { display: contents; }
