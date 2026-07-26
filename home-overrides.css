@@ -2,8 +2,8 @@
 .partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
 .partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
 
-.hero__content { max-width: none; }
-.hero #hero-title { white-space: nowrap; font-size: clamp(4.4rem, 8.2vw, 7.6rem); }
+.hero__content { max-width: none; width: 100%; }
+.hero #hero-title { white-space: nowrap; font-size: clamp(4rem, 6.5vw, 6.2rem); line-height: .92; letter-spacing: -.045em; }
 
 .updates--compact .updates__content { max-width: none; }
 .updates--compact .updates__eyebrow,
@@ -24,7 +24,7 @@
 .site-footer__brand--with-logo img { width: 64px; height: 64px; object-fit: contain; padding: 5px; border-radius: 12px; background: #fff; }
 
 @media (max-width: 1180px) {
-  .hero #hero-title { font-size: clamp(3.8rem, 7.4vw, 6rem); }
+  .hero #hero-title { font-size: clamp(3.6rem, 6.2vw, 5.4rem); }
   .partnership-band--singleline h2 { white-space: normal; }
 }
 
@@ -33,6 +33,10 @@
   .updates--compact #updates-title,
   .updates--compact .updates__text,
   .updates--compact .updates__note { white-space: normal; }
+}
+
+@media (max-width: 920px) {
+  .hero #hero-title { font-size: clamp(3.1rem, 6.7vw, 4.4rem); }
 }
 
 @media (max-width: 820px) {
