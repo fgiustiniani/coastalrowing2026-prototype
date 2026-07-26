@@ -2,9 +2,9 @@
 .partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
 .partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
 
-/* Hero home: contenuto più alto e compatto */
-.hero { align-items: center; padding-top: 38px; padding-bottom: 38px; }
-.hero__content { max-width: none; width: 100%; transform: translateY(28px); }
+/* Hero home: contenuto vicino al bordo superiore */
+.hero { align-items: flex-start; padding-top: 56px; padding-bottom: 38px; }
+.hero__content { max-width: none; width: 100%; transform: none; }
 .hero #hero-title { white-space: nowrap; font-size: clamp(4rem, 6.5vw, 6.2rem); line-height: .92; letter-spacing: -.045em; }
 
 .updates--compact .updates__content { max-width: none; }
