@@ -70,6 +70,45 @@
   text-transform: uppercase;
 }
 
+.quick-links a {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.quick-links__number {
+  color: var(--sand-500);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.quick-links__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--navy-820);
+  background: rgba(31, 99, 135, 0.08);
+}
+
+.quick-links__icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.quick-links__label {
+  min-width: 0;
+}
+
 .race-map {
   overflow: hidden;
   border: 1px solid rgba(16, 34, 53, 0.1);
@@ -128,5 +167,16 @@
   .race-map__actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .quick-links a {
+    grid-template-columns: auto 32px minmax(0, 1fr);
+  }
+
+  .quick-links__icon {
+    width: 32px;
+    height: 32px;
   }
 }
