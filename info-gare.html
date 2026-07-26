@@ -10,6 +10,7 @@
   <title>Info per chi gareggia - Campionati Italiani Coastal Rowing 2026</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="info-gare-overrides.css">
 </head>
 <body>
   <div class="site-frame">
@@ -54,25 +55,29 @@
         <a href="#arrivare"><span>06</span>Come arrivare</a>
       </nav>
 
-      <section class="info-section" id="programma" aria-labelledby="programma-title">
-        <div class="info-section__heading">
-          <p class="section-kicker">Informazioni sportive</p>
-          <h2 id="programma-title">Programma e documenti ufficiali</h2>
-        </div>
-        <div class="info-section__content info-section__content--split">
-          <div>
+      <section class="info-section official-docs" id="programma" aria-labelledby="programma-title">
+        <div class="official-docs__layout">
+          <div class="official-docs__copy">
+            <p class="section-kicker">Informazioni sportive</p>
+            <h2 id="programma-title">Programma e documenti ufficiali</h2>
             <p>
-              Programma gare, iscrizioni, risultati, regolamenti e comunicazioni sportive ufficiali sono pubblicati dalla Federazione Italiana Canottaggio.
-            </p>
-            <p class="info-note">
-              Su questo sito raccogliamo invece le informazioni locali utili per organizzare la partecipazione e muoversi durante l&rsquo;evento.
+              Programma gare, iscrizioni, risultati, regolamenti e comunicazioni sportive ufficiali sono pubblicati dalla Federazione Italiana Canottaggio. Su questo sito trovi invece le informazioni locali utili per organizzare la partecipazione e muoverti durante l&rsquo;evento.
             </p>
           </div>
-          <div class="action-panel">
-            <strong>Pagina ufficiale FIC</strong>
-            <p>Il collegamento diretto alla pagina federale dell&rsquo;evento sar&agrave; pubblicato non appena disponibile.</p>
-            <span class="button button--dark button--disabled" aria-disabled="true">Link in aggiornamento</span>
-          </div>
+
+          <a
+            class="fic-link"
+            href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Apri la pagina Bandi di regata della Federazione Italiana Canottaggio in una nuova scheda"
+          >
+            <img src="assets/logos/logo FIC.svg" alt="Federazione Italiana Canottaggio">
+            <span class="fic-link__text">
+              <strong>Federazione Italiana Canottaggio</strong>
+              <span>Bandi di regata &rarr;</span>
+            </span>
+          </a>
         </div>
       </section>
 
