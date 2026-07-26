@@ -70,34 +70,38 @@
   text-transform: uppercase;
 }
 
+/* Accessi rapidi: numero oro, icona blu, titolo con la tipografia originale */
 .quick-links a {
   position: relative;
   display: grid;
-  grid-template-columns: auto 34px minmax(0, 1fr);
+  grid-template-columns: auto 38px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
 }
 
-.quick-links__number {
+.quick-links .quick-links__number {
   color: var(--sand-500);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
 
-.quick-links__icon {
+.quick-links .quick-links__icon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   color: var(--navy-820);
-  background: rgba(31, 99, 135, 0.08);
+  background: rgba(31, 99, 135, 0.09);
+  font-size: initial;
+  letter-spacing: normal;
 }
 
-.quick-links__icon svg {
-  width: 21px;
-  height: 21px;
+.quick-links .quick-links__icon svg {
+  display: block;
+  width: 22px;
+  height: 22px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -105,8 +109,12 @@
   stroke-linejoin: round;
 }
 
-.quick-links__label {
+.quick-links .quick-links__label {
   min-width: 0;
+  color: var(--navy-900);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: normal;
 }
 
 .race-map {
@@ -172,11 +180,11 @@
 
 @media (max-width: 560px) {
   .quick-links a {
-    grid-template-columns: auto 32px minmax(0, 1fr);
+    grid-template-columns: auto 34px minmax(0, 1fr);
   }
 
-  .quick-links__icon {
-    width: 32px;
-    height: 32px;
+  .quick-links .quick-links__icon {
+    width: 34px;
+    height: 34px;
   }
 }
