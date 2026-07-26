@@ -2,6 +2,9 @@
 .partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
 .partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
 
+.hero__content { max-width: none; }
+.hero #hero-title { white-space: nowrap; font-size: clamp(4.4rem, 8.2vw, 7.6rem); }
+
 .updates--compact .updates__content { max-width: none; }
 .updates--compact .updates__eyebrow,
 .updates--compact #updates-title,
@@ -13,13 +16,29 @@
 .inline-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .updates__mail { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.92); font-weight: 800; text-decoration: none; }
 .updates__mail:hover,.updates__mail:focus-visible { text-decoration: underline; }
-.partnership-band__content h2 { max-width: 720px; }
+
+.partnership-band--singleline .partnership-band__content { max-width: 780px; }
+.partnership-band--singleline h2 { max-width: none; white-space: nowrap; font-size: clamp(2.4rem, 4.4vw, 4.4rem); }
+
+.site-footer__brand--with-logo { display: flex; align-items: center; gap: 18px; }
+.site-footer__brand--with-logo img { width: 64px; height: 64px; object-fit: contain; padding: 5px; border-radius: 12px; background: #fff; }
+
+@media (max-width: 1180px) {
+  .hero #hero-title { font-size: clamp(3.8rem, 7.4vw, 6rem); }
+  .partnership-band--singleline h2 { white-space: normal; }
+}
 
 @media (max-width: 1100px) {
   .updates--compact .updates__eyebrow,
   .updates--compact #updates-title,
   .updates--compact .updates__text,
   .updates--compact .updates__note { white-space: normal; }
+}
+
+@media (max-width: 820px) {
+  .hero #hero-title { white-space: normal; font-size: clamp(3.2rem, 13vw, 5rem); }
+  .site-footer__brand--with-logo { align-items: flex-start; }
+  .site-footer__brand--with-logo img { width: 56px; height: 56px; }
 }
 
 @media (max-width: 700px) {
