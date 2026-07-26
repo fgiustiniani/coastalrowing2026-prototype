@@ -1,0 +1,82 @@
+.official-docs {
+  padding: 28px 32px;
+}
+
+.official-docs__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: center;
+}
+
+.official-docs__copy .section-kicker {
+  margin-bottom: 8px;
+}
+
+.official-docs__copy h2 {
+  margin: 0 0 12px;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+}
+
+.official-docs__copy p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.fic-link {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 310px;
+  padding: 18px 20px;
+  border: 1px solid rgba(16, 34, 53, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 28px rgba(4, 17, 31, 0.08);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.fic-link:hover,
+.fic-link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(4, 17, 31, 0.12);
+}
+
+.fic-link img {
+  width: 92px;
+  height: 72px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.fic-link__text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fic-link__text strong {
+  color: var(--navy-940);
+  font-size: 1rem;
+}
+
+.fic-link__text span {
+  color: var(--navy-820);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 820px) {
+  .official-docs__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fic-link {
+    min-width: 0;
+    width: 100%;
+  }
+}
