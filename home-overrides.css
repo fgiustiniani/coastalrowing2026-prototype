@@ -1,0 +1,30 @@
+.partner-group__logos { align-items: center; }
+.partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
+.partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
+
+.updates--compact .updates__content { max-width: none; }
+.updates--compact .updates__eyebrow,
+.updates--compact #updates-title,
+.updates--compact .updates__text,
+.updates--compact .updates__note { white-space: nowrap; }
+.updates--compact .updates__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.inline-icon { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: 0 0 auto; }
+.inline-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.updates__mail { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.92); font-weight: 800; text-decoration: none; }
+.updates__mail:hover,.updates__mail:focus-visible { text-decoration: underline; }
+.partnership-band__content h2 { max-width: 720px; }
+
+@media (max-width: 1100px) {
+  .updates--compact .updates__eyebrow,
+  .updates--compact #updates-title,
+  .updates--compact .updates__text,
+  .updates--compact .updates__note { white-space: normal; }
+}
+
+@media (max-width: 700px) {
+  .partner-logo { min-height: 78px; }
+  .partner-logo img { max-width: 125px; max-height: 60px; }
+  .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
+  .updates--compact .updates__actions .button { width: 100%; }
+}
