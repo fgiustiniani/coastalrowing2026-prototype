@@ -2,6 +2,9 @@
 .partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
 .partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
 
+/* Filigrana globale del prototipo */
+body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-24deg); z-index: 9999; pointer-events: none; user-select: none; font-size: clamp(4.5rem, 13vw, 11rem); font-weight: 950; letter-spacing: .08em; color: rgba(16,34,53,.065); white-space: nowrap; }
+
 /* Hero home */
 .hero { position: relative; align-items: flex-start; padding-top: 56px; padding-bottom: 92px; }
 .hero__content { max-width: none; width: 100%; transform: none; }
@@ -65,4 +68,5 @@
   .partner-logo img { max-width: 125px; max-height: 60px; }
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
+  body::after { font-size: 4.5rem; }
 }
