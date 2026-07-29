@@ -1,0 +1,13 @@
+.site-nav a[aria-current="page"] {
+  opacity: 1;
+}
+
+.site-nav a[aria-current="page"]::after {
+  transform: scaleX(1);
+  background: var(--navy-900);
+}
+
+.inline-icon svg.icon--whatsapp {
+  fill: currentColor;
+  stroke: none;
+}
