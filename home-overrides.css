@@ -2,6 +2,21 @@
 .partner-logo { min-height: 92px; display: grid; place-items: center; padding: 14px 18px; border: 1px solid rgba(16,34,53,.09); border-radius: 18px; background: rgba(255,255,255,.82); }
 .partner-logo img { display: block; max-width: 150px; width: 100%; max-height: 72px; object-fit: contain; }
 
+/* Sezione partner e sponsor */
+.partner-sections { display: grid; gap: 20px; }
+.partner-section { padding: 26px 28px; border: 1px solid rgba(16,34,53,.09); border-radius: 24px; background: rgba(255,255,255,.72); }
+.partner-section--fic { background: linear-gradient(180deg, rgba(31,99,135,.055), rgba(255,255,255,.86)); }
+.partner-section__heading { margin-bottom: 18px; }
+.partner-section__heading h3 { margin: 0; color: var(--navy-900); font-size: clamp(1.35rem,2.2vw,1.8rem); }
+.partner-section__heading p { margin: 7px 0 0; color: var(--muted); font-size: .95rem; }
+.partner-logos { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.partner-logos .partner-logo { min-width: 165px; min-height: 104px; flex: 0 1 190px; }
+.partner-logos .partner-logo img { max-width: 158px; max-height: 76px; }
+.partner-logos--fic .partner-logo { min-width: 150px; min-height: 100px; flex-basis: 175px; }
+.partner-logos--fic .partner-logo img { max-width: 148px; max-height: 72px; }
+.partner-logo--fic-main { background: rgba(31,99,135,.055); }
+.partner-logo--fic-main img { max-width: 138px !important; max-height: 70px !important; }
+
 /* Filigrana globale del prototipo */
 body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-24deg); z-index: 9999; pointer-events: none; user-select: none; font-size: clamp(4.5rem, 13vw, 11rem); font-weight: 950; letter-spacing: .08em; color: rgba(16,34,53,.065); white-space: nowrap; }
 
@@ -66,7 +81,14 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
 @media (max-width: 700px) {
   .partner-logo { min-height: 78px; }
   .partner-logo img { max-width: 125px; max-height: 60px; }
+  .partner-section { padding: 22px 20px; }
+  .partner-logos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .partner-logos .partner-logo,.partner-logos--fic .partner-logo { min-width: 0; width: 100%; min-height: 92px; }
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
   body::after { font-size: 4.5rem; }
+}
+
+@media (max-width: 460px) {
+  .partner-logos { grid-template-columns: 1fr; }
 }
