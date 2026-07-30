@@ -65,6 +65,16 @@
   font-size: 1rem;
 }
 
+/* Nella home il pulsante flottante riporta l'azione svolta. */
+html[data-contact-email] .back-home span {
+  font-size: 0;
+}
+
+html[data-contact-email] .back-home span::after {
+  content: "Vai su";
+  font-size: .78rem;
+}
+
 @media (min-width: 1181px) {
   .single-line-desktop {
     white-space: nowrap;
