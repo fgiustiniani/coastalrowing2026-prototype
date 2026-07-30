@@ -1,4 +1,4 @@
-import('./nav-submenu.js').catch(() => {});
+import('./nav-submenu.js?v=20260731-1').catch(() => {});
 
 (() => {
   function createEventLogo(extraClass = '') {
