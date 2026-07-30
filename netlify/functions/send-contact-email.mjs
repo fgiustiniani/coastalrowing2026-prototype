@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 
-const DEFAULT_RECIPIENT = 'info@canottieripesaro.it';
+const DEFAULT_RECIPIENT = 'f.giustiniani@canottieripesaro.it';
 const MAX_LENGTHS = {
   nome: 100,
   cognome: 100,
