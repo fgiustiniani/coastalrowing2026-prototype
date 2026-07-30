@@ -1,3 +1,5 @@
+import('./nav-submenu.js').catch(() => {});
+
 (() => {
   const endpoint = '/api/partnership';
   const fallbackEmail = String(
