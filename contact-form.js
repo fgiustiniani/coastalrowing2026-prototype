@@ -18,11 +18,12 @@
       _subject: `Contatto dal sito - ${payload.oggetto}`,
       _template: 'table',
       _cc: payload.email,
+      _replyto: payload.email,
       _url: window.location.href,
+      email: payload.email,
       Tipologia: 'Contatto dal sito',
       Nome: payload.nome,
       Cognome: payload.cognome,
-      Email: payload.email,
       Oggetto: payload.oggetto,
       Messaggio: payload.messaggio
     };
