@@ -18,11 +18,12 @@
       _subject: `Richiesta partnership - ${payload.azienda}`,
       _template: 'table',
       _cc: payload.email,
+      _replyto: payload.email,
       _url: window.location.href,
+      email: payload.email,
       Tipologia: 'Richiesta partnership',
       Azienda: payload.azienda,
       Nome: payload.nome,
-      Email: payload.email,
       Telefono: payload.telefono || 'Non indicato',
       Interesse: payload.interesse,
       Messaggio: payload.messaggio || 'Nessun messaggio aggiuntivo.'
