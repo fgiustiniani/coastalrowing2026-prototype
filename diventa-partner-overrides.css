@@ -1,0 +1,256 @@
+/* Aggiornamenti pagina Diventa partner */
+
+.partner-story {
+  position: relative;
+  min-height: 650px;
+  margin-top: 24px;
+  padding: 68px 64px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 32px;
+  color: #fff;
+  box-shadow: var(--shadow-xl);
+  background-color: var(--navy-940);
+  background-image:
+    linear-gradient(112deg, rgba(4, 17, 31, 0.88) 0%, rgba(4, 17, 31, 0.68) 50%, rgba(4, 17, 31, 0.42) 100%),
+    url('assets/images/partner-pesaro-rowing.jpg'),
+    url('assets/images/info-gare.jpg');
+  background-position: center, center 48%, center 48%;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+  background-attachment: scroll, fixed, fixed;
+}
+
+.partner-story::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(159, 216, 231, 0.22), transparent 32%),
+    linear-gradient(180deg, transparent 60%, rgba(4, 17, 31, 0.28));
+}
+
+.partner-story__content {
+  position: relative;
+  z-index: 1;
+}
+
+.partner-story .partner-section-heading {
+  max-width: 920px;
+}
+
+.partner-story .partner-kicker {
+  color: #fff;
+}
+
+.partner-story .partner-section-heading h2 {
+  margin: 6px 0 18px;
+  color: #fff;
+}
+
+.partner-story__lead {
+  max-width: 78ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.08rem;
+  line-height: 1.72;
+}
+
+.partner-story__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  gap: 24px;
+  align-items: stretch;
+  margin-top: 34px;
+}
+
+.partner-story__panel {
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 26px;
+  background: rgba(4, 17, 31, 0.58);
+  box-shadow: 0 20px 44px rgba(4, 17, 31, 0.2);
+  backdrop-filter: blur(16px);
+}
+
+.partner-story__eyebrow {
+  margin: 0 0 18px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.partner-story__list {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.partner-story__list li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding-left: 22px;
+}
+
+.partner-story__list li::before {
+  content: "";
+  position: absolute;
+  top: 0.52em;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sea-320);
+  box-shadow: 0 0 0 5px rgba(159, 216, 231, 0.12);
+}
+
+.partner-story__list strong {
+  color: #fff;
+  font-size: 1.08rem;
+  line-height: 1.35;
+}
+
+.partner-story__list span {
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.62;
+}
+
+.partner-story__media {
+  min-height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 20px 44px rgba(4, 17, 31, 0.24);
+  background-color: var(--navy-900);
+  background-image:
+    linear-gradient(180deg, rgba(4, 17, 31, 0.08), rgba(4, 17, 31, 0.34)),
+    url('assets/images/partner-pesaro-beach.jpg'),
+    url('assets/images/hero-pesaro-coastal-rowing-2026.jpg');
+  background-position: center, center, center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+}
+
+.partnership-contact__organizer {
+  display: block;
+}
+
+.partnership-contact__organizer-topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.partnership-contact__organizer-label {
+  margin: 0 !important;
+}
+
+.partnership-contact__organizer-site,
+.partnership-contact__fic-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(16, 34, 53, 0.1);
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.partnership-contact__organizer-site {
+  width: 38px;
+  height: 38px;
+  padding: 5px;
+}
+
+.partnership-contact__organizer-site img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.partnership-contact__organizer-site:hover,
+.partnership-contact__organizer-site:focus-visible,
+.partnership-contact__fic-logo:hover,
+.partnership-contact__fic-logo:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(4, 17, 31, 0.14);
+}
+
+.partnership-contact__fic-note {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.partnership-contact__fic-logo {
+  width: 54px;
+  height: 54px;
+  padding: 7px;
+}
+
+.partnership-contact__fic-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.partnership-contact__fic-note p {
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+@media (max-width: 1080px) {
+  .partner-story__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .partner-story__media {
+    min-height: 340px;
+  }
+}
+
+@media (max-width: 820px) {
+  .partner-story {
+    min-height: auto;
+    padding: 52px 32px;
+    background-attachment: scroll, scroll, scroll;
+  }
+}
+
+@media (max-width: 580px) {
+  .partner-story {
+    margin-top: 18px;
+    padding: 38px 22px;
+    border-radius: 24px;
+  }
+
+  .partner-story__panel {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .partner-story__media {
+    min-height: 250px;
+    border-radius: 22px;
+  }
+
+  .partnership-contact__fic-note {
+    align-items: flex-start;
+  }
+
+  .partnership-contact__fic-logo {
+    width: 48px;
+    height: 48px;
+  }
+}
