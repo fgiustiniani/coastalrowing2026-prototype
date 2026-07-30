@@ -1,4 +1,19 @@
 (() => {
+  const DEFAULT_PARTNERSHIP_EMAIL = 'f.giustiniani@canottieripesaro.it';
+  const partnershipEmail = String(
+    document.documentElement.dataset.partnershipEmail || DEFAULT_PARTNERSHIP_EMAIL
+  ).trim();
+
+  const defaultSubject = 'Richiesta informazioni partnership - Campionati Italiani Coastal Rowing 2026';
+
+  document.querySelectorAll('[data-partnership-email-link]').forEach((link) => {
+    const subject = String(link.dataset.mailSubject || defaultSubject).trim();
+    link.href = `mailto:${partnershipEmail}?subject=${encodeURIComponent(subject)}`;
+
+    const emailText = link.querySelector('[data-partnership-email-text]');
+    if (emailText) emailText.textContent = partnershipEmail;
+  });
+
   const form = document.getElementById('partnership-form');
   const status = document.getElementById('partnership-form-status');
 
@@ -32,6 +47,6 @@
     ].join('\n');
 
     status.textContent = 'Si aprirà il programma di posta con la richiesta già compilata.';
-    window.location.href = `mailto:info@canottieripesaro.it?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:${partnershipEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
 })();
