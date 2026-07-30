@@ -43,6 +43,25 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
 .partnership-band--singleline h2 { max-width: none; white-space: nowrap; font-size: clamp(2.4rem, 4.4vw, 4.4rem); }
 .partnership-band--singleline > .button { align-self: flex-end; margin-bottom: 4px; transform: translateY(22px); flex: 0 0 auto; }
 
+/* Logo evento nelle sezioni della home */
+.section-heading--branded { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 28px; max-width: none; }
+.section-heading__copy { min-width: 0; }
+.section-event-logo { display: block; width: clamp(160px,19vw,235px); max-height: 92px; object-fit: contain; justify-self: end; }
+.updates__content--branded { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 24px; max-width: none; }
+.updates__content-copy { min-width: 0; }
+.section-event-logo--dark { width: clamp(145px,16vw,205px); padding: 12px 14px; border-radius: 18px; background: rgba(255,255,255,.94); box-shadow: 0 14px 30px rgba(4,17,31,.18); }
+.section-event-logo--band { width: clamp(145px,15vw,205px); margin-left: auto; align-self: center; }
+
+/* Logo evento nel modulo contatti */
+.contact-dialog__logo { display: block; width: min(100%,250px); max-height: 92px; margin: 0 0 18px; object-fit: contain; object-position: left center; }
+
+/* Logo FIC accanto al titolo e link sui partner */
+.partner-section__title-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.fic-title-logo { display: inline-grid; place-items: center; width: 74px; min-height: 42px; padding: 4px 8px; border: 1px solid rgba(16,34,53,.09); border-radius: 12px; background: rgba(255,255,255,.86); transition: transform .15s ease, box-shadow .15s ease; }
+.fic-title-logo img { display: block; width: 100%; max-height: 34px; object-fit: contain; }
+.partner-logo[href] { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.partner-logo[href]:hover,.partner-logo[href]:focus-visible,.fic-title-logo:hover,.fic-title-logo:focus-visible { transform: translateY(-3px); border-color: rgba(31,99,135,.28); box-shadow: 0 14px 28px rgba(4,17,31,.12); }
+
 /* Footer */
 .site-footer__brand { display: block; }
 .site-footer__brand > p { margin-bottom: 12px; }
@@ -57,6 +76,7 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
   .hero #hero-title { font-size: clamp(3.6rem, 6.2vw, 5.4rem); }
   .partnership-band--singleline h2 { white-space: normal; }
   .partnership-band--singleline > .button { align-self: center; margin-bottom: 0; transform: translateY(12px); }
+  .section-event-logo--band { margin-left: 0; }
 }
 
 @media (max-width: 1100px) {
@@ -76,6 +96,9 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
   .hero #hero-title { white-space: normal; font-size: clamp(3.2rem, 13vw, 5rem); }
   .hero > .hero__statement { left: 28px; right: 28px; bottom: 28px; max-width: none; }
   .partnership-band--singleline > .button { transform: none; }
+  .section-heading--branded,.updates__content--branded { grid-template-columns: 1fr; align-items: start; }
+  .section-event-logo { justify-self: start; width: min(220px,70vw); }
+  .section-event-logo--dark { width: min(200px,64vw); }
 }
 
 @media (max-width: 700px) {
@@ -87,6 +110,7 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
   body::after { font-size: 4.5rem; }
+  .contact-dialog__logo { width: min(100%,210px); margin-bottom: 14px; }
 }
 
 @media (max-width: 460px) {
