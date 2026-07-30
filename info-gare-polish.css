@@ -2,17 +2,28 @@
 
 /* Accessi rapidi: niente numerazione e testo più leggibile */
 .quick-links a {
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 16px;
-  min-height: 86px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 92px;
 }
 
-.quick-links__label {
+.quick-links .quick-links__label {
   color: var(--navy-900);
-  font-size: 1.18rem;
+  font-size: 1.35rem;
   font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: 0.025em;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.quick-links .quick-links__icon {
+  width: 46px;
+  height: 46px;
+}
+
+.quick-links .quick-links__icon svg {
+  width: 25px;
+  height: 25px;
 }
 
 /* Logo dei Campionati accanto ai titoli delle sezioni */
@@ -136,13 +147,23 @@
 
 @media (max-width: 560px) {
   .quick-links a {
-    grid-template-columns: 38px minmax(0, 1fr);
-    min-height: 78px;
-    gap: 13px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-height: 82px;
+    gap: 14px;
   }
 
-  .quick-links__label {
-    font-size: 1.08rem;
+  .quick-links .quick-links__label {
+    font-size: 1.12rem;
+  }
+
+  .quick-links .quick-links__icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .quick-links .quick-links__icon svg {
+    width: 22px;
+    height: 22px;
   }
 
   .info-section__heading--branded {
