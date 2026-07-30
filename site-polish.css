@@ -50,6 +50,21 @@
   display: none;
 }
 
+/* Il logo del modulo è già presente nel markup: nasconde la copia aggiunta dallo script precedente. */
+.contact-dialog__heading > .contact-dialog__logo {
+  display: none;
+}
+
+/* Etichetta leggibile al posto dell'indirizzo tecnico nella sezione Rimani aggiornato. */
+.updates__mail [data-contact-email-text] {
+  font-size: 0;
+}
+
+.updates__mail [data-contact-email-text]::after {
+  content: "Mandaci una mail";
+  font-size: 1rem;
+}
+
 @media (min-width: 1181px) {
   .single-line-desktop {
     white-space: nowrap;
