@@ -1,6 +1,6 @@
 (() => {
   const endpoint = '/api/contact';
-  const fallbackEmail = String(
+  let recipientEmail = String(
     document.documentElement.dataset.contactEmail || 'f.giustiniani@canottieripesaro.it'
   ).trim();
   const isGitHubPages = window.location.hostname.endsWith('github.io');
@@ -12,6 +12,16 @@
   const submitButton = form?.querySelector('button[type="submit"]');
 
   if (!dialog || !openButton || !closeButton || !form || !status || !submitButton) return;
+
+  function updateRecipientEmail(email) {
+    const nextEmail = String(email || '').trim();
+    if (!nextEmail) return;
+
+    recipientEmail = nextEmail;
+    document.querySelectorAll('[data-contact-email-text]').forEach((element) => {
+      element.textContent = recipientEmail;
+    });
+  }
 
   function buildFormSubmitPayload(payload) {
     return {
@@ -30,7 +40,7 @@
   }
 
   async function sendViaFormSubmit(payload) {
-    const response = await fetch(`https://formsubmit.co/ajax/${fallbackEmail}`, {
+    const response = await fetch(`https://formsubmit.co/ajax/${recipientEmail}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -63,6 +73,17 @@
     }
 
     return result;
+  }
+
+  updateRecipientEmail(recipientEmail);
+
+  if (!isGitHubPages) {
+    fetch(endpoint, { headers: { accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => updateRecipientEmail(data?.contactEmail))
+      .catch(() => {
+        // Resta attivo l'indirizzo configurato nell'attributo data-contact-email.
+      });
   }
 
   openButton.addEventListener('click', () => {
@@ -100,7 +121,7 @@
     try {
       if (isGitHubPages) {
         await sendViaFormSubmit(payload);
-        status.textContent = `Messaggio inviato. Una copia è stata indirizzata a ${payload.email}. Al primo test potrebbe essere necessario confermare l’attivazione ricevuta da ${fallbackEmail}.`;
+        status.textContent = `Messaggio inviato. Una copia è stata indirizzata a ${payload.email}. Al primo test potrebbe essere necessario confermare l’attivazione ricevuta da ${recipientEmail}.`;
       } else {
         await sendViaNetlify(payload);
         status.textContent = `Messaggio inviato correttamente. Una copia è stata inviata a ${payload.email}.`;
