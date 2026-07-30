@@ -9,10 +9,10 @@
 
 .quick-links__label {
   color: var(--navy-900);
-  font-size: 1.04rem;
+  font-size: 1.18rem;
   font-weight: 800;
   line-height: 1.25;
-  letter-spacing: 0.035em;
+  letter-spacing: 0.025em;
 }
 
 /* Logo dei Campionati accanto ai titoli delle sezioni */
@@ -142,7 +142,7 @@
   }
 
   .quick-links__label {
-    font-size: 1rem;
+    font-size: 1.08rem;
   }
 
   .info-section__heading--branded {
