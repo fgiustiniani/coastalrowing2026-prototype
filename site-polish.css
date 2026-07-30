@@ -7,7 +7,28 @@
   background: var(--navy-900);
 }
 
-.inline-icon svg.icon--whatsapp {
-  fill: currentColor;
-  stroke: none;
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.inline-icon img,
+.ui-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.button .inline-icon img {
+  width: 21px;
+  height: 21px;
+}
+
+@media (min-width: 1181px) {
+  .single-line-desktop {
+    white-space: nowrap;
+  }
 }
