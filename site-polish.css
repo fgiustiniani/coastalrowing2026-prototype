@@ -27,6 +27,29 @@
   height: 21px;
 }
 
+/* Home: usa i loghi SVG condivisi senza duplicare il markup */
+.updates__actions .button .inline-icon,
+.updates__mail .inline-icon {
+  width: 21px;
+  height: 21px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.updates__actions .button .inline-icon {
+  background-image: url('assets/logos/whatsapp-logo.svg');
+}
+
+.updates__mail .inline-icon {
+  background-image: url('assets/logos/mail-logo.svg');
+}
+
+.updates__actions .inline-icon svg,
+.updates__mail .inline-icon svg {
+  display: none;
+}
+
 @media (min-width: 1181px) {
   .single-line-desktop {
     white-space: nowrap;
