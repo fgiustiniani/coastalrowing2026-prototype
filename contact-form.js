@@ -1,7 +1,7 @@
 (() => {
   const endpoint = '/api/contact';
   const fallbackEmail = String(
-    document.documentElement.dataset.contactEmail || 'info@canottieripesaro.it'
+    document.documentElement.dataset.contactEmail || 'f.giustiniani@canottieripesaro.it'
   ).trim();
   const isGitHubPages = window.location.hostname.endsWith('github.io');
   const dialog = document.getElementById('contact-dialog');
@@ -100,7 +100,7 @@
     try {
       if (isGitHubPages) {
         await sendViaFormSubmit(payload);
-        status.textContent = `Messaggio inviato. Una copia è stata indirizzata a ${payload.email}. Al primo test potrebbe essere necessario confermare l’attivazione ricevuta dall’organizzazione.`;
+        status.textContent = `Messaggio inviato. Una copia è stata indirizzata a ${payload.email}. Al primo test potrebbe essere necessario confermare l’attivazione ricevuta da ${fallbackEmail}.`;
       } else {
         await sendViaNetlify(payload);
         status.textContent = `Messaggio inviato correttamente. Una copia è stata inviata a ${payload.email}.`;
