@@ -1,3 +1,5 @@
+import('./nav-submenu.js').catch(() => {});
+
 (() => {
   function createEventLogo(extraClass = '') {
     const logo = document.createElement('img');
