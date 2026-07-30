@@ -1,0 +1,57 @@
+.site-nav a[aria-current="page"] {
+  opacity: 1;
+}
+
+.site-nav a[aria-current="page"]::after {
+  transform: scaleX(1);
+  background: var(--navy-900);
+}
+
+.inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.inline-icon img,
+.ui-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.button .inline-icon img {
+  width: 21px;
+  height: 21px;
+}
+
+/* Home: usa i loghi SVG condivisi senza duplicare il markup */
+.updates__actions .button .inline-icon,
+.updates__mail .inline-icon {
+  width: 21px;
+  height: 21px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.updates__actions .button .inline-icon {
+  background-image: url('assets/logos/whatsapp-logo.svg');
+}
+
+.updates__mail .inline-icon {
+  background-image: url('assets/logos/mail-logo.svg');
+}
+
+.updates__actions .inline-icon svg,
+.updates__mail .inline-icon svg {
+  display: none;
+}
+
+@media (min-width: 1181px) {
+  .single-line-desktop {
+    white-space: nowrap;
+  }
+}
