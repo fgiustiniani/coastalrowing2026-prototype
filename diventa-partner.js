@@ -3,6 +3,7 @@
   const fallbackEmail = String(
     document.documentElement.dataset.partnershipEmail || 'f.giustiniani@canottieripesaro.it'
   ).trim();
+  const isGitHubPages = window.location.hostname.endsWith('github.io');
 
   function updateContactEmail(email) {
     document.querySelectorAll('[data-partnership-email-link]').forEach((link) => {
@@ -12,17 +13,71 @@
     });
   }
 
+  function buildFormSubmitPayload(payload) {
+    return {
+      _subject: `Richiesta partnership - ${payload.azienda}`,
+      _template: 'table',
+      _cc: payload.email,
+      _url: window.location.href,
+      Tipologia: 'Richiesta partnership',
+      Azienda: payload.azienda,
+      Nome: payload.nome,
+      Email: payload.email,
+      Telefono: payload.telefono || 'Non indicato',
+      Interesse: payload.interesse,
+      Messaggio: payload.messaggio || 'Nessun messaggio aggiuntivo.'
+    };
+  }
+
+  async function sendViaFormSubmit(payload) {
+    const response = await fetch(`https://formsubmit.co/ajax/${fallbackEmail}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json'
+      },
+      body: JSON.stringify(buildFormSubmitPayload(payload))
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'Non è stato possibile inviare la richiesta.');
+    }
+
+    return result;
+  }
+
+  async function sendViaNetlify(payload) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || 'Non è stato possibile inviare la richiesta.');
+    }
+
+    return result;
+  }
+
   updateContactEmail(fallbackEmail);
 
-  fetch(endpoint, { headers: { accept: 'application/json' } })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((data) => {
-      const configuredEmail = String(data?.contactEmail || '').trim();
-      if (configuredEmail) updateContactEmail(configuredEmail);
-    })
-    .catch(() => {
-      // Su GitHub Pages la funzione non è disponibile: resta visibile l'indirizzo di fallback.
-    });
+  if (!isGitHubPages) {
+    fetch(endpoint, { headers: { accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        const configuredEmail = String(data?.contactEmail || '').trim();
+        if (configuredEmail) updateContactEmail(configuredEmail);
+      })
+      .catch(() => {
+        // Resta visibile l'indirizzo di fallback configurato nella pagina.
+      });
+  }
 
   const form = document.getElementById('partnership-form');
   const status = document.getElementById('partnership-form-status');
@@ -52,22 +107,13 @@
     status.textContent = 'Stiamo inviando la richiesta.';
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Non è stato possibile inviare la richiesta.');
+      if (isGitHubPages) {
+        await sendViaFormSubmit(payload);
+        status.textContent = `Richiesta inviata. Una copia è stata indirizzata a ${payload.email}. Al primo test potrebbe essere necessario confermare l’attivazione ricevuta dall’organizzazione.`;
+      } else {
+        await sendViaNetlify(payload);
+        status.textContent = `Richiesta inviata correttamente. Una copia è stata inviata a ${payload.email}.`;
       }
-
-      status.textContent = `Richiesta inviata correttamente. Una copia è stata inviata a ${payload.email}.`;
       form.reset();
     } catch (error) {
       status.textContent = error instanceof Error
