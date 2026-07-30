@@ -1,0 +1,11 @@
+{
+  "name": "coastalrowing2026-prototype",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.3"
+  }
+}
