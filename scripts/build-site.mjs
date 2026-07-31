@@ -36,7 +36,7 @@ const pageModels = new Map([
   ['diventa-partner.html', 'editorial']
 ]);
 
-const sharedStylesheets = ['page-system.css', 'visual-cleanup.css'];
+const sharedStylesheets = ['page-system.css', 'visual-cleanup.css', 'mobile-polish.css'];
 
 const excludedEntries = new Set([
   '.git',
