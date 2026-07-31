@@ -75,6 +75,18 @@ html[data-contact-email] .back-home span::after {
   font-size: .78rem;
 }
 
+/* La call to action sponsor è parte della sezione Insieme ai Campionati. */
+.partners > .partnership-band {
+  margin-top: 24px;
+  border-color: rgba(16, 34, 53, .08);
+  box-shadow: none;
+}
+
+.city-resource-card[id],
+.city-food[id] {
+  scroll-margin-top: 180px;
+}
+
 /* Sottomenu delle voci principali */
 .site-header {
   position: relative;
