@@ -6,7 +6,7 @@ const MAX_LENGTHS = {
   nome: 160,
   email: 254,
   telefono: 80,
-  interesse: 160,
+  oggetto: 180,
   messaggio: 5000
 };
 
@@ -81,10 +81,10 @@ export default async (request) => {
   const nome = cleanHeader(payload.nome, MAX_LENGTHS.nome);
   const email = cleanHeader(payload.email, MAX_LENGTHS.email).toLowerCase();
   const telefono = cleanHeader(payload.telefono, MAX_LENGTHS.telefono);
-  const interesse = cleanHeader(payload.interesse, MAX_LENGTHS.interesse);
+  const oggetto = cleanHeader(payload.oggetto, MAX_LENGTHS.oggetto);
   const messaggio = clean(payload.messaggio, MAX_LENGTHS.messaggio);
 
-  if (!azienda || !nome || !email || !interesse) {
+  if (!azienda || !nome || !email || !oggetto) {
     return json({ error: 'Compila tutti i campi obbligatori.' }, 400);
   }
 
@@ -118,7 +118,7 @@ export default async (request) => {
     }
   });
 
-  const subject = `Richiesta partnership - ${azienda}`;
+  const subject = `Richiesta partnership - ${oggetto}`;
   const text = [
     'Richiesta di informazioni sulle opportunità di partnership',
     '',
@@ -126,7 +126,7 @@ export default async (request) => {
     `Nome e cognome: ${nome}`,
     `Email: ${email}`,
     `Telefono: ${telefono || 'Non indicato'}`,
-    `Interesse: ${interesse}`,
+    `Oggetto: ${oggetto}`,
     '',
     'Messaggio:',
     messaggio || 'Nessun messaggio aggiuntivo.'
@@ -138,7 +138,7 @@ export default async (request) => {
     <p><strong>Nome e cognome:</strong> ${escapeHtml(nome)}</p>
     <p><strong>Email:</strong> ${escapeHtml(email)}</p>
     <p><strong>Telefono:</strong> ${escapeHtml(telefono || 'Non indicato')}</p>
-    <p><strong>Interesse:</strong> ${escapeHtml(interesse)}</p>
+    <p><strong>Oggetto:</strong> ${escapeHtml(oggetto)}</p>
     <p><strong>Messaggio:</strong></p>
     <p>${escapeHtml(messaggio || 'Nessun messaggio aggiuntivo.').replaceAll('\n', '<br>')}</p>
   `;
