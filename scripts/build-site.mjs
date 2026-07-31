@@ -36,6 +36,8 @@ const pageModels = new Map([
   ['diventa-partner.html', 'editorial']
 ]);
 
+const sharedStylesheets = ['page-system.css', 'visual-cleanup.css'];
+
 const excludedEntries = new Set([
   '.git',
   '.github',
@@ -86,9 +88,11 @@ function addPageModel(fileName, source) {
   });
 }
 
-function addPageSystemStyles(source) {
-  if (source.includes('href="page-system.css"')) return source;
-  return source.replace(/<\/head>/i, '  <link rel="stylesheet" href="page-system.css">\n</head>');
+function addSharedStyles(source) {
+  return sharedStylesheets.reduce((output, stylesheet) => {
+    if (output.includes(`href="${stylesheet}"`)) return output;
+    return output.replace(/<\/head>/i, `  <link rel="stylesheet" href="${stylesheet}">\n</head>`);
+  }, source);
 }
 
 function buildPage(fileName, source) {
@@ -107,7 +111,7 @@ function buildPage(fileName, source) {
     .replace(footerPattern, footerTemplate);
 
   output = addPageModel(fileName, output);
-  output = addPageSystemStyles(output);
+  output = addSharedStyles(output);
   return output;
 }
 
