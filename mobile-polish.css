@@ -342,6 +342,36 @@
     padding: 28px 20px;
     border-radius: 22px;
   }
+
+  /* Evita che mappe, griglie o testi lunghi allarghino l'intera pagina. */
+  .page-model--operational .race-info-page,
+  .page-model--operational .race-info-page > *,
+  .page-model--operational .official-docs__layout,
+  .page-model--operational .official-docs__copy,
+  .page-model--operational .info-section,
+  .page-model--operational .info-section__heading,
+  .page-model--operational .info-section__heading-copy,
+  .page-model--operational .race-map,
+  .page-model--operational .hospitality__heading,
+  .page-model--operational .hospitality__downloads,
+  .page-model--operational .help-band {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .page-model--operational .race-info-page,
+  .page-model--operational .info-section,
+  .page-model--operational .race-map {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .page-model--operational p,
+  .page-model--operational a,
+  .page-model--operational strong,
+  .page-model--operational span {
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (max-width: 430px) {
