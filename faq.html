@@ -89,13 +89,23 @@
     </footer>
     <a class="back-home" href="#top">↑ <span>Vai su</span></a>
 
+    <dialog class="news-detail-dialog" id="news-detail-dialog" aria-labelledby="news-detail-title">
+      <article class="news-detail-dialog__panel">
+        <button class="news-detail-dialog__close" type="button" data-close-news-detail aria-label="Chiudi">×</button>
+        <time id="news-detail-date"></time>
+        <h2 id="news-detail-title"></h2>
+        <p class="news-detail-dialog__summary" id="news-detail-summary"></p>
+        <div class="news-detail-dialog__body" id="news-detail-body"></div>
+      </article>
+    </dialog>
+
     <dialog class="news-admin-dialog" id="news-admin-dialog" aria-labelledby="news-admin-title">
       <div class="news-admin-dialog__panel">
         <button class="news-admin-dialog__close" type="button" data-close-news-admin aria-label="Chiudi">×</button>
         <div class="news-admin-dialog__heading">
           <p class="section-kicker">Area riservata</p>
           <h2 id="news-admin-title">Gestione news</h2>
-          <p>Accedi con le credenziali amministrative per pubblicare un nuovo aggiornamento.</p>
+          <p>Accedi con le credenziali amministrative per pubblicare, modificare o eliminare gli aggiornamenti.</p>
         </div>
 
         <form class="news-admin-form" id="news-login-form">
@@ -106,11 +116,16 @@
         </form>
 
         <form class="news-admin-form" id="news-editor-form" hidden>
+          <input type="hidden" name="id">
           <label><span>Titolo *</span><input type="text" name="title" maxlength="160" required></label>
           <label><span>Data *</span><input type="date" name="date" required></label>
           <label><span>Sintesi *</span><textarea name="summary" rows="3" maxlength="600" required></textarea></label>
           <label><span>Testo completo</span><textarea name="body" rows="7" maxlength="5000"></textarea></label>
-          <button class="button button--dark" type="submit">Pubblica news</button>
+          <div class="news-admin-form__actions">
+            <button class="button button--dark" type="submit" data-news-submit>Pubblica news</button>
+            <button class="button news-admin-form__cancel" type="button" data-cancel-news-edit hidden>Annulla modifica</button>
+          </div>
+          <p class="news-admin-help">Dopo l’accesso, usa i pulsanti “Modifica” ed “Elimina” che compaiono accanto alle news nell’elenco.</p>
           <p class="news-admin-status" id="news-editor-status" aria-live="polite"></p>
         </form>
       </div>
