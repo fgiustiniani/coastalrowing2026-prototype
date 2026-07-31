@@ -64,6 +64,27 @@ function isAuthorized(request) {
   };
 }
 
+function sanitizeStoreSuffix(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+function resolveStoreName(requestUrl) {
+  const configuredStore = String(process.env.NEWS_STORE_NAME || '').trim();
+  if (configuredStore) return configuredStore;
+
+  const hostname = requestUrl.hostname.toLowerCase();
+  if (hostname.endsWith('.netlify.app') && hostname.includes('--')) {
+    const deployPrefix = sanitizeStoreSuffix(hostname.split('--')[0]);
+    if (deployPrefix) return `coastal-news-${deployPrefix}`;
+  }
+
+  return 'coastal-news';
+}
+
 async function readNews(store) {
   const stored = await store.get(STORE_KEY, { type: 'json' });
   return Array.isArray(stored) ? stored : [];
@@ -96,10 +117,7 @@ function validateNewsPayload(payload) {
 
 export default async (request) => {
   const requestUrl = new URL(request.url);
-  const defaultStoreName = requestUrl.hostname.startsWith('develop--')
-    ? 'coastal-news-develop'
-    : 'coastal-news';
-  const store = getStore(process.env.NEWS_STORE_NAME || defaultStoreName);
+  const store = getStore(resolveStoreName(requestUrl));
 
   if (request.method === 'GET') {
     try {
