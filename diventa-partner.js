@@ -1,5 +1,13 @@
 import('./nav-submenu.js').catch(() => {});
 
+if (!document.querySelector('link[data-partner-background]')) {
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = 'diventa-partner-background.css?v=20260731-1';
+  stylesheet.dataset.partnerBackground = '';
+  document.head.appendChild(stylesheet);
+}
+
 (() => {
   const endpoint = '/api/partnership';
   const fallbackEmail = String(
