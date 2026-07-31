@@ -113,6 +113,11 @@
   box-shadow: none;
 }
 
+/* Usa il logo APA in formato SVG senza modificare il file HTML sorgente. */
+.page-model--operational .hospitality__logo {
+  content: url("assets/logos/apa-logo.svg");
+}
+
 /* Rimuove definitivamente la vecchia filigrana del prototipo. */
 .page-model--home::after {
   content: none;
