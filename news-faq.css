@@ -1,0 +1,320 @@
+.news-faq-page {
+  width: min(100%, var(--section-width));
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+}
+
+.news-faq-hero,
+.news-section,
+.faq-section {
+  border-radius: 32px;
+  box-shadow: var(--shadow-lg);
+}
+
+.news-faq-hero {
+  min-height: 330px;
+  display: flex;
+  align-items: flex-end;
+  padding: 54px 58px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    linear-gradient(110deg, rgba(4, 17, 31, .9), rgba(4, 17, 31, .56) 58%, rgba(4, 17, 31, .22)),
+    url('assets/images/hero-pesaro-coastal-rowing-2026.jpg') center 44% / cover no-repeat;
+}
+
+.news-faq-hero__content {
+  max-width: 940px;
+}
+
+.news-faq-hero h1 {
+  margin: 8px 0 16px;
+  font-size: clamp(3.5rem, 7vw, 6.4rem);
+  line-height: .94;
+  letter-spacing: -.045em;
+}
+
+.news-faq-hero p:last-child {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(255, 255, 255, .88);
+  font-size: 1.12rem;
+  line-height: 1.65;
+}
+
+.news-section,
+.faq-section {
+  padding: 46px 42px;
+  border: 1px solid rgba(16, 34, 53, .08);
+  background: var(--surface-strong);
+}
+
+.news-section__heading,
+.faq-section__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.news-section__heading h2,
+.faq-section__heading h2 {
+  margin: 4px 0 12px;
+  color: var(--navy-940);
+  font-size: clamp(2.5rem, 5vw, 4.6rem);
+  line-height: .98;
+  letter-spacing: -.038em;
+}
+
+.news-section__heading p:last-child,
+.faq-section__heading p:last-child {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.news-admin-trigger {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid rgba(16, 34, 53, .12);
+  border-radius: 999px;
+  color: var(--navy-900);
+  background: rgba(255, 255, 255, .88);
+  box-shadow: 0 10px 24px rgba(4, 17, 31, .1);
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.news-admin-trigger:hover,
+.news-admin-trigger:focus-visible {
+  transform: rotate(20deg) translateY(-1px);
+  background: #fff;
+  box-shadow: 0 14px 28px rgba(4, 17, 31, .15);
+}
+
+.news-admin-trigger svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.news-list {
+  display: grid;
+  gap: 18px;
+}
+
+.news-empty,
+.news-card,
+.faq-placeholder {
+  padding: 28px;
+  border: 1px solid rgba(16, 34, 53, .09);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .78);
+}
+
+.news-empty {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.news-empty__status {
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: var(--navy-900);
+  background: rgba(79, 169, 202, .13);
+  font-size: .75rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.news-empty h3,
+.news-card h3,
+.faq-placeholder h3 {
+  margin: 16px 0 10px;
+  color: var(--navy-940);
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  line-height: 1.08;
+}
+
+.news-empty p,
+.news-card p,
+.faq-placeholder p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.news-card time {
+  display: block;
+  color: var(--sand-500);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.news-card__summary {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--navy-900) !important;
+}
+
+.news-card__body {
+  margin-top: 16px !important;
+  white-space: pre-line;
+}
+
+.news-admin-dialog {
+  width: min(680px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: transparent;
+}
+
+.news-admin-dialog::backdrop {
+  background: rgba(4, 17, 31, .68);
+  backdrop-filter: blur(6px);
+}
+
+.news-admin-dialog__panel {
+  position: relative;
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  padding: 34px;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: 28px;
+  background: rgba(251, 253, 255, .98);
+  box-shadow: 0 28px 80px rgba(4, 17, 31, .34);
+}
+
+.news-admin-dialog__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--navy-900);
+  background: rgba(16, 34, 53, .07);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.news-admin-dialog__heading {
+  padding-right: 46px;
+  margin-bottom: 24px;
+}
+
+.news-admin-dialog__heading h2 {
+  margin: 4px 0 10px;
+  color: var(--navy-940);
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  line-height: 1;
+}
+
+.news-admin-dialog__heading p:last-child {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.news-admin-form {
+  display: grid;
+  gap: 16px;
+}
+
+.news-admin-form[hidden] {
+  display: none;
+}
+
+.news-admin-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.news-admin-form label > span {
+  color: var(--navy-900);
+  font-size: .88rem;
+  font-weight: 800;
+}
+
+.news-admin-form input,
+.news-admin-form textarea {
+  width: 100%;
+  border: 1px solid rgba(16, 34, 53, .16);
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: var(--text);
+  font: inherit;
+  background: #fff;
+}
+
+.news-admin-form textarea {
+  resize: vertical;
+}
+
+.news-admin-form input:focus-visible,
+.news-admin-form textarea:focus-visible {
+  outline: 3px solid rgba(79, 169, 202, .3);
+  outline-offset: 2px;
+  border-color: var(--sea-500);
+}
+
+.news-admin-form .button {
+  width: fit-content;
+  border: 0;
+  cursor: pointer;
+}
+
+.news-admin-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .news-faq-hero {
+    min-height: 360px;
+    padding: 42px 26px;
+    border-radius: 28px;
+  }
+
+  .news-section,
+  .faq-section {
+    padding: 34px 22px;
+    border-radius: 26px;
+  }
+
+  .news-section__heading,
+  .faq-section__heading {
+    gap: 16px;
+  }
+
+  .news-admin-dialog__panel {
+    padding: 28px 20px;
+  }
+
+  .news-admin-form .button {
+    width: 100%;
+  }
+}

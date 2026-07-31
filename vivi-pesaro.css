@@ -33,7 +33,10 @@
   background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
-.city-section__heading { max-width: 860px; margin-bottom: 26px; }
+.city-section__heading { max-width: none; margin-bottom: 26px; }
+.city-section__heading--branded { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; }
+.city-section__heading-copy { max-width: 860px; }
+.city-section__heading .section-event-logo { flex: 0 0 auto; width: clamp(150px, 18vw, 245px); max-height: 92px; object-fit: contain; }
 .city-section__heading h2 { margin: 0; color: var(--navy-940); font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1; letter-spacing: -.035em; }
 .city-section__heading p:last-child { margin: 14px 0 0; color: var(--muted); line-height: 1.65; }
 
@@ -87,6 +90,8 @@
   .city-hero h1 { font-size: clamp(3.2rem, 15vw, 5rem); }
   .city-resource-grid { grid-template-columns: 1fr; }
   .city-note { align-items: flex-start; flex-direction: column; }
+  .city-section__heading--branded { flex-direction: column; }
+  .city-section__heading .section-event-logo { align-self: flex-end; width: min(210px, 58vw); }
 }
 @media (max-width: 560px) {
   .city-section { padding: 28px 20px; }
