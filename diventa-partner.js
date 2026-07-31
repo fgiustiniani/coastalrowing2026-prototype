@@ -7,6 +7,22 @@ import('./nav-submenu.js').catch(() => {});
   ).trim();
   const isGitHubPages = window.location.hostname.endsWith('github.io');
 
+  const interestSelect = document.querySelector('select[name="interesse"]');
+  if (interestSelect) {
+    const subjectInput = document.createElement('input');
+    subjectInput.type = 'text';
+    subjectInput.name = 'oggetto';
+    subjectInput.maxLength = 180;
+    subjectInput.required = true;
+    subjectInput.placeholder = 'Es. Richiesta informazioni sulla partnership';
+
+    const label = interestSelect.closest('label');
+    const labelText = label?.querySelector('span');
+    if (labelText) labelText.textContent = 'Oggetto *';
+
+    interestSelect.replaceWith(subjectInput);
+  }
+
   function updateContactEmail(email) {
     document.querySelectorAll('[data-partnership-email-link]').forEach((link) => {
       link.href = `mailto:${email}`;
@@ -15,7 +31,7 @@ import('./nav-submenu.js').catch(() => {});
 
   function buildFormSubmitPayload(payload) {
     return {
-      _subject: `Richiesta partnership - ${payload.azienda}`,
+      _subject: `Richiesta partnership - ${payload.oggetto}`,
       _template: 'table',
       _cc: payload.email,
       _replyto: payload.email,
@@ -25,7 +41,7 @@ import('./nav-submenu.js').catch(() => {});
       Azienda: payload.azienda,
       Nome: payload.nome,
       Telefono: payload.telefono || 'Non indicato',
-      Interesse: payload.interesse,
+      Oggetto: payload.oggetto,
       Messaggio: payload.messaggio || 'Nessun messaggio aggiuntivo.'
     };
   }
@@ -97,7 +113,7 @@ import('./nav-submenu.js').catch(() => {});
       nome: String(data.get('nome') || '').trim(),
       email: String(data.get('email') || '').trim(),
       telefono: String(data.get('telefono') || '').trim(),
-      interesse: String(data.get('interesse') || '').trim(),
+      oggetto: String(data.get('oggetto') || '').trim(),
       messaggio: String(data.get('messaggio') || '').trim(),
       website: String(data.get('website') || '').trim()
     };
