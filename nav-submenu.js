@@ -29,6 +29,17 @@ import('./mobile-nav.js').catch(() => {});
     if (isPageUrl(link.href, 'faq')) link.textContent = 'News e FAQ';
   });
 
+  document.querySelectorAll('a[target="_blank"]').forEach((link) => {
+    const relValues = new Set(
+      String(link.getAttribute('rel') || '')
+        .split(/\s+/)
+        .filter(Boolean)
+    );
+    relValues.add('noopener');
+    relValues.add('noreferrer');
+    link.setAttribute('rel', Array.from(relValues).join(' '));
+  });
+
   const existingPartnerLink = Array.from(nav.querySelectorAll('a')).find((link) => {
     try {
       const url = new URL(link.href, currentUrl);
