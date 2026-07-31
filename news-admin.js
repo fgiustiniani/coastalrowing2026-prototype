@@ -70,6 +70,83 @@
     detailDialog.showModal();
   }
 
+  function authHeader() {
+    if (!credentials) return {};
+    return {
+      authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+    };
+  }
+
+  async function sendAdminRequest(payload) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        ...authHeader()
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Operazione non riuscita.');
+    return result;
+  }
+
+  function resetEditor() {
+    editorForm?.reset();
+    if (idInput) idInput.value = '';
+    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (submitButton) submitButton.textContent = 'Pubblica news';
+    cancelEditButton?.setAttribute('hidden', '');
+    if (editorStatus) editorStatus.textContent = '';
+  }
+
+  function showEditor() {
+    loginForm?.setAttribute('hidden', '');
+    editorForm?.removeAttribute('hidden');
+  }
+
+  function showLogin() {
+    loginForm?.removeAttribute('hidden');
+    editorForm?.setAttribute('hidden', '');
+  }
+
+  function startEditing(item) {
+    if (!credentials || !editorForm || !adminDialog) return;
+
+    showEditor();
+    const titleInput = editorForm.querySelector('input[name="title"]');
+    const summaryInput = editorForm.querySelector('textarea[name="summary"]');
+    const bodyInput = editorForm.querySelector('textarea[name="body"]');
+
+    if (idInput) idInput.value = item.id || '';
+    if (titleInput) titleInput.value = item.title || '';
+    if (dateInput) dateInput.value = item.date || '';
+    if (summaryInput) summaryInput.value = item.summary || '';
+    if (bodyInput) bodyInput.value = item.body || '';
+    if (submitButton) submitButton.textContent = 'Salva modifiche';
+    cancelEditButton?.removeAttribute('hidden');
+    if (editorStatus) editorStatus.textContent = `Stai modificando “${item.title || 'News'}”.`;
+
+    if (!adminDialog.open) adminDialog.showModal();
+    window.setTimeout(() => titleInput?.focus(), 50);
+  }
+
+  async function deleteNews(item) {
+    if (!credentials) return;
+    const confirmed = window.confirm(`Eliminare definitivamente la news “${item.title || ''}”?`);
+    if (!confirmed) return;
+
+    try {
+      const result = await sendAdminRequest({ action: 'delete', id: item.id });
+      renderNews(result.news);
+      resetEditor();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Eliminazione non riuscita.');
+    }
+  }
+
   function createAdminActions(item) {
     const actions = document.createElement('div');
     actions.className = 'news-row__admin-actions';
@@ -87,9 +164,9 @@
     deleteButton.type = 'button';
     deleteButton.className = 'news-row__admin-button news-row__admin-button--danger';
     deleteButton.textContent = 'Elimina';
-    deleteButton.addEventListener('click', async (event) => {
+    deleteButton.addEventListener('click', (event) => {
       event.stopPropagation();
-      await deleteNews(item);
+      deleteNews(item);
     });
 
     actions.append(editButton, deleteButton);
@@ -160,52 +237,9 @@
     }
   }
 
-  function authHeader() {
-    if (!credentials) return {};
-    return {
-      authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
-    };
-  }
-
-  async function sendAdminRequest(payload) {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        accept: 'application/json',
-        ...authHeader()
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(result.error || 'Operazione non riuscita.');
-    }
-    return result;
-  }
-
-  function resetEditor() {
-    editorForm?.reset();
-    if (idInput) idInput.value = '';
-    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
-    if (submitButton) submitButton.textContent = 'Pubblica news';
-    cancelEditButton?.setAttribute('hidden', '');
-    if (editorStatus) editorStatus.textContent = '';
-  }
-
-  function showEditor() {
-    loginForm?.setAttribute('hidden', '');
-    editorForm?.removeAttribute('hidden');
-  }
-
-  function showLogin() {
-    loginForm?.removeAttribute('hidden');
-    editorForm?.setAttribute('hidden', '');
-  }
-
   function openAdminDialog() {
     if (!adminDialog) return;
+
     if (credentials) {
       showEditor();
       resetEditor();
@@ -214,42 +248,8 @@
       loginForm?.reset();
       if (loginStatus) loginStatus.textContent = '';
     }
+
     adminDialog.showModal();
-  }
-
-  function startEditing(item) {
-    if (!credentials || !editorForm || !adminDialog) return;
-
-    showEditor();
-    if (idInput) idInput.value = item.id || '';
-    const titleInput = editorForm.querySelector('input[name="title"]');
-    const summaryInput = editorForm.querySelector('textarea[name="summary"]');
-    const bodyInput = editorForm.querySelector('textarea[name="body"]');
-
-    if (titleInput) titleInput.value = item.title || '';
-    if (dateInput) dateInput.value = item.date || '';
-    if (summaryInput) summaryInput.value = item.summary || '';
-    if (bodyInput) bodyInput.value = item.body || '';
-    if (submitButton) submitButton.textContent = 'Salva modifiche';
-    cancelEditButton?.removeAttribute('hidden');
-    if (editorStatus) editorStatus.textContent = `Stai modificando “${item.title || 'News'}”.`;
-
-    if (!adminDialog.open) adminDialog.showModal();
-    window.setTimeout(() => titleInput?.focus(), 50);
-  }
-
-  async function deleteNews(item) {
-    if (!credentials) return;
-    const confirmed = window.confirm(`Eliminare definitivamente la news “${item.title || ''}”?`);
-    if (!confirmed) return;
-
-    try {
-      const result = await sendAdminRequest({ action: 'delete', id: item.id });
-      renderNews(result.news);
-      resetEditor();
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Eliminazione non riuscita.');
-    }
   }
 
   openAdminButton?.addEventListener('click', openAdminDialog);
@@ -293,9 +293,7 @@
       window.setTimeout(() => editorForm?.querySelector('input[name="title"]')?.focus(), 50);
     } catch (error) {
       credentials = null;
-      if (loginStatus) {
-        loginStatus.textContent = error instanceof Error ? error.message : 'Accesso non riuscito.';
-      }
+      if (loginStatus) loginStatus.textContent = error instanceof Error ? error.message : 'Accesso non riuscito.';
     } finally {
       if (loginButton) {
         loginButton.disabled = false;
@@ -319,30 +317,26 @@
       body: String(formData.get('body') || '').trim()
     };
 
-    const originalText = submitButton?.textContent || '';
+    const idleText = id ? 'Salva modifiche' : 'Pubblica news';
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = id ? 'Salvataggio…' : 'Pubblicazione…';
     }
-    if (editorStatus) {
-      editorStatus.textContent = id ? 'Salvataggio delle modifiche.' : 'Pubblicazione della news in corso.';
-    }
+    if (editorStatus) editorStatus.textContent = id ? 'Salvataggio delle modifiche.' : 'Pubblicazione della news in corso.';
 
+    let completed = false;
     try {
       const result = await sendAdminRequest(payload);
       renderNews(result.news);
       resetEditor();
-      if (editorStatus) {
-        editorStatus.textContent = id ? 'News modificata correttamente.' : 'News pubblicata correttamente.';
-      }
+      completed = true;
+      if (editorStatus) editorStatus.textContent = id ? 'News modificata correttamente.' : 'News pubblicata correttamente.';
     } catch (error) {
-      if (editorStatus) {
-        editorStatus.textContent = error instanceof Error ? error.message : 'Operazione non riuscita.';
-      }
+      if (editorStatus) editorStatus.textContent = error instanceof Error ? error.message : 'Operazione non riuscita.';
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.textContent = id ? 'Salva modifiche' : originalText;
+        if (!completed) submitButton.textContent = idleText;
       }
     }
   });
