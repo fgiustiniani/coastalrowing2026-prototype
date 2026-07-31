@@ -1,3 +1,8 @@
+body::after {
+  content: none !important;
+  display: none !important;
+}
+
 .site-nav__mobile-toggle {
   display: none;
 }
