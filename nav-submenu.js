@@ -1,3 +1,5 @@
+import('./mobile-nav.js').catch(() => {});
+
 (() => {
   const nav = document.querySelector('.site-nav');
   if (!nav) return;
