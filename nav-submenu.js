@@ -144,10 +144,18 @@
     );
 
     if (trainCard) {
-      const routeLink = trainCard.querySelector('.arrival-map-link');
-      if (routeLink) {
-        routeLink.href = 'https://www.google.com/maps/dir/Stazione+di+Pesaro,+piazza+G.Falcone+P.Borsellino,+61121+Pesaro+PU/Calata+Caio+Duilio,+101,+61121+Pesaro+PU/@43.9148173,12.8943013,3297m/data=!3m2!1e3!4b1!4m14!4m13!1m5!1m1!1s0x132d1994225de05b:0x692c1144b78eaf35!2m2!1d12.9049832!2d43.9061687!1m5!1m1!1s0x132d192f0890c497:0x299aefba818e487c!2m2!1d12.9067438!2d43.9234356!3e2?entry=ttu&g_ep=EgoyMDI2MDcyOS4wIKXMDSoASAFQAw%3D%3D';
+      let routeLink = trainCard.querySelector('.arrival-map-link');
+      if (!routeLink) {
+        routeLink = document.createElement('a');
+        routeLink.className = 'arrival-map-link';
+        routeLink.target = '_blank';
+        routeLink.rel = 'noopener noreferrer';
+        routeLink.setAttribute('aria-label', 'Apri Google Maps con il percorso a piedi dalla stazione di Pesaro alla Società Canottieri Pesaro');
+        routeLink.innerHTML = '<img src="assets/logos/mappa.svg" alt=""><span>Apri il percorso</span>';
+        trainCard.appendChild(routeLink);
       }
+
+      routeLink.href = 'https://www.google.com/maps/dir/Stazione+di+Pesaro,+piazza+G.Falcone+P.Borsellino,+61121+Pesaro+PU/Calata+Caio+Duilio,+101,+61121+Pesaro+PU/@43.9148173,12.8943013,3297m/data=!3m2!1e3!4b1!4m14!4m13!1m5!1m1!1s0x132d1994225de05b:0x692c1144b78eaf35!2m2!1d12.9049832!2d43.9061687!1m5!1m1!1s0x132d192f0890c497:0x299aefba818e487c!2m2!1d12.9067438!2d43.9234356!3e2?entry=ttu&g_ep=EgoyMDI2MDcyOS4wIKXMDSoASAFQAw%3D%3D';
     }
   }
 
