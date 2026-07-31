@@ -49,18 +49,26 @@
 .contact-card {
   position: relative;
   min-width: 0;
-  padding: 30px;
-  padding-right: 120px;
+  padding: 30px 200px 30px 30px;
   border-radius: 28px;
+  overflow: hidden;
 }
 
-.contact-card__event-logo {
+.contact-card__illustration {
   position: absolute;
-  top: 22px;
-  right: 22px;
-  width: 76px;
-  height: 76px;
+  top: 20px;
+  right: 18px;
+  width: 168px;
+  max-height: 122px;
   object-fit: contain;
+  object-position: right top;
+  pointer-events: none;
+}
+
+.contact-card__illustration--office {
+  top: 24px;
+  width: 178px;
+  max-height: 106px;
 }
 
 .contact-card__eyebrow {
@@ -162,11 +170,9 @@
 }
 
 .contact-strip--venue {
-  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 220px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding-right: 30px;
 }
 
 .contact-strip__venue-copy {
@@ -196,13 +202,6 @@
   justify-self: start;
 }
 
-.contact-strip__event-logo {
-  justify-self: end;
-  width: 190px;
-  max-height: 88px;
-  object-fit: contain;
-}
-
 .contact-strip--channel {
   background:
     linear-gradient(135deg, rgba(251, 253, 255, 0.95), rgba(240, 249, 245, 0.95)),
@@ -214,14 +213,19 @@
   flex: 0 0 auto;
 }
 
-@media (max-width: 1050px) {
-  .contact-strip--venue {
-    grid-template-columns: minmax(0, 1fr) auto;
+@media (max-width: 1100px) {
+  .contact-card {
+    padding-right: 168px;
   }
 
-  .contact-strip__event-logo {
-    grid-column: 1 / -1;
-    justify-self: end;
+  .contact-card__illustration {
+    width: 138px;
+    max-height: 106px;
+  }
+
+  .contact-card__illustration--office {
+    width: 148px;
+    max-height: 92px;
   }
 }
 
@@ -234,6 +238,20 @@
     grid-template-columns: 1fr;
   }
 
+  .contact-card {
+    padding-right: 210px;
+  }
+
+  .contact-card__illustration {
+    width: 176px;
+    max-height: 128px;
+  }
+
+  .contact-card__illustration--office {
+    width: 186px;
+    max-height: 110px;
+  }
+
   .contact-strip,
   .contact-strip--venue {
     display: flex;
@@ -241,13 +259,28 @@
     align-items: flex-start;
   }
 
-  .contact-strip__event-logo {
-    align-self: flex-end;
-  }
-
   .contact-strip .button,
   .contact-card__actions .button {
     width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .contact-card {
+    padding-right: 132px;
+  }
+
+  .contact-card__illustration {
+    top: 18px;
+    right: 12px;
+    width: 106px;
+    max-height: 84px;
+  }
+
+  .contact-card__illustration--office {
+    top: 22px;
+    width: 116px;
+    max-height: 74px;
   }
 }
 
@@ -263,17 +296,19 @@
   }
 
   .contact-card {
-    padding-right: 90px;
+    padding-right: 112px;
   }
 
-  .contact-card__event-logo {
-    top: 18px;
-    right: 16px;
-    width: 58px;
-    height: 58px;
+  .contact-card__illustration {
+    top: 16px;
+    right: 10px;
+    width: 88px;
+    max-height: 70px;
   }
 
-  .contact-strip__event-logo {
-    width: min(180px, 70vw);
+  .contact-card__illustration--office {
+    top: 19px;
+    width: 96px;
+    max-height: 62px;
   }
 }
