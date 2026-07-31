@@ -77,6 +77,23 @@ function sortNews(items) {
   });
 }
 
+function validateNewsPayload(payload) {
+  const title = clean(payload.title, 160);
+  const date = clean(payload.date, 10);
+  const summary = clean(payload.summary, 600);
+  const body = clean(payload.body, 5000);
+
+  if (!title || !date || !summary) {
+    return { error: 'Compila titolo, data e sintesi.' };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { error: 'Inserisci una data valida.' };
+  }
+
+  return { title, date, summary, body };
+}
+
 export default async (request) => {
   const requestUrl = new URL(request.url);
   const defaultStoreName = requestUrl.hostname.startsWith('develop--')
@@ -124,41 +141,59 @@ export default async (request) => {
     return json({ ok: true });
   }
 
-  if (action !== 'create') {
+  if (!['create', 'update', 'delete'].includes(action)) {
     return json({ error: 'Operazione non valida.' }, 400);
-  }
-
-  const title = clean(payload.title, 160);
-  const date = clean(payload.date, 10);
-  const summary = clean(payload.summary, 600);
-  const body = clean(payload.body, 5000);
-
-  if (!title || !date || !summary) {
-    return json({ error: 'Compila titolo, data e sintesi.' }, 400);
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return json({ error: 'Inserisci una data valida.' }, 400);
   }
 
   try {
     const news = await readNews(store);
+
+    if (action === 'delete') {
+      const id = clean(payload.id, 80);
+      if (!id) return json({ error: 'News non valida.' }, 400);
+
+      const updated = news.filter((item) => item.id !== id);
+      if (updated.length === news.length) {
+        return json({ error: 'News non trovata.' }, 404);
+      }
+
+      await store.setJSON(STORE_KEY, updated);
+      return json({ ok: true, news: sortNews(updated) });
+    }
+
+    const validated = validateNewsPayload(payload);
+    if (validated.error) return json({ error: validated.error }, 400);
+
+    if (action === 'create') {
+      const item = {
+        id: randomUUID(),
+        ...validated,
+        createdAt: new Date().toISOString()
+      };
+
+      const updated = sortNews([item, ...news]).slice(0, MAX_ITEMS);
+      await store.setJSON(STORE_KEY, updated);
+      return json({ ok: true, news: updated, item });
+    }
+
+    const id = clean(payload.id, 80);
+    const index = news.findIndex((item) => item.id === id);
+    if (index < 0) return json({ error: 'News non trovata.' }, 404);
+
     const item = {
-      id: randomUUID(),
-      title,
-      date,
-      summary,
-      body,
-      createdAt: new Date().toISOString()
+      ...news[index],
+      ...validated,
+      updatedAt: new Date().toISOString()
     };
 
-    const updated = sortNews([item, ...news]).slice(0, MAX_ITEMS);
-    await store.setJSON(STORE_KEY, updated);
-
-    return json({ ok: true, news: updated });
+    const updated = [...news];
+    updated[index] = item;
+    const sorted = sortNews(updated);
+    await store.setJSON(STORE_KEY, sorted);
+    return json({ ok: true, news: sorted, item });
   } catch (error) {
-    console.error('Errore salvataggio news:', error);
-    return json({ error: 'Non è stato possibile salvare la news.' }, 500);
+    console.error('Errore gestione news:', error);
+    return json({ error: 'Non è stato possibile completare l’operazione.' }, 500);
   }
 };
 
