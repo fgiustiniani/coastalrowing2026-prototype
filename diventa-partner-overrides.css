@@ -1,5 +1,18 @@
 /* Aggiornamenti pagina Diventa partner */
 
+.partner-hero__image {
+  position: relative;
+  z-index: 1;
+  min-height: 350px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 24px 54px rgba(4, 17, 31, 0.28);
+  background:
+    linear-gradient(180deg, rgba(4, 17, 31, 0.04), rgba(4, 17, 31, 0.28)),
+    url('assets/images/partner-pesaro-rowing.jpg') center / cover no-repeat;
+}
+
 .partner-story {
   position: relative;
   min-height: 650px;
@@ -210,6 +223,14 @@
   line-height: inherit;
 }
 
+.partnership-form__event-logo {
+  display: block;
+  width: min(230px, 70%);
+  max-height: 88px;
+  margin: 22px 0 0;
+  object-fit: contain;
+}
+
 @media (max-width: 1080px) {
   .partner-story__grid {
     grid-template-columns: 1fr;
@@ -226,6 +247,10 @@
     padding: 52px 32px;
     background-attachment: scroll, scroll, scroll;
   }
+
+  .partner-hero__image {
+    min-height: 300px;
+  }
 }
 
 @media (max-width: 580px) {
@@ -240,7 +265,8 @@
     border-radius: 22px;
   }
 
-  .partner-story__media {
+  .partner-story__media,
+  .partner-hero__image {
     min-height: 250px;
     border-radius: 22px;
   }
@@ -252,5 +278,9 @@
   .partnership-contact__fic-logo {
     width: 48px;
     height: 48px;
+  }
+
+  .partnership-form__event-logo {
+    width: min(210px, 80%);
   }
 }
