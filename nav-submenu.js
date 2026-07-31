@@ -118,6 +118,9 @@
 
     const foodSection = document.querySelector('.city-food');
     if (foodSection) foodSection.id = 'dove-mangiare';
+
+    const hashTarget = window.location.hash ? document.querySelector(window.location.hash) : null;
+    if (hashTarget) window.requestAnimationFrame(() => hashTarget.scrollIntoView());
   }
 
   addSubmenu('info-gare', 'Info per chi gareggia', [
