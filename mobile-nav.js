@@ -26,6 +26,10 @@
     header.classList.remove('is-menu-open');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', 'Apri il menu di navigazione');
+    nav.querySelectorAll('.site-nav__item.is-open').forEach((item) => item.classList.remove('is-open'));
+    nav.querySelectorAll('.site-nav__submenu-toggle[aria-expanded="true"]').forEach((button) => {
+      button.setAttribute('aria-expanded', 'false');
+    });
   };
 
   toggle.addEventListener('click', (event) => {
