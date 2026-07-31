@@ -1,0 +1,145 @@
+/* Punto 3: riduzione di loghi, ombre e decorazioni ripetute. */
+
+.page-model {
+  --page-shadow: 0 14px 34px rgba(4, 17, 31, 0.07);
+  --page-shadow-soft: none;
+}
+
+/* Le hero restano il principale elemento visivo; i pannelli interni diventano più leggeri. */
+.page-model--operational .info-section,
+.page-model--operational .news-section,
+.page-model--operational .faq-section,
+.page-model--operational .contact-card,
+.page-model--operational .contact-strip,
+.page-model--operational .privacy-document,
+.page-model--editorial .city-section,
+.page-model--editorial .sustainability-intro,
+.page-model--editorial .green-team,
+.page-model--editorial .objective-content,
+.page-model--editorial .partner-story,
+.page-model--editorial .partner-opportunities,
+.page-model--editorial .partnership-contact {
+  border: 1px solid rgba(16, 34, 53, 0.08);
+  box-shadow: none;
+}
+
+.page-model--operational .contacts-intro {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(242, 248, 251, 0.9));
+}
+
+/* Home: il marchio dell'evento resta nell'header e non viene ripetuto in ogni sezione. */
+.page-model--home .section-event-logo {
+  display: none;
+}
+
+.page-model--home .section-heading--branded,
+.page-model--home .updates__content--branded {
+  display: block;
+}
+
+.page-model--home .hero {
+  box-shadow: 0 18px 44px rgba(4, 17, 31, 0.14);
+}
+
+.page-model--home .paths,
+.page-model--home .partners,
+.page-model--home .partnership-band {
+  border-color: rgba(16, 34, 53, 0.08);
+  box-shadow: 0 10px 26px rgba(4, 17, 31, 0.055);
+  backdrop-filter: none;
+}
+
+.page-model--home .partnership-band--singleline {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 410px);
+  grid-template-areas: "content button";
+  align-items: end;
+}
+
+.page-model--home .partnership-band--singleline > .button {
+  align-self: end;
+}
+
+/* Sponsor: meno effetto "card dentro card", senza ridurre la leggibilità dei marchi. */
+.page-model--home .partner-section {
+  padding: 24px 26px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.page-model--home .partner-section--fic {
+  background: rgba(241, 247, 250, 0.72);
+}
+
+.page-model--home .partner-logo,
+.page-model--home .partner-logos .partner-logo,
+.page-model--home .partner-logos--fic .partner-logo {
+  min-height: 88px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: none;
+}
+
+.page-model--home .partner-logo[href],
+.page-model--home .fic-title-logo {
+  transition: opacity 150ms ease, border-color 150ms ease;
+}
+
+.page-model--home .partner-logo[href]:hover,
+.page-model--home .partner-logo[href]:focus-visible,
+.page-model--home .fic-title-logo:hover,
+.page-model--home .fic-title-logo:focus-visible {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.82;
+}
+
+.page-model--home .fic-title-logo {
+  width: 68px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.page-model--home .fic-title-logo img {
+  max-height: 32px;
+}
+
+.page-model--home .logo-placeholder {
+  border-color: rgba(16, 34, 53, 0.12);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Usa il logo APA in formato SVG senza modificare il file HTML sorgente. */
+.page-model--operational .hospitality__logo {
+  content: url("assets/logos/apa-logo.svg");
+}
+
+/* Rimuove definitivamente la vecchia filigrana del prototipo. */
+.page-model--home::after {
+  content: none;
+}
+
+@media (max-width: 1180px) {
+  .page-model--home .partnership-band--singleline {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "content"
+      "button";
+  }
+}
+
+@media (max-width: 700px) {
+  .page-model--home .partner-section {
+    padding: 22px 20px;
+  }
+
+  .page-model--home .partner-logo,
+  .page-model--home .partner-logos .partner-logo,
+  .page-model--home .partner-logos--fic .partner-logo {
+    min-height: 82px;
+  }
+}
