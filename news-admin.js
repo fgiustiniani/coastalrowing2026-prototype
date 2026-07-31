@@ -14,6 +14,7 @@
   const idInput = editorForm?.querySelector('input[name="id"]');
   const submitButton = editorForm?.querySelector('[data-news-submit]');
   const cancelEditButton = editorForm?.querySelector('[data-cancel-news-edit]');
+  const isGitHubPages = window.location.hostname.endsWith('github.io');
 
   if (!list) return;
 
@@ -222,6 +223,14 @@
   }
 
   async function loadNews() {
+    if (isGitHubPages) {
+      openAdminButton?.setAttribute('hidden', '');
+      list.replaceChildren(createEmptyState(
+        'Le news sono disponibili sul sito ufficiale dei Campionati.'
+      ));
+      return;
+    }
+
     try {
       const response = await fetch(endpoint, {
         headers: { accept: 'application/json' },
