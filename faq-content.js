@@ -138,11 +138,11 @@
       items: [
         {
           q: 'Come posso ricevere gli aggiornamenti dell’organizzazione?',
-          a: 'È possibile ricevere gli aggiornamenti iscrivendosi al canale WhatsApp ufficiale dei Campionati. Il collegamento sarà pubblicato nella <a href="index.html#whatsapp">Home</a> e nella pagina <a href="contatti.html">Contatti</a>.'
+          a: 'È possibile ricevere gli aggiornamenti iscrivendosi al <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">canale WhatsApp ufficiale dei Campionati</a>.'
         },
         {
           q: 'Esiste un canale WhatsApp dei Campionati?',
-          a: 'Sì. Il link di accesso al canale WhatsApp sarà disponibile nella <a href="index.html#whatsapp">Home</a> e nella pagina <a href="contatti.html">Contatti</a>.'
+          a: 'Sì. <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">Iscriviti direttamente al canale WhatsApp ufficiale dei Campionati</a>.'
         },
         {
           q: 'Come posso contattare l’organizzazione?',
