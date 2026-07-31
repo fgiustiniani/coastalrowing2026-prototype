@@ -2,9 +2,18 @@
   const nav = document.querySelector('.site-nav');
   if (!nav) return;
 
+  const isInfoPageUrl = (value) => {
+    try {
+      const url = new URL(value, window.location.href);
+      return /(?:^|\/)info-gare(?:\.html)?\/?$/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  };
+
   const infoLink = Array.from(nav.querySelectorAll('a')).find((link) => {
-    const href = link.getAttribute('href') || '';
-    return href === 'info-gare.html' || href.startsWith('info-gare.html#');
+    const href = link.getAttribute('href') || link.href || '';
+    return isInfoPageUrl(href);
   });
 
   if (!infoLink || infoLink.closest('.site-nav__item--has-submenu')) return;
@@ -34,7 +43,7 @@
   submenu.className = 'site-nav__submenu';
   submenu.setAttribute('aria-label', 'Sezioni di Info per chi gareggia');
 
-  const currentPageIsInfo = /(^|\/)info-gare\.html$/.test(window.location.pathname);
+  const currentPageIsInfo = isInfoPageUrl(window.location.href);
 
   sections.forEach(([label, id]) => {
     const link = document.createElement('a');
@@ -55,6 +64,7 @@
 
   toggle.addEventListener('click', (event) => {
     event.preventDefault();
+    event.stopPropagation();
     const open = item.classList.toggle('is-open');
     toggle.setAttribute('aria-expanded', String(open));
   });
