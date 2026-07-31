@@ -57,6 +57,36 @@
   align-self: start;
 }
 
+/* Mappe: dimensione più equilibrata e rendering meno pesante */
+.race-map {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: 760px;
+}
+
+.race-map__image-link {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.race-map__image-link > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(72vh, 780px);
+  object-fit: contain;
+}
+
+.logistics-map {
+  width: min(100%, 1080px);
+}
+
+.logistics-map .race-map__image-link > img {
+  max-height: min(68vh, 720px);
+}
+
 /* Ospitalità: logo evento e logo APA ordinati nello stesso blocco */
 .hospitality__logos {
   display: flex;
@@ -131,6 +161,17 @@
     width: min(210px, 65vw);
   }
 
+  .race-map,
+  .logistics-map {
+    width: 100%;
+    contain-intrinsic-size: 620px;
+  }
+
+  .race-map__image-link > img,
+  .logistics-map .race-map__image-link > img {
+    max-height: none;
+  }
+
   .hospitality__logos {
     align-items: flex-start;
   }
@@ -168,6 +209,11 @@
 
   .info-section__heading--branded {
     gap: 16px;
+  }
+
+  .race-map,
+  .logistics-map {
+    contain-intrinsic-size: 430px;
   }
 
   .hospitality__logos {
