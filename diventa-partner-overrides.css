@@ -231,6 +231,44 @@
   object-fit: contain;
 }
 
+/* Hero compatta, con la fotografia in trasparenza come nella sezione Il contesto. */
+.partner-hero {
+  min-height: 370px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 50px 58px;
+  background-color: var(--navy-940);
+  background-image:
+    linear-gradient(112deg, rgba(4, 17, 31, 0.9) 0%, rgba(4, 17, 31, 0.67) 58%, rgba(4, 17, 31, 0.48) 100%),
+    url('assets/images/partner-pesaro-rowing.jpg'),
+    url('assets/images/info-gare.jpg');
+  background-position: center, center 48%, center 48%;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+}
+
+.partner-hero::before {
+  opacity: 0.08;
+}
+
+.partner-hero__content {
+  max-width: 1040px;
+}
+
+.partner-hero h1 {
+  max-width: none;
+  white-space: nowrap;
+  font-size: clamp(3rem, 5.1vw, 5.35rem);
+}
+
+.partner-hero__lead {
+  max-width: 850px;
+}
+
+.partner-hero__image {
+  display: none;
+}
+
 @media (max-width: 1080px) {
   .partner-story__grid {
     grid-template-columns: 1fr;
@@ -238,6 +276,10 @@
 
   .partner-story__media {
     min-height: 340px;
+  }
+
+  .partner-hero h1 {
+    font-size: clamp(2.8rem, 5.2vw, 4.5rem);
   }
 }
 
@@ -248,8 +290,13 @@
     background-attachment: scroll, scroll, scroll;
   }
 
-  .partner-hero__image {
-    min-height: 300px;
+  .partner-hero {
+    min-height: 390px;
+    padding: 44px 32px;
+  }
+
+  .partner-hero h1 {
+    white-space: normal;
   }
 }
 
@@ -265,10 +312,15 @@
     border-radius: 22px;
   }
 
-  .partner-story__media,
-  .partner-hero__image {
+  .partner-story__media {
     min-height: 250px;
     border-radius: 22px;
+  }
+
+  .partner-hero {
+    min-height: 420px;
+    padding: 38px 22px;
+    border-radius: 28px;
   }
 
   .partnership-contact__fic-note {
