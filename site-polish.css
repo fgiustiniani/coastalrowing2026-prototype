@@ -75,16 +75,30 @@ html[data-contact-email] .back-home span::after {
   font-size: .78rem;
 }
 
-/* Sottomenu Info per chi gareggia */
+/* Sottomenu delle voci principali */
 .site-header {
   position: relative;
   z-index: 200;
+}
+
+.site-nav {
+  align-items: center;
 }
 
 .site-nav__item {
   position: relative;
   display: inline-flex;
   align-items: center;
+  min-height: 26px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.site-nav__item > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  line-height: 1.35;
 }
 
 .site-nav__submenu-toggle {
@@ -92,13 +106,14 @@ html[data-contact-email] .back-home span::after {
   place-items: center;
   width: 26px;
   height: 26px;
-  margin-left: -7px;
+  margin-left: -5px;
   padding: 0;
   border: 0;
   border-radius: 999px;
   color: var(--navy-900);
   background: transparent;
   font-size: .9rem;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -172,7 +187,7 @@ html[data-contact-email] .back-home span::after {
   .site-nav__submenu-toggle {
     width: 30px;
     height: 30px;
-    margin-left: -5px;
+    margin-left: -4px;
   }
 
   .site-nav__submenu {
