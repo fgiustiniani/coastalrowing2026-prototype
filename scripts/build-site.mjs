@@ -108,6 +108,14 @@ function addPageAssets(fileName, source) {
   return output;
 }
 
+function applyPageContentFixes(fileName, source) {
+  if (fileName !== 'info-gare.html') return source;
+
+  return source
+    .replace('assets/logos/APA-Hotels.jpg', 'assets/logos/apa-logo.svg')
+    .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026');
+}
+
 function buildPage(fileName, source) {
   if (!headerPattern.test(source)) {
     throw new Error(`Header non trovato in ${fileName}`);
@@ -126,6 +134,7 @@ function buildPage(fileName, source) {
   output = addPageModel(fileName, output);
   output = addSharedStyles(output);
   output = addPageAssets(fileName, output);
+  output = applyPageContentFixes(fileName, output);
   return output;
 }
 
