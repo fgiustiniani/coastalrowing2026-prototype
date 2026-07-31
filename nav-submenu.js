@@ -12,56 +12,66 @@
     }
   };
 
+  const isHomeUrl = (value) => {
+    try {
+      const url = new URL(value, window.location.href);
+      return /(?:^|\/)index(?:\.html)?\/?$/.test(url.pathname) || url.pathname === '/';
+    } catch {
+      return false;
+    }
+  };
+
   const currentUrl = window.location.href;
 
-  if (!Array.from(nav.querySelectorAll('a')).some((link) => isPageUrl(link.href, 'diventa-partner'))) {
+  const existingPartnerLink = Array.from(nav.querySelectorAll('a')).find((link) => {
+    try {
+      const url = new URL(link.href, currentUrl);
+      return isHomeUrl(url.href) && url.hash === '#sponsor';
+    } catch {
+      return false;
+    }
+  });
+
+  if (!existingPartnerLink) {
     const partnerLink = document.createElement('a');
-    partnerLink.href = 'diventa-partner.html';
-    partnerLink.textContent = 'Diventa partner';
-    if (isPageUrl(currentUrl, 'diventa-partner')) partnerLink.setAttribute('aria-current', 'page');
+    partnerLink.href = 'index.html#sponsor';
+    partnerLink.textContent = 'Partner e sponsor';
 
     const faqLink = Array.from(nav.querySelectorAll('a')).find((link) => isPageUrl(link.href, 'faq'));
     nav.insertBefore(partnerLink, faqLink || null);
   }
 
-  const infoLink = Array.from(nav.querySelectorAll('a')).find((link) => {
-    const href = link.getAttribute('href') || link.href || '';
-    return isPageUrl(href, 'info-gare');
-  });
+  const addSubmenu = (pageName, ariaLabel, sections) => {
+    const pageLink = Array.from(nav.querySelectorAll('a')).find((link) => {
+      const href = link.getAttribute('href') || link.href || '';
+      return isPageUrl(href, pageName);
+    });
 
-  if (infoLink && !infoLink.closest('.site-nav__item--has-submenu')) {
-    const sections = [
-      ['Programma e documenti', 'programma'],
-      ['Campo gara', 'campo-gara'],
-      ['Logistica e parco barche', 'logistica'],
-      ['Accrediti e segreteria', 'segreteria'],
-      ['Ospitalità', 'ospitalita'],
-      ['Come arrivare', 'arrivare']
-    ];
+    if (!pageLink || pageLink.closest('.site-nav__item--has-submenu')) return;
 
     const item = document.createElement('div');
     item.className = 'site-nav__item site-nav__item--has-submenu';
-    infoLink.replaceWith(item);
-    item.appendChild(infoLink);
+    pageLink.replaceWith(item);
+    item.appendChild(pageLink);
 
     const toggle = document.createElement('button');
     toggle.className = 'site-nav__submenu-toggle';
     toggle.type = 'button';
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Mostra le sezioni di Info per chi gareggia');
+    toggle.setAttribute('aria-label', `Mostra le sezioni di ${ariaLabel}`);
     toggle.innerHTML = '<span aria-hidden="true">▾</span>';
 
     const submenu = document.createElement('div');
     submenu.className = 'site-nav__submenu';
-    submenu.setAttribute('aria-label', 'Sezioni di Info per chi gareggia');
+    submenu.setAttribute('aria-label', `Sezioni di ${ariaLabel}`);
 
-    const currentPageIsInfo = isPageUrl(currentUrl, 'info-gare');
+    const currentPageMatches = isPageUrl(currentUrl, pageName);
 
     sections.forEach(([label, id]) => {
       const link = document.createElement('a');
-      link.href = `info-gare.html#${id}`;
+      link.href = `${pageName}.html#${id}`;
       link.textContent = label;
-      if (currentPageIsInfo && window.location.hash === `#${id}`) {
+      if (currentPageMatches && window.location.hash === `#${id}`) {
         link.setAttribute('aria-current', 'location');
       }
       submenu.appendChild(link);
@@ -88,12 +98,42 @@
     });
 
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && item.classList.contains('is-open')) {
         closeMenu();
         toggle.focus();
       }
     });
+  };
+
+  if (isPageUrl(currentUrl, 'vivi-pesaro')) {
+    const resourceCards = Array.from(document.querySelectorAll('.city-resource-card'));
+    const cultureCard = resourceCards.find((card) =>
+      card.querySelector('small')?.textContent.trim().toLowerCase() === 'città e cultura'
+    );
+    const natureCard = resourceCards.find((card) =>
+      card.querySelector('small')?.textContent.trim().toLowerCase() === 'natura e panorami'
+    );
+    if (cultureCard) cultureCard.id = 'citta-cultura';
+    if (natureCard) natureCard.id = 'natura-panorami';
+
+    const foodSection = document.querySelector('.city-food');
+    if (foodSection) foodSection.id = 'dove-mangiare';
   }
+
+  addSubmenu('info-gare', 'Info per chi gareggia', [
+    ['Programma e documenti', 'programma'],
+    ['Campo gara', 'campo-gara'],
+    ['Logistica e parco barche', 'logistica'],
+    ['Accrediti e segreteria', 'segreteria'],
+    ['Ospitalità', 'ospitalita'],
+    ['Come arrivare', 'arrivare']
+  ]);
+
+  addSubmenu('vivi-pesaro', 'Vivi Pesaro', [
+    ['Città e cultura', 'citta-cultura'],
+    ['Natura e panorami', 'natura-panorami'],
+    ['Dove mangiare', 'dove-mangiare']
+  ]);
 
   const backHomeLabel = document.querySelector('.back-home span');
   if (backHomeLabel) backHomeLabel.textContent = 'Vai su';
@@ -103,15 +143,24 @@
       card.querySelector('small')?.textContent.trim().toLowerCase() === 'treno'
     );
 
-    if (trainCard && !trainCard.querySelector('.arrival-map-link')) {
-      const routeLink = document.createElement('a');
-      routeLink.className = 'arrival-map-link';
-      routeLink.href = 'https://www.google.com/maps/dir/?api=1&origin=Stazione+di+Pesaro%2C+Pesaro&destination=Calata+Caio+Duilio+101%2C+Pesaro';
-      routeLink.target = '_blank';
-      routeLink.rel = 'noopener noreferrer';
-      routeLink.setAttribute('aria-label', 'Apri Google Maps con il percorso dalla stazione di Pesaro alla Società Canottieri Pesaro');
-      routeLink.innerHTML = '<img src="assets/logos/mappa.svg" alt=""><span>Apri il percorso</span>';
-      trainCard.appendChild(routeLink);
+    if (trainCard) {
+      const routeLink = trainCard.querySelector('.arrival-map-link');
+      if (routeLink) {
+        routeLink.href = 'https://www.google.com/maps/dir/Stazione+di+Pesaro,+piazza+G.Falcone+P.Borsellino,+61121+Pesaro+PU/Calata+Caio+Duilio,+101,+61121+Pesaro+PU/@43.9148173,12.8943013,3297m/data=!3m2!1e3!4b1!4m14!4m13!1m5!1m1!1s0x132d1994225de05b:0x692c1144b78eaf35!2m2!1d12.9049832!2d43.9061687!1m5!1m1!1s0x132d192f0890c497:0x299aefba818e487c!2m2!1d12.9067438!2d43.9234356!3e2?entry=ttu&g_ep=EgoyMDI2MDcyOS4wIKXMDSoASAFQAw%3D%3D';
+      }
+    }
+  }
+
+  if (isHomeUrl(currentUrl)) {
+    const paths = document.querySelector('.paths');
+    const updates = document.querySelector('.updates');
+    if (paths && updates) paths.insertAdjacentElement('afterend', updates);
+
+    const partners = document.querySelector('.partners');
+    const partnerSections = partners?.querySelector('.partner-sections');
+    const partnershipBand = document.querySelector('.partnership-band');
+    if (partners && partnerSections && partnershipBand) {
+      partnerSections.insertAdjacentElement('afterend', partnershipBand);
     }
   }
 })();
