@@ -2,7 +2,6 @@ import { getStore } from '@netlify/blobs';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 
-const STORE_NAME = 'coastal-news';
 const STORE_KEY = 'items';
 const MAX_ITEMS = 100;
 
@@ -79,7 +78,11 @@ function sortNews(items) {
 }
 
 export default async (request) => {
-  const store = getStore(STORE_NAME);
+  const requestUrl = new URL(request.url);
+  const defaultStoreName = requestUrl.hostname.startsWith('develop--')
+    ? 'coastal-news-develop'
+    : 'coastal-news';
+  const store = getStore(process.env.NEWS_STORE_NAME || defaultStoreName);
 
   if (request.method === 'GET') {
     try {
@@ -95,7 +98,7 @@ export default async (request) => {
     return json({ error: 'Metodo non consentito.' }, 405);
   }
 
-  const requestOrigin = new URL(request.url).origin;
+  const requestOrigin = requestUrl.origin;
   const origin = request.headers.get('origin');
   if (origin && origin !== requestOrigin) {
     return json({ error: 'Origine non consentita.' }, 403);
