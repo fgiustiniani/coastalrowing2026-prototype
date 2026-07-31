@@ -95,6 +95,19 @@ function addSharedStyles(source) {
   }, source);
 }
 
+function addPageAssets(fileName, source) {
+  if (fileName !== 'faq.html') return source;
+
+  let output = source;
+  if (!output.includes('href="faq-accordion.css"')) {
+    output = output.replace(/<\/head>/i, '  <link rel="stylesheet" href="faq-accordion.css">\n</head>');
+  }
+  if (!output.includes('src="faq-content.js"')) {
+    output = output.replace(/<\/body>/i, '  <script src="faq-content.js" defer></script>\n</body>');
+  }
+  return output;
+}
+
 function buildPage(fileName, source) {
   if (!headerPattern.test(source)) {
     throw new Error(`Header non trovato in ${fileName}`);
@@ -112,6 +125,7 @@ function buildPage(fileName, source) {
 
   output = addPageModel(fileName, output);
   output = addSharedStyles(output);
+  output = addPageAssets(fileName, output);
   return output;
 }
 
