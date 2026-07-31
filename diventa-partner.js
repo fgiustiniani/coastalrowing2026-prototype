@@ -10,8 +10,6 @@ import('./nav-submenu.js').catch(() => {});
   function updateContactEmail(email) {
     document.querySelectorAll('[data-partnership-email-link]').forEach((link) => {
       link.href = `mailto:${email}`;
-      const emailText = link.querySelector('[data-partnership-email-text]');
-      if (emailText) emailText.textContent = email;
     });
   }
 
@@ -78,7 +76,7 @@ import('./nav-submenu.js').catch(() => {});
         if (configuredEmail) updateContactEmail(configuredEmail);
       })
       .catch(() => {
-        // Resta visibile l'indirizzo di fallback configurato nella pagina.
+        // Resta attivo l'indirizzo di fallback configurato nella pagina.
       });
   }
 
