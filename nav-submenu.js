@@ -23,6 +23,10 @@
 
   const currentUrl = window.location.href;
 
+  document.querySelectorAll('.site-nav a, .site-footer__links a').forEach((link) => {
+    if (isPageUrl(link.href, 'faq')) link.textContent = 'News e FAQ';
+  });
+
   const existingPartnerLink = Array.from(nav.querySelectorAll('a')).find((link) => {
     try {
       const url = new URL(link.href, currentUrl);
