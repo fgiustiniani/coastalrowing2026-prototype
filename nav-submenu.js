@@ -24,10 +24,7 @@ import('./mobile-nav.js').catch(() => {});
   };
 
   const currentUrl = window.location.href;
-
-  document.querySelectorAll('.site-nav a, .site-footer__links a').forEach((link) => {
-    if (isPageUrl(link.href, 'faq')) link.textContent = 'News e FAQ';
-  });
+  const submenuItems = Array.from(nav.querySelectorAll('.site-nav__item--has-submenu'));
 
   document.querySelectorAll('a[target="_blank"]').forEach((link) => {
     const relValues = new Set(
@@ -40,87 +37,82 @@ import('./mobile-nav.js').catch(() => {});
     link.setAttribute('rel', Array.from(relValues).join(' '));
   });
 
-  const existingPartnerLink = Array.from(nav.querySelectorAll('a')).find((link) => {
-    try {
-      const url = new URL(link.href, currentUrl);
-      return isHomeUrl(url.href) && url.hash === '#sponsor';
-    } catch {
-      return false;
-    }
-  });
+  const closeSubmenu = (item) => {
+    const toggle = item.querySelector('.site-nav__submenu-toggle');
+    item.classList.remove('is-open');
+    toggle?.setAttribute('aria-expanded', 'false');
+  };
 
-  if (!existingPartnerLink) {
-    const partnerLink = document.createElement('a');
-    partnerLink.href = 'index.html#sponsor';
-    partnerLink.textContent = 'Partner e sponsor';
-
-    const faqLink = Array.from(nav.querySelectorAll('a')).find((link) => isPageUrl(link.href, 'faq'));
-    nav.insertBefore(partnerLink, faqLink || null);
-  }
-
-  const addSubmenu = (pageName, ariaLabel, sections) => {
-    const pageLink = Array.from(nav.querySelectorAll('a')).find((link) => {
-      const href = link.getAttribute('href') || link.href || '';
-      return isPageUrl(href, pageName);
+  const closeAllSubmenus = (except = null) => {
+    submenuItems.forEach((item) => {
+      if (item !== except) closeSubmenu(item);
     });
+  };
 
-    if (!pageLink || pageLink.closest('.site-nav__item--has-submenu')) return;
+  const updateCurrentSubmenuLink = () => {
+    submenuItems.forEach((item) => {
+      const mainLink = item.querySelector(':scope > a');
+      if (!mainLink) return;
 
-    const item = document.createElement('div');
-    item.className = 'site-nav__item site-nav__item--has-submenu';
-    pageLink.replaceWith(item);
-    item.appendChild(pageLink);
-
-    const toggle = document.createElement('button');
-    toggle.className = 'site-nav__submenu-toggle';
-    toggle.type = 'button';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', `Mostra le sezioni di ${ariaLabel}`);
-    toggle.innerHTML = '<span aria-hidden="true">▾</span>';
-
-    const submenu = document.createElement('div');
-    submenu.className = 'site-nav__submenu';
-    submenu.setAttribute('aria-label', `Sezioni di ${ariaLabel}`);
-
-    const currentPageMatches = isPageUrl(currentUrl, pageName);
-
-    sections.forEach(([label, id]) => {
-      const link = document.createElement('a');
-      link.href = `${pageName}.html#${id}`;
-      link.textContent = label;
-      if (currentPageMatches && window.location.hash === `#${id}`) {
-        link.setAttribute('aria-current', 'location');
+      let pageName = '';
+      try {
+        pageName = new URL(mainLink.href, window.location.href)
+          .pathname
+          .split('/')
+          .filter(Boolean)
+          .pop()
+          ?.replace(/\.html$/i, '') || '';
+      } catch {
+        return;
       }
-      submenu.appendChild(link);
+
+      item.querySelectorAll('.site-nav__submenu a').forEach((link) => {
+        const target = new URL(link.href, window.location.href);
+        const isCurrent =
+          Boolean(window.location.hash) &&
+          isPageUrl(currentUrl, pageName) &&
+          target.hash === window.location.hash;
+
+        if (isCurrent) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      });
     });
+  };
 
-    item.append(toggle, submenu);
-
-    const closeMenu = () => {
-      item.classList.remove('is-open');
-      toggle.setAttribute('aria-expanded', 'false');
-    };
+  submenuItems.forEach((item) => {
+    const toggle = item.querySelector('.site-nav__submenu-toggle');
+    const submenu = item.querySelector('.site-nav__submenu');
+    if (!toggle || !submenu) return;
 
     toggle.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const open = item.classList.toggle('is-open');
-      toggle.setAttribute('aria-expanded', String(open));
+
+      const willOpen = !item.classList.contains('is-open');
+      closeAllSubmenus(item);
+      item.classList.toggle('is-open', willOpen);
+      toggle.setAttribute('aria-expanded', String(willOpen));
     });
 
-    submenu.addEventListener('click', closeMenu);
+    submenu.addEventListener('click', () => closeSubmenu(item));
+  });
 
-    document.addEventListener('click', (event) => {
-      if (!item.contains(event.target)) closeMenu();
+  document.addEventListener('click', (event) => {
+    submenuItems.forEach((item) => {
+      if (!item.contains(event.target)) closeSubmenu(item);
     });
+  });
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && item.classList.contains('is-open')) {
-        closeMenu();
-        toggle.focus();
-      }
-    });
-  };
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+
+    const openItem = submenuItems.find((item) => item.classList.contains('is-open'));
+    if (!openItem) return;
+
+    const toggle = openItem.querySelector('.site-nav__submenu-toggle');
+    closeSubmenu(openItem);
+    toggle?.focus();
+  });
 
   if (isPageUrl(currentUrl, 'vivi-pesaro')) {
     const resourceCards = Array.from(document.querySelectorAll('.city-resource-card'));
@@ -130,6 +122,7 @@ import('./mobile-nav.js').catch(() => {});
     const natureCard = resourceCards.find((card) =>
       card.querySelector('small')?.textContent.trim().toLowerCase() === 'natura e panorami'
     );
+
     if (cultureCard) cultureCard.id = 'citta-cultura';
     if (natureCard) natureCard.id = 'natura-panorami';
 
@@ -140,20 +133,8 @@ import('./mobile-nav.js').catch(() => {});
     if (hashTarget) window.requestAnimationFrame(() => hashTarget.scrollIntoView());
   }
 
-  addSubmenu('info-gare', 'Info per chi gareggia', [
-    ['Programma e documenti', 'programma'],
-    ['Campo gara', 'campo-gara'],
-    ['Logistica e parco barche', 'logistica'],
-    ['Accrediti e segreteria', 'segreteria'],
-    ['Ospitalità', 'ospitalita'],
-    ['Come arrivare', 'arrivare']
-  ]);
-
-  addSubmenu('vivi-pesaro', 'Vivi Pesaro', [
-    ['Città e cultura', 'citta-cultura'],
-    ['Natura e panorami', 'natura-panorami'],
-    ['Dove mangiare', 'dove-mangiare']
-  ]);
+  updateCurrentSubmenuLink();
+  window.addEventListener('hashchange', updateCurrentSubmenuLink);
 
   const backHomeLabel = document.querySelector('.back-home span');
   if (backHomeLabel) backHomeLabel.textContent = 'Vai su';
