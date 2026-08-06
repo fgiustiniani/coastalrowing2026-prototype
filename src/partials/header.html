@@ -40,4 +40,19 @@
     <a href="faq.html" data-nav-key="faq"{{CURRENT:faq}}>News e FAQ</a>
     <a href="contatti.html" data-nav-key="contatti"{{CURRENT:contatti}}>Contatti</a>
   </nav>
+
+  <aside class="news-ticker" data-news-ticker hidden aria-label="Ultime news dei Campionati">
+    <span class="news-ticker__label">Ultime news</span>
+    <div class="news-ticker__viewport" aria-live="polite">
+      <a class="news-ticker__link" href="faq.html#news" data-news-ticker-link>
+        <time class="news-ticker__date" data-news-ticker-date></time>
+        <strong class="news-ticker__title" data-news-ticker-title></strong>
+        <span class="news-ticker__read">Leggi →</span>
+      </a>
+    </div>
+    <div class="news-ticker__controls" aria-label="Scorri le news">
+      <button type="button" data-news-ticker-prev aria-label="News precedente">‹</button>
+      <button type="button" data-news-ticker-next aria-label="News successiva">›</button>
+    </div>
+  </aside>
 </header>
