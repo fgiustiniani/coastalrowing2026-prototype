@@ -37,7 +37,7 @@
 
     <a href="sostenibilita.html" data-nav-key="sostenibilita"{{CURRENT:sostenibilita}}>Sostenibilità</a>
     <a href="index.html#sponsor" data-nav-key="partner"{{CURRENT:partner}}>Partner e sponsor</a>
-    <a href="faq.html" data-nav-key="faq"{{CURRENT:faq}}>News e FAQ</a>
+    <a href="faq.html#news" data-nav-key="faq"{{CURRENT:faq}}>News e FAQ <span class="site-nav__news-badge" data-news-badge hidden>Nuovo</span></a>
     <a href="contatti.html" data-nav-key="contatti"{{CURRENT:contatti}}>Contatti</a>
   </nav>
 
@@ -46,7 +46,13 @@
     <div class="news-ticker__viewport" aria-live="polite">
       <a class="news-ticker__link" href="faq.html#news" data-news-ticker-link>
         <time class="news-ticker__date" data-news-ticker-date></time>
-        <strong class="news-ticker__title" data-news-ticker-title></strong>
+        <span class="news-ticker__text-window">
+          <span class="news-ticker__text" data-news-ticker-text>
+            <strong class="news-ticker__title" data-news-ticker-title></strong>
+            <span class="news-ticker__separator" aria-hidden="true"> — </span>
+            <span class="news-ticker__summary" data-news-ticker-summary></span>
+          </span>
+        </span>
         <span class="news-ticker__read">Leggi →</span>
       </a>
     </div>
