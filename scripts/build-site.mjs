@@ -113,7 +113,15 @@ function applyPageContentFixes(fileName, source) {
 
   return source
     .replace('assets/logos/APA-Hotels.jpg', 'assets/logos/apa-logo.svg')
-    .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026');
+    .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026')
+    .replace(
+      '<li><strong>Sabato 3 ottobre, ore 8.30</strong> — inizio gare <em>(orario da confermare)</em>. Al termine seguiranno le premiazioni.</li>',
+      '<li><strong>Sabato 3 ottobre, ore 8.30</strong> — inizio delle gare. Al termine seguiranno le premiazioni.</li>'
+    )
+    .replace(
+      '<li><strong>Domenica 4 ottobre, dalle 8.30 alle 13.00</strong> — prosieguo delle gare.</li>',
+      '<li><strong>Domenica 4 ottobre, dalle ore 8.30 alle 13.00</strong> — prosecuzione delle gare. Al termine seguiranno le premiazioni.</li>'
+    );
 }
 
 function buildPage(fileName, source) {
