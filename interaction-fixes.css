@@ -201,6 +201,13 @@
   justify-content: center;
 }
 
+@media (min-width: 981px) {
+  .subpage-hero--race .subpage-hero__content > p:last-child {
+    max-width: none;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 900px) {
   .help-band--contacts {
     grid-template-columns: 1fr;
