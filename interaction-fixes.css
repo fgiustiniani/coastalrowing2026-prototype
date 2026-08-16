@@ -1,12 +1,21 @@
 /* Mantiene accessibili i sottomenu anche quando il ticker news è visibile. */
 @media (hover: hover) and (min-width: 821px) {
+  .site-nav {
+    position: relative;
+    z-index: 500;
+  }
+
+  .news-ticker {
+    z-index: 1 !important;
+  }
+
   .site-nav__item--has-submenu::after {
     content: "";
     position: absolute;
     top: 100%;
-    left: 0;
-    right: 0;
-    height: 18px;
+    left: -10px;
+    right: -10px;
+    height: 20px;
     pointer-events: none;
   }
 
@@ -17,11 +26,12 @@
   }
 
   .site-nav__item--has-submenu {
-    z-index: 310;
+    z-index: 510;
   }
 
   .site-nav__submenu {
-    z-index: 400;
+    top: calc(100% + 8px);
+    z-index: 600;
   }
 }
 
