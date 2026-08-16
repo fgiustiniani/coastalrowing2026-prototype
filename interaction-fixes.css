@@ -86,6 +86,144 @@
   height: 72px;
 }
 
+/* Nuovo layout della fascia "Serve aiuto?". */
+.help-band--contacts {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 350px);
+  align-items: start;
+  gap: 44px;
+  padding: 38px 42px 36px;
+}
+
+.help-band--contacts .help-band__brand {
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.help-band--contacts .help-band__brand h2 {
+  max-width: 760px;
+  margin: 0 0 28px;
+}
+
+.help-band--contacts .help-band__info-row {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  width: 100%;
+}
+
+.help-band--contacts .help-band__info-copy {
+  max-width: 720px;
+}
+
+.help-band--contacts .help-band__info-copy p {
+  margin: 0;
+}
+
+.help-band__event-logo--top {
+  position: absolute;
+  top: 30px;
+  right: 32px;
+  width: min(220px, 24vw);
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.help-band--contacts .help-band__actions--contacts {
+  display: grid;
+  gap: 12px;
+  padding-top: 94px;
+}
+
+.help-band--contacts .help-band__actions--contacts .button {
+  width: 100%;
+  justify-content: center;
+}
+
+.help-band__wa-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.help-band__wa-icon {
+  align-self: start;
+  margin-top: 3px;
+}
+
+.help-band__wa-icon img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.help-band__wa-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: #fff;
+}
+
+.help-band__wa-copy a {
+  color: #fff;
+  font-weight: 850;
+  line-height: 1.25;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.help-band__wa-copy span {
+  color: rgba(255,255,255,.94);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.help-band__wa-qr-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  padding: 5px;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.help-band__wa-qr {
+  display: block;
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+  border-radius: 7px;
+}
+
+@media (max-width: 900px) {
+  .help-band--contacts {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .help-band__event-logo--top {
+    position: static;
+    grid-row: 1;
+    justify-self: end;
+    width: 190px;
+    margin-bottom: -58px;
+  }
+
+  .help-band--contacts .help-band__actions--contacts {
+    padding-top: 0;
+  }
+
+  .help-band__wa-row {
+    grid-template-columns: 26px minmax(0, 1fr) 92px;
+  }
+}
+
 @media (max-width: 620px) {
   .wa-group-promo {
     align-items: flex-start;
@@ -101,5 +239,36 @@
   .wa-group-promo--compact .wa-group-promo__qr {
     width: 60px;
     height: 60px;
+  }
+
+  .help-band--contacts {
+    padding: 28px 20px;
+  }
+
+  .help-band__event-logo--top {
+    justify-self: start;
+    width: 165px;
+    margin: 0 0 6px;
+  }
+
+  .help-band--contacts .help-band__info-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .help-band__wa-row {
+    grid-template-columns: 24px minmax(0, 1fr) 78px;
+    gap: 9px;
+  }
+
+  .help-band__wa-icon img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .help-band__wa-qr {
+    width: 68px;
+    height: 68px;
   }
 }
