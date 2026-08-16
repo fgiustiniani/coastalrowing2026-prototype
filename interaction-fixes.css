@@ -1,0 +1,105 @@
+/* Mantiene accessibili i sottomenu anche quando il ticker news è visibile. */
+@media (hover: hover) and (min-width: 821px) {
+  .site-nav__item--has-submenu::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 18px;
+    pointer-events: none;
+  }
+
+  .site-nav__item--has-submenu:hover::after,
+  .site-nav__item--has-submenu:focus-within::after,
+  .site-nav__item--has-submenu.is-open::after {
+    pointer-events: auto;
+  }
+
+  .site-nav__item--has-submenu {
+    z-index: 310;
+  }
+
+  .site-nav__submenu {
+    z-index: 400;
+  }
+}
+
+/* Invito al gruppo WhatsApp nelle sezioni informative. */
+.wa-group-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 15px 16px;
+  border: 1px solid rgba(31, 143, 95, .18);
+  border-radius: 18px;
+  background: rgba(31, 143, 95, .08);
+}
+
+.wa-group-promo__copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wa-group-promo__copy strong {
+  color: var(--navy-940);
+  font-size: .78rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.wa-group-promo__copy a {
+  color: var(--navy-940);
+  font-weight: 800;
+  line-height: 1.45;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.wa-group-promo__qr-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wa-group-promo__qr {
+  display: block;
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+}
+
+.wa-group-promo--compact {
+  margin-top: 0;
+}
+
+.wa-group-promo--compact .wa-group-promo__qr {
+  width: 72px;
+  height: 72px;
+}
+
+@media (max-width: 620px) {
+  .wa-group-promo {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .wa-group-promo__qr {
+    width: 66px;
+    height: 66px;
+  }
+
+  .wa-group-promo--compact .wa-group-promo__qr {
+    width: 60px;
+    height: 60px;
+  }
+}
