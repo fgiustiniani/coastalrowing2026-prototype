@@ -112,7 +112,7 @@ function applyHomeContentFixes(fileName, source) {
   if (fileName !== 'index.html') return source;
 
   const regionLogo = '<a class="partner-logo" href="https://www.regione.marche.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/logo-regione-marche.svg" alt="Regione Marche"></a>';
-  const volontarxLogo = '<div class="partner-logo"><img src="assets/logos/VolontarX.svg" alt="VolontarX"></div>';
+  const volontarxLogo = '<a class="partner-logo" href="https://www.comune.pesaro.pu.it/cultura/volontarx/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/VolontarX.svg" alt="VolontarX"></a>';
 
   if (source.includes('assets/logos/VolontarX.svg')) return source;
   return source.replace(regionLogo, `${regionLogo}\n              ${volontarxLogo}`);
@@ -150,17 +150,36 @@ function applyPageContentFixes(fileName, source) {
         </div>
       </section>`;
 
+  const activityProgram = `            <ul class="event-program event-program--activities">
+              <li>
+                <strong>Venerdì 02/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>ore 15.00 – 17.00:</strong> accredito equipaggi presso Segreteria Gare <a href="https://maps.app.goo.gl/quXGvciRXoJ5uhHT8" target="_blank" rel="noopener noreferrer">Apri su Google Maps →</a></li>
+                  <li><strong>ore 17.30:</strong> meeting Capitani presso la sede della Canottieri Pesaro in Calata Caio Duilio 101 <a href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer">Apri su Google Maps →</a></li>
+                </ul>
+              </li>
+              <li>
+                <strong>Sabato 03/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>dalle 8.00:</strong> eventuali fasi eliminatorie su percorso da circa mt. 3000</li>
+                  <li><strong>a seguire:</strong> finali MASTER e, a seguire, finali UNDER 19, UNDER 23, SENIOR su percorso da circa mt. 6000</li>
+                  <li><strong>ore 17.30:</strong> premiazioni</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Domenica 04/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>dalle 8.00:</strong> prosieguo delle finali ed eventuali recuperi delle gare del giorno precedente</li>
+                  <li><strong>a seguire:</strong> premiazioni (tra le 13.00 e le 16.00 in funzione della necessità di eventuali recuperi)</li>
+                </ul>
+              </li>
+            </ul>`;
+
   return source
     .replace('assets/logos/APA-Hotels.jpg', 'assets/logos/apa-logo.svg')
     .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026')
-    .replace(
-      '<li><strong>Sabato 3 ottobre, ore 8.30</strong> — inizio gare <em>(orario da confermare)</em>. Al termine seguiranno le premiazioni.</li>',
-      '<li><strong>Sabato 3 ottobre, ore 8.30</strong> — inizio delle gare. Al termine seguiranno le premiazioni.</li>'
-    )
-    .replace(
-      '<li><strong>Domenica 4 ottobre, dalle 8.30 alle 13.00</strong> — prosieguo delle gare.</li>',
-      '<li><strong>Domenica 4 ottobre, dalle ore 8.30 alle 13.00</strong> — prosecuzione delle gare. Al termine seguiranno le premiazioni.</li>'
-    )
+    .replace('<h2 id="programma-title">Programma e documenti ufficiali</h2>', '<h2 id="programma-title">Programma delle attività</h2>')
+    .replace(/            <ul class="event-program">[\s\S]*?            <\/ul>/, activityProgram)
     .replace(/      <section class="help-band help-band--contacts"[\s\S]*?      <\/section>/, helpBand);
 }
 
