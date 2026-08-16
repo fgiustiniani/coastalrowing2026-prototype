@@ -111,6 +111,36 @@ function addPageAssets(fileName, source) {
 function applyPageContentFixes(fileName, source) {
   if (fileName !== 'info-gare.html') return source;
 
+  const helpBand = `      <section class="help-band help-band--contacts" aria-labelledby="help-title">
+        <img class="section-event-logo section-event-logo--dark help-band__event-logo help-band__event-logo--top" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        <div class="help-band__brand">
+          <p class="eyebrow">Serve aiuto?</p>
+          <h2 id="help-title">Hai bisogno di informazioni organizzative?</h2>
+          <div class="help-band__info-row">
+            <div class="help-band__info-copy">
+              <p>Il nostro staff è a disposizione per le informazioni locali relative alla partecipazione all’evento.</p>
+            </div>
+            <a class="help-band__logo-link" href="https://www.canottieripesaro.it" target="_blank" rel="noopener noreferrer" aria-label="Visita il sito della Società Canottieri Pesaro">
+              <img src="assets/logos/canottieri-pesaro-logo_DEPOSITATO.png" alt="Società Canottieri Pesaro">
+            </a>
+          </div>
+        </div>
+        <div class="help-band__actions help-band__actions--contacts">
+          <a class="button button--primary icon-button" href="contatti.html"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>Scrivici su WhatsApp</a>
+          <a class="button button--secondary-light icon-button" href="mailto:info@canottieripesaro.it"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/mail-logo.svg" alt=""></span>Mandaci una mail</a>
+          <div class="help-band__wa-row">
+            <span class="help-band__wa-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>
+            <div class="help-band__wa-copy">
+              <a href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer">Iscriviti al gruppo WhatsApp</a>
+              <span>per ricevere info<br>in tempo reale</span>
+            </div>
+            <a class="help-band__wa-qr-link" href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer" aria-label="Apri il gruppo WhatsApp dei Campionati">
+              <img class="help-band__wa-qr" src="assets/images/gruppo-wa.png" alt="QR code del gruppo WhatsApp dei Campionati">
+            </a>
+          </div>
+        </div>
+      </section>`;
+
   return source
     .replace('assets/logos/APA-Hotels.jpg', 'assets/logos/apa-logo.svg')
     .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026')
@@ -121,7 +151,8 @@ function applyPageContentFixes(fileName, source) {
     .replace(
       '<li><strong>Domenica 4 ottobre, dalle 8.30 alle 13.00</strong> — prosieguo delle gare.</li>',
       '<li><strong>Domenica 4 ottobre, dalle ore 8.30 alle 13.00</strong> — prosecuzione delle gare. Al termine seguiranno le premiazioni.</li>'
-    );
+    )
+    .replace(/      <section class="help-band help-band--contacts"[\s\S]*?      <\/section>/, helpBand);
 }
 
 function buildPage(fileName, source) {
