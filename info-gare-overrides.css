@@ -93,6 +93,9 @@
 }
 
 @media (min-width: 1181px) {
+  .quick-links { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .quick-links a { grid-template-columns: 38px minmax(0, 1fr); gap: 10px; padding-right: 16px; padding-left: 16px; }
+  .quick-links .quick-links__label { font-size: clamp(.92rem, 1.15vw, 1.04rem); white-space: nowrap; }
   .event-program__details li { white-space: nowrap; }
   #campo-gara .info-section__heading,
   #logistica .info-section__heading { max-width: none; }
