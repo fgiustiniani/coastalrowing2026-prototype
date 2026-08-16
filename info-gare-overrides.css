@@ -1,5 +1,5 @@
 .official-docs { padding: 34px 36px; }
-.official-docs__layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(360px, .85fr); gap: 36px; align-items: start; }
+.official-docs__layout { display: grid; grid-template-columns: minmax(0, 2.35fr) minmax(280px, .65fr); gap: 24px; align-items: start; }
 .official-docs__copy { min-width: 0; }
 .official-docs__copy .section-kicker { margin-bottom: 8px; }
 .official-docs__copy h2 { margin: 0 0 22px; max-width: 680px; font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 1.08; }
@@ -83,6 +83,7 @@
 .help-band__logo-link img { transition: transform 150ms ease; }
 
 @media (min-width: 1181px) {
+  .event-program__details li { white-space: nowrap; }
   #campo-gara .info-section__heading,
   #logistica .info-section__heading { max-width: none; }
   #campo-gara .info-section__heading > p:last-child,
