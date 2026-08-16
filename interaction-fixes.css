@@ -86,6 +86,52 @@
   height: 72px;
 }
 
+/* Variante compatta nella colonna dei contatti della fascia aiuto. */
+.wa-group-promo--help-actions {
+  gap: 12px;
+  margin-top: 2px;
+  padding: 8px 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.wa-group-promo--help-actions .wa-group-promo__copy {
+  gap: 8px;
+}
+
+.wa-group-promo--help-actions .wa-group-promo__copy a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: .95rem;
+  line-height: 1.2;
+}
+
+.wa-group-promo--help-actions .inline-icon {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+}
+
+.wa-group-promo--help-actions .wa-group-promo__note {
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.wa-group-promo--help-actions .wa-group-promo__qr-link {
+  padding: 5px;
+  border-radius: 10px;
+}
+
+.wa-group-promo--help-actions .wa-group-promo__qr {
+  width: 76px;
+  height: 76px;
+}
+
 /* Layout compatto della fascia "Serve aiuto?". */
 .help-band--contacts {
   position: relative;
@@ -162,6 +208,10 @@
   .help-band--contacts .help-band__actions--contacts {
     padding-top: 0;
   }
+
+  .wa-group-promo--help-actions {
+    max-width: 350px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -179,6 +229,16 @@
   .wa-group-promo--compact .wa-group-promo__qr {
     width: 60px;
     height: 60px;
+  }
+
+  .wa-group-promo--help-actions {
+    align-items: center;
+    padding: 6px 0 0;
+  }
+
+  .wa-group-promo--help-actions .wa-group-promo__qr {
+    width: 68px;
+    height: 68px;
   }
 
   .help-band--contacts {
