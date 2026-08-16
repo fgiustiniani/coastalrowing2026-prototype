@@ -41,6 +41,15 @@
   display: none !important;
 }
 
+/* Mantiene "Logistica a terra" su due righe nel collegamento rapido. */
+@media (min-width: 981px) {
+  .race-info-page .quick-links a[href="#logistica"] .quick-links__label {
+    width: 88px;
+    white-space: normal;
+    line-height: 1.08;
+  }
+}
+
 /* Invito al gruppo WhatsApp nelle sezioni informative. */
 .wa-group-promo {
   display: flex;
