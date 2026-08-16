@@ -128,6 +128,15 @@ function applyPageContentFixes(fileName, source) {
         <div class="help-band__actions help-band__actions--contacts">
           <a class="button button--primary icon-button" href="contatti.html"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>Scrivici su WhatsApp</a>
           <a class="button button--secondary-light icon-button" href="mailto:info@canottieripesaro.it"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/mail-logo.svg" alt=""></span>Mandaci una mail</a>
+          <div class="wa-group-promo wa-group-promo--help-actions">
+            <div class="wa-group-promo__copy">
+              <a href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>Iscriviti al gruppo WhatsApp</a>
+              <span class="wa-group-promo__note">per ricevere info<br>in tempo reale</span>
+            </div>
+            <a class="wa-group-promo__qr-link" href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer" aria-label="Iscriviti al gruppo WhatsApp dei Campionati">
+              <img class="wa-group-promo__qr" src="assets/images/gruppo-wa.png" alt="QR code per iscriversi al gruppo WhatsApp dei Campionati">
+            </a>
+          </div>
         </div>
       </section>`;
 
