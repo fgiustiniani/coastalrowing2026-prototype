@@ -4,9 +4,14 @@
 .official-docs__copy .section-kicker { margin-bottom: 8px; }
 .official-docs__copy h2 { margin: 0 0 22px; max-width: 680px; font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 1.08; }
 .event-program { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; color: var(--muted); line-height: 1.5; }
-.event-program li { position: relative; padding: 14px 16px 14px 48px; border-radius: 15px; background: rgba(31,99,135,.055); }
-.event-program li::before { position: absolute; left: 16px; top: 14px; color: var(--sand-500); font-weight: 900; content: "→"; }
+.event-program > li { position: relative; padding: 14px 16px 14px 48px; border-radius: 15px; background: rgba(31,99,135,.055); }
+.event-program > li::before { position: absolute; left: 16px; top: 14px; color: var(--sand-500); font-weight: 900; content: "→"; }
 .event-program strong { color: var(--navy-900); }
+.event-program__details { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+.event-program__details li { position: relative; padding-left: 16px; }
+.event-program__details li::before { content: "•"; position: absolute; left: 0; color: var(--sand-500); font-weight: 900; }
+.event-program__details a { color: var(--navy-820); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.event-program__details a:hover,.event-program__details a:focus-visible { text-decoration: underline; }
 .booking-coming-soon { color: var(--navy-820); font-weight: 800; }
 .fic-link { display: flex; align-items: flex-start; gap: 18px; width: 100%; min-width: 0; max-width: none; padding: 22px; border: 1px solid rgba(16,34,53,.1); border-radius: 20px; background: rgba(255,255,255,.9); box-shadow: 0 12px 28px rgba(4,17,31,.08); }
 .fic-link img { width: 82px; height: 68px; object-fit: contain; flex: 0 0 auto; }
@@ -99,7 +104,8 @@
 }
 @media (max-width: 560px) {
   .official-docs { padding: 26px 20px; }
-  .event-program li { padding-left: 42px; }
+  .event-program > li { padding-left: 42px; }
+  .event-program__details a { white-space: normal; }
   .fic-link { flex-direction: column; }
   .quick-links a { grid-template-columns: auto 34px minmax(0, 1fr); }
   .quick-links .quick-links__icon { width: 34px; height: 34px; }
