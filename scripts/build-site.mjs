@@ -108,6 +108,16 @@ function addPageAssets(fileName, source) {
   return output;
 }
 
+function applyHomeContentFixes(fileName, source) {
+  if (fileName !== 'index.html') return source;
+
+  const regionLogo = '<a class="partner-logo" href="https://www.regione.marche.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/logo-regione-marche.svg" alt="Regione Marche"></a>';
+  const volontarxLogo = '<div class="partner-logo"><img src="assets/logos/VolontarX.svg" alt="VolontarX"></div>';
+
+  if (source.includes('assets/logos/VolontarX.svg')) return source;
+  return source.replace(regionLogo, `${regionLogo}\n              ${volontarxLogo}`);
+}
+
 function applyPageContentFixes(fileName, source) {
   if (fileName !== 'info-gare.html') return source;
 
@@ -172,6 +182,7 @@ function buildPage(fileName, source) {
   output = addPageModel(fileName, output);
   output = addSharedStyles(output);
   output = addPageAssets(fileName, output);
+  output = applyHomeContentFixes(fileName, output);
   output = applyPageContentFixes(fileName, output);
   return output;
 }
