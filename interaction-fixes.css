@@ -93,7 +93,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(310px, 350px);
   align-items: center;
   gap: 40px;
-  padding: 28px 42px 26px;
+  padding: 26px 42px 24px;
 }
 
 .help-band--contacts .help-band__brand {
@@ -101,8 +101,13 @@
 }
 
 .help-band--contacts .help-band__brand h2 {
-  max-width: 650px;
-  margin: 0 0 18px;
+  max-width: none;
+  margin: 0 0 16px;
+}
+
+/* Il QR del gruppo è già previsto nell'area contatti: nella fascia aiuto non va duplicato. */
+.help-band--contacts .help-band__brand > .wa-group-promo {
+  display: none;
 }
 
 .help-band--contacts .help-band__info-row {
@@ -122,7 +127,7 @@
 
 .help-band__event-logo--top {
   position: absolute;
-  top: 22px;
+  top: 20px;
   right: 32px;
   width: min(220px, 24vw);
   max-height: 58px;
@@ -132,7 +137,7 @@
 .help-band--contacts .help-band__actions--contacts {
   display: grid;
   gap: 12px;
-  padding-top: 70px;
+  padding-top: 66px;
 }
 
 .help-band--contacts .help-band__actions--contacts .button {
