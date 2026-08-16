@@ -1,9 +1,12 @@
 .official-docs { padding: 34px 36px; }
-.official-docs__layout { display: grid; grid-template-columns: minmax(0, 2.35fr) minmax(280px, .65fr); gap: 24px; align-items: start; }
-.official-docs__copy { min-width: 0; }
+.official-docs__layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px 24px; align-items: start; }
+.official-docs__copy { display: contents; }
+.official-docs__copy .info-section__heading { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; width: 100%; }
+.official-docs__copy .info-section__heading-copy { min-width: 0; }
+.official-docs__copy .info-section__event-logo { flex: 0 0 auto; margin-left: auto; }
 .official-docs__copy .section-kicker { margin-bottom: 8px; }
-.official-docs__copy h2 { margin: 0 0 22px; max-width: 680px; font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 1.08; }
-.event-program { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; color: var(--muted); line-height: 1.5; }
+.official-docs__copy h2 { margin: 0; max-width: 680px; font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 1.08; }
+.event-program { grid-column: 1 / -1; grid-row: 3; display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; color: var(--muted); line-height: 1.5; }
 .event-program > li { position: relative; padding: 14px 16px 14px 48px; border-radius: 15px; background: rgba(31,99,135,.055); }
 .event-program > li::before { position: absolute; left: 16px; top: 14px; color: var(--sand-500); font-weight: 900; content: "→"; }
 .event-program strong { color: var(--navy-900); }
@@ -13,12 +16,12 @@
 .event-program__details a { color: var(--navy-820); font-weight: 800; text-decoration: none; white-space: nowrap; }
 .event-program__details a:hover,.event-program__details a:focus-visible { text-decoration: underline; }
 .booking-coming-soon { color: var(--navy-820); font-weight: 800; }
-.fic-link { display: flex; align-items: flex-start; gap: 18px; width: 100%; min-width: 0; max-width: none; padding: 22px; border: 1px solid rgba(16,34,53,.1); border-radius: 20px; background: rgba(255,255,255,.9); box-shadow: 0 12px 28px rgba(4,17,31,.08); }
-.fic-link img { width: 82px; height: 68px; object-fit: contain; flex: 0 0 auto; }
-.fic-link__text { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.fic-link { grid-column: 1; grid-row: 2; display: flex; align-items: flex-start; gap: 18px; width: min(100%, 660px); min-width: 0; margin: 2px 0 4px; padding: 18px 20px; border: 1px solid rgba(16,34,53,.1); border-radius: 20px; background: rgba(255,255,255,.9); box-shadow: 0 12px 28px rgba(4,17,31,.08); }
+.fic-link img { width: 76px; height: 62px; object-fit: contain; flex: 0 0 auto; }
+.fic-link__text { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
 .fic-link__text strong { color: var(--navy-940); font-size: 1rem; }
-.fic-link__description { color: var(--muted) !important; font-size: .9rem !important; font-weight: 400 !important; letter-spacing: normal !important; line-height: 1.5; text-transform: none !important; }
-.fic-link__actions { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; }
+.fic-link__description { color: var(--muted) !important; font-size: .9rem !important; font-weight: 400 !important; letter-spacing: normal !important; line-height: 1.45; text-transform: none !important; }
+.fic-link__actions { display: flex; flex-direction: column; gap: 6px; margin-top: 1px; }
 .fic-link__actions a { color: var(--navy-820); font-size: .86rem; font-weight: 800; letter-spacing: normal; text-transform: none; }
 .fic-link__actions a:hover,.fic-link__actions a:focus-visible { text-decoration: underline; }
 .quick-links a { position: relative; display: grid; grid-template-columns: auto 38px minmax(0, 1fr); align-items: center; gap: 12px; }
@@ -91,8 +94,14 @@
   .hospitality__heading > div > p:last-child { white-space: nowrap; font-size: .98rem; }
 }
 
-@media (max-width: 980px) { .official-docs__layout { grid-template-columns: 1fr; } .fic-link { max-width: 680px; } }
+@media (max-width: 980px) {
+  .official-docs__layout { grid-template-columns: 1fr; }
+  .official-docs__copy .info-section__heading,.fic-link,.event-program { grid-column: 1; }
+  .fic-link { width: min(100%, 680px); }
+}
 @media (max-width: 820px) {
+  .official-docs__copy .info-section__heading { align-items: flex-start; }
+  .official-docs__copy .info-section__event-logo { width: 170px; }
   .subpage-hero--race { padding-top: 28px; }
   .subpage-hero--race #page-title { white-space: normal; font-size: clamp(3rem, 11vw, 4.8rem); }
   .race-map__actions { align-items: flex-start; flex-direction: column; }
@@ -105,6 +114,8 @@
 }
 @media (max-width: 560px) {
   .official-docs { padding: 26px 20px; }
+  .official-docs__copy .info-section__heading { display: grid; gap: 14px; }
+  .official-docs__copy .info-section__event-logo { margin-left: 0; width: 155px; }
   .event-program > li { padding-left: 42px; }
   .event-program__details a { white-space: normal; }
   .fic-link { flex-direction: column; }
