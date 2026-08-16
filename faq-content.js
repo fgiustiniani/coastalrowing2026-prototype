@@ -16,7 +16,7 @@
         },
         {
           q: 'È prevista una riunione dei capitani?',
-          a: 'Sì. Orario, sede e modalità della riunione saranno pubblicati nella sezione <a href="info-gare.html#segreteria">Info per chi gareggia → Accrediti e segreteria gare</a>.'
+          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 17.30 presso la sede della Società Canottieri Pesaro, in Calata Caio Duilio 101. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer">apri la sede su Google Maps</a>.'
         }
       ]
     },
@@ -24,20 +24,20 @@
       title: 'Arrivo e accreditamento',
       items: [
         {
-          q: 'Dove si trova la segreteria gare?',
-          a: 'La segreteria gare sarà allestita presso la sede della Società Canottieri Pesaro, in Calata Caio Duilio 101. Consulta la sezione <a href="info-gare.html#segreteria">Accrediti e segreteria gare</a>.'
+          q: 'Dove si effettuano gli accrediti?',
+          a: 'Gli accrediti degli equipaggi si effettuano presso la Segreteria Gare. La posizione è indicata nel <a href="info-gare.html#programma">Programma delle attività</a> ed è disponibile anche su <a href="https://maps.app.goo.gl/quXGvciRXoJ5uhHT8" target="_blank" rel="noopener noreferrer">Google Maps</a>.'
         },
         {
-          q: 'Quali saranno gli orari della segreteria?',
-          a: 'Gli orari di apertura saranno pubblicati nella sezione <a href="info-gare.html#segreteria">Info per chi gareggia → Accrediti e segreteria gare</a>.'
+          q: 'Quando si effettuano gli accrediti?',
+          a: 'Gli accrediti degli equipaggi sono previsti venerdì 2 ottobre 2026 dalle ore 15.00 alle 17.00. Orario e posizione sono riportati nel <a href="info-gare.html#programma">Programma delle attività</a>.'
         },
         {
-          q: 'Dove si ritirano gli accrediti e il welcome kit?',
-          a: 'Gli accrediti e il welcome kit potranno essere ritirati presso la segreteria gare.'
+          q: 'Dove trovo tutte le informazioni su accrediti e meeting dei Capitani?',
+          a: 'Orari e sedi sono raccolti nel <a href="info-gare.html#programma">Programma delle attività</a>: gli accrediti si svolgono presso la Segreteria Gare, mentre il meeting dei Capitani si svolge presso la sede della Società Canottieri Pesaro.'
         },
         {
           q: 'Quando saranno disponibili le imbarcazioni per le prove?',
-          a: 'La disponibilità delle imbarcazioni per le prove è prevista indicativamente per venerdì 2 ottobre 2026. Orari e modalità di prenotazione sono ancora in fase di definizione e saranno comunicati nella sezione <a href="info-gare.html#programma">Programma e documenti ufficiali</a>.'
+          a: 'Orari e modalità per le eventuali prove delle imbarcazioni saranno comunicati sul sito quando definiti.'
         }
       ]
     },
