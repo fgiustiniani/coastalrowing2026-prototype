@@ -35,6 +35,12 @@
   }
 }
 
+/* La sezione accrediti è stata assorbita dal Programma delle attività. */
+.race-info-page #segreteria,
+.race-info-page .quick-links a[href="#segreteria"] {
+  display: none !important;
+}
+
 /* Invito al gruppo WhatsApp nelle sezioni informative. */
 .wa-group-promo {
   display: flex;
