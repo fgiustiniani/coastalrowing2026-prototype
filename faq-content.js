@@ -8,11 +8,11 @@
       items: [
         {
           q: 'Dove trovo il bando di regata e il programma ufficiale?',
-          a: 'Il bando di regata, il programma ufficiale, le iscrizioni e i risultati saranno pubblicati sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
+          a: 'Il bando di regata, il programma ufficiale, le iscrizioni e i risultati sono pubblicati sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
         },
         {
-          q: 'Dove saranno pubblicati gli orari delle gare?',
-          a: 'Gli orari definitivi saranno indicati nel programma gare ufficiale pubblicato sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
+          q: 'Dove sono pubblicati gli orari delle gare?',
+          a: 'Gli orari definitivi sono indicati nel programma gare ufficiale pubblicato sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
         },
         {
           q: 'È prevista una riunione dei capitani?',
@@ -36,8 +36,8 @@
           a: 'Orari e sedi sono raccolti nel <a href="info-gare.html#programma">Programma delle attività</a>: gli accrediti si svolgono presso la Segreteria Gare, mentre il meeting dei Capitani si svolge presso la sede della Società Canottieri Pesaro.'
         },
         {
-          q: 'Quando saranno disponibili le imbarcazioni per le prove?',
-          a: 'Orari e modalità per le eventuali prove delle imbarcazioni saranno comunicati sul sito quando definiti.'
+          q: 'Saranno disponibili imbarcazioni per le prove?',
+          a: 'No.'
         }
       ]
     },
@@ -138,11 +138,7 @@
       items: [
         {
           q: 'Come posso ricevere gli aggiornamenti dell’organizzazione?',
-          a: 'È possibile ricevere gli aggiornamenti iscrivendosi al <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">canale WhatsApp ufficiale dei Campionati</a>.'
-        },
-        {
-          q: 'Esiste un canale WhatsApp dei Campionati?',
-          a: 'Sì. <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">Iscriviti direttamente al canale WhatsApp ufficiale dei Campionati</a>.'
+          a: 'È possibile ricevere gli aggiornamenti in tempo reale iscrivendosi al <a href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer">gruppo WhatsApp dedicato</a>.'
         },
         {
           q: 'Come posso contattare l’organizzazione?',
