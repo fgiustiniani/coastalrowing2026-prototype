@@ -180,6 +180,9 @@ function applyPageContentFixes(fileName, source) {
   return source
     .replace('assets/logos/APA-Hotels.jpg', 'assets/logos/apa-logo.svg')
     .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026')
+    .replace('<span class="quick-links__label">Programma e documenti</span>', '<span class="quick-links__label">Programma</span>')
+    .replace('<span class="quick-links__label">Campo gara</span>', '<span class="quick-links__label">Campo gare</span>')
+    .replace('<span class="quick-links__label">Logistica e parco barche</span>', '<span class="quick-links__label">Logistica a terra</span>')
     .replace('<h2 id="programma-title">Programma e documenti ufficiali</h2>', '<h2 id="programma-title">Programma delle attività</h2>')
     .replace(/            <ul class="event-program">[\s\S]*?            <\/ul>/, activityProgram)
     .replaceAll('assets/maps/mappa-campo-gara.svg', 'assets/maps/mappa-campo-gara.svg?v=2')
