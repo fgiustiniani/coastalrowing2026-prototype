@@ -150,19 +150,21 @@ function applyPageContentFixes(fileName, source) {
         </div>
       </section>`;
 
+  const mapLink = (href) => `<a class="event-program__map-link" href="${href}" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt=""><span>Apri su Google Maps</span></a>`;
+
   const activityProgram = `            <ul class="event-program event-program--activities">
               <li>
                 <strong>Venerdì 02/10/2026</strong>
                 <ul class="event-program__details">
-                  <li><strong>ore 15.00 – 17.00:</strong> accredito equipaggi presso Segreteria Gare <a href="https://maps.app.goo.gl/quXGvciRXoJ5uhHT8" target="_blank" rel="noopener noreferrer">Apri su Google Maps →</a></li>
-                  <li><strong>ore 17.30:</strong> meeting Capitani presso la sede della Canottieri Pesaro in Calata Caio Duilio 101 <a href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer">Apri su Google Maps →</a></li>
+                  <li><strong>ore 15.00 – 17.00:</strong> accredito equipaggi presso Segreteria Gare ${mapLink('https://maps.app.goo.gl/quXGvciRXoJ5uhHT8')}</li>
+                  <li><strong>ore 17.30:</strong> meeting Capitani presso la sede della Canottieri Pesaro in Calata Caio Duilio 101 ${mapLink('https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A')}</li>
                 </ul>
               </li>
               <li>
                 <strong>Sabato 03/10/2026</strong>
                 <ul class="event-program__details">
                   <li><strong>dalle 8.00:</strong> eventuali fasi eliminatorie su percorso da circa mt. 3000</li>
-                  <li><strong>a seguire:</strong> finali MASTER e, a seguire, finali UNDER 19, UNDER 23, SENIOR su percorso da circa mt. 6000</li>
+                  <li><strong>a seguire:</strong> finali MASTER su percorso da circa mt 3000 e, a seguire, finali UNDER 19, UNDER 23, SENIOR su percorso da circa mt. 6000</li>
                   <li><strong>ore 17.30:</strong> premiazioni</li>
                 </ul>
               </li>
@@ -180,6 +182,11 @@ function applyPageContentFixes(fileName, source) {
     .replace('Invia la scheda entro il 5 agosto 2026', 'Invia la scheda entro il 5 settembre 2026')
     .replace('<h2 id="programma-title">Programma e documenti ufficiali</h2>', '<h2 id="programma-title">Programma delle attività</h2>')
     .replace(/            <ul class="event-program">[\s\S]*?            <\/ul>/, activityProgram)
+    .replaceAll('assets/maps/mappa-campo-gara.svg', 'assets/maps/mappa-campo-gara.svg?v=2')
+    .replace('            <span>Schema indicativo · configurazione in fase di definizione</span>\n            <a class="race-map__logistics-link" href="#logistica">', '            <a class="race-map__logistics-link" href="#logistica">')
+    .replace('          <div class="race-map__actions">\n            <a class="race-map__logistics-link" href="#logistica">', '          <div class="race-map__actions race-map__actions--end">\n            <a class="race-map__logistics-link" href="#logistica">')
+    .replace('            <span>Schema indicativo · disposizione delle aree soggetta a variazioni</span>\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"', '            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"')
+    .replace('          <div class="race-map__actions">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"', '          <div class="race-map__actions race-map__actions--end">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"')
     .replace(/      <section class="help-band help-band--contacts"[\s\S]*?      <\/section>/, helpBand);
 }
 
