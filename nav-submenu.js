@@ -224,6 +224,11 @@ import('./mobile-nav.js').catch(() => {});
     );
     if (institutionalHeading) institutionalHeading.textContent = 'Partner istituzionali e Patrocini';
 
+    const fisdirLogo = document.querySelector('.partner-logo img[src$="logo-fisdir.svg"]');
+    if (fisdirLogo) {
+      fisdirLogo.closest('.partner-section')?.querySelector('.logo-placeholder')?.remove();
+    }
+
     const paths = document.querySelector('.paths');
     const updates = document.querySelector('.updates');
     if (paths && updates) paths.insertAdjacentElement('afterend', updates);
