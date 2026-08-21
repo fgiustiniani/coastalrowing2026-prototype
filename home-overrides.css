@@ -32,16 +32,16 @@
 .partner-logos--fic .partner-logo { min-width: 150px; min-height: 100px; flex-basis: 175px; }
 .partner-logos--fic .partner-logo img { max-width: 148px; max-height: 72px; }
 
-/* Il file FISDIR contiene molto margine bianco interno: lo ingrandiamo dentro la stessa card. */
+/* Il file FISDIR contiene molto margine bianco interno: lo compensiamo senza far uscire il logo dalla card. */
 .partner-logo:has(img[src*="logo-fisdir.svg"]) {
-  padding: 6px 8px;
+  padding: 8px 10px;
 }
 .partner-logo:has(img[src*="logo-fisdir.svg"]) img {
   width: 100%;
   height: 100%;
   max-width: none !important;
   max-height: none !important;
-  transform: scale(1.75);
+  transform: scale(1.3);
   transform-origin: center;
 }
 .partner-section:has(.partner-logo img[src*="logo-fisdir.svg"]) .logo-placeholder {
@@ -161,7 +161,7 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
     height: 92px;
     min-height: 92px;
   }
-  .partner-logo:has(img[src*="logo-fisdir.svg"]) img { transform: scale(1.55); }
+  .partner-logo:has(img[src*="logo-fisdir.svg"]) img { transform: scale(1.2); }
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
   body::after { font-size: 4.5rem; }
