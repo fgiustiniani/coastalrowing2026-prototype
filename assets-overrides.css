@@ -56,17 +56,17 @@
 }
 
 .path-card__visual--athletes {
-  background-image: url("assets/images/info-gare.jpg");
+  background-image: url("assets/images/info-gare.webp");
   background-position: center center;
 }
 
 .path-card__visual--spectators {
-  background-image: url("assets/images/vivi-pesaro.jpg");
+  background-image: url("assets/images/vivi-pesaro.webp");
   background-position: center center;
 }
 
 .path-card__visual--sustainability {
-  background-image: url("assets/images/sostenibilità.jpg");
+  background-image: url("assets/images/sostenibilità.webp");
   background-position: center center;
 }
 
@@ -99,7 +99,7 @@
   background-image:
     linear-gradient(90deg, rgba(4, 17, 31, 0.62) 0%, rgba(4, 17, 31, 0.28) 50%, rgba(4, 17, 31, 0.08) 100%),
     linear-gradient(180deg, rgba(4, 17, 31, 0.02), rgba(4, 17, 31, 0.16)),
-    url("assets/images/info-gare.jpg");
+    url("assets/images/info-gare.webp");
   background-size: cover;
   background-position: center 54%;
   background-repeat: no-repeat;
