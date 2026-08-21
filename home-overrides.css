@@ -15,6 +15,20 @@
 .partner-logos--fic .partner-logo { min-width: 150px; min-height: 100px; flex-basis: 175px; }
 .partner-logos--fic .partner-logo img { max-width: 148px; max-height: 72px; }
 
+/* Partner istituzionali: FISDIR più leggibile e niente segnaposto */
+.partner-section:has(.partner-section__heading h3) .partner-logo:has(img[src*="logo-fisdir.svg"]) {
+  flex-basis: 270px;
+  min-width: 250px;
+  padding: 10px 18px;
+}
+.partner-logo:has(img[src*="logo-fisdir.svg"]) img {
+  max-width: 230px;
+  max-height: 104px;
+}
+.partner-section:has(.partner-logo img[src*="logo-fisdir.svg"]) .logo-placeholder {
+  display: none;
+}
+
 /* Filigrana globale del prototipo */
 body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-24deg); z-index: 9999; pointer-events: none; user-select: none; font-size: clamp(4.5rem, 13vw, 11rem); font-weight: 950; letter-spacing: .08em; color: rgba(16,34,53,.065); white-space: nowrap; }
 
@@ -122,6 +136,8 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
   .partner-section { padding: 22px 20px; }
   .partner-logos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
   .partner-logos .partner-logo,.partner-logos--fic .partner-logo { min-width: 0; width: 100%; min-height: 92px; }
+  .partner-logo:has(img[src*="logo-fisdir.svg"]) img { max-width: 190px; max-height: 86px; }
+  .partner-section:has(.partner-section__heading h3) .partner-logo:has(img[src*="logo-fisdir.svg"]) { min-width: 0; width: 100%; }
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
   body::after { font-size: 4.5rem; }
