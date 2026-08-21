@@ -10,7 +10,7 @@
   box-shadow: 0 24px 54px rgba(4, 17, 31, 0.28);
   background:
     linear-gradient(180deg, rgba(4, 17, 31, 0.04), rgba(4, 17, 31, 0.28)),
-    url('assets/images/partner-pesaro-rowing.jpg') center / cover no-repeat;
+    url('assets/images/partner-pesaro-rowing.webp') center / cover no-repeat;
 }
 
 .partner-story {
@@ -26,8 +26,8 @@
   background-color: var(--navy-940);
   background-image:
     linear-gradient(112deg, rgba(4, 17, 31, 0.88) 0%, rgba(4, 17, 31, 0.68) 50%, rgba(4, 17, 31, 0.42) 100%),
-    url('assets/images/partner-pesaro-rowing.jpg'),
-    url('assets/images/info-gare.jpg');
+    url('assets/images/partner-pesaro-rowing.webp'),
+    url('assets/images/info-gare.webp');
   background-position: center, center 48%, center 48%;
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
@@ -143,8 +143,8 @@
   background-color: var(--navy-900);
   background-image:
     linear-gradient(180deg, rgba(4, 17, 31, 0.08), rgba(4, 17, 31, 0.34)),
-    url('assets/images/partner-pesaro-beach.jpg'),
-    url('assets/images/hero-pesaro-coastal-rowing-2026.jpg');
+    url('assets/images/partner-pesaro-beach.webp'),
+    url('assets/images/hero-pesaro-coastal-rowing-2026.webp');
   background-position: center, center, center;
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
@@ -240,8 +240,8 @@
   background-color: var(--navy-940);
   background-image:
     linear-gradient(112deg, rgba(4, 17, 31, 0.9) 0%, rgba(4, 17, 31, 0.67) 58%, rgba(4, 17, 31, 0.48) 100%),
-    url('assets/images/partner-pesaro-rowing.jpg'),
-    url('assets/images/info-gare.jpg');
+    url('assets/images/partner-pesaro-rowing.webp'),
+    url('assets/images/info-gare.webp');
   background-position: center, center 48%, center 48%;
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
