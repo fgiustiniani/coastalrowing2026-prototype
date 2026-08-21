@@ -37,9 +37,6 @@
   display: none;
 }
 
-/* Filigrana globale del prototipo */
-body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-24deg); z-index: 9999; pointer-events: none; user-select: none; font-size: clamp(4.5rem, 13vw, 11rem); font-weight: 950; letter-spacing: .08em; color: rgba(16,34,53,.065); white-space: nowrap; }
-
 /* Hero home */
 .hero { position: relative; align-items: flex-start; padding-top: 56px; padding-bottom: 92px; }
 .hero__content { max-width: none; width: 100%; transform: none; }
@@ -152,7 +149,6 @@ body::after { content: "PROTOTIPO"; position: fixed; left: 50%; top: 50%; transf
   }
   .updates--compact .updates__actions { align-items: stretch; flex-direction: column; }
   .updates--compact .updates__actions .button { width: 100%; }
-  body::after { font-size: 4.5rem; }
   .contact-dialog__logo { width: min(100%,210px); margin-bottom: 14px; }
 }
 
