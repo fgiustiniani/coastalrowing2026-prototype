@@ -226,7 +226,6 @@ import('./mobile-nav.js').catch(() => {});
 
     const fisdirLogo = document.querySelector('.partner-logo img[src$="logo-fisdir.svg"]');
     if (fisdirLogo) {
-      fisdirLogo.src = 'assets/logos/partners/logo-fisdir-crop.svg';
       fisdirLogo.closest('.partner-section')?.querySelector('.logo-placeholder')?.remove();
     }
 
