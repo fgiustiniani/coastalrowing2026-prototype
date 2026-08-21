@@ -219,6 +219,11 @@ import('./mobile-nav.js').catch(() => {});
   }
 
   if (isHomeUrl(currentUrl)) {
+    const institutionalHeading = Array.from(document.querySelectorAll('.partner-section__heading h3')).find(
+      (heading) => heading.textContent.trim().toLowerCase() === 'partner e patrocini'
+    );
+    if (institutionalHeading) institutionalHeading.textContent = 'Partner istituzionali e Patrocini';
+
     const paths = document.querySelector('.paths');
     const updates = document.querySelector('.updates');
     if (paths && updates) paths.insertAdjacentElement('afterend', updates);
