@@ -15,6 +15,8 @@
 .event-program__details li::before { content: "•"; position: absolute; left: 0; color: var(--sand-500); font-weight: 900; }
 .event-program__details a { color: var(--navy-820); font-weight: 800; text-decoration: none; white-space: nowrap; }
 .event-program__details a:hover,.event-program__details a:focus-visible { text-decoration: underline; }
+.event-program__map-link { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; vertical-align: middle; }
+.event-program__map-link img { display: block; width: 18px; height: 18px; object-fit: contain; }
 .booking-coming-soon { color: var(--navy-820); font-weight: 800; }
 .fic-link { grid-column: 1; grid-row: 2; display: flex; align-items: flex-start; gap: 18px; width: min(100%, 660px); min-width: 0; margin: 2px 0 4px; padding: 18px 20px; border: 1px solid rgba(16,34,53,.1); border-radius: 20px; background: rgba(255,255,255,.9); box-shadow: 0 12px 28px rgba(4,17,31,.08); }
 .fic-link img { width: 76px; height: 62px; object-fit: contain; flex: 0 0 auto; }
@@ -32,6 +34,7 @@
 .race-map__image-link { display: block; background: #fff; cursor: zoom-in; }
 .race-map__image-link img { display: block; width: 100%; height: auto; }
 .race-map__actions { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 20px; }
+.race-map__actions--end { justify-content: flex-end; }
 .race-map__actions > span { color: var(--muted); font-size: 0.86rem; }
 .race-map__logistics-link { flex: 0 0 auto; color: var(--navy-820); font-size: 0.86rem; font-weight: 800; letter-spacing: 0.03em; }
 .race-map__logistics-link:hover,.race-map__logistics-link:focus-visible { text-decoration: underline; }
@@ -85,7 +88,14 @@
 .help-band__logo-link:hover img,.help-band__logo-link:focus-visible img { transform: scale(1.03); }
 .help-band__logo-link img { transition: transform 150ms ease; }
 
+@media (min-width: 981px) {
+  .official-docs__copy h2 { max-width: none; white-space: nowrap; }
+}
+
 @media (min-width: 1181px) {
+  .quick-links { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .quick-links a { grid-template-columns: 38px minmax(0, 1fr); gap: 10px; padding-right: 16px; padding-left: 16px; }
+  .quick-links .quick-links__label { font-size: clamp(.92rem, 1.15vw, 1.04rem); white-space: nowrap; }
   .event-program__details li { white-space: nowrap; }
   #campo-gara .info-section__heading,
   #logistica .info-section__heading { max-width: none; }
@@ -118,6 +128,7 @@
   .official-docs__copy .info-section__event-logo { margin-left: 0; width: 155px; }
   .event-program > li { padding-left: 42px; }
   .event-program__details a { white-space: normal; }
+  .event-program__map-link { margin: 4px 0 0; }
   .fic-link { flex-direction: column; }
   .quick-links a { grid-template-columns: auto 34px minmax(0, 1fr); }
   .quick-links .quick-links__icon { width: 34px; height: 34px; }

@@ -35,6 +35,21 @@
   }
 }
 
+/* La sezione accrediti è stata assorbita dal Programma delle attività. */
+.race-info-page #segreteria,
+.race-info-page .quick-links a[href="#segreteria"] {
+  display: none !important;
+}
+
+/* Mantiene "Logistica a terra" su due righe nel collegamento rapido. */
+@media (min-width: 981px) {
+  .race-info-page .quick-links a[href="#logistica"] .quick-links__label {
+    width: 88px;
+    white-space: normal;
+    line-height: 1.08;
+  }
+}
+
 /* Invito al gruppo WhatsApp nelle sezioni informative. */
 .wa-group-promo {
   display: flex;
@@ -199,6 +214,13 @@
 .help-band--contacts .help-band__actions--contacts .button {
   width: 100%;
   justify-content: center;
+}
+
+@media (min-width: 981px) {
+  .subpage-hero--race .subpage-hero__content > p:last-child {
+    max-width: none;
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 900px) {

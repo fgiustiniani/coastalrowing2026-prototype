@@ -8,15 +8,15 @@
       items: [
         {
           q: 'Dove trovo il bando di regata e il programma ufficiale?',
-          a: 'Il bando di regata, il programma ufficiale, le iscrizioni e i risultati saranno pubblicati sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
+          a: 'Il bando di regata, il programma ufficiale, le iscrizioni e i risultati sono pubblicati sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
         },
         {
-          q: 'Dove saranno pubblicati gli orari delle gare?',
-          a: 'Gli orari definitivi saranno indicati nel programma gare ufficiale pubblicato sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
+          q: 'Dove sono pubblicati gli orari delle gare?',
+          a: 'Gli orari definitivi sono indicati nel programma gare ufficiale pubblicato sul sito della Federazione Italiana Canottaggio, nella sezione <a href="https://www.canottaggio.org/attivita-remiera/bandi-di-regata/" target="_blank" rel="noopener noreferrer">Bandi di regata</a>.'
         },
         {
           q: 'È prevista una riunione dei capitani?',
-          a: 'Sì. Orario, sede e modalità della riunione saranno pubblicati nella sezione <a href="info-gare.html#segreteria">Info per chi gareggia → Accrediti e segreteria gare</a>.'
+          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 17.30 presso la sede della Società Canottieri Pesaro, in Calata Caio Duilio 101. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer">apri la sede su Google Maps</a>.'
         }
       ]
     },
@@ -24,20 +24,20 @@
       title: 'Arrivo e accreditamento',
       items: [
         {
-          q: 'Dove si trova la segreteria gare?',
-          a: 'La segreteria gare sarà allestita presso la sede della Società Canottieri Pesaro, in Calata Caio Duilio 101. Consulta la sezione <a href="info-gare.html#segreteria">Accrediti e segreteria gare</a>.'
+          q: 'Dove si effettuano gli accrediti?',
+          a: 'Gli accrediti degli equipaggi si effettuano presso la Segreteria Gare. La posizione è indicata nel <a href="info-gare.html#programma">Programma delle attività</a> ed è disponibile anche su <a href="https://maps.app.goo.gl/quXGvciRXoJ5uhHT8" target="_blank" rel="noopener noreferrer">Google Maps</a>.'
         },
         {
-          q: 'Quali saranno gli orari della segreteria?',
-          a: 'Gli orari di apertura saranno pubblicati nella sezione <a href="info-gare.html#segreteria">Info per chi gareggia → Accrediti e segreteria gare</a>.'
+          q: 'Quando si effettuano gli accrediti?',
+          a: 'Gli accrediti degli equipaggi sono previsti venerdì 2 ottobre 2026 dalle ore 15.00 alle 17.00. Orario e posizione sono riportati nel <a href="info-gare.html#programma">Programma delle attività</a>.'
         },
         {
-          q: 'Dove si ritirano gli accrediti e il welcome kit?',
-          a: 'Gli accrediti e il welcome kit potranno essere ritirati presso la segreteria gare.'
+          q: 'Dove trovo tutte le informazioni su accrediti e meeting dei Capitani?',
+          a: 'Orari e sedi sono raccolti nel <a href="info-gare.html#programma">Programma delle attività</a>: gli accrediti si svolgono presso la Segreteria Gare, mentre il meeting dei Capitani si svolge presso la sede della Società Canottieri Pesaro.'
         },
         {
-          q: 'Quando saranno disponibili le imbarcazioni per le prove?',
-          a: 'La disponibilità delle imbarcazioni per le prove è prevista indicativamente per venerdì 2 ottobre 2026. Orari e modalità di prenotazione sono ancora in fase di definizione e saranno comunicati nella sezione <a href="info-gare.html#programma">Programma e documenti ufficiali</a>.'
+          q: 'Saranno disponibili imbarcazioni per le prove?',
+          a: 'No.'
         }
       ]
     },
@@ -138,11 +138,7 @@
       items: [
         {
           q: 'Come posso ricevere gli aggiornamenti dell’organizzazione?',
-          a: 'È possibile ricevere gli aggiornamenti iscrivendosi al <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">canale WhatsApp ufficiale dei Campionati</a>.'
-        },
-        {
-          q: 'Esiste un canale WhatsApp dei Campionati?',
-          a: 'Sì. <a href="https://whatsapp.com/channel/0029Vb8eNr47IUYM2sHaTx15" target="_blank" rel="noopener noreferrer">Iscriviti direttamente al canale WhatsApp ufficiale dei Campionati</a>.'
+          a: 'È possibile ricevere gli aggiornamenti in tempo reale iscrivendosi al <a href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer">gruppo WhatsApp dedicato</a>.'
         },
         {
           q: 'Come posso contattare l’organizzazione?',
