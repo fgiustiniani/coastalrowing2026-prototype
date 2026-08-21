@@ -4,6 +4,8 @@ import('./mobile-nav.js').catch(() => {});
   const nav = document.querySelector('.site-nav');
   if (!nav) return;
 
+  const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1';
+
   const isPageUrl = (value, pageName) => {
     try {
       const url = new URL(value, window.location.href);
@@ -21,6 +23,41 @@ import('./mobile-nav.js').catch(() => {});
     } catch {
       return false;
     }
+  };
+
+  const createWhatsAppGroupPromo = (compact = false) => {
+    const promo = document.createElement('div');
+    promo.className = `wa-group-promo${compact ? ' wa-group-promo--compact' : ''}`;
+
+    const copy = document.createElement('div');
+    copy.className = 'wa-group-promo__copy';
+
+    const label = document.createElement('strong');
+    label.textContent = 'Informazioni in tempo reale';
+
+    const link = document.createElement('a');
+    link.href = WHATSAPP_GROUP_URL;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Iscriviti al gruppo WhatsApp per ottenere info in tempo reale';
+
+    const qrLink = document.createElement('a');
+    qrLink.className = 'wa-group-promo__qr-link';
+    qrLink.href = WHATSAPP_GROUP_URL;
+    qrLink.target = '_blank';
+    qrLink.rel = 'noopener noreferrer';
+    qrLink.setAttribute('aria-label', 'Iscriviti al gruppo WhatsApp dei Campionati');
+
+    const qr = document.createElement('img');
+    qr.className = 'wa-group-promo__qr';
+    qr.src = 'assets/images/gruppo-wa.png';
+    qr.alt = 'QR code per iscriversi al gruppo WhatsApp dei Campionati';
+    qr.addEventListener('error', () => qrLink.remove());
+
+    copy.append(label, link);
+    qrLink.appendChild(qr);
+    promo.append(copy, qrLink);
+    return promo;
   };
 
   const currentUrl = window.location.href;
@@ -158,9 +195,35 @@ import('./mobile-nav.js').catch(() => {});
 
       routeLink.href = 'https://www.google.com/maps/dir/Stazione+di+Pesaro,+piazza+G.Falcone+P.Borsellino,+61121+Pesaro+PU/Calata+Caio+Duilio,+101,+61121+Pesaro+PU/@43.9148173,12.8943013,3297m/data=!3m2!1e3!4b1!4m14!4m13!1m5!1m1!1s0x132d1994225de05b:0x692c1144b78eaf35!2m2!1d12.9049832!2d43.9061687!1m5!1m1!1s0x132d192f0890c497:0x299aefba818e487c!2m2!1d12.9067438!2d43.9234356!3e2?entry=ttu&g_ep=EgoyMDI2MDcyOS4wIKXMDSoASAFQAw%3D%3D';
     }
+
+    const helpBrand = document.querySelector('.help-band--contacts .help-band__brand');
+    if (helpBrand && !helpBrand.querySelector('.wa-group-promo')) {
+      helpBrand.appendChild(createWhatsAppGroupPromo());
+    }
+  }
+
+  if (isPageUrl(currentUrl, 'contatti')) {
+    const organizationCard = Array.from(document.querySelectorAll('.contact-card')).find((card) =>
+      card.querySelector('.contact-card__eyebrow')?.textContent.trim().toLowerCase() === 'organizzazione'
+    );
+
+    if (organizationCard) {
+      organizationCard.querySelector('.contact-card__actions')?.remove();
+      const details = organizationCard.querySelector('.contact-card__details');
+      if (details && !organizationCard.querySelector('.wa-group-promo')) {
+        details.insertAdjacentElement('afterend', createWhatsAppGroupPromo(true));
+      }
+    }
+
+    document.querySelector('.contact-strip--channel')?.remove();
   }
 
   if (isHomeUrl(currentUrl)) {
+    const institutionalHeading = Array.from(document.querySelectorAll('.partner-section__heading h3')).find(
+      (heading) => heading.textContent.trim().toLowerCase() === 'partner e patrocini'
+    );
+    if (institutionalHeading) institutionalHeading.textContent = 'Partner istituzionali e Patrocini';
+
     const paths = document.querySelector('.paths');
     const updates = document.querySelector('.updates');
     if (paths && updates) paths.insertAdjacentElement('afterend', updates);
