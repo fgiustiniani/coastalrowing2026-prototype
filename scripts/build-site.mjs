@@ -113,9 +113,36 @@ function applyHomeContentFixes(fileName, source) {
 
   const regionLogo = '<a class="partner-logo" href="https://www.regione.marche.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/logo-regione-marche.svg" alt="Regione Marche"></a>';
   const volontarxLogo = '<a class="partner-logo" href="https://www.comune.pesaro.pu.it/cultura/volontarx/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/VolontarX.svg" alt="VolontarX"></a>';
+  const oldSponsorSection = `          <article class="partner-section">
+            <div class="partner-section__heading"><h3>Sponsor Evento</h3></div>
+            <div class="partner-logos">
+              <a class="partner-logo" href="https://bagnitino.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/Ristorantino.svg" alt="Ristorantino"></a>
+              <a class="partner-logo" href="https://bagnitino.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/LOGO-BAGNI-TINO.jpeg" alt="Bagni Tino"></a>
+              <div class="logo-placeholder">Sezione in aggiornamento</div>
+            </div>
+          </article>`;
+  const sponsorAndTechnicalPartners = `          <article class="partner-section" hidden aria-hidden="true">
+            <div class="partner-section__heading"><h3>Sponsor</h3></div>
+            <div class="partner-logos"></div>
+          </article>
 
-  if (source.includes('assets/logos/VolontarX.svg')) return source;
-  return source.replace(regionLogo, `${regionLogo}\n              ${volontarxLogo}`);
+          <article class="partner-section">
+            <div class="partner-section__heading"><h3>Partner tecnici</h3></div>
+            <div class="partner-logos">
+              <a class="partner-logo" href="https://bagnitino.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/partners/Ristorantino.svg" alt="Ristorantino"></a>
+              <a class="partner-logo" href="https://bagnitino.it/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/partners/LOGO-BAGNI-TINO.jpeg" alt="Bagni Tino"></a>
+              <div class="partner-logo"><img src="assets/logos/partners/Music store.svg" alt="Music Store"></div>
+            </div>
+          </article>`;
+
+  let output = source;
+  if (!output.includes('assets/logos/VolontarX.svg')) {
+    output = output.replace(regionLogo, `${regionLogo}\n              ${volontarxLogo}`);
+  }
+
+  return output
+    .replace('<div class="partner-section__heading"><h3>Partner e patrocini</h3></div>', '<div class="partner-section__heading"><h3>Partner istituzionali e Patrocini</h3></div>')
+    .replace(oldSponsorSection, sponsorAndTechnicalPartners);
 }
 
 function applyPageContentFixes(fileName, source) {
@@ -186,10 +213,11 @@ function applyPageContentFixes(fileName, source) {
     .replace('<h2 id="programma-title">Programma e documenti ufficiali</h2>', '<h2 id="programma-title">Programma delle attività</h2>')
     .replace(/            <ul class="event-program">[\s\S]*?            <\/ul>/, activityProgram)
     .replaceAll('assets/maps/mappa-campo-gara.svg', 'assets/maps/mappa-campo-gara.svg?v=2')
+    .replaceAll('assets/maps/mappa-logistica-evento.svg?v=2', 'assets/maps/mappa-logistica-evento.svg?v=3')
     .replace('            <span>Schema indicativo · configurazione in fase di definizione</span>\n            <a class="race-map__logistics-link" href="#logistica">', '            <a class="race-map__logistics-link" href="#logistica">')
     .replace('          <div class="race-map__actions">\n            <a class="race-map__logistics-link" href="#logistica">', '          <div class="race-map__actions race-map__actions--end">\n            <a class="race-map__logistics-link" href="#logistica">')
-    .replace('            <span>Schema indicativo · disposizione delle aree soggetta a variazioni</span>\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"', '            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"')
-    .replace('          <div class="race-map__actions">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"', '          <div class="race-map__actions race-map__actions--end">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2"')
+    .replace('            <span>Schema indicativo · disposizione delle aree soggetta a variazioni</span>\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3"', '            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3"')
+    .replace('          <div class="race-map__actions">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3"', '          <div class="race-map__actions race-map__actions--end">\n            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3"')
     .replace(/      <section class="help-band help-band--contacts"[\s\S]*?      <\/section>/, helpBand);
 }
 
