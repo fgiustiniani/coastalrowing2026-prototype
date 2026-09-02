@@ -97,6 +97,7 @@
         <h2 id="news-detail-title"></h2>
         <p class="news-detail-dialog__summary" id="news-detail-summary"></p>
         <div class="news-detail-dialog__body" id="news-detail-body"></div>
+        <a class="news-detail-dialog__link" id="news-detail-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Apri link →</a>
       </article>
     </dialog>
 
@@ -122,6 +123,8 @@
           <label><span>Data *</span><input type="date" name="date" required></label>
           <label><span>Sintesi *</span><textarea name="summary" rows="3" maxlength="600" required></textarea></label>
           <label><span>Testo completo</span><textarea name="body" rows="7" maxlength="5000"></textarea></label>
+          <label><span>Link opzionale</span><input type="text" name="linkUrl" maxlength="1000" placeholder="https://… oppure assets/documents/…"></label>
+          <label><span>Testo del link</span><input type="text" name="linkLabel" maxlength="120" placeholder="Es. Apri il programma gare provvisorio"></label>
           <div class="news-admin-form__actions">
             <button class="button button--dark" type="submit" data-news-submit>Pubblica news</button>
             <button class="button news-admin-form__cancel" type="button" data-cancel-news-edit hidden>Annulla modifica</button>
