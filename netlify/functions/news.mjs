@@ -98,11 +98,21 @@ function sortNews(items) {
   });
 }
 
+function normalizeLinkUrl(value) {
+  const url = clean(value, 1000);
+  if (!url) return '';
+  if (/^https:\/\//i.test(url)) return url;
+  if (/^(?:\.\/)?assets\//i.test(url)) return url.replace(/^\.\//, '');
+  return null;
+}
+
 function validateNewsPayload(payload) {
   const title = clean(payload.title, 160);
   const date = clean(payload.date, 10);
   const summary = clean(payload.summary, 600);
   const body = clean(payload.body, 5000);
+  const linkUrl = normalizeLinkUrl(payload.linkUrl);
+  const linkLabel = clean(payload.linkLabel, 120);
 
   if (!title || !date || !summary) {
     return { error: 'Compila titolo, data e sintesi.' };
@@ -112,7 +122,18 @@ function validateNewsPayload(payload) {
     return { error: 'Inserisci una data valida.' };
   }
 
-  return { title, date, summary, body };
+  if (linkUrl === null) {
+    return { error: 'Il link deve essere un indirizzo https:// oppure un percorso interno assets/…' };
+  }
+
+  return {
+    title,
+    date,
+    summary,
+    body,
+    linkUrl,
+    linkLabel: linkUrl ? (linkLabel || 'Apri link →') : ''
+  };
 }
 
 export default async (request) => {
