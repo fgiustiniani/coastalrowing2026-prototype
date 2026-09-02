@@ -191,14 +191,14 @@ function applyPageContentFixes(fileName, source) {
                 <strong>Sabato 03/10/2026</strong>
                 <ul class="event-program__details">
                   <li><strong>dalle 8.00:</strong> eventuali fasi eliminatorie su percorso da circa mt. 3000</li>
-                  <li><strong>a seguire:</strong> finali MASTER su percorso da circa mt 3000 e, a seguire, finali UNDER 19, UNDER 23, SENIOR su percorso da circa mt. 6000</li>
+                  <li><strong>a seguire:</strong> finali MASTER su percorso da circa mt 3000 e, finali PR3 II su percorso da circa mt 1.700, finali UNDER 19, UNDER 23 su percorso da circa mt. 6000</li>
                   <li><strong>ore 17.30:</strong> premiazioni</li>
                 </ul>
               </li>
               <li>
                 <strong>Domenica 04/10/2026</strong>
                 <ul class="event-program__details">
-                  <li><strong>dalle 8.00:</strong> prosieguo delle finali ed eventuali recuperi delle gare del giorno precedente</li>
+                  <li><strong>dalle 8.00:</strong> prosieguo delle finali MASTER, finali SENIOR ed eventuali recuperi delle gare del giorno precedente</li>
                   <li><strong>a seguire:</strong> premiazioni (tra le 13.00 e le 16.00 in funzione della necessità di eventuali recuperi)</li>
                 </ul>
               </li>
