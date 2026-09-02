@@ -49,6 +49,57 @@
     return card;
   }
 
+  function normalizeInlineLinkHref(value) {
+    const href = String(value || '').trim();
+    if (/^https:\/\//i.test(href)) return href;
+    if (/^(?:\.\/)?assets\//i.test(href)) return href.replace(/^\.\//, '');
+    return '';
+  }
+
+  function renderNewsBody(container, value) {
+    const source = String(value || '');
+    container.replaceChildren();
+    if (!source) return;
+
+    const linkPattern = /\[([^\]\n]+)\]\((https:\/\/[^\s)]+|(?:\.\/)?assets\/[^\s)]+)\)/gi;
+    const lines = source.split('\n');
+
+    lines.forEach((line, lineIndex) => {
+      let cursor = 0;
+      let match;
+
+      linkPattern.lastIndex = 0;
+      while ((match = linkPattern.exec(line)) !== null) {
+        if (match.index > cursor) {
+          container.appendChild(document.createTextNode(line.slice(cursor, match.index)));
+        }
+
+        const href = normalizeInlineLinkHref(match[2]);
+        if (href) {
+          const anchor = document.createElement('a');
+          anchor.className = 'news-detail-dialog__inline-link';
+          anchor.href = href;
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+          anchor.textContent = match[1];
+          container.appendChild(anchor);
+        } else {
+          container.appendChild(document.createTextNode(match[0]));
+        }
+
+        cursor = match.index + match[0].length;
+      }
+
+      if (cursor < line.length) {
+        container.appendChild(document.createTextNode(line.slice(cursor)));
+      }
+
+      if (lineIndex < lines.length - 1) {
+        container.appendChild(document.createElement('br'));
+      }
+    });
+  }
+
   function openDetail(item) {
     if (!detailDialog) return;
 
@@ -56,6 +107,7 @@
     const title = document.getElementById('news-detail-title');
     const summary = document.getElementById('news-detail-summary');
     const body = document.getElementById('news-detail-body');
+    const detailLink = document.getElementById('news-detail-link');
 
     if (date) {
       date.dateTime = item.date || '';
@@ -64,8 +116,14 @@
     if (title) title.textContent = item.title || '';
     if (summary) summary.textContent = item.summary || '';
     if (body) {
-      body.textContent = item.body || '';
+      renderNewsBody(body, item.body || '');
       body.hidden = !item.body;
+    }
+    if (detailLink) {
+      const href = item.linkUrl || '';
+      detailLink.href = href || '#';
+      detailLink.textContent = item.linkLabel || 'Apri link →';
+      detailLink.hidden = !href;
     }
 
     detailDialog.showModal();
@@ -120,12 +178,16 @@
     const titleInput = editorForm.querySelector('input[name="title"]');
     const summaryInput = editorForm.querySelector('textarea[name="summary"]');
     const bodyInput = editorForm.querySelector('textarea[name="body"]');
+    const linkUrlInput = editorForm.querySelector('input[name="linkUrl"]');
+    const linkLabelInput = editorForm.querySelector('input[name="linkLabel"]');
 
     if (idInput) idInput.value = item.id || '';
     if (titleInput) titleInput.value = item.title || '';
     if (dateInput) dateInput.value = item.date || '';
     if (summaryInput) summaryInput.value = item.summary || '';
     if (bodyInput) bodyInput.value = item.body || '';
+    if (linkUrlInput) linkUrlInput.value = item.linkUrl || '';
+    if (linkLabelInput) linkLabelInput.value = item.linkLabel || '';
     if (submitButton) submitButton.textContent = 'Salva modifiche';
     cancelEditButton?.removeAttribute('hidden');
     if (editorStatus) editorStatus.textContent = `Stai modificando “${item.title || 'News'}”.`;
@@ -323,7 +385,9 @@
       title: String(formData.get('title') || '').trim(),
       date: String(formData.get('date') || '').trim(),
       summary: String(formData.get('summary') || '').trim(),
-      body: String(formData.get('body') || '').trim()
+      body: String(formData.get('body') || '').trim(),
+      linkUrl: String(formData.get('linkUrl') || '').trim(),
+      linkLabel: String(formData.get('linkLabel') || '').trim()
     };
 
     const idleText = id ? 'Salva modifiche' : 'Pubblica news';

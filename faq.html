@@ -97,6 +97,7 @@
         <h2 id="news-detail-title"></h2>
         <p class="news-detail-dialog__summary" id="news-detail-summary"></p>
         <div class="news-detail-dialog__body" id="news-detail-body"></div>
+        <a class="news-detail-dialog__link" id="news-detail-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Apri link →</a>
       </article>
     </dialog>
 
@@ -121,7 +122,13 @@
           <label><span>Titolo *</span><input type="text" name="title" maxlength="160" required></label>
           <label><span>Data *</span><input type="date" name="date" required></label>
           <label><span>Sintesi *</span><textarea name="summary" rows="3" maxlength="600" required></textarea></label>
-          <label><span>Testo completo</span><textarea name="body" rows="7" maxlength="5000"></textarea></label>
+          <label>
+            <span>Testo completo</span>
+            <textarea name="body" rows="9" maxlength="5000" placeholder="Puoi inserire più link nel testo, ad esempio: [Programma gare provvisorio](assets/documents/Programma_gare_provvisorio_Pesaro_2026.pdf)"></textarea>
+          </label>
+          <p class="news-admin-help news-admin-help--links"><strong>Link nel testo:</strong> usa il formato <code>[testo del link](indirizzo)</code>. Puoi inserirne quanti vuoi, anche nello stesso paragrafo. Sono accettati link <code>https://…</code> e percorsi interni <code>assets/…</code>.</p>
+          <input type="hidden" name="linkUrl">
+          <input type="hidden" name="linkLabel">
           <div class="news-admin-form__actions">
             <button class="button button--dark" type="submit" data-news-submit>Pubblica news</button>
             <button class="button news-admin-form__cancel" type="button" data-cancel-news-edit hidden>Annulla modifica</button>
