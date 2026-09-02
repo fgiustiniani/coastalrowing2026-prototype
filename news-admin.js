@@ -49,6 +49,57 @@
     return card;
   }
 
+  function normalizeInlineLinkHref(value) {
+    const href = String(value || '').trim();
+    if (/^https:\/\//i.test(href)) return href;
+    if (/^(?:\.\/)?assets\//i.test(href)) return href.replace(/^\.\//, '');
+    return '';
+  }
+
+  function renderNewsBody(container, value) {
+    const source = String(value || '');
+    container.replaceChildren();
+    if (!source) return;
+
+    const linkPattern = /\[([^\]\n]+)\]\((https:\/\/[^\s)]+|(?:\.\/)?assets\/[^\s)]+)\)/gi;
+    const lines = source.split('\n');
+
+    lines.forEach((line, lineIndex) => {
+      let cursor = 0;
+      let match;
+
+      linkPattern.lastIndex = 0;
+      while ((match = linkPattern.exec(line)) !== null) {
+        if (match.index > cursor) {
+          container.appendChild(document.createTextNode(line.slice(cursor, match.index)));
+        }
+
+        const href = normalizeInlineLinkHref(match[2]);
+        if (href) {
+          const anchor = document.createElement('a');
+          anchor.className = 'news-detail-dialog__inline-link';
+          anchor.href = href;
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+          anchor.textContent = match[1];
+          container.appendChild(anchor);
+        } else {
+          container.appendChild(document.createTextNode(match[0]));
+        }
+
+        cursor = match.index + match[0].length;
+      }
+
+      if (cursor < line.length) {
+        container.appendChild(document.createTextNode(line.slice(cursor)));
+      }
+
+      if (lineIndex < lines.length - 1) {
+        container.appendChild(document.createElement('br'));
+      }
+    });
+  }
+
   function openDetail(item) {
     if (!detailDialog) return;
 
@@ -65,7 +116,7 @@
     if (title) title.textContent = item.title || '';
     if (summary) summary.textContent = item.summary || '';
     if (body) {
-      body.textContent = item.body || '';
+      renderNewsBody(body, item.body || '');
       body.hidden = !item.body;
     }
     if (detailLink) {
