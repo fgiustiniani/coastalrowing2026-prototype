@@ -26,6 +26,11 @@
 .fic-link__actions { display: flex; flex-direction: column; gap: 6px; margin-top: 1px; }
 .fic-link__actions a { color: var(--navy-820); font-size: .86rem; font-weight: 800; letter-spacing: normal; text-transform: none; }
 .fic-link__actions a:hover,.fic-link__actions a:focus-visible { text-decoration: underline; }
+.fic-link__preview { display: grid; gap: 6px; margin-top: 6px; padding-top: 12px; border-top: 1px solid rgba(16,34,53,.1); }
+.fic-link__preview-label { color: var(--sand-500); font-size: .7rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.fic-link__preview a { color: var(--navy-820); font-size: .9rem; font-weight: 850; text-decoration: none; }
+.fic-link__preview a:hover,.fic-link__preview a:focus-visible { text-decoration: underline; }
+.fic-link__preview-note { max-width: 560px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
 .quick-links a { position: relative; display: grid; grid-template-columns: auto 38px minmax(0, 1fr); align-items: center; gap: 12px; }
 .quick-links .quick-links__number { color: var(--sand-500); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.1em; }
 .quick-links .quick-links__icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; color: var(--navy-820); background: rgba(31, 99, 135, 0.09); font-size: initial; letter-spacing: normal; }
