@@ -56,6 +56,7 @@
     const title = document.getElementById('news-detail-title');
     const summary = document.getElementById('news-detail-summary');
     const body = document.getElementById('news-detail-body');
+    const detailLink = document.getElementById('news-detail-link');
 
     if (date) {
       date.dateTime = item.date || '';
@@ -66,6 +67,12 @@
     if (body) {
       body.textContent = item.body || '';
       body.hidden = !item.body;
+    }
+    if (detailLink) {
+      const href = item.linkUrl || '';
+      detailLink.href = href || '#';
+      detailLink.textContent = item.linkLabel || 'Apri link →';
+      detailLink.hidden = !href;
     }
 
     detailDialog.showModal();
@@ -120,12 +127,16 @@
     const titleInput = editorForm.querySelector('input[name="title"]');
     const summaryInput = editorForm.querySelector('textarea[name="summary"]');
     const bodyInput = editorForm.querySelector('textarea[name="body"]');
+    const linkUrlInput = editorForm.querySelector('input[name="linkUrl"]');
+    const linkLabelInput = editorForm.querySelector('input[name="linkLabel"]');
 
     if (idInput) idInput.value = item.id || '';
     if (titleInput) titleInput.value = item.title || '';
     if (dateInput) dateInput.value = item.date || '';
     if (summaryInput) summaryInput.value = item.summary || '';
     if (bodyInput) bodyInput.value = item.body || '';
+    if (linkUrlInput) linkUrlInput.value = item.linkUrl || '';
+    if (linkLabelInput) linkLabelInput.value = item.linkLabel || '';
     if (submitButton) submitButton.textContent = 'Salva modifiche';
     cancelEditButton?.removeAttribute('hidden');
     if (editorStatus) editorStatus.textContent = `Stai modificando “${item.title || 'News'}”.`;
@@ -323,7 +334,9 @@
       title: String(formData.get('title') || '').trim(),
       date: String(formData.get('date') || '').trim(),
       summary: String(formData.get('summary') || '').trim(),
-      body: String(formData.get('body') || '').trim()
+      body: String(formData.get('body') || '').trim(),
+      linkUrl: String(formData.get('linkUrl') || '').trim(),
+      linkLabel: String(formData.get('linkLabel') || '').trim()
     };
 
     const idleText = id ? 'Salva modifiche' : 'Pubblica news';
