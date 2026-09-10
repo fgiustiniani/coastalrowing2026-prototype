@@ -2,6 +2,9 @@
   const container = document.querySelector('[data-admin-bookings]');
   if (!container) return;
 
+  const status = document.querySelector('[data-admin-status]');
+  let pendingResendArticle = null;
+
   const style = document.createElement('style');
   style.textContent = `
     .admin-booking h3 {
@@ -104,6 +107,18 @@
       cursor: wait;
     }
 
+    .admin-email-feedback {
+      display: block;
+      margin-top: 5px;
+      font-size: .82rem;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+
+    .admin-email-feedback.is-pending { color: #64757b; }
+    .admin-email-feedback.is-ok { color: #245d38; }
+    .admin-email-feedback.is-error { color: #b42318; }
+
     @media (max-width: 640px) {
       .admin-booking__actions {
         width: auto !important;
@@ -121,6 +136,32 @@
       <path d="M19 6l-1 14H6L5 6" />
       <path d="M10 10v6M14 10v6" />
     </svg>`;
+
+  function patchAdminSections() {
+    const secondary = document.querySelector('.admin-secondary-sections');
+    if (!secondary) return;
+
+    const sections = Array.from(secondary.querySelectorAll(':scope > details'));
+    const slotSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Slot orari');
+    const settingsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Impostazioni prenotazioni');
+    const boatsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Anagrafica barche');
+
+    if (slotSection) slotSection.hidden = true;
+    if (settingsSection && boatsSection && settingsSection.nextElementSibling !== boatsSection) {
+      secondary.insertBefore(settingsSection, boatsSection);
+    }
+  }
+
+  function feedbackFor(article) {
+    return article?.querySelector('.admin-email-feedback') || null;
+  }
+
+  function setEmailFeedback(article, message, kind = '') {
+    const feedback = feedbackFor(article);
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.className = `admin-email-feedback${kind ? ` is-${kind}` : ''}`;
+  }
 
   function patchBooking(article) {
     if (!article || article.dataset.compactActions === 'true') return;
@@ -168,16 +209,49 @@
       resend.textContent = 'Reinvia email';
       resend.setAttribute('aria-label', 'Reinvia email di riepilogo');
       wrapper.appendChild(resend);
+
+      const feedback = document.createElement('span');
+      feedback.className = 'admin-email-feedback';
+      feedback.setAttribute('aria-live', 'polite');
+      emailParagraph.appendChild(feedback);
+
+      resend.addEventListener('click', () => {
+        pendingResendArticle = article;
+        setEmailFeedback(article, 'Invio in corso…', 'pending');
+      });
     }
 
     article.dataset.compactActions = 'true';
   }
 
   function patchAll() {
+    patchAdminSections();
     container.querySelectorAll('.admin-booking').forEach(patchBooking);
   }
 
   const observer = new MutationObserver(() => patchAll());
   observer.observe(container, { childList: true, subtree: true });
+
+  if (status) {
+    const statusObserver = new MutationObserver(() => {
+      if (!pendingResendArticle || !document.body.contains(pendingResendArticle)) {
+        pendingResendArticle = null;
+        return;
+      }
+
+      const message = status.textContent.trim();
+      if (!message) return;
+
+      if (status.classList.contains('is-ok')) {
+        setEmailFeedback(pendingResendArticle, 'Email reinviata correttamente.', 'ok');
+        pendingResendArticle = null;
+      } else if (status.classList.contains('is-error')) {
+        setEmailFeedback(pendingResendArticle, `Invio non riuscito: ${message}`, 'error');
+        pendingResendArticle = null;
+      }
+    });
+    statusObserver.observe(status, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
+
   patchAll();
 })();
