@@ -32,7 +32,6 @@
 
   let availability = [];
   let selectedSlot = '';
-  let startMode = 'slot';
   let token = '';
   let desiredItems = new Map();
 
@@ -77,8 +76,12 @@
     });
   }
 
-  function setSelectedSlot(code, { scroll = false } = {}) {
-    snapshotQuantities();
+  function setSelectedSlot(code, { scroll = false, preserveItems = false } = {}) {
+    if (selectedSlot && selectedSlot !== code && !preserveItems) {
+      desiredItems = new Map();
+    } else {
+      snapshotQuantities();
+    }
     selectedSlot = code;
     if (slotSelect) slotSelect.value = code;
     renderInventory();
@@ -137,7 +140,6 @@
   }
 
   function setStartMode(next) {
-    startMode = next;
     modeSwitch?.querySelectorAll('[data-start-mode]').forEach((button) => button.classList.toggle('is-active', button.dataset.startMode === next));
     if (slotFlow) slotFlow.hidden = next !== 'slot';
     if (boatFlow) boatFlow.hidden = next !== 'boat';
@@ -197,6 +199,7 @@
         successLink.hidden = true;
       }
     }
+    success.classList.toggle('is-warning', Boolean(payload.warning));
     success.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -263,11 +266,18 @@
       }
     } catch (error) {
       setStatus(error.message, 'error');
-      if (error.code === 'INSUFFICIENT_AVAILABILITY' && mode === 'edit') {
+      if (error.code === 'INSUFFICIENT_AVAILABILITY') {
         try {
-          const fresh = await requestJson(api, { method: 'POST', body: JSON.stringify({ action: 'get', token }) });
-          availability = fresh.availability || availability;
-          fillBooking(fresh.booking);
+          if (mode === 'edit') {
+            const fresh = await requestJson(api, { method: 'POST', body: JSON.stringify({ action: 'get', token }) });
+            availability = fresh.availability || availability;
+            fillBooking(fresh.booking);
+          } else {
+            const fresh = await requestJson(availabilityApi, { method: 'GET' });
+            availability = fresh.availability || availability;
+            renderInventory();
+            renderBoatFirstSlots();
+          }
         } catch {}
       }
     } finally {
