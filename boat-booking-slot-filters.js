@@ -45,7 +45,12 @@
   }
 
   function slotMatchesFilters(slotCode, pairs) {
+    // Il backend restituisce disponibilità solo per gli slot attivi. In assenza
+    // di filtri, quindi, la presenza di almeno una riga identifica uno slot aperto.
+    const slotIsActive = availability.some((row) => row.slotCode === slotCode);
+    if (!slotIsActive) return false;
     if (!pairs.length) return true;
+
     // Il filtro serve a trovare slot utili: basta che almeno una delle coppie
     // selezionate abbia disponibilità nello slot.
     return pairs.some((pair) => remainingFor(slotCode, pair.builder, pair.boatType) > 0);
@@ -74,7 +79,7 @@
     slotOptions.forEach((option) => {
       const available = slotMatchesFilters(option.value, pairs);
       option.disabled = !available;
-      option.textContent = `${option.dataset.baseLabel}${pairs.length && !available ? ' — non disponibile' : ''}`;
+      option.textContent = `${option.dataset.baseLabel}${!available ? ' — non disponibile' : ''}`;
       if (option.value === slotSelect.value && !available) selectedStillValid = false;
     });
 
