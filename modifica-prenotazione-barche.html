@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="boat-booking.css">
   <link rel="stylesheet" href="boat-booking-hero.css">
-  <link rel="stylesheet" href="boat-booking-deadline-delete.css">
+  <link rel="stylesheet" href="boat-booking-deadline-delete.css?v=2">
 </head>
 <body>
   <div class="site-frame">
@@ -76,7 +76,7 @@
             </div>
             <div class="booking-honeypot" aria-hidden="true"><label for="website">Sito web</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
             <div class="booking-privacy"><input id="privacyAccepted" name="privacyAccepted" type="checkbox" checked required><label for="privacyAccepted">Ho letto l’<a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">informativa privacy</a> relativa alla gestione della prenotazione.</label></div>
-            <div class="booking-actions"><button class="button button--primary" type="submit">Salva modifiche</button><button class="button booking-delete-button" type="button" data-booking-delete disabled>Elimina prenotazione</button><span class="booking-status" data-booking-status aria-live="polite"></span></div>
+            <div class="booking-actions"><button class="button button--primary" type="submit">Salva modifiche</button><button class="button booking-delete-button" type="button" data-booking-delete>Elimina prenotazione</button><span class="booking-status" data-booking-status aria-live="polite"></span></div>
           </section>
         </form>
 
@@ -98,6 +98,6 @@
   <script src="boat-booking-email-confirm.js" defer></script>
   <script src="boat-booking.js" defer></script>
   <script src="boat-booking-edit-state.js" defer></script>
-  <script src="boat-booking-deadline-delete.js" defer></script>
+  <script src="boat-booking-deadline-delete.js?v=2" defer></script>
 </body>
 </html>
