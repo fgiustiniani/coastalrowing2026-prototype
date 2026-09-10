@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="home-overrides.css">
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="boat-booking.css">
-  <link rel="stylesheet" href="boat-booking-boat-first.css">
+  <link rel="stylesheet" href="boat-booking-slot-filters.css">
 </head>
 <body>
   <div class="site-frame">
@@ -54,59 +54,45 @@
       <div data-booking-shell hidden>
         <form class="booking-shell" data-booking-form data-mode="create" novalidate>
           <section class="booking-card">
-            <h2><span class="booking-section-number">1</span>Da dove vuoi partire?</h2>
-            <p class="booking-card__intro">Puoi scegliere prima l’orario oppure partire dal cantiere e dalle tipologie di barca che vuoi provare.</p>
-            <div class="booking-mode-switch" data-mode-switch>
-              <button class="booking-mode-button is-active" type="button" data-start-mode="slot"><strong>Parto dall’orario</strong><span>Scelgo uno slot e vedo tutte le barche ancora disponibili.</span></button>
-              <button class="booking-mode-button" type="button" data-start-mode="boat"><strong>Parto dalla barca</strong><span>Scelgo il cantiere, una o più tipologie e poi lo slot.</span></button>
+            <h2><span class="booking-section-number">1</span>Scegli lo slot orario</h2>
+            <p class="booking-card__intro">Puoi scegliere direttamente l’orario oppure usare i filtri per vedere solo gli slot in cui sono disponibili le barche che ti interessano.</p>
+
+            <div class="booking-slot-filter" aria-labelledby="boat-filter-title">
+              <div class="booking-slot-filter__head">
+                <div>
+                  <strong id="boat-filter-title">Filtra per barca <span style="display:inline; font-weight:400">(opzionale)</span></strong>
+                  <span>Seleziona una o più coppie cantiere–tipo. Con più filtri, restano selezionabili gli slot in cui tutte le coppie scelte sono disponibili.</span>
+                </div>
+                <button class="booking-slot-filter__clear" type="button" data-clear-boat-filters hidden>Rimuovi filtri</button>
+              </div>
+
+              <div class="booking-slot-filter__options">
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C1x"><span>LOVA · C1x</span></label>
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C2x"><span>LOVA · C2x</span></label>
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C4x+"><span>LOVA · C4x+</span></label>
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C1x"><span>Swift · C1x</span></label>
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C2x"><span>Swift · C2x</span></label>
+                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C4x+"><span>Swift · C4x+</span></label>
+              </div>
+              <p class="booking-slot-filter__summary" data-boat-filter-summary aria-live="polite"></p>
             </div>
 
             <div data-slot-flow>
-              <div class="booking-field booking-field--full" style="margin-top:18px">
+              <div class="booking-field booking-field--full">
                 <label for="slotCode">Slot orario</label>
                 <select id="slotCode" name="slotCode" required>
                   <option value="">Seleziona uno slot</option>
-                  <option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option>
-                  <option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option>
+                  <option value="1300">13:00–13:20</option>
+                  <option value="1330">13:30–13:50</option>
+                  <option value="1400">14:00–14:20</option>
+                  <option value="1430">14:30–14:50</option>
+                  <option value="1500">15:00–15:20</option>
+                  <option value="1530">15:30–15:50</option>
+                  <option value="1600">16:00–16:20</option>
+                  <option value="1630">16:30–16:50</option>
                 </select>
+                <span class="booking-help">Gli slot non compatibili con i filtri selezionati vengono disabilitati automaticamente.</span>
               </div>
-            </div>
-
-            <div data-boat-flow hidden>
-              <div class="boat-first-picker--guided">
-                <div class="booking-field">
-                  <label for="builderFirst">Cantiere</label>
-                  <select id="builderFirst" data-builder-first>
-                    <option value="">Scegli il cantiere</option>
-                    <option>LOVA</option>
-                    <option>Swift</option>
-                  </select>
-                </div>
-
-                <fieldset class="boat-type-selector">
-                  <legend>Tipologie di barca</legend>
-                  <div class="boat-type-options">
-                    <label class="boat-type-choice"><input type="checkbox" value="C1x" data-boat-type-choice><span>C1x</span></label>
-                    <label class="boat-type-choice"><input type="checkbox" value="C2x" data-boat-type-choice><span>C2x</span></label>
-                    <label class="boat-type-choice"><input type="checkbox" value="C4x+" data-boat-type-choice><span>C4x+</span></label>
-                  </div>
-                  <span class="booking-help">Puoi selezionare una o più tipologie.</span>
-                </fieldset>
-
-                <div class="booking-field boat-first-slot">
-                  <label for="boatSlotFirst">Slot orario</label>
-                  <select id="boatSlotFirst" data-boat-slot-select disabled>
-                    <option value="">Seleziona uno slot</option>
-                    <option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option>
-                    <option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option>
-                  </select>
-                  <span class="booking-help">Il menu si attiva dopo aver scelto il cantiere e almeno una tipologia.</span>
-                </div>
-              </div>
-
-              <!-- Compatibilità con la logica condivisa del form. -->
-              <select data-type-first hidden aria-hidden="true" tabindex="-1"><option value=""></option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
-              <div data-slot-options hidden></div>
             </div>
           </section>
 
@@ -148,8 +134,7 @@
   <script src="nav-submenu.js" defer></script>
   <script src="boat-booking-email-confirm.js" defer></script>
   <script src="boat-booking.js" defer></script>
-  <script src="boat-booking-availability-refresh.js" defer></script>
-  <script src="boat-booking-builder-filter.js" defer></script>
+  <script src="boat-booking-slot-filters.js" defer></script>
   <script src="boat-booking-view.js" defer></script>
 </body>
 </html>
