@@ -8,6 +8,7 @@ import {
 } from './boat-bookings-common.mjs';
 import { publicBookingV2 } from './boat-bookings-v2.mjs';
 
+// Le variabili Netlify vengono risolte nel contesto del deploy corrente.
 function env(name) {
   return globalThis.Netlify?.env?.get?.(name) || '';
 }
