@@ -103,6 +103,7 @@
     const selectedKeys = new Set(pairs.map((pair) => pair.key));
     const slotCode = slotSelect.value;
     let visibleCount = 0;
+    let availableVisibleCount = 0;
 
     inventoryGrid.querySelectorAll('.inventory-card').forEach((card) => {
       const select = card.querySelector('[data-qty]');
@@ -130,15 +131,20 @@
         }
       }
 
-      const visible = !pairs.length || (selectedKeys.has(pairKey) && remaining > 0);
+      // Se il filtro è attivo mostriamo tutte le coppie selezionate, anche quelle
+      // esaurite nello slot scelto: restano visibili in grigio con badge COMPLETO.
+      const visible = !pairs.length || selectedKeys.has(pairKey);
       card.hidden = !visible;
-      if (visible) visibleCount += 1;
+      if (visible) {
+        visibleCount += 1;
+        if (remaining > 0) availableVisibleCount += 1;
+      }
     });
 
     resetHiddenQuantities();
 
     if (emptyMessage) {
-      const showEmpty = Boolean(slotCode && pairs.length && visibleCount === 0);
+      const showEmpty = Boolean(slotCode && pairs.length && visibleCount > 0 && availableVisibleCount === 0);
       emptyMessage.hidden = !showEmpty;
       emptyMessage.textContent = showEmpty
         ? 'Nessuna delle barche filtrate è disponibile in questo slot. Scegli un altro orario o modifica il filtro.'
