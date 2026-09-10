@@ -218,6 +218,47 @@ async function updateBooking(payload, request) {
   });
 }
 
+async function deleteBooking(payload, request) {
+  const current = await getBookingByTokenV2(payload.token);
+  if (!current) {
+    throw new ApiError('Il link di modifica non è valido o la prenotazione non è più attiva.', 404, 'BOOKING_NOT_FOUND');
+  }
+
+  const settings = await getSettings();
+  if (!settings.bookingOpen) {
+    throw new ApiError(
+      'Il termine per modifiche e cancellazioni online è scaduto. Per variazioni contatta l’organizzazione.',
+      409,
+      'BOOKING_CLOSED'
+    );
+  }
+
+  await rpc('delete_boat_test_booking', { p_booking_id: current.booking.id });
+
+  let emailSent = false;
+  let warning = '';
+
+  try {
+    await sendBookingEmails({
+      record: current,
+      rawToken: null,
+      requestUrl: request.url,
+      kind: 'deleted'
+    });
+    emailSent = true;
+  } catch (error) {
+    console.error('Prenotazione eliminata, errore invio email:', error);
+    warning = 'La prenotazione è stata eliminata, ma non è stato possibile inviare l’email di annullamento.';
+  }
+
+  return json({
+    ok: true,
+    bookingCode: current.booking.booking_code,
+    emailSent,
+    warning: warning || undefined
+  });
+}
+
 export default async (request) => {
   if (request.method !== 'POST') return json({ error: 'Metodo non consentito.' }, 405);
   if (!isSameOrigin(request)) return json({ error: 'Origine non consentita.' }, 403);
@@ -230,6 +271,7 @@ export default async (request) => {
     if (action === 'get') return await loadBooking(payload);
     if (action === 'lookup') return await lookupBooking(payload, request);
     if (action === 'update') return await updateBooking(payload, request);
+    if (action === 'delete') return await deleteBooking(payload, request);
 
     throw new ApiError('Operazione non valida.', 400, 'INVALID_ACTION');
   } catch (error) {
