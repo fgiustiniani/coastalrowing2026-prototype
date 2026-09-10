@@ -7,6 +7,7 @@
   const filterInputs = Array.from(form.querySelectorAll('[data-boat-filter]'));
   const clearButton = form.querySelector('[data-clear-boat-filters]');
   const filterSummary = form.querySelector('[data-boat-filter-summary]');
+  const filterMenu = form.querySelector('[data-boat-filter-menu]');
   const emptyMessage = form.querySelector('[data-boat-filter-empty]');
   if (!slotSelect || !inventoryGrid || !filterInputs.length) return;
 
@@ -45,22 +46,24 @@
 
   function slotMatchesFilters(slotCode, pairs) {
     if (!pairs.length) return true;
-    // Con più filtri, lo slot resta selezionabile solo se tutte le coppie richieste
-    // hanno almeno una barca disponibile.
-    return pairs.every((pair) => remainingFor(slotCode, pair.builder, pair.boatType) > 0);
+    // Il filtro serve a trovare slot utili: basta che almeno una delle coppie
+    // selezionate abbia disponibilità nello slot.
+    return pairs.some((pair) => remainingFor(slotCode, pair.builder, pair.boatType) > 0);
   }
 
   function setFilterSummary(pairs) {
     if (clearButton) clearButton.hidden = pairs.length === 0;
+    if (filterMenu) filterMenu.classList.toggle('has-selection', pairs.length > 0);
     if (!filterSummary) return;
 
     if (!pairs.length) {
-      filterSummary.textContent = 'Nessun filtro: dopo aver scelto lo slot vedrai tutte le barche disponibili.';
+      filterSummary.textContent = 'Nessun filtro';
       return;
     }
 
-    const labels = pairs.map((pair) => `${pair.builder} ${pair.boatType}`);
-    filterSummary.textContent = `Filtro attivo: ${labels.join(', ')}. Gli slot non compatibili sono disabilitati.`;
+    filterSummary.textContent = pairs.length === 1
+      ? '1 barca selezionata'
+      : `${pairs.length} barche selezionate`;
   }
 
   function updateSlotOptions({ resetInvalidSelection = true } = {}) {
@@ -138,7 +141,7 @@
       const showEmpty = Boolean(slotCode && pairs.length && visibleCount === 0);
       emptyMessage.hidden = !showEmpty;
       emptyMessage.textContent = showEmpty
-        ? 'Nessuna delle barche selezionate è disponibile in questo slot. Scegli un altro orario o modifica i filtri.'
+        ? 'Nessuna delle barche filtrate è disponibile in questo slot. Scegli un altro orario o modifica il filtro.'
         : '';
     }
   }
@@ -186,6 +189,11 @@
     updateInventoryCards();
   });
   observer.observe(inventoryGrid, { childList: true });
+
+  document.addEventListener('click', (event) => {
+    if (!filterMenu?.open || filterMenu.contains(event.target)) return;
+    filterMenu.open = false;
+  });
 
   setFilterSummary([]);
   refreshAvailability({ resetInvalidSelection: false });
