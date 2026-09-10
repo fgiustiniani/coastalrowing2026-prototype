@@ -65,46 +65,6 @@
     .admin-export-row p { margin: 0; }
     .admin-export-button { flex: 0 0 auto; }
 
-    .admin-slots {
-      display: grid;
-      gap: 10px;
-    }
-    .admin-slot {
-      display: grid;
-      grid-template-columns: minmax(180px, 1fr) auto auto auto;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      border: 1px solid #d7e1e4;
-      border-radius: 14px;
-      background: #fff;
-    }
-    .admin-slot.is-inactive { background: #f5f6f6; }
-    .admin-slot__time strong { display: block; color: #173e4b; }
-    .admin-slot__time small { display: block; margin-top: 2px; color: #6a7a80; }
-    .admin-slot__count {
-      min-width: 96px;
-      color: #51656d;
-      font-size: .9rem;
-      text-align: center;
-    }
-    .admin-slot__state {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 76px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: .82rem;
-      font-weight: 800;
-      background: #eef8f1;
-      color: #245d38;
-    }
-    .admin-slot__state.is-inactive {
-      background: #eceff0;
-      color: #626d72;
-    }
-
     @media (max-width: 640px) {
       .admin-collapsible > summary {
         min-height: 56px;
@@ -123,26 +83,11 @@
       .admin-section-heading,
       .admin-export-row { align-items: stretch; }
       .admin-export-button { min-height: 44px; }
-      .admin-slot {
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px 12px;
-      }
-      .admin-slot__count {
-        min-width: 0;
-        text-align: left;
-      }
-      .admin-slot__action { grid-column: 2; grid-row: 2 / span 2; }
-      .admin-slot__action .admin-button { min-height: 44px; }
     }
 
     @media (max-width: 420px) {
       .admin-booking__actions { grid-template-columns: 1fr; }
       .admin-export-button { width: 100%; }
-      .admin-slot { grid-template-columns: 1fr; }
-      .admin-slot__state,
-      .admin-slot__count { justify-self: start; text-align: left; }
-      .admin-slot__action { grid-column: auto; grid-row: auto; }
-      .admin-slot__action .admin-button { width: 100%; }
     }
   </style>
 </head>
@@ -182,7 +127,7 @@
           </div>
           <div class="admin-filters" style="margin-top:18px">
             <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
-            <div class="booking-field"><label for="filterSlot">Slot</label><select id="filterSlot" data-filter-slot><option value="">Tutti</option><option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option></select></div>
+            <div class="booking-field"><label for="filterSlot">Slot</label><select id="filterSlot" data-filter-slot><option value="">Tutti</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option><option value="1700">17:00–17:20</option><option value="1730">17:30–17:50</option><option value="1800">18:00–18:20</option></select></div>
             <div class="booking-field"><label for="filterBuilder">Cantiere</label><select id="filterBuilder" data-filter-builder><option value="">Tutti</option><option>LOVA</option><option>Swift</option></select></div>
             <div class="booking-field"><label for="filterType">Tipo barca</label><select id="filterType" data-filter-type><option value="">Tutti</option><option>C1x</option><option>C2x</option><option>C4x+</option></select></div>
           </div>
@@ -191,14 +136,6 @@
 
         <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
           <details class="booking-card admin-collapsible">
-            <summary>Slot orari</summary>
-            <div class="admin-collapsible__body">
-              <p class="booking-card__intro">Puoi aprire o chiudere singoli slot alle nuove prenotazioni. Per evitare prenotazioni isolate, uno slot che contiene già prenotazioni attive non può essere chiuso finché non le hai spostate o eliminate.</p>
-              <div class="admin-slots" data-admin-slots></div>
-            </div>
-          </details>
-
-          <details class="booking-card admin-collapsible">
             <summary>Occupazione per slot</summary>
             <div class="admin-collapsible__body">
               <div class="admin-export-row">
@@ -206,6 +143,30 @@
                 <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">Esporta PDF</button>
               </div>
               <div class="admin-matrix-wrap" data-admin-matrix style="margin-top:18px"></div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Impostazioni prenotazioni</summary>
+            <div class="admin-collapsible__body">
+              <div class="admin-settings-card">
+                <div>
+                  <h2>Chiusura prenotazioni</h2>
+                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
+                  <div class="cutoff-state" data-cutoff-state></div>
+                </div>
+                <form class="cutoff-form" data-cutoff-form>
+                  <div class="booking-field">
+                    <label for="cutoffLocal">Data e ora di chiusura</label>
+                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
+                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                  </div>
+                  <div class="booking-actions">
+                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
+                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                  </div>
+                </form>
+              </div>
             </div>
           </details>
 
@@ -233,30 +194,6 @@
               <div data-boats-table></div>
             </div>
           </details>
-
-          <details class="booking-card admin-collapsible">
-            <summary>Impostazioni prenotazioni</summary>
-            <div class="admin-collapsible__body">
-              <div class="admin-settings-card">
-                <div>
-                  <h2>Chiusura prenotazioni</h2>
-                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
-                  <div class="cutoff-state" data-cutoff-state></div>
-                </div>
-                <form class="cutoff-form" data-cutoff-form>
-                  <div class="booking-field">
-                    <label for="cutoffLocal">Data e ora di chiusura</label>
-                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
-                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
-                  </div>
-                  <div class="booking-actions">
-                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
-                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </details>
         </div>
       </section>
     </main>
@@ -275,7 +212,7 @@
             <div class="booking-field"><label>Nome referente</label><input name="contactName" required></div>
             <div class="booking-field"><label>Telefono</label><input name="phone" required></div>
             <div class="booking-field"><label>Email</label><input name="email" type="email" required></div>
-            <div class="booking-field booking-field--full"><label>Slot</label><select name="slotCode" required><option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option></select></div>
+            <div class="booking-field booking-field--full"><label>Slot</label><select name="slotCode" required><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option><option value="1700">17:00–17:20</option><option value="1730">17:30–17:50</option><option value="1800">18:00–18:20</option></select></div>
           </div>
 
           <div class="inventory-grid" data-edit-inventory></div>
