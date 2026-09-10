@@ -84,7 +84,7 @@
     return payload;
   }
 
-  let deleteButton = null;
+  let deleteButton = form.querySelector('[data-booking-delete]');
 
   function ensureDeleteButton() {
     if (mode !== 'edit') return null;
@@ -96,6 +96,7 @@
     deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'button booking-delete-button';
+    deleteButton.dataset.bookingDelete = '';
     deleteButton.textContent = 'Elimina prenotazione';
     deleteButton.disabled = true;
     actions.insertBefore(deleteButton, bookingStatus || null);
