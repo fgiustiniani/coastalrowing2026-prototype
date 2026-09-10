@@ -206,6 +206,58 @@ export async function listActiveBookingsV2() {
   return Promise.all(bookings.map(async (booking) => publicBookingV2(await hydrate(booking))));
 }
 
+export async function listSlots() {
+  const rows = (await supabaseRequest('boat_test_slots', {
+    query: {
+      select: 'code,label,starts_at,ends_at,sort_order,active',
+      order: 'sort_order.asc'
+    }
+  })) || [];
+
+  return rows.map((row) => ({
+    code: row.code,
+    label: row.label || SLOT_LABELS.get(row.code) || row.code,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    sortOrder: Number(row.sort_order || 0),
+    active: Boolean(row.active)
+  }));
+}
+
+export async function setSlotActive(code, active) {
+  const slotCode = clean(code, 10);
+  if (!SLOT_LABELS.has(slotCode)) {
+    throw new ApiError('Slot non valido.', 400, 'INVALID_SLOT');
+  }
+
+  const nextActive = Boolean(active);
+  if (!nextActive) {
+    const activeBookings = (await supabaseRequest('boat_test_bookings', {
+      query: {
+        select: 'id',
+        slot_code: `eq.${slotCode}`,
+        deleted_at: 'is.null',
+        limit: 1
+      }
+    })) || [];
+
+    if (activeBookings.length) {
+      throw new ApiError(
+        'Lo slot contiene prenotazioni attive. Sposta o elimina prima le prenotazioni presenti nello slot.',
+        409,
+        'SLOT_HAS_BOOKINGS'
+      );
+    }
+  }
+
+  await supabaseRequest('boat_test_slots', {
+    method: 'PATCH',
+    query: { code: `eq.${slotCode}` },
+    body: { active: nextActive },
+    prefer: 'return=minimal'
+  });
+}
+
 export async function listBoats() {
   const rows = (await supabaseRequest('boat_test_boats', {
     query: {
