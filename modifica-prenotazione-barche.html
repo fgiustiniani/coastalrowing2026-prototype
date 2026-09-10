@@ -6,14 +6,32 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Modifica prenotazione prove barche - Campionati Italiani Coastal Rowing 2026</title>
   <meta name="description" content="Modifica la tua prenotazione personale per le prove barche dei Campionati Italiani Coastal Rowing 2026.">
-  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="assets-overrides.css"><link rel="stylesheet" href="home-overrides.css"><link rel="stylesheet" href="site-polish.css"><link rel="stylesheet" href="boat-booking.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="boat-booking.css">
 </head>
 <body>
   <div class="site-frame">
-    <header class="site-header" id="top"><div class="site-header__top"><a href="index.html"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div><nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="vivi-pesaro.html">Vivi Pesaro</a><a href="sostenibilita.html">Sostenibilità</a><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a></nav></header>
+    <header class="site-header" id="top">
+      <div class="site-header__top"><a href="index.html"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div>
+      <nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="vivi-pesaro.html">Vivi Pesaro</a><a href="sostenibilita.html">Sostenibilità</a><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a></nav>
+    </header>
 
     <main class="booking-page">
-      <section class="booking-hero" aria-labelledby="booking-title"><p class="eyebrow">Link personale</p><h1 id="booking-title">Modifica la prenotazione</h1><p>Puoi cambiare lo slot, i dati del referente e le barche richieste. La disponibilità viene ricontrollata al momento del salvataggio.</p><div class="booking-hero__meta"><span class="booking-chip">Venerdì 2 ottobre</span><span class="booking-chip">Disponibilità in tempo reale</span></div></section>
+      <section class="booking-hero" aria-labelledby="booking-title">
+        <p class="eyebrow">Link personale</p>
+        <h1 id="booking-title">Modifica la prenotazione</h1>
+        <p>Puoi cambiare lo slot, i dati del referente e le barche richieste fino al termine stabilito dall’organizzazione. La disponibilità viene ricontrollata al momento del salvataggio.</p>
+        <div class="booking-hero__meta"><span class="booking-chip">Venerdì 2 ottobre</span><span class="booking-chip">Disponibilità in tempo reale</span></div>
+      </section>
+
+      <section class="booking-closed" data-booking-closed hidden>
+        <strong>Modifiche online chiuse</strong>
+        <p data-booking-closed-text></p>
+      </section>
+
       <div class="booking-loading" data-booking-loading>Caricamento della prenotazione…</div>
 
       <div data-booking-shell hidden>
@@ -22,13 +40,25 @@
             <h2><span class="booking-section-number">1</span>Slot orario</h2>
             <div class="booking-mode-switch" data-mode-switch hidden></div>
             <div data-slot-flow>
-              <div class="booking-field booking-field--full"><label for="slotCode">Slot</label><select id="slotCode" name="slotCode" required><option value="">Seleziona uno slot</option><option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option></select></div>
+              <div class="booking-field booking-field--full">
+                <label for="slotCode">Slot</label>
+                <select id="slotCode" name="slotCode" required>
+                  <option value="">Seleziona uno slot</option>
+                  <option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option>
+                  <option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option>
+                </select>
+              </div>
             </div>
             <div data-boat-flow hidden><div class="boat-first-picker"><select data-builder-first><option value=""></option></select><select data-type-first><option value=""></option></select></div><div data-slot-options></div></div>
           </section>
 
           <section class="booking-card" data-inventory-panel hidden>
-            <div class="inventory-head"><div><h2><span class="booking-section-number">2</span><span data-inventory-title>Disponibilità</span></h2><p>Le disponibilità mostrate tengono già conto delle barche della tua prenotazione.</p></div></div>
+            <div class="inventory-head">
+              <div>
+                <h2><span class="booking-section-number">2</span><span data-inventory-title>Disponibilità</span></h2>
+                <p>Le disponibilità mostrate tengono già conto delle barche della tua prenotazione. I numeri assegnati sono indicati nelle singole schede.</p>
+              </div>
+            </div>
             <div class="inventory-grid" data-inventory-grid></div>
           </section>
 
@@ -46,13 +76,22 @@
             <div class="booking-actions"><button class="button button--primary" type="submit">Salva modifiche</button><span class="booking-status" data-booking-status aria-live="polite"></span></div>
           </section>
         </form>
-        <section class="booking-success" data-booking-success hidden aria-live="polite"><h2>Modifica salvata</h2><p data-success-text></p><a class="button button--dark booking-success__link" data-success-link href="#">Link personale di modifica</a></section>
+
+        <section class="booking-success" data-booking-success hidden aria-live="polite">
+          <h2>Modifica salvata</h2>
+          <p data-success-text></p>
+          <p class="booking-success__code" data-success-code-wrap hidden><span>Codice prenotazione</span><strong data-success-code></strong></p>
+          <div class="booking-success__boats"><strong>Barche assegnate</strong><ul data-success-boats></ul></div>
+          <a class="button button--dark booking-success__link" data-success-link href="#">Link personale di modifica</a>
+        </section>
       </div>
     </main>
 
     <footer class="site-footer"><div class="site-footer__brand"><strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong><p>Organizzazione locale: Società Canottieri Pesaro ASD.</p></div><div class="site-footer__links"><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a><a href="privacy-policy.html">Privacy</a></div></footer>
     <a class="back-home" href="#top" aria-label="Torna all’inizio della pagina">↑ <span>Vai su</span></a>
   </div>
-  <script src="nav-submenu.js" defer></script><script src="boat-booking.js" defer></script>
+
+  <script src="nav-submenu.js" defer></script>
+  <script src="boat-booking.js" defer></script>
 </body>
 </html>

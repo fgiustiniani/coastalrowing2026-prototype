@@ -8,10 +8,14 @@
   const loginStatus = document.querySelector('[data-login-status]');
   const matrix = document.querySelector('[data-admin-matrix]');
   const bookingsContainer = document.querySelector('[data-admin-bookings]');
-  const capacityContainer = document.querySelector('[data-capacity-grid]');
+  const boatsContainer = document.querySelector('[data-boats-table]');
+  const boatForm = document.querySelector('[data-boat-form]');
+  const cutoffForm = document.querySelector('[data-cutoff-form]');
+  const cutoffState = document.querySelector('[data-cutoff-state]');
   const societyFilter = document.querySelector('[data-filter-society]');
   const slotFilter = document.querySelector('[data-filter-slot]');
   const typeFilter = document.querySelector('[data-filter-type]');
+  const builderFilter = document.querySelector('[data-filter-builder]');
   const refreshButton = document.querySelector('[data-admin-refresh]');
   const dialog = document.querySelector('[data-edit-dialog]');
   const editForm = document.querySelector('[data-edit-form]');
@@ -25,7 +29,7 @@
   const boatTypes = ['C1x', 'C2x', 'C4x+'];
 
   let credentials = null;
-  let data = { bookings: [], availability: [] };
+  let data = { bookings: [], availability: [], boats: [], settings: {} };
   let editing = null;
   let editingQuantities = new Map();
 
@@ -35,6 +39,15 @@
     node.className = `booking-status${kind ? ` is-${kind}` : ''}`;
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
   function authHeader() {
     return credentials ? `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` : '';
   }
@@ -42,135 +55,293 @@
   async function adminRequest(action, payload = {}) {
     const response = await fetch(api, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: authHeader() },
+      headers: {
+        'content-type': 'application/json',
+        authorization: authHeader()
+      },
       body: JSON.stringify({ action, ...payload })
     });
+
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'Operazione non riuscita.');
+    if (!response.ok) {
+      const error = new Error(body.error || 'Operazione non riuscita.');
+      error.code = body.code;
+      throw error;
+    }
     return body;
   }
 
-  function slotLabel(code) { return slots.find(([value]) => value === code)?.[1] || code; }
-  function availabilityRow(slotCode, builder, boatType) { return data.availability.find((row) => row.slotCode === slotCode && row.builder === builder && row.boatType === boatType); }
-  function itemKey(builder, boatType) { return `${builder}|${boatType}`; }
-  function formatDate(value) { return value ? new Intl.DateTimeFormat('it-IT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—'; }
-  function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
+  function slotLabel(code) {
+    return slots.find(([value]) => value === code)?.[1] || code;
+  }
+
+  function availabilityRow(slotCode, builder, boatType) {
+    return data.availability.find(
+      (row) => row.slotCode === slotCode && row.builder === builder && row.boatType === boatType
+    );
+  }
+
+  function itemKey(builder, boatType) {
+    return `${builder}|${boatType}`;
+  }
+
+  function formatDate(value) {
+    return value
+      ? new Intl.DateTimeFormat('it-IT', {
+          timeZone: 'Europe/Rome',
+          dateStyle: 'short',
+          timeStyle: 'short'
+        }).format(new Date(value))
+      : '—';
+  }
+
+  function toRomeLocalInput(value) {
+    if (!value) return '';
+    try {
+      return new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'Europe/Rome',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(new Date(value)).replace(' ', 'T');
+    } catch {
+      return '';
+    }
+  }
+
+  function boatSummary(item) {
+    const numbers = Array.isArray(item.boatNumbers) && item.boatNumbers.length
+      ? ` — barche ${item.boatNumbers.map(escapeHtml).join(', ')}`
+      : '';
+    return `${escapeHtml(item.builder)} ${escapeHtml(item.boatType)} × ${Number(item.quantity)}${numbers}`;
+  }
 
   function renderMatrix() {
     const columns = builders.flatMap((builder) => boatTypes.map((boatType) => [builder, boatType]));
+
     matrix.innerHTML = `
       <table class="admin-matrix">
-        <thead><tr><th>Slot</th>${columns.map(([builder, type]) => `<th>${builder}<br><small>${type}</small></th>`).join('')}</tr></thead>
-        <tbody>${slots.map(([code, label]) => `<tr><th>${label}</th>${columns.map(([builder, type]) => {
-          const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
-          const full = Number(row.remaining) <= 0;
-          return `<td class="admin-matrix__cell${full ? ' is-full' : ''}"><strong>${row.booked}/${row.capacity}</strong><small>${full ? 'COMPLETO' : `${row.remaining} libere`}</small></td>`;
-        }).join('')}</tr>`).join('')}</tbody>
+        <thead>
+          <tr>
+            <th>Slot</th>
+            ${columns.map(([builder, type]) => `<th>${builder}<br><small>${type}</small></th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${slots.map(([code, label]) => `
+            <tr>
+              <th>${label}</th>
+              ${columns.map(([builder, type]) => {
+                const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
+                const noBoats = Number(row.capacity) === 0;
+                const full = !noBoats && Number(row.remaining) <= 0;
+                return `<td class="admin-matrix__cell${full ? ' is-full' : ''}${noBoats ? ' is-empty' : ''}">
+                  <strong>${row.booked}/${row.capacity}</strong>
+                  <small>${noBoats ? 'NESSUNA BARCA' : full ? 'COMPLETO' : `${row.remaining} libere`}</small>
+                </td>`;
+              }).join('')}
+            </tr>`).join('')}
+        </tbody>
       </table>`;
   }
 
-  function renderCapacity() {
-    capacityContainer.innerHTML = builders.flatMap((builder) => boatTypes.map((boatType) => {
-      const first = availabilityRow('1300', builder, boatType);
-      return `<form class="capacity-row" data-capacity-form data-builder="${builder}" data-boat-type="${boatType}">
-        <div><label>Cantiere</label><strong>${builder}</strong></div>
-        <div><label>Tipo</label><strong>${boatType}</strong></div>
-        <div><label>Max</label><input name="capacity" type="number" min="0" max="99" value="${first?.capacity ?? 4}" required></div>
-        <div style="grid-column:1/-1"><label>Applica a</label><select name="slotCode"><option value="">Tutti gli slot</option>${slots.map(([code,label]) => `<option value="${code}">${label}</option>`).join('')}</select></div>
-        <button class="admin-button admin-button--primary" type="submit">Aggiorna</button>
-      </form>`;
-    })).join('');
+  function renderCutoff() {
+    if (!cutoffForm) return;
+
+    const cutoff = data.settings?.bookingCutoffAt || null;
+    cutoffForm.elements.cutoffLocal.value = toRomeLocalInput(cutoff);
+
+    if (!cutoffState) return;
+
+    if (!cutoff) {
+      cutoffState.innerHTML = '<strong>Nessuna scadenza impostata</strong><span>Le prenotazioni online restano aperte.</span>';
+      cutoffState.className = 'cutoff-state';
+      return;
+    }
+
+    const open = data.settings?.bookingOpen !== false;
+    cutoffState.innerHTML = `<strong>${open ? 'Prenotazioni aperte' : 'Prenotazioni chiuse'}</strong><span>Chiusura: ${formatDate(cutoff)}</span>`;
+    cutoffState.className = `cutoff-state ${open ? 'is-open' : 'is-closed'}`;
+  }
+
+  function renderBoats() {
+    if (!boatsContainer) return;
+
+    if (!data.boats.length) {
+      boatsContainer.innerHTML = '<div class="booking-empty">Nessuna barca censita. Aggiungi le barche disponibili usando il modulo qui sopra.</div>';
+      return;
+    }
+
+    boatsContainer.innerHTML = `
+      <div class="admin-boats-wrap">
+        <table class="admin-boats-table">
+          <thead><tr><th>Numero</th><th>Cantiere</th><th>Tipo</th><th>Stato</th><th>Azioni</th></tr></thead>
+          <tbody>
+            ${data.boats.map((boat) => `
+              <tr data-boat-id="${boat.id}">
+                <td><strong>${escapeHtml(boat.number)}</strong></td>
+                <td>${escapeHtml(boat.builder)}</td>
+                <td>${escapeHtml(boat.boatType)}</td>
+                <td><span class="boat-state ${boat.active ? 'is-active' : 'is-inactive'}">${boat.active ? 'Attiva' : 'Non attiva'}</span></td>
+                <td class="admin-boats-actions">
+                  <button class="admin-button" type="button" data-boat-action="toggle" data-next-active="${boat.active ? 'false' : 'true'}">${boat.active ? 'Disattiva' : 'Attiva'}</button>
+                  <button class="admin-button admin-button--danger" type="button" data-boat-action="delete" ${boat.active ? 'disabled title="Disattiva prima la barca"' : ''}>Elimina</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
   }
 
   function matchesFilters(booking) {
-    const society = (societyFilter.value || '').trim().toLowerCase();
-    const slot = slotFilter.value;
-    const type = typeFilter.value;
+    const society = (societyFilter?.value || '').trim().toLowerCase();
+    const slot = slotFilter?.value || '';
+    const type = typeFilter?.value || '';
+    const builder = builderFilter?.value || '';
+
     if (society && !booking.society.toLowerCase().includes(society)) return false;
     if (slot && booking.slotCode !== slot) return false;
     if (type && !(booking.items || []).some((item) => item.boatType === type)) return false;
+    if (builder && !(booking.items || []).some((item) => item.builder === builder)) return false;
     return true;
   }
 
   function renderBookings() {
     const visible = data.bookings.filter(matchesFilters);
+
     if (!visible.length) {
       bookingsContainer.innerHTML = '<div class="booking-empty">Nessuna prenotazione corrisponde ai filtri.</div>';
       return;
     }
+
     bookingsContainer.innerHTML = visible.map((booking) => `
       <article class="admin-booking" data-booking-id="${booking.id}">
         <div class="admin-booking__head">
-          <div><h3>${escapeHtml(booking.society)}</h3><div class="admin-booking__meta">${slotLabel(booking.slotCode)} · creata ${formatDate(booking.createdAt)} · aggiornata ${formatDate(booking.updatedAt)}</div></div>
+          <div>
+            <div class="admin-booking__code">${escapeHtml(booking.bookingCode)}</div>
+            <h3>${escapeHtml(booking.society)}</h3>
+            <div class="admin-booking__meta">${slotLabel(booking.slotCode)} · creata ${formatDate(booking.createdAt)} · aggiornata ${formatDate(booking.updatedAt)}</div>
+          </div>
           <div class="admin-booking__actions">
             <button class="admin-button" type="button" data-action="edit">Modifica</button>
             <button class="admin-button" type="button" data-action="resend">Reinvia email</button>
             <button class="admin-button admin-button--danger" type="button" data-action="delete">Elimina</button>
           </div>
         </div>
+
         <div class="admin-booking__details">
           <p><strong>Referente</strong><br>${escapeHtml(booking.contactSurname)} ${escapeHtml(booking.contactName)}</p>
           <p><strong>Telefono</strong><br>${escapeHtml(booking.phone)}</p>
           <p><strong>Email</strong><br>${escapeHtml(booking.email)}</p>
           <p><strong>Slot</strong><br>${slotLabel(booking.slotCode)}</p>
-          <div class="admin-booking__boats"><strong>Barche</strong><br>${(booking.items || []).map((item) => `${escapeHtml(item.builder)} ${escapeHtml(item.boatType)} × ${item.quantity}`).join(' · ')}</div>
+          <div class="admin-booking__boats">
+            <strong>Barche assegnate</strong><br>
+            ${(booking.items || []).map(boatSummary).join(' · ')}
+          </div>
         </div>
       </article>`).join('');
   }
 
-  function renderAll() { renderMatrix(); renderCapacity(); renderBookings(); }
+  function renderAll() {
+    renderMatrix();
+    renderCutoff();
+    renderBoats();
+    renderBookings();
+  }
 
   async function loadDashboard(message = '') {
     setText(status, 'Aggiornamento…');
     const payload = await adminRequest('list');
     data = payload;
     renderAll();
-    setText(status, message || `${data.bookings.length} prenotazioni attive`, 'ok');
+    setText(status, message || `${data.bookings.length} prenotazioni attive · ${data.boats.length} barche censite`, 'ok');
   }
 
   function editingItemQuantity(builder, boatType) {
     return Number(editingQuantities.get(itemKey(builder, boatType)) || 0);
   }
 
-  function currentBookedQtyForCapacity(slotCode, builder, boatType) {
+  function currentBookedQty(slotCode, builder, boatType) {
     if (!editing || editing.slotCode !== slotCode) return 0;
-    const item = (editing.items || []).find((entry) => entry.builder === builder && entry.boatType === boatType);
+    const item = (editing.items || []).find(
+      (entry) => entry.builder === builder && entry.boatType === boatType
+    );
     return Number(item?.quantity || 0);
+  }
+
+  function currentBoatNumbers(builder, boatType) {
+    if (!editing) return [];
+    const item = (editing.items || []).find(
+      (entry) => entry.builder === builder && entry.boatType === boatType
+    );
+    return item?.boatNumbers || [];
   }
 
   function renderEditInventory() {
     if (!editing || !editInventory) return;
+
     const slotCode = editForm.elements.slotCode.value;
+
     editInventory.innerHTML = builders.flatMap((builder) => boatTypes.map((boatType) => {
       const row = availabilityRow(slotCode, builder, boatType) || { remaining: 0 };
-      const own = currentBookedQtyForCapacity(slotCode, builder, boatType);
+      const own = currentBookedQty(slotCode, builder, boatType);
       const max = Math.max(0, Number(row.remaining || 0) + own);
       const wanted = Math.min(editingItemQuantity(builder, boatType), max);
       editingQuantities.set(itemKey(builder, boatType), wanted);
-      const options = Array.from({ length: max + 1 }, (_, index) => `<option value="${index}"${index === wanted ? ' selected' : ''}>${index}</option>`).join('');
-      return `<article class="inventory-card${max === 0 ? ' is-full' : ''}"><div class="inventory-card__top"><div class="inventory-card__name"><strong>${builder}</strong><small>${boatType}</small></div><span class="inventory-remaining${max === 0 ? ' is-full' : ''}">${max === 0 ? 'COMPLETO' : `${max} disponibili`}</span></div><div class="inventory-qty"><label>Quantità</label><select data-edit-qty data-builder="${builder}" data-boat-type="${boatType}" ${max === 0 ? 'disabled' : ''}>${options}</select></div></article>`;
+
+      const options = Array.from({ length: max + 1 }, (_, index) =>
+        `<option value="${index}"${index === wanted ? ' selected' : ''}>${index}</option>`
+      ).join('');
+
+      const numbers = currentBoatNumbers(builder, boatType);
+      const assigned = numbers.length
+        ? `<div class="inventory-assigned"><strong>Attuali:</strong> ${numbers.map(escapeHtml).join(', ')}</div>`
+        : '';
+
+      return `<article class="inventory-card${max === 0 ? ' is-full' : ''}">
+        <div class="inventory-card__top">
+          <div class="inventory-card__name"><strong>${builder}</strong><small>${boatType}</small></div>
+          <span class="inventory-remaining${max === 0 ? ' is-full' : ''}">${max === 0 ? 'COMPLETO' : `${max} disponibili`}</span>
+        </div>
+        ${assigned}
+        <div class="inventory-qty">
+          <label>Quantità</label>
+          <select data-edit-qty data-builder="${builder}" data-boat-type="${boatType}" ${max === 0 ? 'disabled' : ''}>${options}</select>
+        </div>
+      </article>`;
     })).join('');
   }
 
   function openEdit(booking) {
     editing = booking;
-    editingQuantities = new Map((booking.items || []).map((item) => [itemKey(item.builder, item.boatType), Number(item.quantity)]));
+    editingQuantities = new Map(
+      (booking.items || []).map((item) => [itemKey(item.builder, item.boatType), Number(item.quantity)])
+    );
+
     editForm.elements.society.value = booking.society;
     editForm.elements.contactSurname.value = booking.contactSurname;
     editForm.elements.contactName.value = booking.contactName;
     editForm.elements.phone.value = booking.phone;
     editForm.elements.email.value = booking.email;
     editForm.elements.slotCode.value = booking.slotCode;
+
     renderEditInventory();
     dialog.showModal();
   }
 
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const username = loginForm.elements.username.value;
-    const password = loginForm.elements.password.value;
-    credentials = { username, password };
+
+    credentials = {
+      username: loginForm.elements.username.value,
+      password: loginForm.elements.password.value
+    };
+
     setText(loginStatus, 'Accesso…');
+
     try {
       await adminRequest('login');
       loginForm.closest('.admin-login').hidden = true;
@@ -182,66 +353,154 @@
     }
   });
 
-  refreshButton?.addEventListener('click', () => loadDashboard().catch((error) => setText(status, error.message, 'error')));
-  [societyFilter, slotFilter, typeFilter].forEach((input) => input?.addEventListener('input', renderBookings));
-  [slotFilter, typeFilter].forEach((input) => input?.addEventListener('change', renderBookings));
-
-  capacityContainer?.addEventListener('change', (event) => {
-    const select = event.target.closest('select[name="slotCode"]');
-    if (!select) return;
-    const form = select.closest('[data-capacity-form]');
-    const input = form?.elements.capacity;
-    if (!form || !input) return;
-    const slotCode = select.value || '1300';
-    const row = availabilityRow(slotCode, form.dataset.builder, form.dataset.boatType);
-    if (row) input.value = row.capacity;
+  refreshButton?.addEventListener('click', () => {
+    loadDashboard().catch((error) => setText(status, error.message, 'error'));
   });
 
-  capacityContainer?.addEventListener('submit', async (event) => {
-    const form = event.target.closest('[data-capacity-form]');
-    if (!form) return;
+  [societyFilter, slotFilter, typeFilter, builderFilter].forEach((input) => {
+    input?.addEventListener('input', renderBookings);
+    input?.addEventListener('change', renderBookings);
+  });
+
+  cutoffForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const button = form.querySelector('button');
+    const button = cutoffForm.querySelector('button[type="submit"]');
     button.disabled = true;
+
     try {
-      const payload = await adminRequest('setcapacity', {
-        builder: form.dataset.builder,
-        boatType: form.dataset.boatType,
-        capacity: Number(form.elements.capacity.value),
-        slotCode: form.elements.slotCode.value
+      const payload = await adminRequest('setcutoff', {
+        cutoffLocal: cutoffForm.elements.cutoffLocal.value
       });
-      data.availability = payload.availability || data.availability;
-      renderAll();
-      setText(status, 'Disponibilità aggiornata.', 'ok');
+      data.settings = payload.settings || data.settings;
+      renderCutoff();
+      setText(status, 'Termine prenotazioni aggiornato.', 'ok');
     } catch (error) {
       setText(status, error.message, 'error');
-    } finally { button.disabled = false; }
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  cutoffForm?.querySelector('[data-clear-cutoff]')?.addEventListener('click', async () => {
+    const button = cutoffForm.querySelector('[data-clear-cutoff]');
+    button.disabled = true;
+
+    try {
+      const payload = await adminRequest('setcutoff', { cutoffLocal: '' });
+      data.settings = payload.settings || data.settings;
+      renderCutoff();
+      setText(status, 'Scadenza rimossa: prenotazioni aperte senza termine.', 'ok');
+    } catch (error) {
+      setText(status, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  boatForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = boatForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+
+    try {
+      const payload = await adminRequest('addboat', {
+        number: boatForm.elements.number.value,
+        builder: boatForm.elements.builder.value,
+        boatType: boatForm.elements.boatType.value
+      });
+
+      data.boats = payload.boats || data.boats;
+      data.availability = payload.availability || data.availability;
+      boatForm.reset();
+      renderBoats();
+      renderMatrix();
+      setText(status, 'Barca aggiunta all’anagrafica.', 'ok');
+    } catch (error) {
+      setText(status, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  boatsContainer?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-boat-action]');
+    if (!button) return;
+
+    const row = button.closest('[data-boat-id]');
+    const boat = data.boats.find((item) => item.id === row?.dataset.boatId);
+    if (!boat) return;
+
+    button.disabled = true;
+
+    try {
+      if (button.dataset.boatAction === 'toggle') {
+        const payload = await adminRequest('toggleboat', {
+          id: boat.id,
+          active: button.dataset.nextActive === 'true'
+        });
+        data.boats = payload.boats || data.boats;
+        data.availability = payload.availability || data.availability;
+        renderBoats();
+        renderMatrix();
+        setText(status, boat.active ? 'Barca disattivata.' : 'Barca attivata.', 'ok');
+      }
+
+      if (button.dataset.boatAction === 'delete') {
+        if (!confirm(`Eliminare definitivamente la barca ${boat.number}?`)) return;
+        const payload = await adminRequest('deleteboat', { id: boat.id });
+        data.boats = payload.boats || data.boats;
+        data.availability = payload.availability || data.availability;
+        renderBoats();
+        renderMatrix();
+        setText(status, 'Barca eliminata.', 'ok');
+      }
+    } catch (error) {
+      setText(status, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
   });
 
   bookingsContainer?.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-action]');
     if (!button) return;
+
     const article = button.closest('[data-booking-id]');
     const booking = data.bookings.find((item) => item.id === article?.dataset.bookingId);
     if (!booking) return;
+
     const action = button.dataset.action;
-    if (action === 'edit') return openEdit(booking);
+
+    if (action === 'edit') {
+      openEdit(booking);
+      return;
+    }
+
     if (action === 'delete') {
-      if (!confirm(`Eliminare la prenotazione di ${booking.society}? Le barche torneranno subito disponibili.`)) return;
+      if (!confirm(`Eliminare la prenotazione ${booking.bookingCode} di ${booking.society}? Le barche torneranno subito disponibili.`)) return;
       button.disabled = true;
+
       try {
         const payload = await adminRequest('delete', { id: booking.id });
         await loadDashboard(payload.warning || 'Prenotazione eliminata.');
-      } catch (error) { setText(status, error.message, 'error'); }
-      finally { button.disabled = false; }
+      } catch (error) {
+        setText(status, error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
     }
+
     if (action === 'resend') {
       button.disabled = true;
+
       try {
         await adminRequest('resend', { id: booking.id });
         setText(status, 'Email di riepilogo inviata.', 'ok');
-      } catch (error) { setText(status, error.message, 'error'); }
-      finally { button.disabled = false; }
+      } catch (error) {
+        setText(status, error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
     }
   });
 
@@ -249,23 +508,36 @@
     editingQuantities = new Map();
     renderEditInventory();
   });
+
   editInventory?.addEventListener('change', (event) => {
     const select = event.target.closest('[data-edit-qty]');
     if (!select) return;
-    editingQuantities.set(itemKey(select.dataset.builder, select.dataset.boatType), Number(select.value));
+    editingQuantities.set(
+      itemKey(select.dataset.builder, select.dataset.boatType),
+      Number(select.value)
+    );
   });
-  document.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+
+  document.querySelectorAll('[data-dialog-close]').forEach((button) => {
+    button.addEventListener('click', () => dialog.close());
+  });
 
   editForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!editing) return;
-    const items = Array.from(editingQuantities.entries()).map(([key, quantity]) => {
-      const [builder, boatType] = key.split('|');
-      return { builder, boatType, quantity };
-    }).filter((item) => item.quantity > 0);
+
+    const items = Array.from(editingQuantities.entries())
+      .map(([key, quantity]) => {
+        const [builder, boatType] = key.split('|');
+        return { builder, boatType, quantity };
+      })
+      .filter((item) => item.quantity > 0);
+
     if (!items.length) return setText(status, 'Seleziona almeno una barca.', 'error');
+
     const submit = editForm.querySelector('[type="submit"]');
     submit.disabled = true;
+
     try {
       const payload = await adminRequest('update', {
         id: editing.id,
@@ -277,9 +549,13 @@
         slotCode: editForm.elements.slotCode.value,
         items
       });
+
       dialog.close();
       await loadDashboard(payload.warning || 'Prenotazione aggiornata.');
-    } catch (error) { setText(status, error.message, 'error'); }
-    finally { submit.disabled = false; }
+    } catch (error) {
+      setText(status, error.message, 'error');
+    } finally {
+      submit.disabled = false;
+    }
   });
 })();

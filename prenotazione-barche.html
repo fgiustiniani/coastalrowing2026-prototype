@@ -26,6 +26,28 @@
         <div class="booking-hero__meta"><span class="booking-chip">Venerdì 2 ottobre</span><span class="booking-chip">13:00–16:50</span><span class="booking-chip">Slot da 20 minuti</span></div>
       </section>
 
+      <section class="booking-lookup booking-card" aria-labelledby="lookup-title">
+        <div class="booking-lookup__copy">
+          <p class="eyebrow">Hai già prenotato?</p>
+          <h2 id="lookup-title">Visualizza la tua prenotazione</h2>
+          <p>Inserisci il codice ricevuto nella conferma per vedere slot e barche assegnate.</p>
+        </div>
+        <form class="booking-lookup__form" data-booking-lookup>
+          <div class="booking-field">
+            <label for="bookingCodeLookup">Codice prenotazione</label>
+            <input id="bookingCodeLookup" name="bookingCode" maxlength="20" placeholder="PB26-XXXXXXXX" autocomplete="off" required>
+          </div>
+          <button class="button button--dark" type="submit">Visualizza</button>
+          <span class="booking-status" data-lookup-status aria-live="polite"></span>
+        </form>
+        <div class="lookup-result" data-lookup-result hidden></div>
+      </section>
+
+      <section class="booking-closed" data-booking-closed hidden>
+        <strong>Prenotazioni online chiuse</strong>
+        <p data-booking-closed-text></p>
+      </section>
+
       <div class="booking-loading" data-booking-loading>Caricamento disponibilità…</div>
 
       <div data-booking-shell hidden>
@@ -59,7 +81,7 @@
           </section>
 
           <section class="booking-card" data-inventory-panel hidden>
-            <div class="inventory-head"><div><h2><span class="booking-section-number">2</span><span data-inventory-title>Disponibilità</span></h2><p>Indica quante barche vuoi prenotare. Puoi scegliere più cantieri e più tipi nello stesso slot.</p></div></div>
+            <div class="inventory-head"><div><h2><span class="booking-section-number">2</span><span data-inventory-title>Disponibilità</span></h2><p>Indica quante barche vuoi prenotare. Il sistema assegnerà automaticamente i numeri delle barche disponibili.</p></div></div>
             <div class="inventory-grid" data-inventory-grid></div>
           </section>
 
@@ -81,6 +103,8 @@
         <section class="booking-success" data-booking-success hidden aria-live="polite">
           <h2>Prenotazione registrata</h2>
           <p data-success-text></p>
+          <p class="booking-success__code" data-success-code-wrap hidden><span>Codice prenotazione</span><strong data-success-code></strong></p>
+          <div class="booking-success__boats"><strong>Barche assegnate</strong><ul data-success-boats></ul></div>
           <a class="button button--dark booking-success__link" data-success-link href="#">Apri il link personale di modifica</a>
         </section>
       </div>
