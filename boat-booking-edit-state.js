@@ -10,9 +10,35 @@
   let originalItems = new Map();
   let captured = false;
   let restoring = false;
+  let originalSlotNotice = null;
 
   function keyFor(select) {
     return `${select.dataset.builder || ''}|${select.dataset.boatType || ''}`;
+  }
+
+  function showOriginalSlot() {
+    if (!originalSlot) return;
+
+    const originalOption = Array.from(slotSelect.options).find((option) => option.value === originalSlot);
+    const originalLabel = originalOption?.dataset.originalLabel || originalOption?.textContent || originalSlot;
+
+    if (originalOption && !originalOption.dataset.originalLabel) {
+      originalOption.dataset.originalLabel = originalLabel;
+      originalOption.textContent = `${originalLabel} — slot originario`;
+    }
+
+    if (!originalSlotNotice) {
+      originalSlotNotice = document.createElement('div');
+      originalSlotNotice.className = 'inventory-assigned';
+      originalSlotNotice.setAttribute('role', 'note');
+      originalSlotNotice.setAttribute('aria-live', 'polite');
+      slotSelect.insertAdjacentElement('afterend', originalSlotNotice);
+    }
+
+    originalSlotNotice.textContent = '';
+    const strong = document.createElement('strong');
+    strong.textContent = 'Slot originario: ';
+    originalSlotNotice.append(strong, document.createTextNode(originalLabel));
   }
 
   function captureOriginalState() {
@@ -35,6 +61,7 @@
     originalSlot = slotSelect.value;
     originalItems = items;
     captured = true;
+    showOriginalSlot();
   }
 
   function restoreOriginalState() {
