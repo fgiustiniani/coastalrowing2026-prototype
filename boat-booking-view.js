@@ -10,6 +10,8 @@
   const loading = document.querySelector('[data-booking-loading]');
   const codeInput = lookupForm.elements.bookingCode;
 
+  let currentPayload = null;
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -51,10 +53,25 @@
     }).join('');
   }
 
+  function tokenFromEditLink(editLink) {
+    if (!editLink) return '';
+    try {
+      const url = new URL(editLink, window.location.href);
+      return new URLSearchParams(url.hash.replace(/^#/, '')).get('token') || '';
+    } catch {
+      return '';
+    }
+  }
+
   function renderBooking(payload) {
+    currentPayload = payload;
     const booking = payload.booking || {};
-    const editAction = payload.canEdit !== false && payload.editLink
-      ? `<div class="booking-actions" style="margin-top:18px"><a class="button button--primary" href="${escapeHtml(payload.editLink)}">Modifica prenotazione</a></div>`
+    const canEdit = payload.canEdit !== false && payload.editLink;
+    const editAction = canEdit
+      ? `<div class="booking-actions" style="margin-top:18px">
+          <a class="button button--primary" href="${escapeHtml(payload.editLink)}">Modifica prenotazione</a>
+          <button class="button booking-delete-button" type="button" data-delete-booking>Elimina prenotazione</button>
+        </div>`
       : '<div class="booking-status is-warning" style="margin-top:18px">Le modifiche online sono chiuse.</div>';
 
     lookupResult.hidden = false;
@@ -74,6 +91,57 @@
         <ul>${boatsSummaryHtml(booking)}</ul>
       </div>
       ${editAction}`;
+  }
+
+  function renderDeleted(bookingCode, warning = '') {
+    currentPayload = null;
+    lookupResult.hidden = false;
+    lookupResult.innerHTML = `
+      <div class="booking-success booking-delete-success" style="margin-top:0">
+        <h2>Prenotazione eliminata</h2>
+        <p>${escapeHtml(warning || 'La prenotazione è stata eliminata e le barche assegnate sono tornate disponibili.')}</p>
+        ${bookingCode ? `<p class="booking-success__code"><span>Codice prenotazione</span><strong>${escapeHtml(bookingCode)}</strong></p>` : ''}
+        <p>Abbiamo inviato una comunicazione di annullamento all’indirizzo email del referente.</p>
+      </div>`;
+    setStatus('Prenotazione eliminata.', 'ok');
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+  }
+
+  async function deleteCurrentBooking(button) {
+    if (!currentPayload?.editLink || currentPayload.canEdit === false) return;
+
+    const token = tokenFromEditLink(currentPayload.editLink);
+    if (!token) {
+      setStatus('Non è stato possibile recuperare il link personale di modifica.', 'error');
+      return;
+    }
+
+    const bookingCode = currentPayload.booking?.bookingCode || '';
+    const confirmed = window.confirm(
+      `Vuoi davvero eliminare la prenotazione${bookingCode ? ` ${bookingCode}` : ''}?\n\nLe barche assegnate verranno liberate. L’operazione non può essere annullata.`
+    );
+    if (!confirmed) return;
+
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Eliminazione…';
+    setStatus();
+
+    try {
+      const response = await fetch(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', token })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Operazione non riuscita.');
+
+      renderDeleted(payload.bookingCode || bookingCode, payload.warning || '');
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = originalText;
+      setStatus(error.message, 'error');
+    }
   }
 
   async function lookupBooking(rawCode, { updateHash = true } = {}) {
@@ -104,12 +172,19 @@
         history.replaceState(null, '', `${location.pathname}${location.search}#code=${encodeURIComponent(payload.booking.bookingCode)}`);
       }
     } catch (error) {
+      currentPayload = null;
       restoreCreation();
       setStatus(error.message, 'error');
     } finally {
       if (button) button.disabled = false;
     }
   }
+
+  lookupResult.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delete-booking]');
+    if (!button) return;
+    deleteCurrentBooking(button);
+  });
 
   lookupForm.addEventListener('submit', (event) => {
     event.preventDefault();
