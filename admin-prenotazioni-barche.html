@@ -10,6 +10,71 @@
   <link rel="stylesheet" href="home-overrides.css">
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="boat-booking.css">
+  <style>
+    .admin-secondary-sections {
+      display: grid;
+      gap: 14px;
+    }
+    .admin-collapsible {
+      padding: 0;
+      overflow: hidden;
+    }
+    .admin-collapsible > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 16px 22px;
+      cursor: pointer;
+      list-style: none;
+      color: #173e4b;
+      font-weight: 800;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .admin-collapsible > summary::-webkit-details-marker { display: none; }
+    .admin-collapsible > summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #edf6f8;
+      color: #0b6478;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+    .admin-collapsible[open] > summary::after { content: "−"; }
+    .admin-collapsible__body {
+      padding: 0 22px 22px;
+      border-top: 1px solid #e2e9eb;
+    }
+    .admin-collapsible__body > :first-child { margin-top: 22px; }
+    .admin-bookings-card { order: -1; }
+
+    @media (max-width: 640px) {
+      .admin-collapsible > summary {
+        min-height: 56px;
+        padding: 14px 16px;
+      }
+      .admin-collapsible__body { padding: 0 16px 18px; }
+      .admin-booking__actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .admin-booking__actions .admin-button {
+        min-height: 44px;
+        padding: 9px 8px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .admin-booking__actions { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
   <div class="site-frame">
@@ -40,55 +105,7 @@
           <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
         </div>
 
-        <section class="booking-card admin-settings-card">
-          <div>
-            <h2>Chiusura prenotazioni</h2>
-            <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
-            <div class="cutoff-state" data-cutoff-state></div>
-          </div>
-          <form class="cutoff-form" data-cutoff-form>
-            <div class="booking-field">
-              <label for="cutoffLocal">Data e ora di chiusura</label>
-              <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
-              <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
-            </div>
-            <div class="booking-actions">
-              <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
-              <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
-            </div>
-          </form>
-        </section>
-
-        <section class="booking-card">
-          <h2>Anagrafica barche</h2>
-          <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
-
-          <form class="boat-registry-form" data-boat-form>
-            <div class="booking-field">
-              <label for="boatNumber">Numero barca</label>
-              <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
-            </div>
-            <div class="booking-field">
-              <label for="boatBuilder">Cantiere</label>
-              <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
-            </div>
-            <div class="booking-field">
-              <label for="boatType">Tipo</label>
-              <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
-            </div>
-            <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
-          </form>
-
-          <div data-boats-table></div>
-        </section>
-
-        <section class="booking-card">
-          <h2>Occupazione per slot</h2>
-          <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
-          <div class="admin-matrix-wrap" data-admin-matrix></div>
-        </section>
-
-        <section class="booking-card">
+        <section class="booking-card admin-bookings-card">
           <h2>Prenotazioni</h2>
           <div class="admin-filters">
             <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
@@ -98,6 +115,65 @@
           </div>
           <div class="admin-bookings" data-admin-bookings style="margin-top:18px"></div>
         </section>
+
+        <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
+          <details class="booking-card admin-collapsible">
+            <summary>Occupazione per slot</summary>
+            <div class="admin-collapsible__body">
+              <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
+              <div class="admin-matrix-wrap" data-admin-matrix></div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Anagrafica barche</summary>
+            <div class="admin-collapsible__body">
+              <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
+
+              <form class="boat-registry-form" data-boat-form>
+                <div class="booking-field">
+                  <label for="boatNumber">Numero barca</label>
+                  <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
+                </div>
+                <div class="booking-field">
+                  <label for="boatBuilder">Cantiere</label>
+                  <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
+                </div>
+                <div class="booking-field">
+                  <label for="boatType">Tipo</label>
+                  <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
+                </div>
+                <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
+              </form>
+
+              <div data-boats-table></div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Impostazioni prenotazioni</summary>
+            <div class="admin-collapsible__body">
+              <div class="admin-settings-card">
+                <div>
+                  <h2>Chiusura prenotazioni</h2>
+                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
+                  <div class="cutoff-state" data-cutoff-state></div>
+                </div>
+                <form class="cutoff-form" data-cutoff-form>
+                  <div class="booking-field">
+                    <label for="cutoffLocal">Data e ora di chiusura</label>
+                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
+                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                  </div>
+                  <div class="booking-actions">
+                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
+                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </details>
+        </div>
       </section>
     </main>
 
