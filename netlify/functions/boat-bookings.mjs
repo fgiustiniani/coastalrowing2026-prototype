@@ -28,9 +28,22 @@ async function readPayload(request) {
   }
 }
 
+function validateEmailConfirmation(payload) {
+  const email = String(payload.email || '').trim().toLowerCase();
+  const emailConfirm = String(payload.emailConfirm || '').trim().toLowerCase();
+
+  if (!emailConfirm) {
+    throw new ApiError('Ripeti l’indirizzo email nel campo di conferma.', 400, 'EMAIL_CONFIRMATION_REQUIRED');
+  }
+  if (email !== emailConfirm) {
+    throw new ApiError('Gli indirizzi email non coincidono.', 400, 'EMAIL_MISMATCH');
+  }
+}
+
 async function createBooking(payload, request) {
   const validated = validateBookingPayload(payload);
   if (validated.spam) return json({ ok: true });
+  validateEmailConfirmation(payload);
 
   const rawToken = generateEditToken();
   let bookingId = null;
@@ -138,6 +151,7 @@ async function updateBooking(payload, request) {
 
   const validated = validateBookingPayload(payload);
   if (validated.spam) return json({ ok: true });
+  validateEmailConfirmation(payload);
 
   await rpc('update_boat_test_booking', {
     p_booking_id: current.booking.id,
