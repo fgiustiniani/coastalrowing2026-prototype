@@ -8,6 +8,7 @@
   const loginStatus = document.querySelector('[data-login-status]');
   const matrix = document.querySelector('[data-admin-matrix]');
   const bookingsContainer = document.querySelector('[data-admin-bookings]');
+  const slotsContainer = document.querySelector('[data-admin-slots]');
   const boatsContainer = document.querySelector('[data-boats-table]');
   const boatForm = document.querySelector('[data-boat-form]');
   const cutoffForm = document.querySelector('[data-cutoff-form]');
@@ -29,7 +30,7 @@
   const boatTypes = ['C1x', 'C2x', 'C4x+'];
 
   let credentials = null;
-  let data = { bookings: [], availability: [], boats: [], settings: {} };
+  let data = { bookings: [], availability: [], boats: [], slots: [], settings: {} };
   let editing = null;
   let editingQuantities = new Map();
 
@@ -71,8 +72,16 @@
     return body;
   }
 
+  function slotInfo(code) {
+    return (data.slots || []).find((slot) => slot.code === code) || null;
+  }
+
   function slotLabel(code) {
-    return slots.find(([value]) => value === code)?.[1] || code;
+    return slotInfo(code)?.label || slots.find(([value]) => value === code)?.[1] || code;
+  }
+
+  function activeBookingsForSlot(code) {
+    return (data.bookings || []).filter((booking) => booking.slotCode === code).length;
   }
 
   function availabilityRow(slotCode, builder, boatType) {
@@ -119,7 +128,51 @@
     return `${escapeHtml(item.builder)} ${escapeHtml(item.boatType)} × ${Number(item.quantity)}${numbers}`;
   }
 
+  function renderSlots() {
+    if (!slotsContainer) return;
+
+    const source = data.slots?.length
+      ? data.slots
+      : slots.map(([code, label], index) => ({ code, label, sortOrder: index + 1, active: true }));
+
+    slotsContainer.innerHTML = source.map((slot) => {
+      const bookingCount = activeBookingsForSlot(slot.code);
+      const canClose = slot.active && bookingCount === 0;
+      const nextActive = !slot.active;
+      const actionDisabled = slot.active && !canClose;
+      const actionTitle = actionDisabled
+        ? 'Lo slot contiene prenotazioni attive: spostale o eliminale prima di chiuderlo.'
+        : '';
+
+      return `
+        <div class="admin-slot${slot.active ? '' : ' is-inactive'}" data-slot-code="${escapeHtml(slot.code)}">
+          <div class="admin-slot__time">
+            <strong>${escapeHtml(slot.label || slotLabel(slot.code))}</strong>
+            <small>Codice ${escapeHtml(slot.code)}</small>
+          </div>
+          <span class="admin-slot__state${slot.active ? '' : ' is-inactive'}">${slot.active ? 'Aperto' : 'Chiuso'}</span>
+          <span class="admin-slot__count">${bookingCount} prenotazion${bookingCount === 1 ? 'e' : 'i'}</span>
+          <div class="admin-slot__action">
+            <button class="admin-button${slot.active ? ' admin-button--danger' : ' admin-button--primary'}" type="button" data-slot-action="toggle" data-next-active="${nextActive}" ${actionDisabled ? `disabled title="${escapeHtml(actionTitle)}"` : ''}>${slot.active ? 'Chiudi slot' : 'Riapri slot'}</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function syncEditSlotOptions() {
+    const select = editForm?.elements.slotCode;
+    if (!select) return;
+
+    Array.from(select.options).forEach((option) => {
+      const info = slotInfo(option.value);
+      if (!info) return;
+      option.disabled = !info.active && option.value !== editing?.slotCode;
+      option.textContent = `${info.label}${info.active ? '' : ' — chiuso'}`;
+    });
+  }
+
   function renderMatrix() {
+    if (!matrix) return;
     const columns = builders.flatMap((builder) => boatTypes.map((boatType) => [builder, boatType]));
 
     matrix.innerHTML = `
@@ -131,19 +184,23 @@
           </tr>
         </thead>
         <tbody>
-          ${slots.map(([code, label]) => `
+          ${slots.map(([code, label]) => {
+            const info = slotInfo(code);
+            const isInactive = info?.active === false;
+            return `
             <tr>
-              <th>${label}</th>
+              <th>${escapeHtml(info?.label || label)}${isInactive ? '<br><small>CHIUSO</small>' : ''}</th>
               ${columns.map(([builder, type]) => {
                 const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
                 const noBoats = Number(row.capacity) === 0;
                 const full = !noBoats && Number(row.remaining) <= 0;
                 return `<td class="admin-matrix__cell${full ? ' is-full' : ''}${noBoats ? ' is-empty' : ''}">
                   <strong>${row.booked}/${row.capacity}</strong>
-                  <small>${noBoats ? 'NESSUNA BARCA' : full ? 'COMPLETO' : `${row.remaining} libere`}</small>
+                  <small>${isInactive ? 'SLOT CHIUSO' : noBoats ? 'NESSUNA BARCA' : full ? 'COMPLETO' : `${row.remaining} libere`}</small>
                 </td>`;
               }).join('')}
-            </tr>`).join('')}
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>`;
   }
@@ -246,10 +303,12 @@
   }
 
   function renderAll() {
+    renderSlots();
     renderMatrix();
     renderCutoff();
     renderBoats();
     renderBookings();
+    syncEditSlotOptions();
   }
 
   async function loadDashboard(message = '') {
@@ -257,7 +316,8 @@
     const payload = await adminRequest('list');
     data = payload;
     renderAll();
-    setText(status, message || `${data.bookings.length} prenotazioni attive · ${data.boats.length} barche censite`, 'ok');
+    const openSlots = (data.slots || []).filter((slot) => slot.active).length;
+    setText(status, message || `${data.bookings.length} prenotazioni attive · ${data.boats.length} barche · ${openSlots}/${data.slots?.length || slots.length} slot aperti`, 'ok');
   }
 
   function editingItemQuantity(builder, boatType) {
@@ -326,6 +386,7 @@
     editForm.elements.contactName.value = booking.contactName;
     editForm.elements.phone.value = booking.phone;
     editForm.elements.email.value = booking.email;
+    syncEditSlotOptions();
     editForm.elements.slotCode.value = booking.slotCode;
 
     renderEditInventory();
@@ -390,6 +451,34 @@
       data.settings = payload.settings || data.settings;
       renderCutoff();
       setText(status, 'Scadenza rimossa: prenotazioni aperte senza termine.', 'ok');
+    } catch (error) {
+      setText(status, error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  slotsContainer?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-slot-action="toggle"]');
+    if (!button || button.disabled) return;
+
+    const row = button.closest('[data-slot-code]');
+    const code = row?.dataset.slotCode || '';
+    const slot = slotInfo(code);
+    if (!slot) return;
+
+    const nextActive = button.dataset.nextActive === 'true';
+    if (!nextActive && !confirm(`Chiudere lo slot ${slot.label}? Non sarà più selezionabile per nuove prenotazioni.`)) return;
+
+    button.disabled = true;
+    try {
+      const payload = await adminRequest('toggleslot', { code, active: nextActive });
+      data.slots = payload.slots || data.slots;
+      data.availability = payload.availability || data.availability;
+      renderSlots();
+      renderMatrix();
+      syncEditSlotOptions();
+      setText(status, nextActive ? `Slot ${slot.label} riaperto.` : `Slot ${slot.label} chiuso.`, 'ok');
     } catch (error) {
       setText(status, error.message, 'error');
     } finally {
