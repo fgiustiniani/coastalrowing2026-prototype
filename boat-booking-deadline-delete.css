@@ -27,6 +27,11 @@
 }
 
 .booking-delete-button {
+  display: inline-flex !important;
+  visibility: visible !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
   border: 1px solid #b45353;
   background: #fff;
   color: #922f2f;
@@ -38,6 +43,8 @@
 }
 
 .booking-delete-button:disabled {
+  display: inline-flex !important;
+  visibility: visible !important;
   opacity: .5;
   cursor: not-allowed;
 }
