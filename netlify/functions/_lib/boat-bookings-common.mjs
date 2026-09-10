@@ -12,14 +12,15 @@ export const SECRETARIAT_EMAIL = 'segreteria-gare@canottieripesaro.it';
 export const BUILDERS = ['LOVA', 'Swift'];
 export const BOAT_TYPES = ['C1x', 'C2x', 'C4x+'];
 export const SLOT_LABELS = new Map([
-  ['1300', '13:00–13:20'],
-  ['1330', '13:30–13:50'],
   ['1400', '14:00–14:20'],
   ['1430', '14:30–14:50'],
   ['1500', '15:00–15:20'],
   ['1530', '15:30–15:50'],
   ['1600', '16:00–16:20'],
-  ['1630', '16:30–16:50']
+  ['1630', '16:30–16:50'],
+  ['1700', '17:00–17:20'],
+  ['1730', '17:30–17:50'],
+  ['1800', '18:00–18:20']
 ]);
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,80}$/;
