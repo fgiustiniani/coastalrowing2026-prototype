@@ -288,6 +288,10 @@ export async function sendBookingNotificationV2({
     env('BOOKING_FROM_NAME') || env('CONTACT_FROM_NAME') || env('PARTNERSHIP_FROM_NAME') || 'Campionati Italiani Coastal Rowing 2026',
     160
   );
+  const notificationRecipient = cleanHeader(
+    env('BOOKING_NOTIFICATION_RECIPIENT') || SECRETARIAT_EMAIL,
+    254
+  );
 
   if (!smtpHost || !smtpUser || !smtpPass || !fromEmail) {
     throw new ApiError('Il servizio email non è configurato.', 503, 'EMAIL_NOT_CONFIGURED');
@@ -355,8 +359,8 @@ export async function sendBookingNotificationV2({
   await transporter.sendMail({
     from: { name: fromName, address: fromEmail },
     to: booking.email,
-    cc: booking.email.toLowerCase() === SECRETARIAT_EMAIL.toLowerCase() ? undefined : SECRETARIAT_EMAIL,
-    replyTo: SECRETARIAT_EMAIL,
+    cc: booking.email.toLowerCase() === notificationRecipient.toLowerCase() ? undefined : notificationRecipient,
+    replyTo: notificationRecipient || fromEmail,
     subject: subjectByKind[kind] || subjectByKind.updated,
     text,
     html
