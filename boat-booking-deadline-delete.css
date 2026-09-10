@@ -1,0 +1,64 @@
+.booking-deadline-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -6px 0 22px;
+  padding: 14px 18px;
+  border: 1px solid #c9dce1;
+  border-radius: 14px;
+  background: #f4f9fa;
+  color: #315560;
+}
+
+.booking-deadline-info strong {
+  flex: 0 0 auto;
+  color: #153d4a;
+}
+
+.booking-deadline-info span {
+  text-align: right;
+}
+
+.booking-deadline-info.is-closed {
+  background: #f5f6f6;
+  border-color: #d6dbdd;
+  color: #626f74;
+}
+
+.booking-delete-button {
+  border: 1px solid #b45353;
+  background: #fff;
+  color: #922f2f;
+}
+
+.booking-delete-button:hover:not(:disabled),
+.booking-delete-button:focus-visible:not(:disabled) {
+  background: #fff4f4;
+}
+
+.booking-delete-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.booking-delete-success {
+  margin-top: 22px;
+}
+
+@media (max-width: 640px) {
+  .booking-deadline-info {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: -10px;
+  }
+
+  .booking-deadline-info span {
+    text-align: left;
+  }
+
+  .booking-actions .booking-delete-button {
+    width: 100%;
+  }
+}
