@@ -1,6 +1,7 @@
 import {
   ApiError,
   dbItems,
+  ensureReadableToken,
   generateBookingCode,
   generateEditToken,
   getAvailability,
@@ -16,9 +17,9 @@ import {
   persistEncryptedToken,
   publicBookingV2,
   rpc,
-  sendBookingNotificationV2,
   validateBookingPayload
 } from './_lib/boat-bookings-v2.mjs';
+import { sendBookingEmails } from './_lib/boat-booking-emails.mjs';
 
 async function readPayload(request) {
   try {
@@ -89,7 +90,7 @@ async function createBooking(payload, request) {
   let editLink = getBookingLink(rawToken, request.url);
 
   try {
-    const sent = await sendBookingNotificationV2({
+    const sent = await sendBookingEmails({
       record,
       rawToken,
       requestUrl: request.url,
@@ -131,15 +132,25 @@ async function loadBooking(payload) {
   });
 }
 
-async function lookupBooking(payload) {
+async function lookupBooking(payload, request) {
   const record = await getBookingByCodeV2(payload.bookingCode);
   if (!record) {
     throw new ApiError('Nessuna prenotazione trovata con questo codice.', 404, 'BOOKING_NOT_FOUND');
   }
 
+  const settings = await getSettings();
+  let editLink = '';
+
+  if (settings.bookingOpen) {
+    const rawToken = await ensureReadableToken(record);
+    editLink = getBookingLink(rawToken, request.url);
+  }
+
   return json({
     ok: true,
-    booking: publicBookingV2(record)
+    booking: publicBookingV2(record),
+    canEdit: settings.bookingOpen,
+    editLink: editLink || undefined
   });
 }
 
@@ -178,7 +189,7 @@ async function updateBooking(payload, request) {
   let warning = '';
 
   try {
-    await sendBookingNotificationV2({
+    await sendBookingEmails({
       record: updated,
       rawToken: current.token,
       requestUrl: request.url,
@@ -217,7 +228,7 @@ export default async (request) => {
 
     if (action === 'create') return await createBooking(payload, request);
     if (action === 'get') return await loadBooking(payload);
-    if (action === 'lookup') return await lookupBooking(payload);
+    if (action === 'lookup') return await lookupBooking(payload, request);
     if (action === 'update') return await updateBooking(payload, request);
 
     throw new ApiError('Operazione non valida.', 400, 'INVALID_ACTION');
