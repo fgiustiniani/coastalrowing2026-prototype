@@ -54,6 +54,46 @@
     .admin-collapsible__body > :first-child { margin-top: 22px; }
     .admin-bookings-card { order: -1; }
 
+    .admin-slots {
+      display: grid;
+      gap: 10px;
+    }
+    .admin-slot {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto auto auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid #d7e1e4;
+      border-radius: 14px;
+      background: #fff;
+    }
+    .admin-slot.is-inactive { background: #f5f6f6; }
+    .admin-slot__time strong { display: block; color: #173e4b; }
+    .admin-slot__time small { display: block; margin-top: 2px; color: #6a7a80; }
+    .admin-slot__count {
+      min-width: 96px;
+      color: #51656d;
+      font-size: .9rem;
+      text-align: center;
+    }
+    .admin-slot__state {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 76px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 800;
+      background: #eef8f1;
+      color: #245d38;
+    }
+    .admin-slot__state.is-inactive {
+      background: #eceff0;
+      color: #626d72;
+    }
+
     @media (max-width: 640px) {
       .admin-collapsible > summary {
         min-height: 56px;
@@ -69,10 +109,25 @@
         min-height: 44px;
         padding: 9px 8px;
       }
+      .admin-slot {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px 12px;
+      }
+      .admin-slot__count {
+        min-width: 0;
+        text-align: left;
+      }
+      .admin-slot__action { grid-column: 2; grid-row: 2 / span 2; }
+      .admin-slot__action .admin-button { min-height: 44px; }
     }
 
     @media (max-width: 420px) {
       .admin-booking__actions { grid-template-columns: 1fr; }
+      .admin-slot { grid-template-columns: 1fr; }
+      .admin-slot__state,
+      .admin-slot__count { justify-self: start; text-align: left; }
+      .admin-slot__action { grid-column: auto; grid-row: auto; }
+      .admin-slot__action .admin-button { width: 100%; }
     }
   </style>
 </head>
@@ -117,6 +172,14 @@
         </section>
 
         <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
+          <details class="booking-card admin-collapsible">
+            <summary>Slot orari</summary>
+            <div class="admin-collapsible__body">
+              <p class="booking-card__intro">Puoi aprire o chiudere singoli slot alle nuove prenotazioni. Per evitare prenotazioni isolate, uno slot che contiene già prenotazioni attive non può essere chiuso finché non le hai spostate o eliminate.</p>
+              <div class="admin-slots" data-admin-slots></div>
+            </div>
+          </details>
+
           <details class="booking-card admin-collapsible">
             <summary>Occupazione per slot</summary>
             <div class="admin-collapsible__body">
