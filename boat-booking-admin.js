@@ -186,6 +186,17 @@
   [societyFilter, slotFilter, typeFilter].forEach((input) => input?.addEventListener('input', renderBookings));
   [slotFilter, typeFilter].forEach((input) => input?.addEventListener('change', renderBookings));
 
+  capacityContainer?.addEventListener('change', (event) => {
+    const select = event.target.closest('select[name="slotCode"]');
+    if (!select) return;
+    const form = select.closest('[data-capacity-form]');
+    const input = form?.elements.capacity;
+    if (!form || !input) return;
+    const slotCode = select.value || '1300';
+    const row = availabilityRow(slotCode, form.dataset.builder, form.dataset.boatType);
+    if (row) input.value = row.capacity;
+  });
+
   capacityContainer?.addEventListener('submit', async (event) => {
     const form = event.target.closest('[data-capacity-form]');
     if (!form) return;

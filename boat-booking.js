@@ -238,7 +238,14 @@
   slotOptions?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-slot-choice]');
     if (!button || button.disabled) return;
-    setSelectedSlot(button.dataset.slotChoice, { scroll: true });
+    const builder = builderFirst?.value || '';
+    const boatType = typeFirst?.value || '';
+    setSelectedSlot(button.dataset.slotChoice);
+    if (builder && boatType && Number(rowFor(selectedSlot, builder, boatType)?.remaining || 0) > 0) {
+      desiredItems.set(itemKey(builder, boatType), 1);
+      renderInventory();
+    }
+    inventoryPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   inventoryGrid?.addEventListener('change', snapshotQuantities);
 
