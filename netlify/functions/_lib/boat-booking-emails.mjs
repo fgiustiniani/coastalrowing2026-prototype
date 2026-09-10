@@ -28,6 +28,15 @@ export function getBookingViewLink(bookingCode, requestUrl) {
   return `${siteBase(requestUrl)}/prenotazione-barche.html#code=${encodeURIComponent(bookingCode)}`;
 }
 
+function isDeployPreview(requestUrl) {
+  try {
+    const hostname = new URL(requestUrl).hostname.toLowerCase();
+    return env('CONTEXT') === 'deploy-preview' || hostname.startsWith('deploy-preview-');
+  } catch {
+    return env('CONTEXT') === 'deploy-preview';
+  }
+}
+
 function deliveryErrorMessage(error) {
   return cleanHeader(error?.message || 'Errore SMTP non specificato.', 300);
 }
@@ -84,17 +93,17 @@ export async function sendBookingEmails({
     env('BOOKING_NOTIFICATION_RECIPIENT') || SECRETARIAT_EMAIL,
     254
   );
-  const subjectPrefix = cleanHeader(env('BOOKING_SUBJECT_PREFIX'), 40);
 
   if (!smtpHost || !smtpUser || !smtpPass || !fromEmail) {
     throw new ApiError('Il servizio email non è configurato.', 503, 'EMAIL_NOT_CONFIGURED');
   }
 
   const subjectByKind = {
-    created: 'Conferma prenotazione prove barche – Coastal Rowing Pesaro 2026',
-    updated: 'Prenotazione prove barche aggiornata – Coastal Rowing Pesaro 2026',
-    resent: 'Riepilogo prenotazione prove barche – Coastal Rowing Pesaro 2026',
-    deleted: 'Prenotazione prove barche annullata – Coastal Rowing Pesaro 2026'
+    created: 'Nuova prenotazione prova barca Campionati Italiani Coastal 26',
+    updated: 'Modifica prenotazione prova barca Campionati Italiani Coastal 26',
+    // Il reinvio manuale ripropone la conferma della prenotazione esistente.
+    resent: 'Nuova prenotazione prova barca Campionati Italiani Coastal 26',
+    deleted: 'Eliminazione prenotazione prova barca Campionati Italiani Coastal 26'
   };
   const headingByKind = {
     created: 'Prenotazione confermata',
@@ -103,8 +112,8 @@ export async function sendBookingEmails({
     deleted: 'Prenotazione annullata'
   };
 
+  const subjectPrefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
   const subject = `${subjectPrefix}${subjectByKind[kind] || subjectByKind.updated}`;
-  const organizationSubject = `${subjectPrefix}Organizzazione – ${subjectByKind[kind] || subjectByKind.updated}`;
   const heading = headingByKind[kind] || headingByKind.updated;
   const editLink = kind === 'deleted' ? '' : editLinkFor(rawToken, requestUrl);
   const viewLink = kind === 'deleted' ? '' : getBookingViewLink(booking.bookingCode, requestUrl);
@@ -188,7 +197,7 @@ export async function sendBookingEmails({
         envelope: { from: smtpUser, to: notificationRecipient },
         to: notificationRecipient,
         replyTo: booking.email,
-        subject: organizationSubject,
+        subject,
         text: organizationText,
         html: organizationHtml
       }, 'organizzazione')
