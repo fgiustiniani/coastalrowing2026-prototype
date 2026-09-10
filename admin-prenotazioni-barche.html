@@ -53,6 +53,17 @@
     }
     .admin-collapsible__body > :first-child { margin-top: 22px; }
     .admin-bookings-card { order: -1; }
+    .admin-section-heading,
+    .admin-export-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .admin-section-heading h2,
+    .admin-export-row p { margin: 0; }
+    .admin-export-button { flex: 0 0 auto; }
 
     .admin-slots {
       display: grid;
@@ -109,6 +120,9 @@
         min-height: 44px;
         padding: 9px 8px;
       }
+      .admin-section-heading,
+      .admin-export-row { align-items: stretch; }
+      .admin-export-button { min-height: 44px; }
       .admin-slot {
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 10px 12px;
@@ -123,6 +137,7 @@
 
     @media (max-width: 420px) {
       .admin-booking__actions { grid-template-columns: 1fr; }
+      .admin-export-button { width: 100%; }
       .admin-slot { grid-template-columns: 1fr; }
       .admin-slot__state,
       .admin-slot__count { justify-self: start; text-align: left; }
@@ -161,8 +176,11 @@
         </div>
 
         <section class="booking-card admin-bookings-card">
-          <h2>Prenotazioni</h2>
-          <div class="admin-filters">
+          <div class="admin-section-heading">
+            <h2>Prenotazioni</h2>
+            <button class="admin-button admin-export-button" data-export-bookings-pdf type="button">Esporta PDF</button>
+          </div>
+          <div class="admin-filters" style="margin-top:18px">
             <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
             <div class="booking-field"><label for="filterSlot">Slot</label><select id="filterSlot" data-filter-slot><option value="">Tutti</option><option value="1300">13:00–13:20</option><option value="1330">13:30–13:50</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option></select></div>
             <div class="booking-field"><label for="filterBuilder">Cantiere</label><select id="filterBuilder" data-filter-builder><option value="">Tutti</option><option>LOVA</option><option>Swift</option></select></div>
@@ -183,8 +201,11 @@
           <details class="booking-card admin-collapsible">
             <summary>Occupazione per slot</summary>
             <div class="admin-collapsible__body">
-              <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
-              <div class="admin-matrix-wrap" data-admin-matrix></div>
+              <div class="admin-export-row">
+                <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
+                <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">Esporta PDF</button>
+              </div>
+              <div class="admin-matrix-wrap" data-admin-matrix style="margin-top:18px"></div>
             </div>
           </details>
 
@@ -272,5 +293,6 @@
 
   <script src="nav-submenu.js" defer></script>
   <script src="boat-booking-admin.js" defer></script>
+  <script src="boat-booking-pdf-export.js" defer></script>
 </body>
 </html>
