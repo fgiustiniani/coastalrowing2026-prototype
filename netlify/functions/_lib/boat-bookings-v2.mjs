@@ -292,6 +292,7 @@ export async function sendBookingNotificationV2({
     env('BOOKING_NOTIFICATION_RECIPIENT') || SECRETARIAT_EMAIL,
     254
   );
+  const subjectPrefix = cleanHeader(env('BOOKING_SUBJECT_PREFIX'), 40);
 
   if (!smtpHost || !smtpUser || !smtpPass || !fromEmail) {
     throw new ApiError('Il servizio email non è configurato.', 503, 'EMAIL_NOT_CONFIGURED');
@@ -361,7 +362,7 @@ export async function sendBookingNotificationV2({
     to: booking.email,
     cc: booking.email.toLowerCase() === notificationRecipient.toLowerCase() ? undefined : notificationRecipient,
     replyTo: notificationRecipient || fromEmail,
-    subject: subjectByKind[kind] || subjectByKind.updated,
+    subject: `${subjectPrefix}${subjectByKind[kind] || subjectByKind.updated}`,
     text,
     html
   });
