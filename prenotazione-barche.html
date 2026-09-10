@@ -55,27 +55,7 @@
         <form class="booking-shell" data-booking-form data-mode="create" novalidate>
           <section class="booking-card">
             <h2><span class="booking-section-number">1</span>Scegli lo slot orario</h2>
-            <p class="booking-card__intro">Puoi scegliere direttamente l’orario oppure usare i filtri per vedere solo gli slot in cui sono disponibili le barche che ti interessano.</p>
-
-            <div class="booking-slot-filter" aria-labelledby="boat-filter-title">
-              <div class="booking-slot-filter__head">
-                <div>
-                  <strong id="boat-filter-title">Filtra per barca <span style="display:inline; font-weight:400">(opzionale)</span></strong>
-                  <span>Seleziona una o più coppie cantiere–tipo. Con più filtri, restano selezionabili gli slot in cui tutte le coppie scelte sono disponibili.</span>
-                </div>
-                <button class="booking-slot-filter__clear" type="button" data-clear-boat-filters hidden>Rimuovi filtri</button>
-              </div>
-
-              <div class="booking-slot-filter__options">
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C1x"><span>LOVA · C1x</span></label>
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C2x"><span>LOVA · C2x</span></label>
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C4x+"><span>LOVA · C4x+</span></label>
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C1x"><span>Swift · C1x</span></label>
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C2x"><span>Swift · C2x</span></label>
-                <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C4x+"><span>Swift · C4x+</span></label>
-              </div>
-              <p class="booking-slot-filter__summary" data-boat-filter-summary aria-live="polite"></p>
-            </div>
+            <p class="booking-card__intro">Scegli l’orario che preferisci. Se cerchi una barca specifica, puoi usare il filtro opzionale per restringere gli slot disponibili.</p>
 
             <div data-slot-flow>
               <div class="booking-field booking-field--full">
@@ -91,8 +71,30 @@
                   <option value="1600">16:00–16:20</option>
                   <option value="1630">16:30–16:50</option>
                 </select>
-                <span class="booking-help">Gli slot non compatibili con i filtri selezionati vengono disabilitati automaticamente.</span>
               </div>
+            </div>
+
+            <div class="booking-slot-filter">
+              <details data-boat-filter-menu>
+                <summary>
+                  <span class="booking-slot-filter__label">Filtra per barca <small>(opzionale)</small></span>
+                  <span class="booking-slot-filter__summary" data-boat-filter-summary>Nessun filtro</span>
+                </summary>
+                <div class="booking-slot-filter__panel">
+                  <p class="booking-slot-filter__intro">Seleziona una o più coppie cantiere–tipo. Uno slot resta disponibile se almeno una delle barche selezionate è disponibile in quell’orario.</p>
+                  <div class="booking-slot-filter__options">
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C1x"><span>LOVA · C1x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C2x"><span>LOVA · C2x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C4x+"><span>LOVA · C4x+</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C1x"><span>Swift · C1x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C2x"><span>Swift · C2x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C4x+"><span>Swift · C4x+</span></label>
+                  </div>
+                  <div class="booking-slot-filter__footer">
+                    <button class="booking-slot-filter__clear" type="button" data-clear-boat-filters hidden>Rimuovi filtri</button>
+                  </div>
+                </div>
+              </details>
             </div>
           </section>
 
