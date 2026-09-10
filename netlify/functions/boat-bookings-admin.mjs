@@ -15,11 +15,13 @@ import {
   json,
   listActiveBookingsV2,
   listBoats,
+  listSlots,
   mapDatabaseErrorV2,
   publicBookingV2,
   rpc,
   setBoatActive,
   setCutoff,
+  setSlotActive,
   validateBookingPayload
 } from './_lib/boat-bookings-v2.mjs';
 import { sendBookingEmails } from './_lib/boat-booking-emails.mjs';
@@ -33,13 +35,14 @@ async function readPayload(request) {
 }
 
 async function dashboardPayload() {
-  const [bookings, availability, boats, settings] = await Promise.all([
+  const [bookings, availability, boats, slots, settings] = await Promise.all([
     listActiveBookingsV2(),
     getAvailability(),
     listBoats(),
+    listSlots(),
     getSettings()
   ]);
-  return { bookings, availability, boats, settings, builders: BUILDERS, boatTypes: BOAT_TYPES };
+  return { bookings, availability, boats, slots, settings, builders: BUILDERS, boatTypes: BOAT_TYPES };
 }
 
 async function updateBooking(payload, request) {
@@ -136,6 +139,18 @@ async function saveCutoff(payload) {
   return json({ ok: true, settings: await setCutoff(payload.cutoffLocal) });
 }
 
+async function toggleSlot(payload) {
+  const slotCode = clean(payload.code, 10);
+  if (!slotCode) throw new ApiError('Slot non valido.', 400, 'INVALID_SLOT');
+
+  await setSlotActive(slotCode, payload.active === true);
+  return json({
+    ok: true,
+    slots: await listSlots(),
+    availability: await getAvailability()
+  });
+}
+
 async function createBoat(payload) {
   await addBoat({ number: payload.number, builder: payload.builder, boatType: payload.boatType });
   return json({
@@ -187,6 +202,7 @@ export default async (request) => {
     if (action === 'delete') return await deleteBooking(payload, request);
     if (action === 'resend') return await resendBooking(payload, request);
     if (action === 'setcutoff') return await saveCutoff(payload);
+    if (action === 'toggleslot') return await toggleSlot(payload);
     if (action === 'addboat') return await createBoat(payload);
     if (action === 'toggleboat') return await toggleBoat(payload);
     if (action === 'deleteboat') return await removeBoat(payload);
