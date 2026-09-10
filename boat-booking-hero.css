@@ -7,4 +7,4 @@
   font-weight: 800;
 }
 
-/* Rebuild preview: aggiorna le variabili email del contesto Deploy Preview. */
+/* Rebuild preview: applica BOOKING_FROM_EMAIL nel contesto Deploy Preview. */
