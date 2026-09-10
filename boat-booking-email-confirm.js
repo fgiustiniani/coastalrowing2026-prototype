@@ -5,6 +5,39 @@
   const status = form.querySelector('[data-booking-status]');
   const originalFetch = window.fetch.bind(window);
 
+  // Manteniamo email e conferma email nella stessa colonna e affianchiamo
+  // la privacy alla conferma, sia in creazione sia in modifica.
+  const grid = form.querySelector('.booking-grid');
+  const emailField = form.elements.email.closest('.booking-field');
+  const phoneField = form.elements.phone?.closest('.booking-field');
+  const emailConfirmField = form.elements.emailConfirm.closest('.booking-field');
+  const privacy = form.querySelector('.booking-privacy');
+
+  if (grid && emailField && phoneField && emailConfirmField && privacy) {
+    grid.insertBefore(emailField, phoneField);
+    grid.appendChild(emailConfirmField);
+    privacy.classList.add('booking-privacy--grid');
+    grid.appendChild(privacy);
+
+    if (!document.querySelector('style[data-booking-contact-layout]')) {
+      const style = document.createElement('style');
+      style.dataset.bookingContactLayout = 'true';
+      style.textContent = `
+        .booking-privacy--grid {
+          align-self: center;
+          margin: 24px 0 0;
+          min-height: 48px;
+        }
+        @media (max-width: 700px) {
+          .booking-privacy--grid {
+            margin-top: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
   function normalized(value) {
     return String(value || '').trim().toLowerCase();
   }
