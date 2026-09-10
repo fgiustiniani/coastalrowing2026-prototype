@@ -18,11 +18,11 @@ import {
   mapDatabaseErrorV2,
   publicBookingV2,
   rpc,
-  sendBookingNotificationV2,
   setBoatActive,
   setCutoff,
   validateBookingPayload
 } from './_lib/boat-bookings-v2.mjs';
+import { sendBookingEmails } from './_lib/boat-booking-emails.mjs';
 
 async function readPayload(request) {
   try {
@@ -71,7 +71,7 @@ async function updateBooking(payload, request) {
   let warning = '';
 
   try {
-    await sendBookingNotificationV2({
+    await sendBookingEmails({
       record: updated,
       rawToken: token,
       requestUrl: request.url,
@@ -99,7 +99,7 @@ async function deleteBooking(payload, request) {
   let warning = '';
 
   try {
-    await sendBookingNotificationV2({
+    await sendBookingEmails({
       record: current,
       rawToken: null,
       requestUrl: request.url,
@@ -122,7 +122,7 @@ async function resendBooking(payload, request) {
   if (!current) throw new ApiError('Prenotazione non trovata.', 404, 'BOOKING_NOT_FOUND');
 
   const token = await ensureReadableToken(current);
-  await sendBookingNotificationV2({
+  await sendBookingEmails({
     record: current,
     rawToken: token,
     requestUrl: request.url,
