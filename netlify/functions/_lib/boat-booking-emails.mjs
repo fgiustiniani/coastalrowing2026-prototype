@@ -169,10 +169,8 @@ export async function sendBookingEmails({
     auth: { user: smtpUser, pass: smtpPass }
   });
 
-  // Gli invii sono volutamente separati: il referente riceve il link personale
-  // di modifica, mentre l'organizzazione riceve solo il link di consultazione.
-  // Vengono eseguiti in sequenza e ritentati una volta per evitare problemi
-  // transitori del trasporto SMTP in ambiente serverless.
+  // I due messaggi restano separati: solo il referente riceve il link personale
+  // di modifica. Gli invii sono sequenziali e ciascuno viene ritentato una volta.
   const userDelivery = await sendWithRetry(transporter, {
     from: { name: fromName, address: fromEmail },
     envelope: { from: smtpUser, to: booking.email },
@@ -195,11 +193,23 @@ export async function sendBookingEmails({
       }, 'organizzazione')
     : { sent: false, attempts: 0, accepted: [], rejected: [], error: 'Destinatario organizzazione non configurato.' };
 
+  if (!userDelivery.sent || !organizationDelivery.sent) {
+    const failed = [];
+    if (!userDelivery.sent) failed.push('referente');
+    if (!organizationDelivery.sent) failed.push('organizzazione');
+    throw new ApiError(
+      `Invio email incompleto: non è stato possibile consegnare il messaggio a ${failed.join(' e ')}.`,
+      502,
+      'EMAIL_DELIVERY_INCOMPLETE',
+      { userDelivery, organizationDelivery }
+    );
+  }
+
   return {
     editLink,
     viewLink,
-    userSent: userDelivery.sent,
-    organizationSent: organizationDelivery.sent,
+    userSent: true,
+    organizationSent: true,
     deliveries: {
       user: userDelivery,
       organization: organizationDelivery
