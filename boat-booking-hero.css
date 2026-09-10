@@ -1,3 +1,8 @@
 .booking-hero::after {
   display: none;
 }
+
+.booking-lookup__copy .eyebrow {
+  color: #0b6478;
+  font-weight: 800;
+}
