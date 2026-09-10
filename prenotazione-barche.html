@@ -93,6 +93,7 @@
               <div class="booking-field"><label for="contactName">Nome referente</label><input id="contactName" name="contactName" maxlength="100" autocomplete="given-name" required></div>
               <div class="booking-field"><label for="phone">Telefono</label><input id="phone" name="phone" maxlength="40" autocomplete="tel" inputmode="tel" required></div>
               <div class="booking-field"><label for="email">Email</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" required></div>
+              <div class="booking-field"><label for="emailConfirm">Conferma email</label><input id="emailConfirm" name="emailConfirm" type="email" maxlength="254" autocomplete="off" required><span class="booking-help">Ripeti l’indirizzo email per evitare errori.</span></div>
             </div>
             <div class="booking-honeypot" aria-hidden="true"><label for="website">Sito web</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
             <div class="booking-privacy"><input id="privacyAccepted" name="privacyAccepted" type="checkbox" required><label for="privacyAccepted">Ho letto l’<a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">informativa privacy</a> relativa alla gestione della prenotazione.</label></div>
@@ -114,6 +115,7 @@
     <a class="back-home" href="#top" aria-label="Torna all’inizio della pagina">↑ <span>Vai su</span></a>
   </div>
   <script src="nav-submenu.js" defer></script>
+  <script src="boat-booking-email-confirm.js" defer></script>
   <script src="boat-booking.js" defer></script>
 </body>
 </html>
