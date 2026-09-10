@@ -27,6 +27,37 @@ export function getBookingViewLink(bookingCode, requestUrl) {
   return `${siteBase(requestUrl)}/prenotazione-barche.html#code=${encodeURIComponent(bookingCode)}`;
 }
 
+function deliveryErrorMessage(error) {
+  return cleanHeader(error?.message || 'Errore SMTP non specificato.', 300);
+}
+
+async function sendWithRetry(transporter, message, label) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const info = await transporter.sendMail(message);
+      return {
+        sent: true,
+        attempts: attempt,
+        accepted: Array.isArray(info?.accepted) ? info.accepted.map(String) : [],
+        rejected: Array.isArray(info?.rejected) ? info.rejected.map(String) : []
+      };
+    } catch (error) {
+      lastError = error;
+      console.error(`Invio email ${label} fallito (tentativo ${attempt}/2):`, error);
+    }
+  }
+
+  return {
+    sent: false,
+    attempts: 2,
+    accepted: [],
+    rejected: [],
+    error: deliveryErrorMessage(lastError)
+  };
+}
+
 export async function sendBookingEmails({
   record,
   rawToken,
@@ -72,6 +103,7 @@ export async function sendBookingEmails({
   };
 
   const subject = `${subjectPrefix}${subjectByKind[kind] || subjectByKind.updated}`;
+  const organizationSubject = `${subjectPrefix}Organizzazione – ${subjectByKind[kind] || subjectByKind.updated}`;
   const heading = headingByKind[kind] || headingByKind.updated;
   const editLink = kind === 'deleted' ? '' : editLinkFor(rawToken, requestUrl);
   const viewLink = kind === 'deleted' ? '' : getBookingViewLink(booking.bookingCode, requestUrl);
@@ -137,29 +169,40 @@ export async function sendBookingEmails({
     auth: { user: smtpUser, pass: smtpPass }
   });
 
-  const deliveries = [
-    transporter.sendMail({
-      from: { name: fromName, address: fromEmail },
-      to: booking.email,
-      replyTo: notificationRecipient || fromEmail,
-      subject,
-      text: userText,
-      html: userHtml
-    })
-  ];
+  // Gli invii sono volutamente separati: il referente riceve il link personale
+  // di modifica, mentre l'organizzazione riceve solo il link di consultazione.
+  // Vengono eseguiti in sequenza e ritentati una volta per evitare problemi
+  // transitori del trasporto SMTP in ambiente serverless.
+  const userDelivery = await sendWithRetry(transporter, {
+    from: { name: fromName, address: fromEmail },
+    envelope: { from: smtpUser, to: booking.email },
+    to: booking.email,
+    replyTo: notificationRecipient || fromEmail,
+    subject,
+    text: userText,
+    html: userHtml
+  }, 'referente');
 
-  if (notificationRecipient) {
-    deliveries.push(transporter.sendMail({
-      from: { name: fromName, address: fromEmail },
-      to: notificationRecipient,
-      replyTo: booking.email,
-      subject,
-      text: organizationText,
-      html: organizationHtml
-    }));
-  }
+  const organizationDelivery = notificationRecipient
+    ? await sendWithRetry(transporter, {
+        from: { name: fromName, address: fromEmail },
+        envelope: { from: smtpUser, to: notificationRecipient },
+        to: notificationRecipient,
+        replyTo: booking.email,
+        subject: organizationSubject,
+        text: organizationText,
+        html: organizationHtml
+      }, 'organizzazione')
+    : { sent: false, attempts: 0, accepted: [], rejected: [], error: 'Destinatario organizzazione non configurato.' };
 
-  await Promise.all(deliveries);
-
-  return { editLink, viewLink };
+  return {
+    editLink,
+    viewLink,
+    userSent: userDelivery.sent,
+    organizationSent: organizationDelivery.sent,
+    deliveries: {
+      user: userDelivery,
+      organization: organizationDelivery
+    }
+  };
 }
