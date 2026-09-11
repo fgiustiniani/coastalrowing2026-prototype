@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="assets-overrides.css">
   <link rel="stylesheet" href="home-overrides.css">
   <link rel="stylesheet" href="site-polish.css">
-  <link rel="stylesheet" href="vivi-pesaro.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3yn5jkP8eAHgzK/EDhIGSz4e2mMZc=" crossorigin="">
+  <link rel="stylesheet" href="vivi-pesaro.css">
 </head>
 <body>
   <div class="site-frame">
@@ -136,6 +136,25 @@
         </div>
 
         <div class="food-map-view" data-food-map-view hidden>
+          <div class="food-map-tools">
+            <button class="food-locate" type="button" data-food-locate>
+              <span class="food-locate__icon" aria-hidden="true">◎</span>
+              <span data-food-locate-label>La mia posizione</span>
+            </button>
+            <span class="food-location-status" data-food-location-status role="status" aria-live="polite"></span>
+          </div>
+
+          <div class="food-map-legend" aria-label="Legenda della mappa">
+            <span class="food-map-legend__title">Legenda</span>
+            <span class="food-map-legend__item"><span class="food-map-key">R</span>Ristorante</span>
+            <span class="food-map-legend__item"><span class="food-map-key">P</span>Pizzeria</span>
+            <span class="food-map-legend__item"><span class="food-map-key">L</span>Lounge / Bistrot</span>
+            <span class="food-map-legend__item"><span class="food-map-key">G</span>Gelateria</span>
+            <span class="food-map-legend__item"><span class="food-map-key food-map-key--pub">PUB</span>Pub</span>
+            <span class="food-map-legend__item"><span class="food-map-key food-map-key--user"></span>La mia posizione</span>
+          </div>
+
+          <p class="food-map-hint">Tocca un indicatore sulla mappa per vedere nome, tipologia, indirizzo e collegamenti del locale.</p>
           <p class="food-map-status" data-food-map-status aria-live="polite">Caricamento della mappa…</p>
           <div class="food-map" id="food-map" role="region" aria-label="Mappa dei locali dove mangiare e bere"></div>
           <noscript><p class="food-map-fallback">Per visualizzare la mappa è necessario JavaScript. Gli indirizzi Google Maps sono disponibili nell’elenco.</p></noscript>
