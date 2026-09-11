@@ -31,6 +31,16 @@
     }
   }
 
+  function ensureConditionsNotice() {
+    if (mode !== 'create' || !hero || hero.querySelector('[data-booking-conditions]')) return;
+
+    const note = document.createElement('p');
+    note.className = 'booking-hero__conditions';
+    note.dataset.bookingConditions = '';
+    note.innerHTML = '<strong>Attenzione:</strong> le uscite in mare saranno possibili solo se le condizioni meteo-marine saranno ritenute favorevoli dal COL.';
+    hero.appendChild(note);
+  }
+
   function ensureDeadlineBox() {
     let box = document.querySelector('[data-booking-deadline-info]');
     if (box) return box;
@@ -198,6 +208,7 @@
     }
   }
 
+  ensureConditionsNotice();
   ensureDeleteButton()?.addEventListener('click', deleteBooking);
   renderDeadline();
   loadInfo();
