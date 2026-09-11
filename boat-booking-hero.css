@@ -1,0 +1,10 @@
+.booking-hero::after {
+  display: none;
+}
+
+.booking-lookup__copy .eyebrow {
+  color: #0b6478;
+  font-weight: 800;
+}
+
+/* Rebuild preview: applica BOOKING_FROM_EMAIL nel contesto Deploy Preview. */
