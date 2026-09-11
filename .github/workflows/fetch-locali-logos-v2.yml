@@ -1,0 +1,51 @@
+name: Fetch locali logos v2
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - .github/workflows/fetch-locali-logos-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-logos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Download official logos
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/logos/locali
+          download() {
+            local url="$1"
+            local out="$2"
+            curl -fL --connect-timeout 8 --max-time 25 --retry 1 --retry-delay 1 -A "Mozilla/5.0" "$url" -o "$out"
+            test -s "$out"
+          }
+          download "https://ristorantedonnamalia.it/wp-content/uploads/2025/03/1527d32d-dc97-4cba-aaeb-e9749e29d3aa.png" "assets/logos/locali/Donna-Amalia.png"
+          download "https://alicegelati.it/wp-content/uploads/2024/04/LOGO-300-1.svg" "assets/logos/locali/Alice.svg"
+          download "https://ristorantegirodiboa.it/wp-content/uploads/2026/05/vector.png" "assets/logos/locali/Giro-di-Boa.png"
+          download "https://www.botanicgroup.it/wp-content/uploads/2021/03/logo-botanic-def.png" "assets/logos/locali/Botanic.png"
+          file assets/logos/locali/*
+
+      - name: Commit logos
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/logos/locali
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Salva loghi locali nel repository"
+          git pull --rebase origin develop
+          git push origin HEAD:develop
