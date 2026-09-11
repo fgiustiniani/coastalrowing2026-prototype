@@ -134,6 +134,73 @@
 
 .food-map-view { position: relative; }
 .food-map-view[hidden] { display: none; }
+.food-map-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+}
+.food-locate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(21,62,98,.22);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy-900);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+.food-locate:hover,
+.food-locate:focus-visible { border-color: rgba(21,62,98,.5); background: rgba(241,247,250,.95); }
+.food-locate:disabled { cursor: progress; opacity: .7; }
+.food-locate__icon { font-size: 1.25rem; line-height: 1; }
+.food-location-status { color: var(--muted); font-size: .82rem; line-height: 1.35; }
+
+.food-map-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(16,34,53,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.78);
+}
+.food-map-legend__title { color: var(--navy-900); font-size: .8rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.food-map-legend__item { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .78rem; font-weight: 750; }
+.food-map-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  border: 2px solid #153e62;
+  border-radius: 999px;
+  background: #4fa9ca;
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.food-map-key--pub { min-width: 34px; }
+.food-map-key--user {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 4px solid rgba(255,255,255,.96);
+  background: #1565c0;
+  box-shadow: 0 0 0 2px #1565c0;
+}
+.food-map-hint { margin: 0 0 10px; color: var(--muted); font-size: .8rem; line-height: 1.45; }
+
 .food-map {
   width: 100%;
   height: 480px;
@@ -178,17 +245,56 @@
 .food-map .leaflet-tooltip-pane { z-index: 650; }
 .food-map .leaflet-popup-pane { z-index: 700; }
 
+.food-map-marker-wrapper {
+  display: grid !important;
+  place-items: center;
+  border: 0 !important;
+  background: transparent !important;
+}
+.food-map-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 7px;
+  border: 3px solid #153e62;
+  border-radius: 999px;
+  background: #4fa9ca;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(4,17,31,.24);
+  font-size: .72rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.food-map-marker-wrapper:hover .food-map-marker,
+.food-map-marker-wrapper:focus .food-map-marker { transform: scale(1.08); }
+.food-map .leaflet-tooltip { border: 0; border-radius: 10px; box-shadow: 0 8px 22px rgba(4,17,31,.16); color: var(--navy-900); font-weight: 800; }
+
 .food-map-status { margin: 0 0 10px; color: var(--muted); font-size: .86rem; }
 .food-map-status:empty { display: none; }
 .food-map-fallback,
 .food-empty { margin: 16px 0 0; color: var(--muted); }
 .food-empty[hidden] { display: none; }
-.food-map-popup { display: grid; gap: 6px; min-width: 180px; }
-.food-map-popup > strong { color: #102235; font-size: 1rem; }
-.food-map-popup__categories { color: #1f6387; font-size: .78rem; font-weight: 800; }
-.food-map-popup__address { color: #516170; font-size: .84rem; }
-.food-map-popup__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-.food-map-popup__actions a { color: #1f6387; font-size: .8rem; font-weight: 800; }
+.food-map-popup { display: grid; gap: 7px; min-width: 210px; max-width: 260px; }
+.food-map-popup > strong { color: #102235; font-size: 1.05rem; line-height: 1.2; }
+.food-map-popup__categories { color: #1f6387; font-size: .78rem; font-weight: 850; }
+.food-map-popup__address { color: #516170; font-size: .86rem; line-height: 1.35; }
+.food-map-popup__actions { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 5px; }
+.food-map-popup__actions a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: rgba(31,99,135,.09);
+  color: #153e62;
+  font-size: .82rem;
+  font-weight: 850;
+  text-align: center;
+}
+.food-map-popup__actions a:hover,
+.food-map-popup__actions a:focus-visible { background: rgba(31,99,135,.16); }
 .food-disclaimer { margin: 18px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.5; }
 
 .city-time-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; }
@@ -223,5 +329,8 @@
   .food-place__address { align-items: flex-start; flex-direction: column; gap: 4px; }
   .food-view-switch { width: 100%; }
   .food-view-toggle { flex: 1; }
+  .food-map-tools { align-items: flex-start; flex-direction: column; }
+  .food-locate { width: 100%; justify-content: center; }
+  .food-map-legend { gap: 8px 11px; }
   .food-map { height: 360px; }
 }
