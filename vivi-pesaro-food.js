@@ -29,6 +29,7 @@
     pizzeria: 'P',
     'lounge-bistrot': 'L',
     gelateria: 'G',
+    piadineria: 'PIA',
     pub: 'PUB'
   };
 
