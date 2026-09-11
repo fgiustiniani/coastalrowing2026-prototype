@@ -113,7 +113,13 @@
   }
 
   function showDeleted(payload) {
+    // L'attributo hidden può essere sovrascritto dal display:grid del form:
+    // forziamo quindi la rimozione visiva del modulo dopo la cancellazione.
     form.hidden = true;
+    form.style.display = 'none';
+    form.setAttribute('aria-hidden', 'true');
+    booking = null;
+    token = '';
 
     let result = document.querySelector('[data-booking-delete-success]');
     if (!result) {
@@ -123,13 +129,14 @@
       form.insertAdjacentElement('afterend', result);
     }
 
-    const code = payload.bookingCode || booking?.bookingCode || '';
+    const code = payload.bookingCode || '';
     result.innerHTML = `
       <h2>Prenotazione eliminata</h2>
       <p>${payload.warning || 'La prenotazione è stata eliminata e le barche assegnate sono tornate disponibili.'}</p>
       ${code ? `<p class="booking-success__code"><span>Codice prenotazione</span><strong>${String(code).replace(/[&<>"']/g, '')}</strong></p>` : ''}
       <p>Abbiamo inviato una comunicazione di annullamento all’indirizzo email del referente.</p>`;
     result.hidden = false;
+    result.style.removeProperty('display');
     result.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
