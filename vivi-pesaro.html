@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3yn5jkP8eAHgzK/EDhIGSz4e2mMZc=" crossorigin="">
   <link rel="stylesheet" href="vivi-pesaro.css">
+  <link rel="stylesheet" href="vivi-pesaro-modal.css">
 </head>
 <body>
   <div class="site-frame">
@@ -154,11 +155,27 @@
             <span class="food-map-legend__item"><span class="food-map-key food-map-key--user"></span>La mia posizione</span>
           </div>
 
-          <p class="food-map-hint">Tocca un indicatore sulla mappa per vedere nome, tipologia, indirizzo e collegamenti del locale.</p>
+          <p class="food-map-hint">Tocca un indicatore sulla mappa per aprire il dettaglio del locale.</p>
           <p class="food-map-status" data-food-map-status aria-live="polite">Caricamento della mappa…</p>
           <div class="food-map" id="food-map" role="region" aria-label="Mappa dei locali dove mangiare e bere"></div>
           <noscript><p class="food-map-fallback">Per visualizzare la mappa è necessario JavaScript. Gli indirizzi Google Maps sono disponibili nell’elenco.</p></noscript>
         </div>
+
+        <dialog class="food-detail-dialog" data-food-detail-dialog aria-labelledby="food-detail-title">
+          <div class="food-detail-dialog__panel">
+            <button class="food-detail-dialog__close" type="button" data-food-detail-close aria-label="Chiudi dettaglio">×</button>
+            <p class="food-detail-dialog__kicker" data-food-detail-types></p>
+            <h3 id="food-detail-title" data-food-detail-name>Dettaglio locale</h3>
+            <div class="food-detail-dialog__address">
+              <span>Indirizzo</span>
+              <strong data-food-detail-address></strong>
+            </div>
+            <div class="food-detail-dialog__actions">
+              <a class="food-detail-dialog__action food-detail-dialog__action--primary" data-food-detail-site target="_blank" rel="noopener noreferrer">Visita sito / profilo</a>
+              <a class="food-detail-dialog__action" data-food-detail-maps target="_blank" rel="noopener noreferrer">Apri su Google Maps</a>
+            </div>
+          </div>
+        </dialog>
 
         <p class="food-empty" data-food-empty hidden>Nessun locale corrisponde ai filtri selezionati.</p>
         <p class="food-disclaimer">Il nome del locale apre il relativo sito o profilo web. Ogni indirizzo apre la posizione corrispondente su Google Maps.</p>
