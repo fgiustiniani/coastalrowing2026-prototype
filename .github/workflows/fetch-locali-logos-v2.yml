@@ -26,13 +26,15 @@ jobs:
           set -euo pipefail
           mkdir -p assets/logos/locali
           download() {
-            local url="$1"
+            local source_url="$1"
             local out="$2"
-            curl -fL --connect-timeout 8 --max-time 25 --retry 1 --retry-delay 1 -A "Mozilla/5.0" "$url" -o "$out"
+            local proxy_url="https://images.weserv.nl/?url=${source_url}&output=png"
+            curl -fL --connect-timeout 8 --max-time 30 --retry 1 --retry-delay 1 -A "Mozilla/5.0" "$proxy_url" -o "$out"
             test -s "$out"
+            file "$out" | grep -q "PNG image data"
           }
           download "https://ristorantedonnamalia.it/wp-content/uploads/2025/03/1527d32d-dc97-4cba-aaeb-e9749e29d3aa.png" "assets/logos/locali/Donna-Amalia.png"
-          download "https://alicegelati.it/wp-content/uploads/2024/04/LOGO-300-1.svg" "assets/logos/locali/Alice.svg"
+          download "https://alicegelati.it/wp-content/uploads/2024/04/LOGO-300-1.svg" "assets/logos/locali/Alice.png"
           download "https://ristorantegirodiboa.it/wp-content/uploads/2026/05/vector.png" "assets/logos/locali/Giro-di-Boa.png"
           download "https://www.botanicgroup.it/wp-content/uploads/2021/03/logo-botanic-def.png" "assets/logos/locali/Botanic.png"
           file assets/logos/locali/*
