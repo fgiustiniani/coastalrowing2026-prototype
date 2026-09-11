@@ -17,8 +17,9 @@ jobs:
         with:
           ref: develop
       - name: Aggiorna sezione Dove mangiare
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           html_path = Path('vivi-pesaro.html')
@@ -143,6 +144,7 @@ jobs:
 
           html_path.write_text(html, encoding='utf-8')
           css_path.write_text(css, encoding='utf-8')
+          PY
 
       - name: Commit e pulizia workflow temporaneo
         shell: bash
