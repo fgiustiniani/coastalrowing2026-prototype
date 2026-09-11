@@ -25,13 +25,13 @@
 
   if (!cards.length) return;
 
-  const CATEGORY_CODES = {
-    ristorante: 'R',
-    pizzeria: 'P',
-    'lounge-bistrot': 'L',
-    gelateria: 'G',
-    piadineria: 'PIA',
-    pub: 'PUB'
+  const CATEGORY_ICONS = {
+    ristorante: 'assets/icons/food/ristorante.svg',
+    pizzeria: 'assets/icons/food/pizzeria.svg',
+    'lounge-bistrot': 'assets/icons/food/lounge-bistrot.svg',
+    gelateria: 'assets/icons/food/gelateria.svg',
+    piadineria: 'assets/icons/food/piadineria.svg',
+    pub: 'assets/icons/food/pub.svg'
   };
 
   const CLUB = {
@@ -54,13 +54,6 @@
   const getPlaceName = (card) => {
     const link = card.querySelector('.food-place__name-link');
     return link?.textContent.replace('↗', '').trim() || 'Locale';
-  };
-
-  const getMarkerCode = (card) => {
-    const codes = getCardCategories(card)
-      .map((category) => CATEGORY_CODES[category])
-      .filter(Boolean);
-    return codes.length ? codes.join('/') : '•';
   };
 
   const getCategoryLabels = (card) => Array.from(card.querySelectorAll('.food-place__category'))
@@ -212,14 +205,17 @@
   const createPlaceMarker = (card, addressElement, lat, lng) => {
     const name = getPlaceName(card);
     const address = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
-    const code = getMarkerCode(card);
-    const iconWidth = Math.max(40, 22 + code.length * 8);
+    const categories = getCardCategories(card).filter((category) => CATEGORY_ICONS[category]);
+    const iconWidth = categories.length > 1 ? 68 : 44;
+    const iconImages = categories
+      .map((category) => `<img src="${CATEGORY_ICONS[category]}" alt="">`)
+      .join('');
 
     const icon = window.L.divIcon({
       className: 'food-map-marker-wrapper',
-      html: `<span class="food-map-marker" aria-hidden="true">${code}</span>`,
-      iconSize: [iconWidth, 40],
-      iconAnchor: [iconWidth / 2, 20]
+      html: `<span class="food-map-marker food-map-marker--icons" aria-hidden="true">${iconImages}</span>`,
+      iconSize: [iconWidth, 44],
+      iconAnchor: [iconWidth / 2, 22]
     });
 
     const marker = window.L.marker([lat, lng], {
@@ -231,6 +227,11 @@
     });
 
     marker.on('click', () => openPlaceDetail(card, addressElement));
+    marker.on('mouseover', () => {
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches && !detailDialog?.open) {
+        openPlaceDetail(card, addressElement);
+      }
+    });
 
     return marker;
   };
