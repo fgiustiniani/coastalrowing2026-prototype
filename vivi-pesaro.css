@@ -278,7 +278,18 @@
 }
 .food-map-marker-wrapper:hover .food-map-marker,
 .food-map-marker-wrapper:focus .food-map-marker { transform: scale(1.08); }
-.food-map .leaflet-tooltip { border: 0; border-radius: 10px; box-shadow: 0 8px 22px rgba(4,17,31,.16); color: var(--navy-900); font-weight: 800; }
+.food-map .leaflet-tooltip {
+  padding: 10px 12px;
+  border: 1px solid rgba(16,34,53,.14) !important;
+  border-radius: 12px;
+  background: #fff !important;
+  box-shadow: 0 10px 28px rgba(4,17,31,.24);
+  color: var(--navy-900);
+  font-weight: 800;
+  opacity: 1 !important;
+}
+.food-map .leaflet-tooltip.food-map-hover-card { background: #fff !important; }
+.food-map .leaflet-tooltip-top.food-map-hover-card::before { border-top-color: #fff !important; }
 
 .food-map-status { margin: 0 0 10px; color: var(--muted); font-size: .86rem; }
 .food-map-status:empty { display: none; }
