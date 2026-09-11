@@ -18,72 +18,16 @@ jobs:
           ref: develop
       - name: Regola solo la larghezza delle card
         shell: python
+        env:
+          OLD_BLOCK: LyogSSBwYXJ0bmVyIHRlY25pY2kgaGFubm8gdW5hIGdlcmFyY2hpYSB2aXNpdmEgc2Vjb25kYXJpYSByaXNwZXR0byBhZ2xpIHNwb25zb3IuCiAgIFN1IGRlc2t0b3AgcmVzdGFubyB0dXR0aSBzdSB1bmEgc29sYSByaWdhLCBjb24gY2FyZCBlIGxvZ2hpIHBpw7kgY29tcGF0dGkuICovCkBtZWRpYSAobWluLXdpZHRoOiAxMDAwcHgpIHsKICAucGFydG5lci1zZWN0aW9uOmhhcygucGFydG5lci1sb2dvIGltZ1tzcmMqPSIvU3dpZnQuanBnIl0pIC5wYXJ0bmVyLWxvZ29zIHsKICAgIGRpc3BsYXk6IGdyaWQ7CiAgICBncmlkLXRlbXBsYXRlLWNvbHVtbnM6IHJlcGVhdCg4LCBtaW5tYXgoMCwgMWZyKSk7CiAgICBnYXA6IDEwcHg7CiAgfQogIC5wYXJ0bmVyLXNlY3Rpb246aGFzKC5wYXJ0bmVyLWxvZ28gaW1nW3NyYyo9Ii9Td2lmdC5qcGciXSkgLnBhcnRuZXItbG9nbywKICAucGFydG5lci1zZWN0aW9uOmhhcygucGFydG5lci1sb2dvIGltZ1tzcmMqPSIvU3dpZnQuanBnIl0pIC5wYXJ0bmVyLWxvZ29zOm5vdCgucGFydG5lci1sb2dvcy0tZmljKSAucGFydG5lci1sb2dvIHsKICAgIHdpZHRoOiAxMDAlOwogICAgbWluLXdpZHRoOiAwOwogICAgaGVpZ2h0OiA3NnB4OwogICAgbWluLWhlaWdodDogNzZweDsKICAgIHBhZGRpbmc6IDhweCAxMHB4OwogICAgYm9yZGVyLXJhZGl1czogMTRweDsKICAgIGZsZXg6IG5vbmU7CiAgfQogIC5wYXJ0bmVyLXNlY3Rpb246aGFzKC5wYXJ0bmVyLWxvZ28gaW1nW3NyYyo9Ii9Td2lmdC5qcGciXSkgLnBhcnRuZXItbG9nbyBpbWcsCiAgLnBhcnRuZXItc2VjdGlvbjpoYXMoLnBhcnRuZXItbG9nbyBpbWdbc3JjKj0iL1N3aWZ0LmpwZyJdKSAucGFydG5lci1sb2dvczpub3QoLnBhcnRuZXItbG9nb3MtLWZpYykgLnBhcnRuZXItbG9nbyBpbWcgewogICAgd2lkdGg6IDEwMCU7CiAgICBoZWlnaHQ6IDEwMCU7CiAgICBtYXgtd2lkdGg6IDEwNHB4OwogICAgbWF4LWhlaWdodDogNTJweDsKICAgIG9iamVjdC1maXQ6IGNvbnRhaW47CiAgfQogIC5wYXJ0bmVyLXNlY3Rpb246aGFzKC5wYXJ0bmVyLWxvZ28gaW1nW3NyYyo9Ii9Td2lmdC5qcGciXSkgLnBhcnRuZXItc2VjdGlvbl9faGVhZGluZyB7CiAgICBtYXJnaW4tYm90dG9tOiAxNHB4OwogIH0KICAucGFydG5lci1zZWN0aW9uOmhhcygucGFydG5lci1sb2dvIGltZ1tzcmMqPSIvU3dpZnQuanBnIl0pIC5wYXJ0bmVyLXNlY3Rpb25fX2hlYWRpbmcgaDMgewogICAgZm9udC1zaXplOiBjbGFtcCgxLjJyZW0sMS43dncsMS40NXJlbSk7CiAgfQp9Cg==
+          NEW_BLOCK: LyogSSBwYXJ0bmVyIHRlY25pY2kgcmVzdGFubyBzdSB1bmEgc29sYSByaWdhIHN1IGRlc2t0b3AuCiAgIFNpIHJpZHVjZSBzb2xvIGxhIGxhcmdoZXp6YSBkZWxsZSBjYXJkOiBhbHRlenphIGUgZGltZW5zaW9uaSBkZWkgbG9naGkgcmVzdGFubyBxdWVsbGUgc3RhbmRhcmQuICovCkBtZWRpYSAobWluLXdpZHRoOiAxMDAwcHgpIHsKICAucGFydG5lci1zZWN0aW9uOmhhcygucGFydG5lci1sb2dvIGltZ1tzcmMqPSIvU3dpZnQuanBnIl0pIC5wYXJ0bmVyLWxvZ29zIHsKICAgIGRpc3BsYXk6IGdyaWQ7CiAgICBncmlkLXRlbXBsYXRlLWNvbHVtbnM6IHJlcGVhdCg4LCBtaW5tYXgoMCwgMWZyKSk7CiAgICBnYXA6IDEwcHg7CiAgfQogIC5wYXJ0bmVyLXNlY3Rpb246aGFzKC5wYXJ0bmVyLWxvZ28gaW1nW3NyYyo9Ii9Td2lmdC5qcGciXSkgLnBhcnRuZXItbG9nbywKICAucGFydG5lci1zZWN0aW9uOmhhcygucGFydG5lci1sb2dvIGltZ1tzcmMqPSIvU3dpZnQuanBnIl0pIC5wYXJ0bmVyLWxvZ29zOm5vdCgucGFydG5lci1sb2dvcy0tZmljKSAucGFydG5lci1sb2dvIHsKICAgIHdpZHRoOiAxMDAlOwogICAgbWluLXdpZHRoOiAwOwogICAgaGVpZ2h0OiAxMDRweDsKICAgIG1pbi1oZWlnaHQ6IDEwNHB4OwogICAgcGFkZGluZzogMTRweCAxMnB4OwogICAgYm9yZGVyLXJhZGl1czogMThweDsKICAgIGZsZXg6IG5vbmU7CiAgfQogIC5wYXJ0bmVyLXNlY3Rpb246aGFzKC5wYXJ0bmVyLWxvZ28gaW1nW3NyYyo9Ii9Td2lmdC5qcGciXSkgLnBhcnRuZXItbG9nbyBpbWcsCiAgLnBhcnRuZXItc2VjdGlvbjpoYXMoLnBhcnRuZXItbG9nbyBpbWdbc3JjKj0iL1N3aWZ0LmpwZyJdKSAucGFydG5lci1sb2dvczpub3QoLnBhcnRuZXItbG9nb3MtLWZpYykgLnBhcnRuZXItbG9nbyBpbWcgewogICAgd2lkdGg6IDEwMCU7CiAgICBoZWlnaHQ6IDEwMCU7CiAgICBtYXgtd2lkdGg6IDE1OHB4OwogICAgbWF4LWhlaWdodDogNzZweDsKICAgIG9iamVjdC1maXQ6IGNvbnRhaW47CiAgfQp9Cg==
         run: |
+          import os, base64
           from pathlib import Path
           p = Path('home-overrides.css')
           s = p.read_text(encoding='utf-8')
-          old = '''/* I partner tecnici hanno una gerarchia visiva secondaria rispetto agli sponsor.
-   Su desktop restano tutti su una sola riga, con card e loghi più compatti. */
-@media (min-width: 1000px) {
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo,
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo {
-    width: 100%;
-    min-width: 0;
-    height: 76px;
-    min-height: 76px;
-    padding: 8px 10px;
-    border-radius: 14px;
-    flex: none;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo img,
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo img {
-    width: 100%;
-    height: 100%;
-    max-width: 104px;
-    max-height: 52px;
-    object-fit: contain;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-section__heading {
-    margin-bottom: 14px;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-section__heading h3 {
-    font-size: clamp(1.2rem,1.7vw,1.45rem);
-  }
-}
-'''
-          new = '''/* I partner tecnici restano su una sola riga su desktop.
-   Si riduce solo la larghezza delle card: altezza e dimensioni dei loghi restano quelle standard. */
-@media (min-width: 1000px) {
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos {
-    display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo,
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo {
-    width: 100%;
-    min-width: 0;
-    height: 104px;
-    min-height: 104px;
-    padding: 14px 12px;
-    border-radius: 18px;
-    flex: none;
-  }
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo img,
-  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo img {
-    width: 100%;
-    height: 100%;
-    max-width: 158px;
-    max-height: 76px;
-    object-fit: contain;
-  }
-}
-'''
+          old = base64.b64decode(os.environ['OLD_BLOCK']).decode('utf-8')
+          new = base64.b64decode(os.environ['NEW_BLOCK']).decode('utf-8')
           if old not in s:
               raise SystemExit('Blocco partner tecnici non trovato')
           p.write_text(s.replace(old, new, 1), encoding='utf-8')
