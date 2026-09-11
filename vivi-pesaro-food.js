@@ -11,6 +11,7 @@
   const emptyState = section.querySelector('[data-food-empty]');
   const mapStatus = section.querySelector('[data-food-map-status]');
   const mapElement = section.querySelector('#food-map');
+  const mapLegend = section.querySelector('.food-map-legend');
   const locateButton = section.querySelector('[data-food-locate]');
   const locateLabel = section.querySelector('[data-food-locate-label]');
   const locationStatus = section.querySelector('[data-food-location-status]');
@@ -31,6 +32,16 @@
     gelateria: 'G',
     piadineria: 'PIA',
     pub: 'PUB'
+  };
+
+  const CLUB = {
+    name: 'Società Canottieri Pesaro',
+    address: 'Calata Caio Duilio 101, Pesaro',
+    mapsUrl: 'https://maps.app.goo.gl/hVLey2a4q3Aj1V1XA',
+    logoUrl: 'assets/logos/canottieri-pesaro-logo_DEPOSITATO.png',
+    fallbackLat: 43.92285,
+    fallbackLng: 12.90655,
+    cacheKey: 'coastal-club-location-v1'
   };
 
   const selectedCategories = new Set();
@@ -85,6 +96,8 @@
 
   let map = null;
   const markers = new Map();
+  let clubMarker = null;
+  let clubLatLng = null;
   let userMarker = null;
   let userAccuracyCircle = null;
   let userLatLng = null;
@@ -96,6 +109,7 @@
       .filter(({ marker }) => map.hasLayer(marker))
       .map(({ marker }) => marker.getLatLng());
 
+    if (clubLatLng) points.push(clubLatLng);
     if (userLatLng) points.push(userLatLng);
 
     if (points.length === 1) {
@@ -221,6 +235,106 @@
     return marker;
   };
 
+  const addClubLegend = () => {
+    if (!mapLegend || mapLegend.querySelector('[data-club-map-key]')) return;
+
+    const item = document.createElement('span');
+    item.className = 'food-map-legend__item';
+    item.setAttribute('data-club-map-key', '');
+
+    const key = document.createElement('span');
+    key.setAttribute('aria-hidden', 'true');
+    key.style.cssText = 'display:inline-grid;place-items:center;width:28px;height:28px;min-width:28px;border:2px solid #153e62;border-radius:999px;background:#fff;overflow:hidden;';
+
+    const image = document.createElement('img');
+    image.src = CLUB.logoUrl;
+    image.alt = '';
+    image.style.cssText = 'display:block;width:24px;height:24px;max-width:24px;max-height:24px;object-fit:contain;';
+    key.appendChild(image);
+
+    const label = document.createTextNode('Canottieri Pesaro');
+    item.append(key, label);
+    mapLegend.appendChild(item);
+  };
+
+  const createClubMarker = (lat, lng) => {
+    const icon = window.L.divIcon({
+      className: 'food-map-marker-wrapper',
+      html: `<span aria-hidden="true" style="display:grid;place-items:center;width:48px;height:48px;border:3px solid #153e62;border-radius:999px;background:#fff;box-shadow:0 4px 12px rgba(4,17,31,.28);overflow:hidden;"><img src="${CLUB.logoUrl}" alt="" style="display:block!important;width:40px!important;height:40px!important;max-width:40px!important;max-height:40px!important;object-fit:contain!important;"></span>`,
+      iconSize: [50, 50],
+      iconAnchor: [25, 25]
+    });
+
+    const marker = window.L.marker([lat, lng], {
+      icon,
+      keyboard: true,
+      riseOnHover: true,
+      zIndexOffset: 500,
+      title: `${CLUB.name} — ${CLUB.address}`,
+      alt: CLUB.name
+    });
+
+    marker.on('click', () => window.open(CLUB.mapsUrl, '_blank', 'noopener,noreferrer'));
+    return marker;
+  };
+
+  const setClubPosition = (lat, lng) => {
+    if (!map || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    clubLatLng = window.L.latLng(lat, lng);
+    if (!clubMarker) {
+      clubMarker = createClubMarker(lat, lng).addTo(map);
+    } else {
+      clubMarker.setLatLng(clubLatLng);
+    }
+    fitMapToVisiblePoints();
+  };
+
+  const resolveClubPosition = async () => {
+    let cached = null;
+    try {
+      cached = JSON.parse(window.localStorage.getItem(CLUB.cacheKey) || 'null');
+    } catch {
+      cached = null;
+    }
+
+    if (cached && Number.isFinite(Number(cached.lat)) && Number.isFinite(Number(cached.lng))) {
+      setClubPosition(Number(cached.lat), Number(cached.lng));
+      return;
+    }
+
+    setClubPosition(CLUB.fallbackLat, CLUB.fallbackLng);
+
+    try {
+      const endpoint = new URL('https://nominatim.openstreetmap.org/search');
+      endpoint.searchParams.set('format', 'jsonv2');
+      endpoint.searchParams.set('limit', '1');
+      endpoint.searchParams.set('countrycodes', 'it');
+      endpoint.searchParams.set('accept-language', 'it');
+      endpoint.searchParams.set('q', `${CLUB.name}, ${CLUB.address}, Italy`);
+
+      const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+      if (!response.ok) return;
+
+      const results = await response.json();
+      if (!Array.isArray(results) || !results.length) return;
+
+      const lat = Number(results[0].lat);
+      const lng = Number(results[0].lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      try {
+        window.localStorage.setItem(CLUB.cacheKey, JSON.stringify({ lat, lng }));
+      } catch {
+        // La mappa funziona anche se lo storage non è disponibile.
+      }
+
+      setClubPosition(lat, lng);
+    } catch {
+      // Mantiene la coordinata di fallback se il geocoding non è disponibile.
+    }
+  };
+
   const initMap = () => {
     if (map) return true;
 
@@ -232,11 +346,20 @@
       return false;
     }
 
-    map = window.L.map(mapElement, { scrollWheelZoom: false }).setView([43.9155, 12.9152], 15);
+    map = window.L.map(mapElement, {
+      scrollWheelZoom: true,
+      zoomControl: false
+    }).setView([43.9155, 12.9152], 15);
+
+    window.L.control.zoom({ position: 'topleft' }).addTo(map);
+
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+
+    addClubLegend();
+    resolveClubPosition();
 
     const addressElements = Array.from(section.querySelectorAll('.food-place__address[data-lat][data-lng]'));
     let invalidLocations = 0;
