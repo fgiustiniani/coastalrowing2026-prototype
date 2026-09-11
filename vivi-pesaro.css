@@ -142,6 +142,42 @@
   border-radius: 22px;
   background: #eef4f6;
 }
+
+/* Isola Leaflet dalle regole immagini/layout del sito. In Safari mobile le tile
+   devono mantenere la dimensione nativa di 256px e il posizionamento assoluto. */
+.food-map.leaflet-container { position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+.food-map .leaflet-pane,
+.food-map .leaflet-tile,
+.food-map .leaflet-marker-icon,
+.food-map .leaflet-marker-shadow,
+.food-map .leaflet-tile-container,
+.food-map .leaflet-pane > svg,
+.food-map .leaflet-pane > canvas,
+.food-map .leaflet-zoom-box {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+}
+.food-map img.leaflet-tile {
+  display: block !important;
+  width: 256px !important;
+  height: 256px !important;
+  min-width: 256px !important;
+  min-height: 256px !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  object-fit: fill !important;
+}
+.food-map .leaflet-tile-pane { z-index: 200; }
+.food-map .leaflet-overlay-pane { z-index: 400; }
+.food-map .leaflet-shadow-pane { z-index: 500; }
+.food-map .leaflet-marker-pane { z-index: 600; }
+.food-map .leaflet-tooltip-pane { z-index: 650; }
+.food-map .leaflet-popup-pane { z-index: 700; }
+
 .food-map-status { margin: 0 0 10px; color: var(--muted); font-size: .86rem; }
 .food-map-status:empty { display: none; }
 .food-map-fallback,
