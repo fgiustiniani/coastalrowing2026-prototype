@@ -11,16 +11,41 @@
   const emptyState = section.querySelector('[data-food-empty]');
   const mapStatus = section.querySelector('[data-food-map-status]');
   const mapElement = section.querySelector('#food-map');
+  const locateButton = section.querySelector('[data-food-locate]');
+  const locateLabel = section.querySelector('[data-food-locate-label]');
+  const locationStatus = section.querySelector('[data-food-location-status]');
 
   if (!cards.length) return;
+
+  const CATEGORY_CODES = {
+    ristorante: 'R',
+    pizzeria: 'P',
+    'lounge-bistrot': 'L',
+    gelateria: 'G',
+    pub: 'PUB'
+  };
 
   const selectedCategories = new Set();
   const categoryCounts = new Map();
 
+  const getCardCategories = (card) => String(card.dataset.categories || '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const getPlaceName = (card) => {
+    const link = card.querySelector('.food-place__name-link');
+    return link?.textContent.replace('↗', '').trim() || 'Locale';
+  };
+
+  const getMarkerCode = (card) => {
+    const codes = getCardCategories(card)
+      .map((category) => CATEGORY_CODES[category])
+      .filter(Boolean);
+    return codes.length ? codes.join('/') : '•';
+  };
+
   cards.forEach((card) => {
-    String(card.dataset.categories || '')
-      .split(/\s+/)
-      .filter(Boolean)
+    getCardCategories(card)
       .forEach((category) => categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1));
   });
 
@@ -34,7 +59,7 @@
 
   const cardMatchesFilters = (card) => {
     if (!selectedCategories.size) return true;
-    const categories = new Set(String(card.dataset.categories || '').split(/\s+/).filter(Boolean));
+    const categories = new Set(getCardCategories(card));
     return Array.from(selectedCategories).some((category) => categories.has(category));
   };
 
@@ -48,6 +73,28 @@
 
   let map = null;
   const markers = new Map();
+  let userMarker = null;
+  let userAccuracyCircle = null;
+  let userLatLng = null;
+
+  const fitMapToVisiblePoints = () => {
+    if (!map) return;
+
+    const points = Array.from(markers.values())
+      .filter(({ marker }) => map.hasLayer(marker))
+      .map(({ marker }) => marker.getLatLng());
+
+    if (userLatLng) points.push(userLatLng);
+
+    if (points.length === 1) {
+      map.setView(points[0], 16);
+      return;
+    }
+
+    if (points.length > 1) {
+      map.fitBounds(window.L.latLngBounds(points).pad(0.18), { maxZoom: 16 });
+    }
+  };
 
   const updateMapMarkers = () => {
     if (!map) return;
@@ -59,14 +106,7 @@
       if (!shouldShow && isOnMap) map.removeLayer(marker);
     });
 
-    const visibleMarkers = Array.from(markers.values())
-      .filter(({ marker }) => map.hasLayer(marker))
-      .map(({ marker }) => marker);
-
-    if (visibleMarkers.length) {
-      const group = window.L.featureGroup(visibleMarkers);
-      map.fitBounds(group.getBounds().pad(0.2), { maxZoom: 16 });
-    }
+    fitMapToVisiblePoints();
   };
 
   const applyFilters = () => {
@@ -116,7 +156,7 @@
     wrapper.className = 'food-map-popup';
 
     const title = document.createElement('strong');
-    title.textContent = card.querySelector('.food-place__name')?.textContent.trim() || 'Locale';
+    title.textContent = getPlaceName(card);
 
     const categories = document.createElement('span');
     categories.className = 'food-map-popup__categories';
@@ -137,7 +177,7 @@
       websiteLink.href = website.href;
       websiteLink.target = '_blank';
       websiteLink.rel = 'noopener noreferrer';
-      websiteLink.textContent = 'Visita il sito';
+      websiteLink.textContent = 'Visita sito / profilo';
       actions.appendChild(websiteLink);
     }
 
@@ -150,6 +190,42 @@
 
     wrapper.append(title, categories, address, actions);
     return wrapper;
+  };
+
+  const createPlaceMarker = (card, addressElement, lat, lng) => {
+    const name = getPlaceName(card);
+    const address = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
+    const code = getMarkerCode(card);
+    const iconWidth = Math.max(40, 22 + code.length * 8);
+
+    const icon = window.L.divIcon({
+      className: 'food-map-marker-wrapper',
+      html: `<span class="food-map-marker" aria-hidden="true">${code}</span>`,
+      iconSize: [iconWidth, 40],
+      iconAnchor: [iconWidth / 2, 20],
+      popupAnchor: [0, -22]
+    });
+
+    const marker = window.L.marker([lat, lng], {
+      icon,
+      keyboard: true,
+      riseOnHover: true,
+      title: `${name} — ${address}`,
+      alt: name
+    });
+
+    marker.bindPopup(buildPopup(card, addressElement), {
+      maxWidth: 300,
+      autoPanPadding: [24, 24]
+    });
+    marker.bindTooltip(name, {
+      direction: 'top',
+      offset: [0, -18],
+      opacity: 0.96
+    });
+    marker.on('click', () => marker.openPopup());
+
+    return marker;
   };
 
   const initMap = () => {
@@ -182,14 +258,7 @@
         return;
       }
 
-      const marker = window.L.circleMarker([lat, lng], {
-        radius: 8,
-        weight: 2,
-        color: '#153e62',
-        fillColor: '#4fa9ca',
-        fillOpacity: 1
-      });
-      marker.bindPopup(buildPopup(card, addressElement));
+      const marker = createPlaceMarker(card, addressElement, lat, lng);
       markers.set(addressElement.dataset.locationId || `${lat},${lng}`, { marker, card });
     });
 
@@ -252,9 +321,86 @@
     }
   };
 
+  const showUserPosition = (position) => {
+    if (!map && !initMap()) return;
+
+    const lat = Number(position.coords.latitude);
+    const lng = Number(position.coords.longitude);
+    const accuracy = Number(position.coords.accuracy);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    userLatLng = window.L.latLng(lat, lng);
+
+    if (!userMarker) {
+      userMarker = window.L.circleMarker(userLatLng, {
+        radius: 8,
+        weight: 4,
+        color: '#ffffff',
+        fillColor: '#1565c0',
+        fillOpacity: 1,
+        className: 'food-user-position'
+      }).bindPopup('<strong>La mia posizione</strong>');
+      userMarker.addTo(map);
+    } else {
+      userMarker.setLatLng(userLatLng);
+    }
+
+    if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
+    if (Number.isFinite(accuracy) && accuracy > 0) {
+      userAccuracyCircle = window.L.circle(userLatLng, {
+        radius: accuracy,
+        weight: 1,
+        color: '#1565c0',
+        opacity: 0.45,
+        fillColor: '#1565c0',
+        fillOpacity: 0.08,
+        interactive: false
+      }).addTo(map);
+    }
+
+    fitMapToVisiblePoints();
+    userMarker.openPopup();
+
+    if (locationStatus) locationStatus.textContent = 'Posizione individuata.';
+    if (locateLabel) locateLabel.textContent = 'Aggiorna posizione';
+    if (locateButton) locateButton.disabled = false;
+  };
+
+  const handleLocationError = (error) => {
+    let message = 'Non è stato possibile rilevare la posizione.';
+    if (error?.code === 1) message = 'Permesso alla posizione non concesso.';
+    if (error?.code === 2) message = 'Posizione non disponibile.';
+    if (error?.code === 3) message = 'Tempo scaduto durante la ricerca della posizione.';
+
+    if (locationStatus) locationStatus.textContent = message;
+    if (locateLabel) locateLabel.textContent = 'Riprova la mia posizione';
+    if (locateButton) locateButton.disabled = false;
+  };
+
+  const locateUser = () => {
+    if (!navigator.geolocation) {
+      if (locationStatus) locationStatus.textContent = 'La geolocalizzazione non è supportata da questo browser.';
+      return;
+    }
+
+    if (!map && !initMap()) return;
+
+    if (locateButton) locateButton.disabled = true;
+    if (locateLabel) locateLabel.textContent = 'Ricerca posizione…';
+    if (locationStatus) locationStatus.textContent = 'Il browser potrebbe chiederti il permesso di usare la posizione.';
+
+    navigator.geolocation.getCurrentPosition(showUserPosition, handleLocationError, {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 60000
+    });
+  };
+
   viewButtons.forEach((button) => {
     button.addEventListener('click', () => setView(button.dataset.foodView || 'list'));
   });
+
+  locateButton?.addEventListener('click', locateUser);
 
   window.addEventListener('resize', scheduleMapRefresh);
   window.addEventListener('orientationchange', () => window.setTimeout(scheduleMapRefresh, 250));
