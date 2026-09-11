@@ -4,6 +4,8 @@
 
   const status = document.querySelector('[data-admin-status]');
   let pendingResendArticle = null;
+  let pendingDeleteArticle = null;
+  let pendingDeleteButton = null;
 
   const style = document.createElement('style');
   style.textContent = `
@@ -76,6 +78,46 @@
       display: block;
     }
 
+    .admin-booking.is-deleting {
+      opacity: .62;
+      transition: opacity 160ms ease;
+    }
+
+    .admin-booking__delete-icon.is-busy {
+      cursor: wait;
+    }
+
+    .admin-booking__delete-icon.is-busy svg {
+      display: none;
+    }
+
+    .admin-booking__delete-icon.is-busy::after {
+      content: "";
+      width: 19px;
+      height: 19px;
+      border: 2px solid rgba(180, 35, 24, .24);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: admin-delete-spin .7s linear infinite;
+    }
+
+    .admin-delete-feedback {
+      align-self: center;
+      color: #7b3a33;
+      font-size: .82rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .admin-delete-feedback.is-error {
+      color: #b42318;
+      white-space: normal;
+    }
+
+    @keyframes admin-delete-spin {
+      to { transform: rotate(360deg); }
+    }
+
     .admin-email-label {
       display: inline-flex;
       align-items: baseline;
@@ -119,11 +161,36 @@
     .admin-email-feedback.is-ok { color: #245d38; }
     .admin-email-feedback.is-error { color: #b42318; }
 
+    .admin-section-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .admin-original-slot-note {
+      display: block;
+      margin-top: 7px;
+      color: #0b6478;
+      font-size: .88rem;
+      font-weight: 800;
+    }
+
     @media (max-width: 640px) {
       .admin-booking__actions {
         width: auto !important;
         display: flex !important;
         grid-template-columns: none !important;
+      }
+
+      .admin-section-actions {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .admin-section-actions .admin-button {
+        flex: 1 1 150px;
       }
     }
   `;
@@ -139,16 +206,27 @@
 
   function patchAdminSections() {
     const secondary = document.querySelector('.admin-secondary-sections');
-    if (!secondary) return;
+    if (secondary) {
+      const sections = Array.from(secondary.querySelectorAll(':scope > details'));
+      const slotSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Slot orari');
+      const settingsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Impostazioni prenotazioni');
+      const boatsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Anagrafica barche');
 
-    const sections = Array.from(secondary.querySelectorAll(':scope > details'));
-    const slotSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Slot orari');
-    const settingsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Impostazioni prenotazioni');
-    const boatsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Anagrafica barche');
+      if (slotSection) slotSection.hidden = true;
+      if (settingsSection && boatsSection && settingsSection.nextElementSibling !== boatsSection) {
+        secondary.insertBefore(settingsSection, boatsSection);
+      }
+    }
 
-    if (slotSection) slotSection.hidden = true;
-    if (settingsSection && boatsSection && settingsSection.nextElementSibling !== boatsSection) {
-      secondary.insertBefore(settingsSection, boatsSection);
+    const heading = document.querySelector('.admin-bookings-card .admin-section-heading');
+    const refresh = document.querySelector('[data-admin-refresh]');
+    const exportButton = heading?.querySelector('[data-export-bookings-pdf]');
+    if (heading && refresh && exportButton && !heading.querySelector('[data-admin-section-actions]')) {
+      const actions = document.createElement('div');
+      actions.className = 'admin-section-actions';
+      actions.dataset.adminSectionActions = '';
+      heading.appendChild(actions);
+      actions.append(refresh, exportButton);
     }
   }
 
@@ -161,6 +239,58 @@
     if (!feedback) return;
     feedback.textContent = message;
     feedback.className = `admin-email-feedback${kind ? ` is-${kind}` : ''}`;
+  }
+
+  function deleteFeedbackFor(article) {
+    let feedback = article?.querySelector('.admin-delete-feedback') || null;
+    if (!feedback && article) {
+      feedback = document.createElement('span');
+      feedback.className = 'admin-delete-feedback';
+      feedback.setAttribute('aria-live', 'polite');
+      article.querySelector('.admin-booking__actions')?.prepend(feedback);
+    }
+    return feedback;
+  }
+
+  function setDeleteFeedback(article, message, kind = '') {
+    const feedback = deleteFeedbackFor(article);
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.className = `admin-delete-feedback${kind ? ` is-${kind}` : ''}`;
+  }
+
+  function clearDeletePending({ keepFeedback = false } = {}) {
+    pendingDeleteArticle?.classList.remove('is-deleting');
+    pendingDeleteButton?.classList.remove('is-busy');
+    pendingDeleteButton?.removeAttribute('aria-busy');
+    if (!keepFeedback) pendingDeleteArticle?.querySelector('.admin-delete-feedback')?.remove();
+    pendingDeleteArticle = null;
+    pendingDeleteButton = null;
+  }
+
+  function setOriginalSlotNote(article) {
+    const dialog = document.querySelector('[data-edit-dialog]');
+    const slotSelect = dialog?.querySelector('[data-edit-form] [name="slotCode"]');
+    if (!dialog || !slotSelect || !dialog.open) return;
+
+    const slotParagraph = Array.from(article.querySelectorAll('.admin-booking__details > p')).find((paragraph) =>
+      paragraph.querySelector('strong')?.textContent.trim().toLowerCase() === 'slot'
+    );
+    const originalSlot = slotParagraph
+      ? slotParagraph.textContent.replace(/^\s*Slot\s*/i, '').trim()
+      : article.querySelector('.admin-booking__meta')?.textContent.split('·')[0]?.trim() || '';
+
+    const field = slotSelect.closest('.booking-field');
+    if (!field || !originalSlot) return;
+
+    let note = field.querySelector('[data-admin-original-slot]');
+    if (!note) {
+      note = document.createElement('span');
+      note.className = 'admin-original-slot-note';
+      note.dataset.adminOriginalSlot = '';
+      field.appendChild(note);
+    }
+    note.textContent = `Slot originario: ${originalSlot}`;
   }
 
   function patchBooking(article) {
@@ -232,22 +362,60 @@
   const observer = new MutationObserver(() => patchAll());
   observer.observe(container, { childList: true, subtree: true });
 
+  container.addEventListener('click', (event) => {
+    const actionButton = event.target.closest('[data-action]');
+    if (!actionButton) return;
+    const article = actionButton.closest('.admin-booking');
+    if (!article) return;
+
+    if (actionButton.dataset.action === 'edit') {
+      queueMicrotask(() => setOriginalSlotNote(article));
+      return;
+    }
+
+    if (actionButton.dataset.action === 'delete') {
+      queueMicrotask(() => {
+        if (!actionButton.disabled || !article.isConnected) return;
+        pendingDeleteArticle = article;
+        pendingDeleteButton = actionButton;
+        article.classList.add('is-deleting');
+        actionButton.classList.add('is-busy');
+        actionButton.setAttribute('aria-busy', 'true');
+        setDeleteFeedback(article, 'Eliminazione in corso…');
+      });
+    }
+  });
+
   if (status) {
     const statusObserver = new MutationObserver(() => {
-      if (!pendingResendArticle || !document.body.contains(pendingResendArticle)) {
+      if (pendingResendArticle && !document.body.contains(pendingResendArticle)) {
         pendingResendArticle = null;
-        return;
+      }
+
+      if (pendingDeleteArticle && !document.body.contains(pendingDeleteArticle)) {
+        clearDeletePending();
       }
 
       const message = status.textContent.trim();
       if (!message) return;
 
-      if (status.classList.contains('is-ok')) {
-        setEmailFeedback(pendingResendArticle, 'Email reinviata correttamente.', 'ok');
-        pendingResendArticle = null;
-      } else if (status.classList.contains('is-error')) {
-        setEmailFeedback(pendingResendArticle, `Invio non riuscito: ${message}`, 'error');
-        pendingResendArticle = null;
+      if (pendingResendArticle) {
+        if (status.classList.contains('is-ok')) {
+          setEmailFeedback(pendingResendArticle, 'Email reinviata correttamente.', 'ok');
+          pendingResendArticle = null;
+        } else if (status.classList.contains('is-error')) {
+          setEmailFeedback(pendingResendArticle, `Invio non riuscito: ${message}`, 'error');
+          pendingResendArticle = null;
+        }
+      }
+
+      if (pendingDeleteArticle && status.classList.contains('is-error')) {
+        pendingDeleteArticle.classList.remove('is-deleting');
+        pendingDeleteButton?.classList.remove('is-busy');
+        pendingDeleteButton?.removeAttribute('aria-busy');
+        setDeleteFeedback(pendingDeleteArticle, `Eliminazione non riuscita: ${message}`, 'error');
+        pendingDeleteArticle = null;
+        pendingDeleteButton = null;
       }
     });
     statusObserver.observe(status, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
