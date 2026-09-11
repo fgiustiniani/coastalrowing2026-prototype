@@ -5,9 +5,172 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Scopri Pesaro durante i Campionati Italiani Coastal Rowing 2026: città, mare, Monte San Bartolo e alcuni indirizzi utili per mangiare e bere.">
   <title>Vivi Pesaro - Campionati Italiani Coastal Rowing 2026</title>
-  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="assets-overrides.css"><link rel="stylesheet" href="home-overrides.css"><link rel="stylesheet" href="site-polish.css"><link rel="stylesheet" href="vivi-pesaro.css">
-</head><body><div class="site-frame"><header class="site-header" id="top"><div class="site-header__top"><a href="index.html" aria-label="Campionati Italiani Coastal Rowing 2026, Pesaro - Home"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div><nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="vivi-pesaro.html" aria-current="page">Vivi Pesaro</a><a href="sostenibilita.html">Sostenibilità</a><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a></nav></header>
-<main class="city-page"><section class="city-hero" aria-labelledby="city-title"><div class="city-hero__content"><p class="eyebrow">Mare · città · natura</p><h1 id="city-title">Vivi Pesaro</h1><p>Tra una gara e l’altra, scopri la città, il lungomare e il Parco Naturale del Monte San Bartolo attraverso le risorse ufficiali del territorio.</p></div></section>
-<section class="city-section city-links" aria-labelledby="discover-title"><div class="city-section__heading city-section__heading--branded"><div class="city-section__heading-copy"><p class="section-kicker">Scopri il territorio</p><h2 id="discover-title">Da dove cominciare</h2><p>Qui trovi i collegamenti più utili per organizzare il tempo libero durante il weekend dei Campionati.</p></div><img class="section-event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></div><div class="city-resource-grid"><article class="city-resource-card"><small>Città e cultura</small><h3>Scopri Pesaro</h3><p>Luoghi da vedere, musei, cultura, spiagge, eventi e idee per vivere la città.</p><a href="https://visitpesaro.it/it/home" target="_blank" rel="noopener noreferrer">Vai a Visit Pesaro →</a></article><article class="city-resource-card city-resource-card--nature"><small>Natura e panorami</small><h3>Monte San Bartolo</h3><p>Sentieri, percorsi e informazioni per scoprire il Parco Naturale che domina il litorale pesarese.</p><a href="https://www.parcosanbartolo.it/vivere-il-parco/sentieri/" target="_blank" rel="noopener noreferrer">Scopri i sentieri →</a></article></div></section>
-<section class="city-section city-food" aria-labelledby="food-title"><div class="city-section__heading city-section__heading--branded"><div class="city-section__heading-copy"><p class="section-kicker">Dove mangiare e bere</p><h2 id="food-title">Alcuni indirizzi utili</h2><p>Questa sezione è ancora in definizione</p></div><img class="section-event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></div><div class="food-groups"><article class="food-group"><div class="food-group__icon" aria-hidden="true">🍽</div><h3>Ristoranti</h3><p>In definizione</p></article><article class="food-group"><div class="food-group__icon" aria-hidden="true">🍕</div><h3>Pizzerie</h3><p>In definizione</p></article><article class="food-group"><div class="food-group__icon" aria-hidden="true">🍺</div><h3>Pub e birrerie</h3><p>In definizione</p></article><article class="food-group"><div class="food-group__icon" aria-hidden="true">🍦</div><h3>Gelaterie</h3><p>In definizione</p></article></div></section></main>
-<footer class="site-footer" id="contatti"><div class="site-footer__brand"><strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong><p>Organizzazione locale: Società Canottieri Pesaro ASD.</p><div class="footer-socials"><a class="footer-social footer-social--club" href="https://www.canottieripesaro.it" target="_blank" rel="noopener noreferrer"><img src="assets/logos/canottieri-pesaro-logo_DEPOSITATO.png" alt="Società Canottieri Pesaro"></a><a class="footer-social" href="https://www.facebook.com/societacanottieripesaro" target="_blank" rel="noopener noreferrer"><img src="assets/logos/facebook-logo.png" alt="Facebook"></a><a class="footer-social" href="https://www.instagram.com/canottieri_pesaro/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/instagram-logo.png" alt="Instagram"></a></div></div><div class="site-footer__links"><a href="download.html">Download</a><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a><a href="index.html#sponsor">Partner e Sponsor</a><a href="privacy-policy.html">Privacy</a><a href="cookie-policy.html">Cookie</a></div></footer><a class="back-home" href="#top">↑ <span>Home</span></a></div><script src="nav-submenu.js" defer></script></body></html>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="vivi-pesaro.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <div class="site-header__top">
+        <a href="index.html" aria-label="Campionati Italiani Coastal Rowing 2026, Pesaro - Home">
+          <img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        </a>
+      </div>
+      <nav class="site-nav" aria-label="Navigazione principale">
+        <a href="index.html">Home</a>
+        <a href="info-gare.html">Info per chi gareggia</a>
+        <a href="vivi-pesaro.html" aria-current="page">Vivi Pesaro</a>
+        <a href="sostenibilita.html">Sostenibilità</a>
+        <a href="faq.html">FAQ</a>
+        <a href="contatti.html">Contatti</a>
+      </nav>
+    </header>
+
+    <main class="city-page">
+      <section class="city-hero" aria-labelledby="city-title">
+        <div class="city-hero__content">
+          <p class="eyebrow">Mare · città · natura</p>
+          <h1 id="city-title">Vivi Pesaro</h1>
+          <p>Tra una gara e l’altra, scopri la città, il lungomare e il Parco Naturale del Monte San Bartolo attraverso le risorse ufficiali del territorio.</p>
+        </div>
+      </section>
+
+      <section class="city-section city-links" aria-labelledby="discover-title">
+        <div class="city-section__heading city-section__heading--branded">
+          <div class="city-section__heading-copy">
+            <p class="section-kicker">Scopri il territorio</p>
+            <h2 id="discover-title">Da dove cominciare</h2>
+            <p>Qui trovi i collegamenti più utili per organizzare il tempo libero durante il weekend dei Campionati.</p>
+          </div>
+          <img class="section-event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        </div>
+        <div class="city-resource-grid">
+          <article class="city-resource-card">
+            <small>Città e cultura</small>
+            <h3>Scopri Pesaro</h3>
+            <p>Luoghi da vedere, musei, cultura, spiagge, eventi e idee per vivere la città.</p>
+            <a href="https://visitpesaro.it/it/home" target="_blank" rel="noopener noreferrer">Vai a Visit Pesaro →</a>
+          </article>
+          <article class="city-resource-card city-resource-card--nature">
+            <small>Natura e panorami</small>
+            <h3>Monte San Bartolo</h3>
+            <p>Sentieri, percorsi e informazioni per scoprire il Parco Naturale che domina il litorale pesarese.</p>
+            <a href="https://www.parcosanbartolo.it/vivere-il-parco/sentieri/" target="_blank" rel="noopener noreferrer">Scopri i sentieri →</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="city-section city-food" id="dove-mangiare" aria-labelledby="food-title">
+        <div class="city-section__heading city-section__heading--branded">
+          <div class="city-section__heading-copy">
+            <p class="section-kicker">Dove mangiare e bere</p>
+            <h2 id="food-title">Alcuni indirizzi utili</h2>
+            <p>Una selezione di locali per mangiare e bere durante il weekend dei Campionati. Seleziona una o più categorie oppure visualizza le sedi sulla mappa.</p>
+          </div>
+          <img class="section-event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        </div>
+
+        <div class="food-toolbar">
+          <div class="food-filter-block">
+            <span class="food-toolbar__label">Filtra per tipologia</span>
+            <div class="food-filters" role="group" aria-label="Filtra i locali per tipologia">
+              <button class="food-filter is-active" type="button" data-food-filter="all" aria-pressed="true">Tutti</button>
+              <button class="food-filter" type="button" data-food-filter="ristorante" aria-pressed="false">Ristorante</button>
+              <button class="food-filter" type="button" data-food-filter="pizzeria" aria-pressed="false">Pizzeria</button>
+              <button class="food-filter" type="button" data-food-filter="lounge-bistrot" aria-pressed="false">Lounge / Bistrot</button>
+              <button class="food-filter" type="button" data-food-filter="gelateria" aria-pressed="false">Gelateria</button>
+              <button class="food-filter" type="button" data-food-filter="pub" aria-pressed="false">Pub</button>
+            </div>
+          </div>
+
+          <div class="food-toolbar__meta">
+            <p class="food-results-count" data-food-count aria-live="polite">2 locali</p>
+            <div class="food-view-switch" role="group" aria-label="Scegli la visualizzazione dei locali">
+              <button class="food-view-toggle is-active" type="button" data-food-view="list" aria-pressed="true">Elenco</button>
+              <button class="food-view-toggle" type="button" data-food-view="map" aria-pressed="false">Mappa</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="food-list-view" data-food-list>
+          <div class="food-place-grid">
+            <article class="food-place" data-place-id="donna-amalia" data-categories="ristorante pizzeria">
+              <div class="food-place__categories" aria-label="Tipologie">
+                <span class="food-place__category">Ristorante</span>
+                <span class="food-place__category">Pizzeria</span>
+              </div>
+              <h3 class="food-place__name">
+                <a class="food-place__name-link" href="https://ristorantedonnamalia.it/" target="_blank" rel="noopener noreferrer">Donna Amalia <span aria-hidden="true">↗</span></a>
+              </h3>
+              <div class="food-place__addresses" aria-label="Indirizzi di Donna Amalia">
+                <a class="food-place__address" data-location-id="donna-amalia-trieste" data-geocode="Viale Trieste 265, 61121 Pesaro PU, Italia" href="https://maps.app.goo.gl/QQuB8chz2kuiZXWTA?g_st=ic" target="_blank" rel="noopener noreferrer">
+                  <span class="food-place__address-label">Viale Trieste 265</span>
+                  <small>Apri su Google Maps ↗</small>
+                </a>
+              </div>
+            </article>
+
+            <article class="food-place" data-place-id="alice" data-categories="gelateria">
+              <div class="food-place__categories" aria-label="Tipologie">
+                <span class="food-place__category">Gelateria</span>
+              </div>
+              <h3 class="food-place__name">
+                <a class="food-place__name-link" href="https://www.instagram.com/alicegelati?stkn=MXF0ODAzd2todDN1NA==" target="_blank" rel="noopener noreferrer">Alice <span aria-hidden="true">↗</span></a>
+              </h3>
+              <div class="food-place__addresses" aria-label="Indirizzi di Alice">
+                <a class="food-place__address" data-location-id="alice-trieste" data-geocode="Viale Trieste 210, 61121 Pesaro PU, Italia" href="https://maps.app.goo.gl/sfJNdLdq4dKTH2Qf7?g_st=ic" target="_blank" rel="noopener noreferrer">
+                  <span class="food-place__address-label">Viale Trieste 210</span>
+                  <small>Apri su Google Maps ↗</small>
+                </a>
+                <a class="food-place__address" data-location-id="alice-marconi" data-geocode="Viale Guglielmo Marconi 59, 61121 Pesaro PU, Italia" href="https://maps.app.goo.gl/pqavHqvDL7aKCrg68?g_st=ic" target="_blank" rel="noopener noreferrer">
+                  <span class="food-place__address-label">Viale Marconi 59</span>
+                  <small>Apri su Google Maps ↗</small>
+                </a>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="food-map-view" data-food-map-view hidden>
+          <p class="food-map-status" data-food-map-status aria-live="polite">Caricamento della mappa…</p>
+          <div class="food-map" id="food-map" role="region" aria-label="Mappa dei locali dove mangiare e bere"></div>
+          <noscript><p class="food-map-fallback">Per visualizzare la mappa è necessario JavaScript. Gli indirizzi Google Maps sono disponibili nell’elenco.</p></noscript>
+        </div>
+
+        <p class="food-empty" data-food-empty hidden>Nessun locale corrisponde ai filtri selezionati.</p>
+        <p class="food-disclaimer">Il nome del locale apre il relativo sito o profilo web. Ogni indirizzo apre la posizione corrispondente su Google Maps.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="contatti">
+      <div class="site-footer__brand">
+        <strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong>
+        <p>Organizzazione locale: Società Canottieri Pesaro ASD.</p>
+        <div class="footer-socials">
+          <a class="footer-social footer-social--club" href="https://www.canottieripesaro.it" target="_blank" rel="noopener noreferrer"><img src="assets/logos/canottieri-pesaro-logo_DEPOSITATO.png" alt="Società Canottieri Pesaro"></a>
+          <a class="footer-social" href="https://www.facebook.com/societacanottieripesaro" target="_blank" rel="noopener noreferrer"><img src="assets/logos/facebook-logo.png" alt="Facebook"></a>
+          <a class="footer-social" href="https://www.instagram.com/canottieri_pesaro/" target="_blank" rel="noopener noreferrer"><img src="assets/logos/instagram-logo.png" alt="Instagram"></a>
+        </div>
+      </div>
+      <div class="site-footer__links">
+        <a href="download.html">Download</a>
+        <a href="faq.html">FAQ</a>
+        <a href="contatti.html">Contatti</a>
+        <a href="index.html#sponsor">Partner e Sponsor</a>
+        <a href="privacy-policy.html">Privacy</a>
+        <a href="cookie-policy.html">Cookie</a>
+      </div>
+    </footer>
+
+    <a class="back-home" href="#top">↑ <span>Home</span></a>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="vivi-pesaro-food.js" defer></script>
+  <script src="nav-submenu.js" defer></script>
+</body>
+</html>
