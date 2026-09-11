@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prenotazione prove barche - Campionati Italiani Coastal Rowing 2026</title>
+  <meta name="description" content="Prenota uno slot per provare le barche LOVA e Swift venerdì 2 ottobre 2026 a Pesaro.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="boat-booking.css">
+  <link rel="stylesheet" href="boat-booking-hero.css">
+  <link rel="stylesheet" href="boat-booking-slot-filters.css">
+  <link rel="stylesheet" href="boat-booking-deadline-delete.css">
+</head>
+<body>
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <div class="site-header__top"><a href="index.html"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div>
+      <nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="vivi-pesaro.html">Vivi Pesaro</a><a href="sostenibilita.html">Sostenibilità</a><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a></nav>
+    </header>
+
+    <main class="booking-page">
+      <section class="booking-hero" aria-labelledby="booking-title">
+        <p class="eyebrow">Prove barche</p>
+        <h1 id="booking-title">Prenota le barche da provare</h1>
+        <p>Venerdì 2 ottobre 2026 puoi provare le barche messe a disposizione dai cantieri LOVA e Swift.<br>Ogni prova dura 20 minuti.</p>
+        <div class="booking-hero__meta"><span class="booking-chip">Venerdì 2 ottobre</span><span class="booking-chip">14:00–18:00</span><span class="booking-chip">Slot da 20 minuti</span></div>
+        <p class="booking-hero__conditions"><strong>Attenzione:</strong> le uscite in mare saranno possibili solo se le condizioni meteo-marine saranno ritenute favorevoli dal COL.</p>
+      </section>
+
+      <section class="booking-lookup booking-card" aria-labelledby="lookup-title">
+        <div class="booking-lookup__copy">
+          <p class="eyebrow">Hai già prenotato?</p>
+          <h2 id="lookup-title">Visualizza la tua prenotazione</h2>
+          <p>Inserisci il codice ricevuto nella conferma per vedere slot e barche assegnate.</p>
+        </div>
+        <form class="booking-lookup__form" data-booking-lookup>
+          <div class="booking-field">
+            <label for="bookingCodeLookup">Codice prenotazione</label>
+            <input id="bookingCodeLookup" name="bookingCode" maxlength="20" placeholder="PB26-XXXXXXXX" autocomplete="off" required>
+          </div>
+          <button class="button button--dark" type="submit">Visualizza</button>
+          <span class="booking-status" data-lookup-status aria-live="polite"></span>
+        </form>
+        <div class="lookup-result" data-lookup-result hidden></div>
+      </section>
+
+      <section class="booking-closed" data-booking-closed hidden>
+        <strong>Prenotazioni online chiuse</strong>
+        <p data-booking-closed-text></p>
+      </section>
+
+      <div class="booking-loading" data-booking-loading>Caricamento disponibilità…</div>
+
+      <div data-booking-shell hidden>
+        <form class="booking-shell" data-booking-form data-mode="create" novalidate>
+          <section class="booking-card">
+            <h2><span class="booking-section-number">1</span>Scegli lo slot orario</h2>
+            <p class="booking-card__intro">Scegli l’orario che preferisci. Se cerchi una barca specifica, puoi usare il filtro opzionale per restringere gli slot disponibili.</p>
+
+            <div data-slot-flow>
+              <div class="booking-field booking-field--full">
+                <label for="slotCode">Slot orario</label>
+                <select id="slotCode" name="slotCode" required>
+                  <option value="">Seleziona uno slot</option>
+                  <option value="1400">14:00–14:20</option>
+                  <option value="1430">14:30–14:50</option>
+                  <option value="1500">15:00–15:20</option>
+                  <option value="1530">15:30–15:50</option>
+                  <option value="1600">16:00–16:20</option>
+                  <option value="1630">16:30–16:50</option>
+                  <option value="1700">17:00–17:20</option>
+                  <option value="1730">17:30–17:50</option>
+                  <option value="1800">18:00–18:20</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="booking-slot-filter">
+              <details data-boat-filter-menu>
+                <summary>
+                  <span class="booking-slot-filter__label">Filtra per barca <small>(opzionale)</small></span>
+                  <span class="booking-slot-filter__summary" data-boat-filter-summary>Nessun filtro</span>
+                </summary>
+                <div class="booking-slot-filter__panel">
+                  <p class="booking-slot-filter__intro">Seleziona una o più coppie cantiere–tipo. Uno slot resta disponibile se almeno una delle barche selezionate è disponibile in quell’orario.</p>
+                  <div class="booking-slot-filter__options">
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C1x"><span>LOVA · C1x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C2x"><span>LOVA · C2x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="LOVA" data-boat-type="C4x+"><span>LOVA · C4x+</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C1x"><span>Swift · C1x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C2x"><span>Swift · C2x</span></label>
+                    <label class="booking-slot-filter__choice"><input type="checkbox" data-boat-filter data-builder="Swift" data-boat-type="C4x+"><span>Swift · C4x+</span></label>
+                  </div>
+                  <div class="booking-slot-filter__footer">
+                    <button class="booking-slot-filter__clear" type="button" data-clear-boat-filters hidden>Rimuovi filtri</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="booking-card" data-inventory-panel hidden>
+            <div class="inventory-head"><div><h2><span class="booking-section-number">2</span><span data-inventory-title>Disponibilità</span></h2><p>Indica quante barche vuoi prenotare. Il sistema assegnerà automaticamente i numeri delle barche disponibili.</p></div></div>
+            <div class="inventory-grid" data-inventory-grid></div>
+            <div class="booking-empty" data-boat-filter-empty hidden style="margin-top:12px"></div>
+          </section>
+
+          <section class="booking-card">
+            <h2><span class="booking-section-number">3</span>Dati della società e del referente</h2>
+            <div class="booking-grid">
+              <div class="booking-field booking-field--full"><label for="society">Società</label><input id="society" name="society" maxlength="160" autocomplete="organization" required></div>
+              <div class="booking-field"><label for="contactSurname">Cognome referente</label><input id="contactSurname" name="contactSurname" maxlength="100" autocomplete="family-name" required></div>
+              <div class="booking-field"><label for="contactName">Nome referente</label><input id="contactName" name="contactName" maxlength="100" autocomplete="given-name" required></div>
+              <div class="booking-field"><label for="phone">Telefono</label><input id="phone" name="phone" maxlength="40" autocomplete="tel" inputmode="tel" required></div>
+              <div class="booking-field"><label for="email">Email</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email" required></div>
+              <div class="booking-field"><label for="emailConfirm">Conferma email</label><input id="emailConfirm" name="emailConfirm" type="email" maxlength="254" autocomplete="off" required><span class="booking-help">Ripeti l’indirizzo email per evitare errori.</span></div>
+            </div>
+            <div class="booking-honeypot" aria-hidden="true"><label for="website">Sito web</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+            <div class="booking-privacy"><input id="privacyAccepted" name="privacyAccepted" type="checkbox" required><label for="privacyAccepted">Ho letto l’<a href="privacy-policy.html" target="_blank" rel="noopener noreferrer">informativa privacy</a> relativa alla gestione della prenotazione.</label></div>
+            <div class="booking-actions"><button class="button button--primary" type="submit">Conferma prenotazione</button><span class="booking-status" data-booking-status aria-live="polite"></span></div>
+          </section>
+        </form>
+
+        <section class="booking-success" data-booking-success hidden aria-live="polite">
+          <h2>Prenotazione registrata</h2>
+          <p data-success-text></p>
+          <p class="booking-success__code" data-success-code-wrap hidden><span>Codice prenotazione</span><strong data-success-code></strong></p>
+          <div class="booking-success__boats"><strong>Barche assegnate</strong><ul data-success-boats></ul></div>
+          <a class="button button--dark booking-success__link" data-success-link href="#">Apri il link personale di modifica</a>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer"><div class="site-footer__brand"><strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong><p>Organizzazione locale: Società Canottieri Pesaro ASD.</p></div><div class="site-footer__links"><a href="faq.html">FAQ</a><a href="contatti.html">Contatti</a><a href="privacy-policy.html">Privacy</a></div></footer>
+    <a class="back-home" href="#top" aria-label="Torna all’inizio della pagina">↑ <span>Vai su</span></a>
+  </div>
+  <script src="nav-submenu.js" defer></script>
+  <script src="boat-booking-email-confirm.js" defer></script>
+  <script src="boat-booking.js" defer></script>
+  <script src="boat-booking-slot-filters.js" defer></script>
+  <script src="boat-booking-deadline-delete.js" defer></script>
+  <script src="boat-booking-view.js" defer></script>
+</body>
+</html>

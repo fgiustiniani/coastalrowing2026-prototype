@@ -1,0 +1,21 @@
+.booking-hero::after {
+  display: none;
+}
+
+.booking-lookup__copy .eyebrow {
+  color: #0b6478;
+  font-weight: 800;
+}
+
+.booking-hero__conditions {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, .24);
+  color: rgba(255, 255, 255, .9);
+  font-size: .92rem;
+  line-height: 1.45;
+}
+
+.booking-hero__conditions strong {
+  color: #fff;
+}

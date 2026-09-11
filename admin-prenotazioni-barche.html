@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Area organizzazione - Prenotazioni prove barche</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="boat-booking.css">
+  <style>
+    .admin-secondary-sections {
+      display: grid;
+      gap: 14px;
+    }
+    .admin-collapsible {
+      padding: 0;
+      overflow: hidden;
+    }
+    .admin-collapsible > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 16px 22px;
+      cursor: pointer;
+      list-style: none;
+      color: #173e4b;
+      font-weight: 800;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .admin-collapsible > summary::-webkit-details-marker { display: none; }
+    .admin-collapsible > summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #edf6f8;
+      color: #0b6478;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+    .admin-collapsible[open] > summary::after { content: "−"; }
+    .admin-collapsible__body {
+      padding: 0 22px 22px;
+      border-top: 1px solid #e2e9eb;
+    }
+    .admin-collapsible__body > :first-child { margin-top: 22px; }
+    .admin-bookings-card { order: -1; }
+    .admin-section-heading,
+    .admin-export-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .admin-section-heading h2,
+    .admin-export-row p { margin: 0; }
+    .admin-export-button { flex: 0 0 auto; }
+
+    @media (max-width: 640px) {
+      .admin-collapsible > summary {
+        min-height: 56px;
+        padding: 14px 16px;
+      }
+      .admin-collapsible__body { padding: 0 16px 18px; }
+      .admin-booking__actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .admin-booking__actions .admin-button {
+        min-height: 44px;
+        padding: 9px 8px;
+      }
+      .admin-section-heading,
+      .admin-export-row { align-items: stretch; }
+      .admin-export-button { min-height: 44px; }
+    }
+
+    @media (max-width: 420px) {
+      .admin-booking__actions { grid-template-columns: 1fr; }
+      .admin-export-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <div class="site-header__top"><a href="index.html"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div>
+      <nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="contatti.html">Contatti</a></nav>
+    </header>
+
+    <main class="admin-page">
+      <section class="admin-login booking-card">
+        <p class="eyebrow">Area riservata</p>
+        <h1 class="admin-page__title">Prenotazioni prove barche</h1>
+        <p>Accedi con le credenziali dell’area organizzazione.</p>
+        <form data-admin-login class="booking-shell">
+          <div class="booking-field"><label for="username">Utente</label><input id="username" name="username" autocomplete="username" required></div>
+          <div class="booking-field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+          <div class="booking-actions"><button class="button button--primary" type="submit">Accedi</button><span class="booking-status" data-login-status aria-live="polite"></span></div>
+        </form>
+      </section>
+
+      <section class="admin-dashboard" data-admin-dashboard hidden>
+        <div class="admin-toolbar">
+          <div>
+            <p class="eyebrow">Organizzazione</p>
+            <h1 class="admin-page__title">Prenotazioni prove barche</h1>
+            <span class="booking-status" data-admin-status aria-live="polite"></span>
+          </div>
+          <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
+        </div>
+
+        <section class="booking-card admin-bookings-card">
+          <div class="admin-section-heading">
+            <h2>Prenotazioni</h2>
+            <button class="admin-button admin-export-button" data-export-bookings-pdf type="button">Esporta PDF</button>
+          </div>
+          <div class="admin-filters" style="margin-top:18px">
+            <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
+            <div class="booking-field"><label for="filterSlot">Slot</label><select id="filterSlot" data-filter-slot><option value="">Tutti</option><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option><option value="1700">17:00–17:20</option><option value="1730">17:30–17:50</option><option value="1800">18:00–18:20</option></select></div>
+            <div class="booking-field"><label for="filterBuilder">Cantiere</label><select id="filterBuilder" data-filter-builder><option value="">Tutti</option><option>LOVA</option><option>Swift</option></select></div>
+            <div class="booking-field"><label for="filterType">Tipo barca</label><select id="filterType" data-filter-type><option value="">Tutti</option><option>C1x</option><option>C2x</option><option>C4x+</option></select></div>
+          </div>
+          <div class="admin-bookings" data-admin-bookings style="margin-top:18px"></div>
+        </section>
+
+        <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
+          <details class="booking-card admin-collapsible">
+            <summary>Occupazione per slot</summary>
+            <div class="admin-collapsible__body">
+              <div class="admin-export-row">
+                <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
+                <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">Esporta PDF</button>
+              </div>
+              <div class="admin-matrix-wrap" data-admin-matrix style="margin-top:18px"></div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Impostazioni prenotazioni</summary>
+            <div class="admin-collapsible__body">
+              <div class="admin-settings-card">
+                <div>
+                  <h2>Chiusura prenotazioni</h2>
+                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
+                  <div class="cutoff-state" data-cutoff-state></div>
+                </div>
+                <form class="cutoff-form" data-cutoff-form>
+                  <div class="booking-field">
+                    <label for="cutoffLocal">Data e ora di chiusura</label>
+                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
+                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                  </div>
+                  <div class="booking-actions">
+                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
+                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Anagrafica barche</summary>
+            <div class="admin-collapsible__body">
+              <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
+
+              <form class="boat-registry-form" data-boat-form>
+                <div class="booking-field">
+                  <label for="boatNumber">Numero barca</label>
+                  <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
+                </div>
+                <div class="booking-field">
+                  <label for="boatBuilder">Cantiere</label>
+                  <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
+                </div>
+                <div class="booking-field">
+                  <label for="boatType">Tipo</label>
+                  <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
+                </div>
+                <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
+              </form>
+
+              <div data-boats-table></div>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="booking-dialog" data-edit-dialog>
+      <div class="booking-dialog__inner">
+        <div class="booking-dialog__head">
+          <div><p class="eyebrow">Amministrazione</p><h2>Modifica prenotazione</h2></div>
+          <button class="booking-dialog__close" type="button" data-dialog-close aria-label="Chiudi">×</button>
+        </div>
+
+        <form data-edit-form class="booking-shell">
+          <div class="booking-grid">
+            <div class="booking-field booking-field--full"><label>Società</label><input name="society" required></div>
+            <div class="booking-field"><label>Cognome referente</label><input name="contactSurname" required></div>
+            <div class="booking-field"><label>Nome referente</label><input name="contactName" required></div>
+            <div class="booking-field"><label>Telefono</label><input name="phone" required></div>
+            <div class="booking-field"><label>Email</label><input name="email" type="email" required></div>
+            <div class="booking-field booking-field--full"><label>Slot</label><select name="slotCode" required><option value="1400">14:00–14:20</option><option value="1430">14:30–14:50</option><option value="1500">15:00–15:20</option><option value="1530">15:30–15:50</option><option value="1600">16:00–16:20</option><option value="1630">16:30–16:50</option><option value="1700">17:00–17:20</option><option value="1730">17:30–17:50</option><option value="1800">18:00–18:20</option></select></div>
+          </div>
+
+          <div class="inventory-grid" data-edit-inventory></div>
+
+          <div class="booking-actions">
+            <button class="button button--primary" type="submit">Salva modifiche</button>
+            <button class="admin-button" type="button" data-dialog-close>Annulla</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <footer class="site-footer"><div class="site-footer__brand"><strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong><p>Organizzazione locale: Società Canottieri Pesaro ASD.</p></div><div class="site-footer__links"><a href="prenotazione-barche.html">Prenotazione pubblica</a><a href="contatti.html">Contatti</a></div></footer>
+  </div>
+
+  <script src="nav-submenu.js" defer></script>
+  <script src="boat-booking-admin.js" defer></script>
+  <script src="boat-booking-admin-list-ux.js" defer></script>
+  <script src="boat-booking-pdf-export.js" defer></script>
+</body>
+</html>
