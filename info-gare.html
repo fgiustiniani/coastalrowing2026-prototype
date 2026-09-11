@@ -42,15 +42,15 @@
       <nav class="quick-links" aria-label="Accessi rapidi alle informazioni per chi gareggia">
         <a href="#programma">
           <span class="quick-links__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg></span>
-          <span class="quick-links__label">Programma e documenti</span>
+          <span class="quick-links__label">Programma</span>
         </a>
         <a href="#campo-gara">
           <span class="quick-links__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2z"/><path d="M9 4v14M15 6v14"/></svg></span>
-          <span class="quick-links__label">Campo gara</span>
+          <span class="quick-links__label">Campo gare</span>
         </a>
         <a href="#logistica">
           <span class="quick-links__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15l2 3h14l2-3-3-5H6z"/><path d="M8 10l2-4h4l2 4M7 18l-2 3M17 18l2 3"/></svg></span>
-          <span class="quick-links__label">Logistica e parco barche</span>
+          <span class="quick-links__label">Logistica a terra</span>
         </a>
         <a href="#segreteria">
           <span class="quick-links__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 4v3h6V4M8 11h8M8 15h5"/></svg></span>
@@ -72,14 +72,33 @@
             <div class="info-section__heading info-section__heading--branded info-section__heading--compact">
               <div class="info-section__heading-copy">
                 <p class="section-kicker">Informazioni sportive</p>
-                <h2 id="programma-title">Programma e documenti ufficiali</h2>
+                <h2 id="programma-title">Programma delle attività</h2>
               </div>
               <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
             </div>
-            <ul class="event-program">
-              <li><strong>Venerdì 2 ottobre, dalle ore 15.00</strong> — barche a disposizione per le prove. <span class="booking-coming-soon">A breve il link per prenotare</span></li>
-              <li><strong>Sabato 3 ottobre, ore 8.30</strong> — inizio gare <em>(orario da confermare)</em>. Al termine seguiranno le premiazioni.</li>
-              <li><strong>Domenica 4 ottobre, dalle 8.30 alle 13.00</strong> — prosieguo delle gare.</li>
+            <ul class="event-program event-program--activities">
+              <li>
+                <strong>Venerdì 02/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>ore 15.00 – 17.00:</strong> accredito equipaggi presso Segreteria Gare <a class="event-program__map-link" href="https://maps.app.goo.gl/quXGvciRXoJ5uhHT8" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt=""><span>Apri su Google Maps</span></a></li>
+                  <li><strong>ore 17.30:</strong> meeting Capitani presso la sede della Canottieri Pesaro in Calata Caio Duilio 101 <a class="event-program__map-link" href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt=""><span>Apri su Google Maps</span></a></li>
+                </ul>
+              </li>
+              <li>
+                <strong>Sabato 03/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>dalle 8.00:</strong> eventuali fasi eliminatorie su percorso da circa mt. 3000</li>
+                  <li><strong>a seguire:</strong> finali MASTER su percorso da circa mt 3000 e, finali PR3 II su percorso da circa mt 1.700, finali UNDER 19, UNDER 23 su percorso da circa mt. 6000</li>
+                  <li><strong>ore 17.30:</strong> premiazioni</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Domenica 04/10/2026</strong>
+                <ul class="event-program__details">
+                  <li><strong>dalle 8.00:</strong> prosieguo delle finali MASTER, finali SENIOR ed eventuali recuperi delle gare del giorno precedente</li>
+                  <li><strong>a seguire:</strong> premiazioni (tra le 13.00 e le 16.00 in funzione della necessità di eventuali recuperi)</li>
+                </ul>
+              </li>
             </ul>
           </div>
           <div class="fic-link">
@@ -110,9 +129,8 @@
           <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
         </div>
         <div class="race-map">
-          <a class="race-map__image-link" href="assets/maps/mappa-campo-gara.svg" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-campo-gara.svg" alt="Schema indicativo del campo gara"></a>
-          <div class="race-map__actions">
-            <span>Schema indicativo · configurazione in fase di definizione</span>
+          <a class="race-map__image-link" href="assets/maps/mappa-campo-gara.svg?v=2" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-campo-gara.svg?v=2" alt="Schema indicativo del campo gara"></a>
+          <div class="race-map__actions race-map__actions--end">
             <a class="race-map__logistics-link" href="#logistica">Vedi logistica dell’area evento →</a>
           </div>
         </div>
@@ -128,10 +146,9 @@
           <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
         </div>
         <div class="race-map logistics-map">
-          <a class="race-map__image-link" href="assets/maps/mappa-logistica-evento.svg?v=2" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-logistica-evento.svg?v=2" alt="Mappa logistica delle aree operative"></a>
-          <div class="race-map__actions">
-            <span>Schema indicativo · disposizione delle aree soggetta a variazioni</span>
-            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=2" target="_blank" rel="noopener noreferrer">Apri a tutto schermo →</a>
+          <a class="race-map__image-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-logistica-evento.svg?v=3" alt="Mappa logistica delle aree operative"></a>
+          <div class="race-map__actions race-map__actions--end">
+            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer">Apri a tutto schermo →</a>
           </div>
         </div>
       </section>
@@ -149,7 +166,7 @@
             <small>Dove</small>
             <strong>Segreteria gare</strong>
             <p><b>Società Canottieri Pesaro</b><br>Calata Caio Duilio 101, Pesaro</p>
-            <a class="race-office__map-link" href="assets/maps/mappa-logistica-evento.svg?v=2" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt="">Vedi mappa</a>
+            <a class="race-office__map-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt="">Vedi mappa</a>
           </article>
           <article>
             <small>Orari</small>
@@ -173,7 +190,7 @@
           </div>
           <div class="hospitality__logos">
             <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
-            <img class="hospitality__logo" src="assets/logos/APA-Hotels.jpg" alt="APA Hotels Pesaro">
+            <img class="hospitality__logo" src="assets/logos/apa-logo.svg" alt="APA Hotels Pesaro">
           </div>
         </div>
         <div class="hospitality__grid">
@@ -189,7 +206,7 @@
           </article>
           <article>
             <small>Prenotazione</small>
-            <strong>Invia la scheda entro il 5 agosto 2026</strong>
+            <strong>Invia la scheda entro il 5 settembre 2026</strong>
             <p class="hospitality__contacts">Invia il modulo compilato ad APA Hotels:<br>
               <a href="mailto:commerciale@apahotel.it" class="contact-link"><span class="contact-icon" aria-hidden="true"><img src="assets/logos/mail-logo.svg" alt=""></span><span>commerciale@apahotel.it</span></a><br>
               <a href="https://wa.me/393357061510" target="_blank" rel="noopener noreferrer" class="contact-link contact-link--whatsapp"><span class="contact-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span><span>+39 335 7061510</span></a>
@@ -246,13 +263,13 @@
       </section>
 
       <section class="help-band help-band--contacts" aria-labelledby="help-title">
+        <img class="section-event-logo section-event-logo--dark help-band__event-logo help-band__event-logo--top" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
         <div class="help-band__brand">
           <p class="eyebrow">Serve aiuto?</p>
-          <h2 id="help-title">Hai bisogno di informazioni organizzative?</h2>
+          <h2 id="help-title">Hai bisogno di informazioni<br>organizzative?</h2>
           <div class="help-band__info-row">
             <div class="help-band__info-copy">
               <p>Il nostro staff è a disposizione per le informazioni locali relative alla partecipazione all’evento.</p>
-              <small>Per regolamenti, iscrizioni, programma gare e risultati fa riferimento la Federazione Italiana Canottaggio.</small>
             </div>
             <a class="help-band__logo-link" href="https://www.canottieripesaro.it" target="_blank" rel="noopener noreferrer" aria-label="Visita il sito della Società Canottieri Pesaro">
               <img src="assets/logos/canottieri-pesaro-logo_DEPOSITATO.png" alt="Società Canottieri Pesaro">
@@ -260,9 +277,17 @@
           </div>
         </div>
         <div class="help-band__actions help-band__actions--contacts">
-          <img class="section-event-logo section-event-logo--dark help-band__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
           <a class="button button--primary icon-button" href="contatti.html"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>Scrivici su WhatsApp</a>
           <a class="button button--secondary-light icon-button" href="mailto:info@canottieripesaro.it"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/mail-logo.svg" alt=""></span>Mandaci una mail</a>
+          <div class="wa-group-promo wa-group-promo--help-actions">
+            <div class="wa-group-promo__copy">
+              <a href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer"><span class="inline-icon" aria-hidden="true"><img src="assets/logos/whatsapp-logo.svg" alt=""></span>Iscriviti al gruppo WhatsApp</a>
+              <span class="wa-group-promo__note">per ricevere info<br>in tempo reale</span>
+            </div>
+            <a class="wa-group-promo__qr-link" href="https://chat.whatsapp.com/FHTtZCB8LHTAaDnprjLY78?s=sh&p=i&ilr=0&amv=1" target="_blank" rel="noopener noreferrer" aria-label="Iscriviti al gruppo WhatsApp dei Campionati">
+              <img class="wa-group-promo__qr" src="assets/images/gruppo-wa.png" alt="QR code per iscriversi al gruppo WhatsApp dei Campionati">
+            </a>
+          </div>
         </div>
       </section>
     </main>
