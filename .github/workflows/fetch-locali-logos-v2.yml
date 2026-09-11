@@ -34,7 +34,7 @@ jobs:
             file "$out" | grep -q "PNG image data"
           }
           download "https://ristorantedonnamalia.it/wp-content/uploads/2025/03/1527d32d-dc97-4cba-aaeb-e9749e29d3aa.png" "assets/logos/locali/Donna-Amalia.png"
-          download "https://alicegelati.it/wp-content/uploads/2024/04/LOGO-300-1.svg" "assets/logos/locali/Alice.png"
+          download "https://play-lh.googleusercontent.com/SFsIMDdl5aZlImZn8UESWaWT3xatTlotiiHyHxwsqFshBEdLWX2ItjghuVA4R7mdbA=w240-h480" "assets/logos/locali/Alice.png"
           download "https://ristorantegirodiboa.it/wp-content/uploads/2026/05/vector.png" "assets/logos/locali/Giro-di-Boa.png"
           download "https://www.botanicgroup.it/wp-content/uploads/2021/03/logo-botanic-def.png" "assets/logos/locali/Botanic.png"
           file assets/logos/locali/*
