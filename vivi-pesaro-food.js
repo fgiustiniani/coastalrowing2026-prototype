@@ -14,6 +14,13 @@
   const locateButton = section.querySelector('[data-food-locate]');
   const locateLabel = section.querySelector('[data-food-locate-label]');
   const locationStatus = section.querySelector('[data-food-location-status]');
+  const detailDialog = section.querySelector('[data-food-detail-dialog]');
+  const detailClose = section.querySelector('[data-food-detail-close]');
+  const detailName = section.querySelector('[data-food-detail-name]');
+  const detailTypes = section.querySelector('[data-food-detail-types]');
+  const detailAddress = section.querySelector('[data-food-detail-address]');
+  const detailSite = section.querySelector('[data-food-detail-site]');
+  const detailMaps = section.querySelector('[data-food-detail-maps]');
 
   if (!cards.length) return;
 
@@ -43,6 +50,10 @@
       .filter(Boolean);
     return codes.length ? codes.join('/') : '•';
   };
+
+  const getCategoryLabels = (card) => Array.from(card.querySelectorAll('.food-place__category'))
+    .map((item) => item.textContent.trim())
+    .filter(Boolean);
 
   cards.forEach((card) => {
     getCardCategories(card)
@@ -151,46 +162,37 @@
     });
   });
 
-  const buildPopup = (card, addressElement) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'food-map-popup';
-
-    const title = document.createElement('strong');
-    title.textContent = getPlaceName(card);
-
-    const categories = document.createElement('span');
-    categories.className = 'food-map-popup__categories';
-    categories.textContent = Array.from(card.querySelectorAll('.food-place__category'))
-      .map((item) => item.textContent.trim())
-      .join(' · ');
-
-    const address = document.createElement('span');
-    address.className = 'food-map-popup__address';
-    address.textContent = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
-
-    const actions = document.createElement('div');
-    actions.className = 'food-map-popup__actions';
+  const openPlaceDetail = (card, addressElement) => {
+    if (!detailDialog) return;
 
     const website = card.querySelector('.food-place__name-link');
-    if (website?.href) {
-      const websiteLink = document.createElement('a');
-      websiteLink.href = website.href;
-      websiteLink.target = '_blank';
-      websiteLink.rel = 'noopener noreferrer';
-      websiteLink.textContent = 'Visita sito / profilo';
-      actions.appendChild(websiteLink);
+    const categories = getCategoryLabels(card);
+    const address = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
+
+    if (detailName) detailName.textContent = getPlaceName(card);
+    if (detailTypes) detailTypes.textContent = categories.join(' · ');
+    if (detailAddress) detailAddress.textContent = address;
+
+    if (detailSite) {
+      if (website?.href) {
+        detailSite.href = website.href;
+        detailSite.hidden = false;
+      } else {
+        detailSite.removeAttribute('href');
+        detailSite.hidden = true;
+      }
     }
 
-    const mapLink = document.createElement('a');
-    mapLink.href = addressElement.href;
-    mapLink.target = '_blank';
-    mapLink.rel = 'noopener noreferrer';
-    mapLink.textContent = 'Apri su Google Maps';
-    actions.appendChild(mapLink);
+    if (detailMaps) detailMaps.href = addressElement.href;
 
-    wrapper.append(title, categories, address, actions);
-    return wrapper;
+    if (detailDialog.open) detailDialog.close();
+    detailDialog.showModal();
   };
+
+  detailClose?.addEventListener('click', () => detailDialog?.close());
+  detailDialog?.addEventListener('click', (event) => {
+    if (event.target === detailDialog) detailDialog.close();
+  });
 
   const createPlaceMarker = (card, addressElement, lat, lng) => {
     const name = getPlaceName(card);
@@ -202,8 +204,7 @@
       className: 'food-map-marker-wrapper',
       html: `<span class="food-map-marker" aria-hidden="true">${code}</span>`,
       iconSize: [iconWidth, 40],
-      iconAnchor: [iconWidth / 2, 20],
-      popupAnchor: [0, -22]
+      iconAnchor: [iconWidth / 2, 20]
     });
 
     const marker = window.L.marker([lat, lng], {
@@ -214,16 +215,7 @@
       alt: name
     });
 
-    marker.bindPopup(buildPopup(card, addressElement), {
-      maxWidth: 300,
-      autoPanPadding: [24, 24]
-    });
-    marker.bindTooltip(name, {
-      direction: 'top',
-      offset: [0, -18],
-      opacity: 0.96
-    });
-    marker.on('click', () => marker.openPopup());
+    marker.on('click', () => openPlaceDetail(card, addressElement));
 
     return marker;
   };
