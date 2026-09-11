@@ -1,0 +1,99 @@
+name: Adjust technical partner frames
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/workflows/adjust-technical-partner-frames.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+      - name: Regola solo la larghezza delle card
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('home-overrides.css')
+          s = p.read_text(encoding='utf-8')
+          old = '''/* I partner tecnici hanno una gerarchia visiva secondaria rispetto agli sponsor.
+   Su desktop restano tutti su una sola riga, con card e loghi più compatti. */
+@media (min-width: 1000px) {
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo,
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo {
+    width: 100%;
+    min-width: 0;
+    height: 76px;
+    min-height: 76px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    flex: none;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo img,
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo img {
+    width: 100%;
+    height: 100%;
+    max-width: 104px;
+    max-height: 52px;
+    object-fit: contain;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-section__heading {
+    margin-bottom: 14px;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-section__heading h3 {
+    font-size: clamp(1.2rem,1.7vw,1.45rem);
+  }
+}
+'''
+          new = '''/* I partner tecnici restano su una sola riga su desktop.
+   Si riduce solo la larghezza delle card: altezza e dimensioni dei loghi restano quelle standard. */
+@media (min-width: 1000px) {
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo,
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo {
+    width: 100%;
+    min-width: 0;
+    height: 104px;
+    min-height: 104px;
+    padding: 14px 12px;
+    border-radius: 18px;
+    flex: none;
+  }
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logo img,
+  .partner-section:has(.partner-logo img[src*="/Swift.jpg"]) .partner-logos:not(.partner-logos--fic) .partner-logo img {
+    width: 100%;
+    height: 100%;
+    max-width: 158px;
+    max-height: 76px;
+    object-fit: contain;
+  }
+}
+'''
+          if old not in s:
+              raise SystemExit('Blocco partner tecnici non trovato')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+      - name: Commit e pulizia
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add home-overrides.css
+          git rm .github/workflows/adjust-technical-partner-frames.yml
+          git commit -m "Mantieni dimensione loghi partner tecnici"
+          git push origin HEAD:develop
