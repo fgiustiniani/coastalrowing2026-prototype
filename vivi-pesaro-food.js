@@ -182,7 +182,13 @@
         return;
       }
 
-      const marker = window.L.marker([lat, lng]);
+      const marker = window.L.circleMarker([lat, lng], {
+        radius: 8,
+        weight: 2,
+        color: '#153e62',
+        fillColor: '#4fa9ca',
+        fillOpacity: 1
+      });
       marker.bindPopup(buildPopup(card, addressElement));
       markers.set(addressElement.dataset.locationId || `${lat},${lng}`, { marker, card });
     });
@@ -204,6 +210,31 @@
     return true;
   };
 
+  const refreshMapLayout = () => {
+    if (!map || mapView?.hidden) return;
+    map.invalidateSize({ pan: false });
+    updateMapMarkers();
+  };
+
+  const scheduleMapRefresh = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        refreshMapLayout();
+      });
+    });
+    window.setTimeout(refreshMapLayout, 220);
+  };
+
+  const showMapAfterLayout = () => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        initMap();
+        refreshMapLayout();
+        window.setTimeout(refreshMapLayout, 220);
+      });
+    });
+  };
+
   const setView = (view) => {
     const showMap = view === 'map';
     if (listView) listView.hidden = showMap;
@@ -217,17 +248,16 @@
 
     if (showMap) {
       if (mapStatus) mapStatus.hidden = false;
-      initMap();
-      window.requestAnimationFrame(() => {
-        map?.invalidateSize();
-        updateMapMarkers();
-      });
+      showMapAfterLayout();
     }
   };
 
   viewButtons.forEach((button) => {
     button.addEventListener('click', () => setView(button.dataset.foodView || 'list'));
   });
+
+  window.addEventListener('resize', scheduleMapRefresh);
+  window.addEventListener('orientationchange', () => window.setTimeout(scheduleMapRefresh, 250));
 
   applyFilters();
 })();
