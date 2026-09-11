@@ -112,6 +112,7 @@ export async function sendBookingEmails({
     deleted: 'Prenotazione annullata'
   };
 
+  const conditionsNotice = 'Le uscite in mare saranno possibili solo se le condizioni meteo-marine saranno ritenute favorevoli dal COL.';
   const subjectPrefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
   const subject = `${subjectPrefix}${subjectByKind[kind] || subjectByKind.updated}`;
   const heading = headingByKind[kind] || headingByKind.updated;
@@ -137,7 +138,9 @@ export async function sendBookingEmails({
     `Slot: ${booking.slotLabel}`,
     '',
     'Barche assegnate:',
-    textBoats
+    textBoats,
+    '',
+    `Attenzione: ${conditionsNotice}`
   ];
 
   const userText = [
@@ -160,6 +163,7 @@ export async function sendBookingEmails({
     <strong>Slot:</strong> ${escapeHtml(booking.slotLabel)}</p>
     <p><strong>Barche assegnate:</strong></p>
     <ul>${htmlBoats}</ul>
+    <p><strong>Attenzione:</strong> ${escapeHtml(conditionsNotice)}</p>
   `;
 
   const userHtml = `
