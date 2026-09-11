@@ -60,6 +60,14 @@
     .map((item) => item.textContent.trim())
     .filter(Boolean);
 
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[character]));
+
   cards.forEach((card) => {
     getCardCategories(card)
       .forEach((category) => categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1));
@@ -206,6 +214,7 @@
     const name = getPlaceName(card);
     const address = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
     const categories = getCardCategories(card).filter((category) => CATEGORY_ICONS[category]);
+    const categoryLabels = getCategoryLabels(card);
     const iconWidth = categories.length > 1 ? 68 : 44;
     const iconImages = categories
       .map((category) => `<img src="${CATEGORY_ICONS[category]}" alt="">`)
@@ -227,11 +236,24 @@
     });
 
     marker.on('click', () => openPlaceDetail(card, addressElement));
-    marker.on('mouseover', () => {
-      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches && !detailDialog?.open) {
-        openPlaceDetail(card, addressElement);
-      }
-    });
+
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      const hoverDetail = `
+        <div style="min-width:190px;max-width:250px;padding:3px 2px;line-height:1.35;">
+          <strong style="display:block;color:#102235;font-size:1rem;margin-bottom:3px;">${escapeHtml(name)}</strong>
+          <span style="display:block;color:#1f6387;font-size:.76rem;font-weight:800;margin-bottom:5px;">${escapeHtml(categoryLabels.join(' · '))}</span>
+          <span style="display:block;color:#516170;font-size:.82rem;">${escapeHtml(address)}</span>
+          <span style="display:block;color:#6f7d89;font-size:.72rem;margin-top:6px;">Clicca per aprire il dettaglio</span>
+        </div>`;
+
+      marker.bindTooltip(hoverDetail, {
+        direction: 'top',
+        offset: [0, -18],
+        opacity: 1,
+        interactive: false,
+        className: 'food-map-hover-card'
+      });
+    }
 
     return marker;
   };
