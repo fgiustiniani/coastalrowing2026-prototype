@@ -7,6 +7,6 @@
 
   const item = document.createElement('li');
   item.dataset.boatBookingProgram = 'true';
-  item.innerHTML = '<strong>ore 13.00 – 16.50:</strong> barche a disposizione per le prove su prenotazione. <a href="prenotazione-barche.html"><strong>Prenota le barche per le prove →</strong></a>';
+  item.innerHTML = '<strong>ore 14.00 – 18.00:</strong> barche a disposizione per le prove su prenotazione. <a href="prenotazione-barche.html"><strong>Prenota le barche per le prove →</strong></a>';
   details.insertBefore(item, details.firstChild);
 })();
