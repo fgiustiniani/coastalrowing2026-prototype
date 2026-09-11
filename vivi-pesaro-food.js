@@ -111,61 +111,6 @@
     });
   });
 
-  const CACHE_KEY = 'coastal-food-geocodes-v1';
-  let geocodeCache = {};
-  try {
-    geocodeCache = JSON.parse(window.localStorage.getItem(CACHE_KEY) || '{}');
-  } catch {
-    geocodeCache = {};
-  }
-
-  const saveGeocodeCache = () => {
-    try {
-      window.localStorage.setItem(CACHE_KEY, JSON.stringify(geocodeCache));
-    } catch {
-      // La mappa funziona anche se lo storage non è disponibile.
-    }
-  };
-
-  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
-
-  const geocode = async (addressElement) => {
-    const explicitLat = Number(addressElement.dataset.lat);
-    const explicitLng = Number(addressElement.dataset.lng);
-    if (Number.isFinite(explicitLat) && Number.isFinite(explicitLng)) {
-      return [explicitLat, explicitLng];
-    }
-
-    const query = addressElement.dataset.geocode;
-    if (!query) throw new Error('Indirizzo non disponibile');
-
-    if (Array.isArray(geocodeCache[query]) && geocodeCache[query].length === 2) {
-      return geocodeCache[query];
-    }
-
-    const endpoint = new URL('https://nominatim.openstreetmap.org/search');
-    endpoint.searchParams.set('format', 'jsonv2');
-    endpoint.searchParams.set('limit', '1');
-    endpoint.searchParams.set('countrycodes', 'it');
-    endpoint.searchParams.set('accept-language', 'it');
-    endpoint.searchParams.set('q', query);
-
-    const response = await fetch(endpoint, {
-      headers: { Accept: 'application/json' }
-    });
-    if (!response.ok) throw new Error(`Geocodifica non disponibile (${response.status})`);
-
-    const results = await response.json();
-    if (!Array.isArray(results) || !results.length) throw new Error('Indirizzo non trovato');
-
-    const coordinates = [Number(results[0].lat), Number(results[0].lon)];
-    if (!coordinates.every(Number.isFinite)) throw new Error('Coordinate non valide');
-
-    geocodeCache[query] = coordinates;
-    saveGeocodeCache();
-    return coordinates;
-  };
-
   const buildPopup = (card, addressElement) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'food-map-popup';
@@ -207,62 +152,59 @@
     return wrapper;
   };
 
-  let mapInitPromise = null;
+  const initMap = () => {
+    if (map) return true;
 
-  const initMap = async () => {
-    if (mapInitPromise) return mapInitPromise;
+    if (!mapElement || !window.L) {
+      if (mapStatus) {
+        mapStatus.hidden = false;
+        mapStatus.textContent = 'La mappa non è disponibile. Usa i link Google Maps presenti nell’elenco.';
+      }
+      return false;
+    }
 
-    mapInitPromise = (async () => {
-      if (!mapElement || !window.L) {
-        if (mapStatus) mapStatus.textContent = 'La mappa non è disponibile. Usa i link Google Maps presenti nell’elenco.';
+    map = window.L.map(mapElement, { scrollWheelZoom: false }).setView([43.9155, 12.9152], 15);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const addressElements = Array.from(section.querySelectorAll('.food-place__address[data-lat][data-lng]'));
+    let invalidLocations = 0;
+
+    addressElements.forEach((addressElement) => {
+      const card = addressElement.closest('.food-place');
+      const lat = Number(addressElement.dataset.lat);
+      const lng = Number(addressElement.dataset.lng);
+
+      if (!card || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        invalidLocations += 1;
         return;
       }
 
-      map = window.L.map(mapElement, { scrollWheelZoom: false }).setView([43.91, 12.91], 14);
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      const marker = window.L.marker([lat, lng]);
+      marker.bindPopup(buildPopup(card, addressElement));
+      markers.set(addressElement.dataset.locationId || `${lat},${lng}`, { marker, card });
+    });
 
-      const addressElements = Array.from(section.querySelectorAll('.food-place__address[data-geocode]'));
-      let failures = 0;
+    updateMapMarkers();
 
-      if (mapStatus) mapStatus.textContent = 'Posizionamento dei locali sulla mappa…';
-
-      for (let index = 0; index < addressElements.length; index += 1) {
-        const addressElement = addressElements[index];
-        const card = addressElement.closest('.food-place');
-        if (!card) continue;
-
-        try {
-          const [lat, lng] = await geocode(addressElement);
-          const marker = window.L.marker([lat, lng]);
-          marker.bindPopup(buildPopup(card, addressElement));
-          markers.set(addressElement.dataset.locationId || `${lat},${lng}`, { marker, card });
-        } catch {
-          failures += 1;
-        }
-
-        if (index < addressElements.length - 1) await sleep(1100);
+    if (mapStatus) {
+      if (invalidLocations === 0 && markers.size > 0) {
+        mapStatus.textContent = '';
+        mapStatus.hidden = true;
+      } else {
+        mapStatus.hidden = false;
+        mapStatus.textContent = invalidLocations
+          ? `${invalidLocations} ${invalidLocations === 1 ? 'sede non è disponibile' : 'sedi non sono disponibili'} sulla mappa. I link Google Maps restano disponibili nell’elenco.`
+          : 'Nessuna sede è disponibile sulla mappa. Usa i link Google Maps presenti nell’elenco.';
       }
+    }
 
-      updateMapMarkers();
-
-      if (mapStatus) {
-        if (failures === 0) {
-          mapStatus.textContent = '';
-          mapStatus.hidden = true;
-        } else {
-          mapStatus.hidden = false;
-          mapStatus.textContent = `${failures} ${failures === 1 ? 'indirizzo non è stato posizionato' : 'indirizzi non sono stati posizionati'} automaticamente. I link Google Maps restano disponibili nell’elenco.`;
-        }
-      }
-    })();
-
-    return mapInitPromise;
+    return true;
   };
 
-  const setView = async (view) => {
+  const setView = (view) => {
     const showMap = view === 'map';
     if (listView) listView.hidden = showMap;
     if (mapView) mapView.hidden = !showMap;
@@ -275,7 +217,7 @@
 
     if (showMap) {
       if (mapStatus) mapStatus.hidden = false;
-      await initMap();
+      initMap();
       window.requestAnimationFrame(() => {
         map?.invalidateSize();
         updateMapMarkers();
