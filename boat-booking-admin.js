@@ -230,11 +230,28 @@
               </td>
               ${columns.map(([builder, type]) => {
                 const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
-                const noBoats = Number(row.capacity) === 0;
-                const full = !noBoats && Number(row.remaining) <= 0;
-                return `<td class="admin-matrix__cell${full ? ' is-full' : ''}${noBoats ? ' is-empty' : ''}">
-                  <strong>${row.booked}/${row.capacity}</strong>
-                  <small>${isInactive ? 'SLOT CHIUSO' : noBoats ? 'NESSUNA BARCA' : full ? 'COMPLETO' : `${row.remaining} libere`}</small>
+                const booked = Number(row.booked || 0);
+                const capacity = Number(row.capacity || 0);
+                const remaining = Number(row.remaining || 0);
+                const noBoats = capacity === 0;
+                const cellPercentage = capacity > 0
+                  ? Math.min(100, Math.round((booked / capacity) * 100))
+                  : 0;
+                const cellFillClass = noBoats
+                  ? ' is-empty'
+                  : cellPercentage >= 100
+                    ? ' is-full'
+                    : cellPercentage >= 80
+                      ? ' is-high'
+                      : cellPercentage >= 50
+                        ? ' is-medium'
+                        : ' is-low';
+                return `<td class="admin-matrix__cell admin-matrix__cell--fill${cellFillClass}" style="--matrix-cell-fill:${cellPercentage}%">
+                  <div class="admin-matrix-cell-fill">
+                    <span class="admin-matrix-cell-fill__value"><strong>${booked}/${capacity}</strong><span>${noBoats ? '—' : `${cellPercentage}%`}</span></span>
+                    <span class="admin-matrix-cell-fill__track" aria-hidden="true"><span></span></span>
+                    <small>${isInactive ? 'SLOT CHIUSO' : noBoats ? 'NESSUNA BARCA' : cellPercentage >= 100 ? 'COMPLETO' : `${remaining} libere`}</small>
+                  </div>
                 </td>`;
               }).join('')}
             </tr>`;
