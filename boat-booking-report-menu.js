@@ -63,6 +63,14 @@
     return { ...totals, percentage, fillClass };
   }
 
+  function pdfOccupancyPalette(percentage, noBoats = false) {
+    if (noBoats) return { fill: [0.961, 0.965, 0.965], accent: [0.667, 0.710, 0.725], border: [0.875, 0.894, 0.898] };
+    if (percentage >= 100) return { fill: [1.000, 0.941, 0.933], accent: [0.706, 0.137, 0.094], border: [0.906, 0.710, 0.694] };
+    if (percentage >= 80) return { fill: [1.000, 0.953, 0.922], accent: [0.812, 0.420, 0.173], border: [0.929, 0.780, 0.682] };
+    if (percentage >= 50) return { fill: [1.000, 0.976, 0.925], accent: [0.835, 0.604, 0.184], border: [0.918, 0.839, 0.667] };
+    return { fill: [0.953, 0.980, 0.965], accent: [0.184, 0.561, 0.420], border: [0.812, 0.894, 0.847] };
+  }
+
   function itemsSummary(booking) {
     return (booking.items || []).map((item) => {
       const numbers = Array.isArray(item.boatNumbers) && item.boatNumbers.length ? ` — barche ${item.boatNumbers.join(', ')}` : '';
@@ -383,10 +391,24 @@
         .sort((a, b) => String(a.society || '').localeCompare(String(b.society || ''), 'it-IT', { sensitivity: 'base' }));
       const totalBoats = slotBookings.reduce((sum, booking) => sum + bookingTotal(booking), 0);
       const societies = new Set(slotBookings.map((booking) => cleanText(booking.society).toLocaleLowerCase('it-IT')).filter(Boolean)).size;
-      ctx.ensure(50);
-      ctx.text(`${slot.label}${slot.active ? '' : ' - CHIUSO'}`, 16, true);
-      ctx.text(`${slotBookings.length} prenotazioni · ${societies} società · ${totalBoats} barche`, 8.5);
-      ctx.gap(3);
+      const occupancy = slotOccupancy(slot.code);
+      const palette = pdfOccupancyPalette(occupancy.percentage, occupancy.capacity === 0);
+      ctx.ensure(66);
+
+      const boxTop = ctx.y - 4;
+      const boxWidth = ctx.pdf.width - ctx.margin * 2;
+      const barX = ctx.margin + 8;
+      const barWidth = boxWidth - 16;
+      const barTop = boxTop + 36;
+      ctx.pdf.rect(ctx.page, ctx.margin, boxTop, boxWidth, 43, { fillRgb: palette.fill, strokeRgb: palette.border });
+      ctx.pdf.rect(ctx.page, barX, barTop, barWidth, 4, { fillGray: 0.90, strokeGray: null });
+      if (occupancy.capacity > 0 && occupancy.percentage > 0) {
+        ctx.pdf.rect(ctx.page, barX, barTop, barWidth * (occupancy.percentage / 100), 4, { fillRgb: palette.accent, strokeGray: null });
+      }
+
+      ctx.text(`${slot.label}${slot.active ? '' : ' - CHIUSO'}`, 16, true, 8, boxWidth - 16);
+      ctx.text(`${slotBookings.length} prenotazioni · ${societies} società · ${totalBoats} barche · occupazione ${occupancy.booked}/${occupancy.capacity} (${occupancy.percentage}%)`, 8.5, false, 8, boxWidth - 16);
+      ctx.gap(14);
       if (!slotBookings.length) {
         ctx.text('Nessuna prenotazione.', 8.2, false, 8);
       } else {
