@@ -186,11 +186,16 @@
 
       .admin-section-actions {
         width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         justify-content: stretch;
       }
 
       .admin-section-actions .admin-button {
-        flex: 1 1 150px;
+        width: 100%;
+        min-width: 0;
+        flex: none;
       }
     }
   `;

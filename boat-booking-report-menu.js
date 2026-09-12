@@ -61,6 +61,16 @@
     return [name, booking.phone, booking.email].filter(Boolean).join(' · ');
   }
 
+  function selectedSocietyKey() {
+    return cleanText(document.querySelector('[data-report-society-filter]')?.value).toLocaleLowerCase('it-IT');
+  }
+
+  function societyReportBookings() {
+    const selected = selectedSocietyKey();
+    return (Array.isArray(state?.bookings) ? state.bookings : [])
+      .filter((booking) => !selected || cleanText(booking.society).toLocaleLowerCase('it-IT') === selected);
+  }
+
   function formatDate(value) {
     if (!value) return '';
     try {
@@ -212,7 +222,7 @@
       'Società', 'Codice prenotazione', 'Codice slot', 'Slot', 'Cognome referente', 'Nome referente', 'Telefono', 'Email',
       'Cantiere', 'Tipo barca', 'Quantità', 'Numeri barche', 'Totale barche prenotazione', 'Creata il', 'Aggiornata il'
     ]];
-    const bookings = [...(state?.bookings || [])].sort((a, b) => String(a.society || '').localeCompare(String(b.society || ''), 'it-IT', { sensitivity: 'base' }) || slotLabel(a.slotCode).localeCompare(slotLabel(b.slotCode), 'it-IT'));
+    const bookings = [...societyReportBookings()].sort((a, b) => String(a.society || '').localeCompare(String(b.society || ''), 'it-IT', { sensitivity: 'base' }) || slotLabel(a.slotCode).localeCompare(slotLabel(b.slotCode), 'it-IT'));
     bookings.forEach((booking) => {
       const items = booking.items?.length ? booking.items : [null];
       items.forEach((item) => rows.push([
@@ -308,7 +318,7 @@
   }
 
   function exportSocietyPdf() {
-    const bookings = Array.isArray(state?.bookings) ? state.bookings : [];
+    const bookings = societyReportBookings();
     if (!bookings.length) {
       window.alert('Non ci sono prenotazioni da esportare.');
       return;
@@ -328,7 +338,7 @@
       const totalBoats = ordered.reduce((sum, booking) => sum + bookingTotal(booking), 0);
       const slotCount = new Set(ordered.map((booking) => booking.slotCode)).size;
       ctx.ensure(54);
-      ctx.text(group.name, 12, true);
+      ctx.text(group.name, 16, true);
       ctx.text(`${ordered.length} prenotazioni · ${slotCount} slot · ${totalBoats} barche`, 8.5);
       const contacts = Array.from(new Set(ordered.map(contactSummary).filter(Boolean)));
       if (contacts.length) ctx.text(`Referenti: ${contacts.join(' | ')}`, 8.2);
@@ -355,7 +365,7 @@
       const totalBoats = slotBookings.reduce((sum, booking) => sum + bookingTotal(booking), 0);
       const societies = new Set(slotBookings.map((booking) => cleanText(booking.society).toLocaleLowerCase('it-IT')).filter(Boolean)).size;
       ctx.ensure(50);
-      ctx.text(`${slot.label}${slot.active ? '' : ' - CHIUSO'}`, 12, true);
+      ctx.text(`${slot.label}${slot.active ? '' : ' - CHIUSO'}`, 16, true);
       ctx.text(`${slotBookings.length} prenotazioni · ${societies} società · ${totalBoats} barche`, 8.5);
       ctx.gap(3);
       if (!slotBookings.length) {

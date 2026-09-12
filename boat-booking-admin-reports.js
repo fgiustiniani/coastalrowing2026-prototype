@@ -1,6 +1,7 @@
 (() => {
   const excelButton = document.querySelector('[data-export-bookings-xlsx]');
   const societyContainer = document.querySelector('[data-admin-society-report]');
+  const societyReportFilter = document.querySelector('[data-report-society-filter]');
   if (!excelButton && !societyContainer) return;
 
   const fallbackSlots = new Map([
@@ -73,11 +74,35 @@
     return state.bookings.filter((booking) => matchesFilters(booking, filters));
   }
 
+  function societyKey(value) {
+    return String(value ?? '').trim().toLocaleLowerCase('it-IT');
+  }
+
+  function syncSocietyReportFilter() {
+    if (!societyReportFilter) return;
+    const current = societyReportFilter.value;
+    const names = Array.from(new Map((state?.bookings || []).map((booking) => {
+      const name = String(booking.society || '').trim();
+      return [societyKey(name), name];
+    }).filter(([key]) => key)).values())
+      .sort((a, b) => a.localeCompare(b, 'it-IT', { sensitivity: 'base' }));
+
+    societyReportFilter.innerHTML = '<option value="">Tutte le società</option>' + names
+      .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+      .join('');
+
+    if (names.some((name) => societyKey(name) === societyKey(current))) {
+      societyReportFilter.value = names.find((name) => societyKey(name) === societyKey(current)) || '';
+    }
+  }
+
   function renderSocietyReport() {
     if (!societyContainer) return;
-    const bookings = Array.isArray(state?.bookings) ? state.bookings : [];
+    const selectedSociety = societyKey(societyReportFilter?.value);
+    const bookings = (Array.isArray(state?.bookings) ? state.bookings : [])
+      .filter((booking) => !selectedSociety || societyKey(booking.society) === selectedSociety);
     if (!bookings.length) {
-      societyContainer.innerHTML = '<div class="booking-empty">Nessuna società ha ancora effettuato prenotazioni.</div>';
+      societyContainer.innerHTML = `<div class="booking-empty">${selectedSociety ? 'Nessuna prenotazione per la società selezionata.' : 'Nessuna società ha ancora effettuato prenotazioni.'}</div>`;
       return;
     }
 
@@ -316,9 +341,14 @@
 
   window.addEventListener('boat-booking-admin:data', (event) => {
     state = event.detail || null;
+    syncSocietyReportFilter();
     renderSocietyReport();
   });
 
+  societyReportFilter?.addEventListener('change', renderSocietyReport);
   excelButton?.addEventListener('click', exportExcel);
-  if (state) renderSocietyReport();
+  if (state) {
+    syncSocietyReportFilter();
+    renderSocietyReport();
+  }
 })();

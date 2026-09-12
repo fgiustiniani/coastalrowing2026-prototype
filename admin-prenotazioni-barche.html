@@ -184,6 +184,27 @@
     .admin-report-panel__copy h3 { margin: 0 0 5px; color: #173e4b; font-size: 1.1rem; }
     .admin-report-panel__copy p { margin: 0; }
     .admin-report-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .admin-report-filter {
+      display: grid;
+      grid-template-columns: minmax(220px, 360px);
+      margin: 0 0 16px;
+    }
+    .admin-report-filter label {
+      display: grid;
+      gap: 6px;
+      color: #52666c;
+      font-size: .86rem;
+      font-weight: 800;
+    }
+    .admin-report-filter select {
+      min-height: 42px;
+      border: 1px solid #bccbd0;
+      border-radius: 9px;
+      padding: 7px 10px;
+      background: #fff;
+      color: #173e4b;
+      font: inherit;
+    }
 
     .admin-reports-summary {
       flex-wrap: wrap;
@@ -310,11 +331,23 @@
       .admin-section-heading,
       .admin-export-row { align-items: stretch; }
       .admin-export-button { min-height: 44px; }
+      .admin-report-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .admin-report-actions .admin-export-button {
+        width: auto;
+        min-width: 0;
+      }
+      .admin-report-filter { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 420px) {
       .admin-booking__actions { grid-template-columns: 1fr; }
       .admin-export-button { width: 100%; }
+      .admin-report-actions .admin-export-button { width: auto; }
     }
   </style>
 </head>
@@ -383,6 +416,13 @@
                   <button class="admin-button admin-export-button" data-export-society-pdf type="button">PDF</button>
                   <button class="admin-button admin-export-button" data-export-society-xlsx type="button">Excel</button>
                 </div>
+              </div>
+              <div class="admin-report-filter">
+                <label for="reportSocietyFilter">Società
+                  <select id="reportSocietyFilter" data-report-society-filter>
+                    <option value="">Tutte le società</option>
+                  </select>
+                </label>
               </div>
               <div class="admin-society-report" data-admin-society-report></div>
             </section>
