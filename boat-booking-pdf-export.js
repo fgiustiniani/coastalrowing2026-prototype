@@ -338,6 +338,8 @@
     downloadBlob(pdf.blob(), `occupazione-slot-prove-barche-${fileStamp()}.pdf`);
   }
 
+  window.BoatBookingPdfTools = { SimplePdf, downloadBlob, wrapText, exportStamp, fileStamp };
+
   bookingButton?.addEventListener('click', exportBookings);
   matrixButton?.addEventListener('click', exportMatrix);
 })();
