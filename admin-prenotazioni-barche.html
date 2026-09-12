@@ -65,6 +65,84 @@
     .admin-export-row p { margin: 0; }
     .admin-export-button { flex: 0 0 auto; }
 
+    .admin-slot-fill {
+      display: grid;
+      gap: 5px;
+      min-width: 92px;
+    }
+    .admin-slot-fill__value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .admin-slot-fill__value strong { color: #173e4b; font-size: .92rem; }
+    .admin-slot-fill__value span { color: #64757b; font-size: .78rem; font-weight: 800; }
+    .admin-slot-fill__track {
+      display: block;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5ecee;
+    }
+    .admin-slot-fill__track > span {
+      display: block;
+      width: var(--slot-fill, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: #2f8f6b;
+    }
+    .admin-slot-fill.is-medium .admin-slot-fill__track > span { background: #d59a2f; }
+    .admin-slot-fill.is-high .admin-slot-fill__track > span { background: #cf6b2c; }
+    .admin-slot-fill.is-full .admin-slot-fill__track > span { background: #b42318; }
+
+    .admin-society-report { display: grid; gap: 14px; }
+    .admin-society-card {
+      padding: 18px;
+      border: 1px solid #dfe8ea;
+      border-radius: 16px;
+      background: #fff;
+    }
+    .admin-society-card__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e7edef;
+    }
+    .admin-society-card__head h3 { margin: 0; color: #173e4b; font-size: 1.2rem; }
+    .admin-society-card__stats { display: flex; gap: 7px; flex-wrap: wrap; }
+    .admin-society-card__stat {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #edf6f8;
+      color: #0b6478;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+    .admin-society-card__contacts { margin: 12px 0 0; color: #52666c; font-size: .9rem; line-height: 1.5; }
+    .admin-society-bookings { display: grid; gap: 8px; margin-top: 14px; }
+    .admin-society-booking {
+      display: grid;
+      grid-template-columns: minmax(150px, .7fr) minmax(210px, 1fr) minmax(0, 1.6fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: #f7fafb;
+      color: #334b52;
+      font-size: .88rem;
+      line-height: 1.4;
+    }
+    .admin-society-booking strong { color: #173e4b; }
+
+    @media (max-width: 760px) {
+      .admin-society-booking { grid-template-columns: 1fr; gap: 4px; }
+    }
+
     @media (max-width: 640px) {
       .admin-collapsible > summary {
         min-height: 56px;
@@ -124,6 +202,7 @@
           <div class="admin-section-heading">
             <h2>Prenotazioni</h2>
             <button class="admin-button admin-export-button" data-export-bookings-pdf type="button">Esporta PDF</button>
+            <button class="admin-button admin-export-button" data-export-bookings-xlsx type="button">Esporta Excel</button>
           </div>
           <div class="admin-filters" style="margin-top:18px">
             <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
@@ -143,6 +222,14 @@
                 <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">Esporta PDF</button>
               </div>
               <div class="admin-matrix-wrap" data-admin-matrix style="margin-top:18px"></div>
+            </div>
+          </details>
+
+          <details class="booking-card admin-collapsible">
+            <summary>Report per società</summary>
+            <div class="admin-collapsible__body">
+              <p class="booking-card__intro">Una scheda riepilogativa per ogni società che ha effettuato almeno una prenotazione.</p>
+              <div class="admin-society-report" data-admin-society-report style="margin-top:18px"></div>
             </div>
           </details>
 
@@ -232,5 +319,6 @@
   <script src="boat-booking-admin.js" defer></script>
   <script src="boat-booking-admin-list-ux.js" defer></script>
   <script src="boat-booking-pdf-export.js" defer></script>
+  <script src="boat-booking-admin-reports.js" defer></script>
 </body>
 </html>

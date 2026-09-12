@@ -181,6 +181,7 @@
         <thead>
           <tr>
             <th>Slot</th>
+            <th>Riempimento slot</th>
             ${columns.map(([builder, type]) => `<th>${builder}<br><small>${type}</small></th>`).join('')}
           </tr>
         </thead>
@@ -188,9 +189,26 @@
           ${slots.map(([code, label]) => {
             const info = slotInfo(code);
             const isInactive = info?.active === false;
+            const totals = columns.reduce((acc, [builder, type]) => {
+              const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0 };
+              acc.booked += Number(row.booked || 0);
+              acc.capacity += Number(row.capacity || 0);
+              return acc;
+            }, { booked: 0, capacity: 0 });
+            const percentage = totals.capacity > 0
+              ? Math.min(100, Math.round((totals.booked / totals.capacity) * 100))
+              : 0;
+            const fillClass = percentage >= 100 ? ' is-full' : percentage >= 80 ? ' is-high' : percentage >= 50 ? ' is-medium' : '';
+
             return `
             <tr>
               <th>${escapeHtml(info?.label || label)}${isInactive ? '<br><small>CHIUSO</small>' : ''}</th>
+              <td class="admin-matrix__occupancy">
+                <div class="admin-slot-fill${fillClass}" style="--slot-fill:${percentage}%">
+                  <span class="admin-slot-fill__value"><strong>${totals.booked}/${totals.capacity}</strong><span>${percentage}%</span></span>
+                  <span class="admin-slot-fill__track" aria-hidden="true"><span></span></span>
+                </div>
+              </td>
               ${columns.map(([builder, type]) => {
                 const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
                 const noBoats = Number(row.capacity) === 0;
@@ -310,6 +328,8 @@
     renderBoats();
     renderBookings();
     syncEditSlotOptions();
+    window.boatBookingAdminData = data;
+    window.dispatchEvent(new CustomEvent('boat-booking-admin:data', { detail: data }));
   }
 
   async function loadDashboard(message = '') {
