@@ -256,10 +256,29 @@
 
     .admin-slot-report { display: grid; gap: 14px; }
     .admin-slot-card {
+      --slot-report-color: #2f8f6b;
+      --slot-report-bg: #f6fbf8;
+      --slot-report-border: #cfe4d8;
       padding: 18px;
-      border: 1px solid #dfe8ea;
+      border: 1px solid var(--slot-report-border);
+      border-left: 5px solid var(--slot-report-color);
       border-radius: 16px;
-      background: #fff;
+      background: var(--slot-report-bg);
+    }
+    .admin-slot-card.is-medium {
+      --slot-report-color: #b87b16;
+      --slot-report-bg: #fffaf0;
+      --slot-report-border: #ead6aa;
+    }
+    .admin-slot-card.is-high {
+      --slot-report-color: #c65f24;
+      --slot-report-bg: #fff5ed;
+      --slot-report-border: #edc7ae;
+    }
+    .admin-slot-card.is-full {
+      --slot-report-color: #b42318;
+      --slot-report-bg: #fff1f1;
+      --slot-report-border: #e7b5b1;
     }
     .admin-slot-card__head {
       display: flex;
@@ -271,14 +290,51 @@
       border-bottom: 1px solid #e7edef;
     }
     .admin-slot-card__head h3 { margin: 0; color: #173e4b; font-size: 1.2rem; }
-    .admin-slot-card__stats { display: flex; gap: 7px; flex-wrap: wrap; }
+    .admin-slot-card__stats { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
     .admin-slot-card__stat {
       padding: 5px 9px;
       border-radius: 999px;
-      background: #edf6f8;
+      background: rgba(255,255,255,.78);
       color: #0b6478;
       font-size: .78rem;
       font-weight: 800;
+    }
+    .admin-slot-card__occupancy {
+      display: grid;
+      gap: 4px;
+      min-width: 128px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.9);
+      box-shadow: inset 0 0 0 1px rgba(16,34,53,.07);
+    }
+    .admin-slot-card__occupancy-value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      color: #52666c;
+      font-size: .76rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .admin-slot-card__occupancy-value strong {
+      color: var(--slot-report-color);
+      font-size: .9rem;
+    }
+    .admin-slot-card__occupancy-track {
+      display: block;
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e3e9eb;
+    }
+    .admin-slot-card__occupancy-track > span {
+      display: block;
+      width: var(--slot-report-fill, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--slot-report-color);
     }
     .admin-slot-bookings { display: grid; gap: 8px; margin-top: 14px; }
     .admin-slot-booking {

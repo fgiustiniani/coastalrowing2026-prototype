@@ -49,6 +49,20 @@
     return (booking.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
   }
 
+  function slotOccupancy(slotCode) {
+    const rows = (state?.availability || []).filter((row) => row.slotCode === slotCode);
+    const totals = rows.reduce((acc, row) => {
+      acc.booked += Number(row.booked || 0);
+      acc.capacity += Number(row.capacity || 0);
+      return acc;
+    }, { booked: 0, capacity: 0 });
+    const percentage = totals.capacity > 0
+      ? Math.min(100, Math.round((totals.booked / totals.capacity) * 100))
+      : 0;
+    const fillClass = percentage >= 100 ? 'is-full' : percentage >= 80 ? 'is-high' : percentage >= 50 ? 'is-medium' : 'is-low';
+    return { ...totals, percentage, fillClass };
+  }
+
   function itemsSummary(booking) {
     return (booking.items || []).map((item) => {
       const numbers = Array.isArray(item.boatNumbers) && item.boatNumbers.length ? ` — barche ${item.boatNumbers.join(', ')}` : '';
@@ -106,12 +120,17 @@
         .sort((a, b) => String(a.society || '').localeCompare(String(b.society || ''), 'it-IT', { sensitivity: 'base' }));
       const societies = new Set(slotBookings.map((booking) => cleanText(booking.society).toLocaleLowerCase('it-IT')).filter(Boolean)).size;
       const totalBoats = slotBookings.reduce((sum, booking) => sum + bookingTotal(booking), 0);
+      const occupancy = slotOccupancy(slot.code);
 
       return `
-        <article class="admin-slot-card">
+        <article class="admin-slot-card ${occupancy.fillClass}" style="--slot-report-fill:${occupancy.percentage}%">
           <div class="admin-slot-card__head">
             <h3>${escapeHtml(slot.label)}${slot.active ? '' : ' — CHIUSO'}</h3>
             <div class="admin-slot-card__stats">
+              <span class="admin-slot-card__occupancy" title="${occupancy.booked} barche prenotate su ${occupancy.capacity} disponibili">
+                <span class="admin-slot-card__occupancy-value"><strong>${occupancy.booked}/${occupancy.capacity}</strong><span>${occupancy.percentage}% pieno</span></span>
+                <span class="admin-slot-card__occupancy-track" aria-hidden="true"><span></span></span>
+              </span>
               <span class="admin-slot-card__stat">${slotBookings.length} prenotazion${slotBookings.length === 1 ? 'e' : 'i'}</span>
               <span class="admin-slot-card__stat">${societies} societ${societies === 1 ? 'à' : 'à'}</span>
               <span class="admin-slot-card__stat">${totalBoats} barc${totalBoats === 1 ? 'a' : 'he'}</span>
