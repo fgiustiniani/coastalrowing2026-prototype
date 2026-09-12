@@ -2,6 +2,7 @@
   const tabs = Array.from(document.querySelectorAll('[data-report-target]'));
   const panels = Array.from(document.querySelectorAll('[data-report-panel]'));
   const slotContainer = document.querySelector('[data-admin-slot-report]');
+  const reportOverview = document.querySelector('[data-admin-report-overview]');
   const occupancyExcelButton = document.querySelector('[data-export-occupancy-xlsx]');
   const societyPdfButton = document.querySelector('[data-export-society-pdf]');
   const societyExcelButton = document.querySelector('[data-export-society-xlsx]');
@@ -129,7 +130,51 @@
       if (!boat?.builder || !boat?.boatType) return;
       categories.set(`${boat.builder}|${boat.boatType}`, [boat.builder, boat.boatType]);
     });
+    (state?.bookings || []).forEach((booking) => {
+      (booking.items || []).forEach((item) => {
+        if (!item?.builder || !item?.boatType) return;
+        categories.set(`${item.builder}|${item.boatType}`, [item.builder, item.boatType]);
+      });
+    });
     return Array.from(categories.values()).sort((a, b) => a[0].localeCompare(b[0], 'it-IT') || a[1].localeCompare(b[1], 'it-IT'));
+  }
+
+  function renderReportOverview() {
+    if (!reportOverview) return;
+    const bookings = Array.isArray(state?.bookings) ? state.bookings : [];
+    const societyCount = new Set(
+      bookings.map((booking) => cleanText(booking.society).toLocaleLowerCase('it-IT')).filter(Boolean)
+    ).size;
+
+    const categoryTotals = new Map(
+      reportCategories().map(([builder, boatType]) => [
+        `${builder}|${boatType}`,
+        { builder, boatType, quantity: 0 }
+      ])
+    );
+
+    bookings.forEach((booking) => {
+      (booking.items || []).forEach((item) => {
+        if (!item?.builder || !item?.boatType) return;
+        const key = `${item.builder}|${item.boatType}`;
+        if (!categoryTotals.has(key)) {
+          categoryTotals.set(key, { builder: item.builder, boatType: item.boatType, quantity: 0 });
+        }
+        categoryTotals.get(key).quantity += Number(item.quantity || 0);
+      });
+    });
+
+    const categories = Array.from(categoryTotals.values()).sort((a, b) =>
+      a.builder.localeCompare(b.builder, 'it-IT') || a.boatType.localeCompare(b.boatType, 'it-IT')
+    );
+
+    reportOverview.innerHTML = `
+      <span class="admin-report-overview__item admin-report-overview__item--societies"><strong>${societyCount}</strong> società</span>
+      ${categories.length ? '<span class="admin-report-overview__label">Barche prenotate</span>' : ''}
+      ${categories.map((item) => `
+        <span class="admin-report-overview__item"><strong>${item.quantity}</strong> ${escapeHtml(item.builder)} ${escapeHtml(item.boatType)}</span>
+      `).join('')}
+    `;
   }
 
   function availabilityRow(slotCode, builder, boatType) {
@@ -335,9 +380,13 @@
 
   window.addEventListener('boat-booking-admin:data', (event) => {
     state = event.detail || null;
+    renderReportOverview();
     renderSlotReport();
   });
 
-  if (state) renderSlotReport();
+  if (state) {
+    renderReportOverview();
+    renderSlotReport();
+  }
   setActiveReport('occupancy');
 })();

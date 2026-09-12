@@ -219,15 +219,14 @@
     }
 
     const heading = document.querySelector('.admin-bookings-card .admin-section-heading');
-    const refresh = document.querySelector('[data-admin-refresh]');
     const exportButton = heading?.querySelector('[data-export-bookings-pdf]');
     const excelButton = heading?.querySelector('[data-export-bookings-xlsx]');
-    if (heading && refresh && exportButton && !heading.querySelector('[data-admin-section-actions]')) {
+    if (heading && exportButton && !heading.querySelector('[data-admin-section-actions]')) {
       const actions = document.createElement('div');
       actions.className = 'admin-section-actions';
       actions.dataset.adminSectionActions = '';
       heading.appendChild(actions);
-      actions.append(refresh, exportButton);
+      actions.append(exportButton);
       if (excelButton) actions.append(excelButton);
     }
   }

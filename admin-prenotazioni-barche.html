@@ -52,7 +52,7 @@
       border-top: 1px solid #e2e9eb;
     }
     .admin-collapsible__body > :first-child { margin-top: 22px; }
-    .admin-bookings-card { order: -1; }
+    .admin-bookings-card { order: 0; }
     .admin-section-heading,
     .admin-export-row {
       display: flex;
@@ -185,6 +185,51 @@
     .admin-report-panel__copy p { margin: 0; }
     .admin-report-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
+    .admin-reports-summary {
+      flex-wrap: wrap;
+    }
+    .admin-reports-summary__title {
+      flex: 0 0 auto;
+      font-size: 1.02rem;
+    }
+    .admin-report-overview {
+      flex: 1 1 560px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+    .admin-report-overview__label {
+      color: #64757b;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .admin-report-overview__item {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #edf6f8;
+      color: #52666c;
+      font-size: .74rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .admin-report-overview__item strong {
+      color: #0b6478;
+      font-size: .86rem;
+    }
+    .admin-report-overview__item--societies {
+      background: #e7f1ec;
+      color: #365d4b;
+    }
+    .admin-report-overview__item--societies strong { color: #245d38; }
+
     .admin-slot-report { display: grid; gap: 14px; }
     .admin-slot-card {
       padding: 18px;
@@ -228,6 +273,14 @@
 
     @media (max-width: 760px) {
       .admin-report-nav { grid-template-columns: 1fr; }
+      .admin-reports-summary__title { order: 1; }
+      .admin-reports-summary::after { order: 2; margin-left: auto; }
+      .admin-report-overview {
+        order: 3;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
       .admin-society-booking,
       .admin-slot-booking { grid-template-columns: 1fr; gap: 4px; }
     }
@@ -287,9 +340,67 @@
           <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
         </div>
 
-        <section class="booking-card admin-bookings-card">
-          <div class="admin-section-heading">
-            <h2>Prenotazioni</h2>
+        <details class="booking-card admin-collapsible admin-reports-card" data-admin-reports-menu open>
+          <summary class="admin-reports-summary">
+            <span class="admin-reports-summary__title">Report</span>
+            <span class="admin-report-overview" data-admin-report-overview aria-live="polite"></span>
+          </summary>
+          <div class="admin-collapsible__body">
+            <div class="admin-report-nav" role="tablist" aria-label="Report prenotazioni">
+              <button class="admin-report-tab is-active" type="button" role="tab" aria-selected="true" data-report-target="occupancy">Occupazione slot</button>
+              <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="society">Report per società</button>
+              <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="slot">Report per slot</button>
+            </div>
+
+            <section class="admin-report-panel" data-report-panel="occupancy">
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Occupazione slot</h3>
+                  <p class="booking-card__intro">Riempimento complessivo dello slot e dettaglio prenotate / barche attive censite per cantiere e tipo.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-occupancy-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-matrix-wrap" data-admin-matrix></div>
+            </section>
+
+            <section class="admin-report-panel" data-report-panel="society" hidden>
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Report per società</h3>
+                  <p class="booking-card__intro">Una scheda riepilogativa per ogni società con prenotazioni, slot, referenti e barche assegnate.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-society-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-society-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-society-report" data-admin-society-report></div>
+            </section>
+
+            <section class="admin-report-panel" data-report-panel="slot" hidden>
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Report per slot</h3>
+                  <p class="booking-card__intro">Riepilogo operativo di ogni fascia oraria con società, referenti, prenotazioni e barche assegnate.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-slot-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-slot-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-slot-report" data-admin-slot-report></div>
+            </section>
+          </div>
+        </details>
+
+        <details class="booking-card admin-collapsible admin-bookings-card">
+          <summary>Prenotazioni</summary>
+          <div class="admin-collapsible__body">
+            <div class="admin-section-heading">
+              <h2>Elenco prenotazioni</h2>
             <button class="admin-button admin-export-button" data-export-bookings-pdf type="button">Esporta PDF</button>
             <button class="admin-button admin-export-button" data-export-bookings-xlsx type="button">Esporta Excel</button>
           </div>
@@ -300,62 +411,10 @@
             <div class="booking-field"><label for="filterType">Tipo barca</label><select id="filterType" data-filter-type><option value="">Tutti</option><option>C1x</option><option>C2x</option><option>C4x+</option></select></div>
           </div>
           <div class="admin-bookings" data-admin-bookings style="margin-top:18px"></div>
-        </section>
+          </div>
+        </details>
 
         <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
-          <details class="booking-card admin-collapsible" data-admin-reports-menu>
-            <summary>Report</summary>
-            <div class="admin-collapsible__body">
-              <div class="admin-report-nav" role="tablist" aria-label="Report prenotazioni">
-                <button class="admin-report-tab is-active" type="button" role="tab" aria-selected="true" data-report-target="occupancy">Occupazione slot</button>
-                <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="society">Report per società</button>
-                <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="slot">Report per slot</button>
-              </div>
-
-              <section class="admin-report-panel" data-report-panel="occupancy">
-                <div class="admin-report-panel__head">
-                  <div class="admin-report-panel__copy">
-                    <h3>Occupazione slot</h3>
-                    <p class="booking-card__intro">Riempimento complessivo dello slot e dettaglio prenotate / barche attive censite per cantiere e tipo.</p>
-                  </div>
-                  <div class="admin-report-actions">
-                    <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">PDF</button>
-                    <button class="admin-button admin-export-button" data-export-occupancy-xlsx type="button">Excel</button>
-                  </div>
-                </div>
-                <div class="admin-matrix-wrap" data-admin-matrix></div>
-              </section>
-
-              <section class="admin-report-panel" data-report-panel="society" hidden>
-                <div class="admin-report-panel__head">
-                  <div class="admin-report-panel__copy">
-                    <h3>Report per società</h3>
-                    <p class="booking-card__intro">Una scheda riepilogativa per ogni società con prenotazioni, slot, referenti e barche assegnate.</p>
-                  </div>
-                  <div class="admin-report-actions">
-                    <button class="admin-button admin-export-button" data-export-society-pdf type="button">PDF</button>
-                    <button class="admin-button admin-export-button" data-export-society-xlsx type="button">Excel</button>
-                  </div>
-                </div>
-                <div class="admin-society-report" data-admin-society-report></div>
-              </section>
-
-              <section class="admin-report-panel" data-report-panel="slot" hidden>
-                <div class="admin-report-panel__head">
-                  <div class="admin-report-panel__copy">
-                    <h3>Report per slot</h3>
-                    <p class="booking-card__intro">Riepilogo operativo di ogni fascia oraria con società, referenti, prenotazioni e barche assegnate.</p>
-                  </div>
-                  <div class="admin-report-actions">
-                    <button class="admin-button admin-export-button" data-export-slot-pdf type="button">PDF</button>
-                    <button class="admin-button admin-export-button" data-export-slot-xlsx type="button">Excel</button>
-                  </div>
-                </div>
-                <div class="admin-slot-report" data-admin-slot-report></div>
-              </section>
-            </div>
-          </details>
-
           <details class="booking-card admin-collapsible">
             <summary>Impostazioni prenotazioni</summary>
             <div class="admin-collapsible__body">
