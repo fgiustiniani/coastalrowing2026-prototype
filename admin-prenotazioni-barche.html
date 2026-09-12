@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="boat-booking.css">
   <style>
+    .admin-dashboard[hidden],
+    .admin-login[hidden] { display: none !important; }
+
     .admin-secondary-sections {
       display: grid;
       gap: 14px;
@@ -370,7 +373,7 @@
         </form>
       </section>
 
-      <section class="admin-dashboard" data-admin-dashboard hidden>
+      <section class="admin-dashboard" data-admin-dashboard hidden inert aria-hidden="true">
         <div class="admin-toolbar">
           <div>
             <p class="eyebrow">Organizzazione</p>
