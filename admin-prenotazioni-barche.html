@@ -271,6 +271,13 @@
     }
     .admin-slot-booking strong { color: #173e4b; }
 
+    .admin-settings-group + .admin-settings-group {
+      margin-top: 28px;
+      padding-top: 26px;
+      border-top: 1px solid #e2e9eb;
+    }
+    .admin-settings-group h2 { margin-top: 0; }
+
     @media (max-width: 760px) {
       .admin-report-nav { grid-template-columns: 1fr; }
       .admin-reports-summary__title { order: 1; }
@@ -416,51 +423,51 @@
 
         <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
           <details class="booking-card admin-collapsible">
-            <summary>Impostazioni prenotazioni</summary>
+            <summary>Impostazioni</summary>
             <div class="admin-collapsible__body">
-              <div class="admin-settings-card">
-                <div>
-                  <h2>Chiusura prenotazioni</h2>
-                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
-                  <div class="cutoff-state" data-cutoff-state></div>
+              <section class="admin-settings-group">
+                <div class="admin-settings-card">
+                  <div>
+                    <h2>Chiusura prenotazioni</h2>
+                    <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
+                    <div class="cutoff-state" data-cutoff-state></div>
+                  </div>
+                  <form class="cutoff-form" data-cutoff-form>
+                    <div class="booking-field">
+                      <label for="cutoffLocal">Data e ora di chiusura</label>
+                      <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
+                      <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                    </div>
+                    <div class="booking-actions">
+                      <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
+                      <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                    </div>
+                  </form>
                 </div>
-                <form class="cutoff-form" data-cutoff-form>
+              </section>
+
+              <section class="admin-settings-group">
+                <h2>Anagrafica barche</h2>
+                <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
+
+                <form class="boat-registry-form" data-boat-form>
                   <div class="booking-field">
-                    <label for="cutoffLocal">Data e ora di chiusura</label>
-                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
-                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                    <label for="boatNumber">Numero barca</label>
+                    <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
                   </div>
-                  <div class="booking-actions">
-                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
-                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                  <div class="booking-field">
+                    <label for="boatBuilder">Cantiere</label>
+                    <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
                   </div>
+                  <div class="booking-field">
+                    <label for="boatType">Tipo</label>
+                    <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
+                  </div>
+                  <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
                 </form>
-              </div>
-            </div>
-          </details>
 
-          <details class="booking-card admin-collapsible">
-            <summary>Anagrafica barche</summary>
-            <div class="admin-collapsible__body">
-              <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
-
-              <form class="boat-registry-form" data-boat-form>
-                <div class="booking-field">
-                  <label for="boatNumber">Numero barca</label>
-                  <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
-                </div>
-                <div class="booking-field">
-                  <label for="boatBuilder">Cantiere</label>
-                  <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
-                </div>
-                <div class="booking-field">
-                  <label for="boatType">Tipo</label>
-                  <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
-                </div>
-                <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
-              </form>
-
-              <div data-boats-table></div>
+                <div data-boats-table></div>
+              </section>
             </div>
           </details>
         </div>

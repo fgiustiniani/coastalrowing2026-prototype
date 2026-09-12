@@ -209,13 +209,7 @@
     if (secondary) {
       const sections = Array.from(secondary.querySelectorAll(':scope > details'));
       const slotSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Slot orari');
-      const settingsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Impostazioni prenotazioni');
-      const boatsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Anagrafica barche');
-
       if (slotSection) slotSection.hidden = true;
-      if (settingsSection && boatsSection && settingsSection.nextElementSibling !== boatsSection) {
-        secondary.insertBefore(settingsSection, boatsSection);
-      }
     }
 
     const heading = document.querySelector('.admin-bookings-card .admin-section-heading');
