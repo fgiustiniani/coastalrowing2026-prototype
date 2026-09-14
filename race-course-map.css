@@ -1,0 +1,258 @@
+.race-course-map {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.race-course-map__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.race-course-map__routes,
+.race-course-map__downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.race-course-map__route,
+.race-course-map__action {
+  appearance: none;
+  border: 1px solid rgba(15, 75, 102, 0.24);
+  border-radius: 999px;
+  background: #fff;
+  color: #123b52;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.race-course-map__route:hover,
+.race-course-map__route:focus-visible,
+.race-course-map__action:hover,
+.race-course-map__action:focus-visible {
+  border-color: #0b6b88;
+  transform: translateY(-1px);
+}
+
+.race-course-map__route[aria-pressed="true"] {
+  background: #123b52;
+  border-color: #123b52;
+  color: #fff;
+}
+
+.race-course-map__action--primary {
+  background: #0b6b88;
+  border-color: #0b6b88;
+  color: #fff;
+}
+
+.race-course-map__canvas {
+  width: 100%;
+  height: clamp(430px, 62vw, 660px);
+  border: 1px solid rgba(15, 75, 102, 0.18);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #eaf5f8;
+  box-shadow: 0 16px 42px rgba(18, 59, 82, 0.08);
+}
+
+.race-course-map__canvas.leaflet-container {
+  font: inherit;
+}
+
+.race-course-map__marker {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #123b52;
+  border-radius: 50%;
+  background: #fff;
+  color: #123b52;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.race-course-map__marker--reference {
+  width: 32px;
+  height: 32px;
+  border-color: #fff;
+  background: #263238;
+  color: #fff;
+}
+
+.race-course-map__popup {
+  min-width: 210px;
+}
+
+.race-course-map__popup strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #123b52;
+  font-size: 1rem;
+}
+
+.race-course-map__popup-coords {
+  display: block;
+  margin: 0 0 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  user-select: text;
+}
+
+.race-course-map__popup-note {
+  margin: 0 0 9px;
+  max-width: 260px;
+  color: #4e616b;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.race-course-map__popup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.race-course-map__popup-actions button,
+.race-course-map__popup-actions a {
+  border: 1px solid rgba(15, 75, 102, 0.22);
+  border-radius: 8px;
+  background: #fff;
+  color: #0b5d78;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.race-course-map__hint {
+  margin: 11px 0 0;
+  color: #5d6b73;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.race-course-map__coordinates {
+  margin-top: 16px;
+  border: 1px solid rgba(15, 75, 102, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.race-course-map__coordinates > summary {
+  cursor: pointer;
+  padding: 13px 16px;
+  color: #123b52;
+  font-weight: 800;
+}
+
+.race-course-map__table-wrap {
+  overflow-x: auto;
+  padding: 0 16px 16px;
+}
+
+.race-course-map__table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.race-course-map__table th,
+.race-course-map__table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #e4ecef;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.race-course-map__table th {
+  color: #123b52;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.race-course-map__coordinate-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  user-select: text;
+}
+
+.race-course-map__copy {
+  border: 1px solid rgba(15, 75, 102, 0.2);
+  border-radius: 8px;
+  background: #f7fbfc;
+  color: #0b5d78;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.race-course-map__secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.race-course-map__secondary-actions a {
+  color: #0b5d78;
+  font-weight: 700;
+}
+
+.race-course-map__fallback {
+  display: block;
+  margin-top: 14px;
+}
+
+.race-course-map__fallback img {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  .race-course-map__toolbar {
+    align-items: stretch;
+  }
+
+  .race-course-map__routes,
+  .race-course-map__downloads {
+    width: 100%;
+  }
+
+  .race-course-map__route {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .race-course-map__action {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .race-course-map__canvas {
+    height: 500px;
+    border-radius: 14px;
+  }
+
+  .race-course-map__secondary-actions {
+    justify-content: flex-start;
+  }
+}
