@@ -56,7 +56,6 @@ jobs:
           grep -q 'data-race-course-map' info-gare.html
           grep -q 'PR3 II ~1.700 m' info-gare.html
           grep -q 'campo-gara-pesaro-2026.pdf' info-gare.html
-          npm ci
           npm run build
 
       - name: Commit feature and cleanup
