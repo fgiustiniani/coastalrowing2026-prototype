@@ -1,0 +1,60 @@
+      <section class="info-section" id="campo-gara" aria-labelledby="campo-title">
+        <div class="info-section__heading info-section__heading--branded">
+          <div class="info-section__heading-copy">
+            <p class="section-kicker">Sul mare</p>
+            <h2 id="campo-title">Campo gara</h2>
+            <p class="single-line-desktop">Schema indicativo dell'area di regata. Seleziona il percorso e tocca una boa per visualizzare e copiare le coordinate.</p>
+          </div>
+          <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        </div>
+
+        <div class="race-course-map" data-race-course-map>
+          <div class="race-course-map__toolbar">
+            <div class="race-course-map__routes" role="group" aria-label="Seleziona il percorso da visualizzare">
+              <button class="race-course-map__route" type="button" data-race-route="master" data-route-label="Master 3 km" data-kml="assets/maps/campo-gara-master-3k.kml" aria-pressed="true">Master 3 km</button>
+              <button class="race-course-map__route" type="button" data-race-route="pr3" data-route-label="PR3 II - circa 1.700 m" data-kml="assets/maps/campo-gara-pr3-ii.kml" aria-pressed="false">PR3 II ~1.700 m</button>
+              <button class="race-course-map__route" type="button" data-race-route="senior" data-route-label="U19/U23/Senior 6 km" data-kml="assets/maps/campo-gara-senior-6k.kml" aria-pressed="false">U19/U23/Senior 6 km</button>
+            </div>
+            <div class="race-course-map__downloads">
+              <a class="race-course-map__action race-course-map__action--primary" data-race-earth href="assets/maps/campo-gara-master-3k.kml" target="_blank" rel="noopener noreferrer">Apri in Google Earth</a>
+              <a class="race-course-map__action" data-race-kml-download href="assets/maps/campo-gara-master-3k.kml" download>Scarica KML</a>
+              <a class="race-course-map__action" href="assets/documents/campo-gara-pesaro-2026.pdf" target="_blank" rel="noopener noreferrer">Scarica PDF</a>
+            </div>
+          </div>
+
+          <div class="race-course-map__canvas" data-race-map-canvas aria-label="Mappa interattiva del campo gara"></div>
+          <p class="race-course-map__hint">Le coordinate sono espresse in gradi decimali WGS84. Le boe 1B, 3B e 4B del percorso PR3 II coincidono con riferimenti già presenti e non sono duplicate nella mappa; la boa 2B è mostrata separatamente.</p>
+
+          <details class="race-course-map__coordinates">
+            <summary>Coordinate boe</summary>
+            <div class="race-course-map__table-wrap">
+              <table class="race-course-map__table">
+                <thead><tr><th>Punto</th><th>Latitudine</th><th>Longitudine</th><th>Azioni</th></tr></thead>
+                <tbody>
+                <tr data-race-point data-point-id="1" data-marker-label="1" data-label="Boa 1" data-lat="43.92507837794537" data-lng="12.91178571531418"><th scope="row">Boa 1</th><td class="race-course-map__coordinate-text">43.925078</td><td class="race-course-map__coordinate-text">12.911786</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.925078, 12.911786">Copia</button></td></tr>
+                <tr data-race-point data-point-id="2" data-marker-label="2" data-label="Boa 2" data-lat="43.91766070533492" data-lng="12.92103361027470"><th scope="row">Boa 2</th><td class="race-course-map__coordinate-text">43.917661</td><td class="race-course-map__coordinate-text">12.921034</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.917661, 12.921034">Copia</button></td></tr>
+                <tr data-race-point data-point-id="3" data-marker-label="3" data-label="Boa 3" data-lat="43.91545809289805" data-lng="12.92850608896370"><th scope="row">Boa 3</th><td class="race-course-map__coordinate-text">43.915458</td><td class="race-course-map__coordinate-text">12.928506</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.915458, 12.928506">Copia</button></td></tr>
+                <tr data-race-point data-point-id="4" data-marker-label="4" data-label="Boa 4" data-lat="43.90851386216023" data-lng="12.93205797204911"><th scope="row">Boa 4</th><td class="race-course-map__coordinate-text">43.908514</td><td class="race-course-map__coordinate-text">12.932058</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.908514, 12.932058">Copia</button></td></tr>
+                <tr data-race-point data-point-id="5" data-marker-label="5" data-label="Boa 5" data-lat="43.91315207107629" data-lng="12.93879039896511"><th scope="row">Boa 5</th><td class="race-course-map__coordinate-text">43.913152</td><td class="race-course-map__coordinate-text">12.938790</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.913152, 12.938790">Copia</button></td></tr>
+                <tr data-race-point data-point-id="6" data-marker-label="6" data-label="Boa 6" data-lat="43.92151183862977" data-lng="12.92638464970508"><th scope="row">Boa 6</th><td class="race-course-map__coordinate-text">43.921512</td><td class="race-course-map__coordinate-text">12.926385</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.921512, 12.926385">Copia</button></td></tr>
+                <tr data-race-point data-point-id="7" data-marker-label="7" data-label="Boa 7" data-lat="43.92279427577850" data-lng="12.92019546296618"><th scope="row">Boa 7</th><td class="race-course-map__coordinate-text">43.922794</td><td class="race-course-map__coordinate-text">12.920195</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.922794, 12.920195">Copia</button></td></tr>
+                <tr data-race-point data-point-id="8" data-marker-label="8" data-label="Boa 8" data-lat="43.92730915081520" data-lng="12.91468305031462"><th scope="row">Boa 8</th><td class="race-course-map__coordinate-text">43.927309</td><td class="race-course-map__coordinate-text">12.914683</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.927309, 12.914683">Copia</button></td></tr>
+                <tr data-race-point data-point-id="2B" data-marker-label="2B" data-label="Boa 2B" data-lat="43.92118227316204" data-lng="12.91813496578632"><th scope="row">Boa 2B</th><td class="race-course-map__coordinate-text">43.921182</td><td class="race-course-map__coordinate-text">12.918135</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.921182, 12.918135">Copia</button></td></tr>
+                <tr data-race-point data-point-id="reference" data-marker-label="R" data-label="Boa riferimento partenza/arrivo" data-note="Boa di riferimento utilizzata per definire le linee immaginarie di partenza e di arrivo insieme alle rispettive boe." data-lat="43.92624205850774" data-lng="12.91334189037056"><th scope="row">Riferimento partenza/arrivo</th><td class="race-course-map__coordinate-text">43.926242</td><td class="race-course-map__coordinate-text">12.913342</td><td><button class="race-course-map__copy" type="button" data-copy-coordinates="43.926242, 12.913342">Copia</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <div class="race-course-map__secondary-actions">
+            <a href="assets/maps/campo-gara-completo.kml" download>Scarica campo gara completo (KML) →</a>
+            <a href="#logistica">Vedi logistica dell'area evento →</a>
+          </div>
+
+          <noscript class="race-course-map__fallback"><a href="assets/maps/mappa-campo-gara.svg?v=2" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-campo-gara.svg?v=2" alt="Schema indicativo del campo gara"></a></noscript>
+        </div>
+
+        <template data-race-route-data="master"><i data-lat="43.92603679840693" data-lng="12.91300004223490"></i><i data-lat="43.91738151120180" data-lng="12.92108833473924"></i><i data-lat="43.92162860563257" data-lng="12.92675163296104"></i><i data-lat="43.92284493576925" data-lng="12.92014687735489"></i><i data-lat="43.92703747108420" data-lng="12.91442379505100"></i></template>
+        <template data-race-route-data="pr3"><i data-lat="43.92611930705945" data-lng="12.91328970085037"></i><i data-lat="43.92102458094988" data-lng="12.91814698784473"></i><i data-lat="43.92295502230544" data-lng="12.92057348958207"></i><i data-lat="43.92725505100323" data-lng="12.91471149668632"></i></template>
+        <template data-race-route-data="senior"><i data-lat="43.92571957393033" data-lng="12.91287328688802"></i><i data-lat="43.91719877068466" data-lng="12.92079783806704"></i><i data-lat="43.91531504064639" data-lng="12.92820944833935"></i><i data-lat="43.90825531343765" data-lng="12.93215694591383"></i><i data-lat="43.91314203814718" data-lng="12.93893600423918"></i><i data-lat="43.91716153488071" data-lng="12.93323266787790"></i><i data-lat="43.92183709339885" data-lng="12.92652375798429"></i><i data-lat="43.92297602536480" data-lng="12.92022476432652"></i><i data-lat="43.92721186443011" data-lng="12.91446686256807"></i></template>
+      </section>
