@@ -4,6 +4,7 @@
     <name>PR3 II - circa 1.700 m</name>
     <Placemark><name>Boa 1</name><Point><coordinates>12.91178571531418,43.92507837794537,0</coordinates></Point></Placemark>
     <Placemark><name>Boa 2B</name><Point><coordinates>12.91813496578632,43.92118227316204,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 7</name><Point><coordinates>12.92019546296618,43.92279427577850,0</coordinates></Point></Placemark>
     <Placemark><name>Boa 8</name><Point><coordinates>12.91468305031462,43.92730915081520,0</coordinates></Point></Placemark>
     <Placemark><name>Boa riferimento partenza/arrivo</name><description>Boa di riferimento utilizzata per definire le linee immaginarie di partenza e arrivo insieme alle rispettive boe.</description><Point><coordinates>12.91334189037056,43.92624205850774,0</coordinates></Point></Placemark>
     <Placemark><name>PR3 II - circa 1.700 m</name><Style><LineStyle><color>ff005c83</color><width>4</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>12.91328970085037,43.92611930705945,0 12.91814698784473,43.92102458094988,0 12.92057348958207,43.92295502230544,0 12.91471149668632,43.92725505100323,0</coordinates></LineString></Placemark>
