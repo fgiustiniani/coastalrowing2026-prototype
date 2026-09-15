@@ -23,6 +23,28 @@
   const svgNamespace = 'http://www.w3.org/2000/svg';
   const mapWidth = 1200;
   const mapHeight = 675;
+  const routeDistanceLabels = {
+    master: [
+      { from: 0, to: 1, label: '1.150 m' },
+      { from: 1, to: 2, label: '650 m' },
+      { from: 2, to: 3, label: '550 m' },
+      { from: 3, to: 4, label: '650 m' }
+    ],
+    pr3: [
+      { from: 0, to: 1, label: '690 m' },
+      { from: 1, to: 2, label: '290 m' },
+      { from: 2, to: 3, label: '670 m' }
+    ],
+    senior: [
+      { from: 0, to: 1, label: '1.150 m' },
+      { from: 1, to: 2, label: '650 m' },
+      { from: 2, to: 3, label: '875 m' },
+      { from: 3, to: 4, label: '750 m' },
+      { from: 4, to: 6, label: '1.375 m' },
+      { from: 6, to: 7, label: '550 m' },
+      { from: 7, to: 8, label: '650 m' }
+    ]
+  };
 
   // Calibrazione affine ottenuta dai marker georeferenziati presenti nell'SVG di base.
   function mapPoint(lat, lng) {
@@ -161,6 +183,26 @@
       turn.setAttribute('class', 'race-course-map__route-turn');
       turn.style.fill = color;
       overlay.appendChild(turn);
+    });
+
+    (routeDistanceLabels[routeId] || []).forEach(({ from, to, label }) => {
+      const start = points[from];
+      const end = points[to];
+      if (!start || !end) return;
+
+      const middleX = (start.x + end.x) / 2;
+      const middleY = (start.y + end.y) / 2;
+      let angle = Math.atan2(end.y - start.y, end.x - start.x) * (180 / Math.PI);
+      if (angle > 90 || angle < -90) angle += 180;
+
+      const distance = document.createElementNS(svgNamespace, 'text');
+      distance.dataset.activeRouteLine = 'distance';
+      distance.setAttribute('class', 'race-course-map__route-distance');
+      distance.setAttribute('x', '0');
+      distance.setAttribute('y', '-13');
+      distance.setAttribute('transform', `translate(${middleX.toFixed(2)} ${middleY.toFixed(2)}) rotate(${angle.toFixed(2)})`);
+      distance.textContent = label;
+      overlay.appendChild(distance);
     });
   }
 
