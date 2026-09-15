@@ -125,8 +125,6 @@
 
   function createHotspots() {
     pointRows.forEach((row) => {
-      if (row.dataset.pointId === 'reference') return;
-
       const lat = Number(row.dataset.lat);
       const lng = Number(row.dataset.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -134,8 +132,9 @@
       const point = mapPoint(lat, lng);
       const button = document.createElement('button');
       const isSupplementary = row.dataset.pointId === '2B';
+      const isReference = row.dataset.pointId === 'reference';
       button.type = 'button';
-      button.className = `race-course-map__hotspot${isSupplementary ? ' race-course-map__hotspot--supplementary' : ''}`;
+      button.className = `race-course-map__hotspot${isSupplementary ? ' race-course-map__hotspot--supplementary' : ''}${isReference ? ' race-course-map__hotspot--reference' : ''}`;
       button.style.left = `${(point.x / mapWidth) * 100}%`;
       button.style.top = `${(point.y / mapHeight) * 100}%`;
       button.setAttribute('aria-label', `${row.dataset.label}: mostra coordinate`);

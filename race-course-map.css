@@ -186,6 +186,14 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
 }
 
+.race-course-map__hotspot--reference:hover,
+.race-course-map__hotspot--reference:focus-visible,
+.race-course-map__hotspot--reference[aria-expanded="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .race-course-map__popover {
   position: absolute;
   z-index: 5;
