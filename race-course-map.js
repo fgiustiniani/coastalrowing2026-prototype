@@ -9,8 +9,9 @@
   const routeButtons = [...root.querySelectorAll('[data-race-route]')];
   const earthLink = root.querySelector('[data-race-earth]');
   const downloadLink = root.querySelector('[data-race-kml-download]');
+  const routeDataScope = root.closest('#campo-gara') || document;
   const routeTemplates = new Map(
-    [...root.querySelectorAll('template[data-race-route-data]')]
+    [...routeDataScope.querySelectorAll('template[data-race-route-data]')]
       .map((template) => [template.dataset.raceRouteData, template])
   );
 
@@ -27,7 +28,7 @@
   }).addTo(map);
 
   const allBounds = [];
-  let routeLayer = null;
+  const routeLayers = new Map();
 
   function copyText(text, button) {
     const done = () => {
@@ -142,13 +143,14 @@
 
     routeButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
 
-    if (routeLayer) routeLayer.remove();
-    routeLayer = L.polyline(coords, {
-      color: '#0b6b88',
-      weight: 5,
-      opacity: 0.9,
-      lineJoin: 'round'
-    }).addTo(map);
+    routeLayers.forEach((layer, id) => {
+      const isActive = id === routeId;
+      layer.setStyle({
+        weight: isActive ? 6 : 3,
+        opacity: isActive ? 0.95 : 0.2
+      });
+      if (isActive) layer.bringToFront();
+    });
 
     const kml = button.dataset.kml;
     const label = button.dataset.routeLabel || button.textContent.trim();
@@ -168,6 +170,18 @@
   }
 
   routeButtons.forEach((button) => {
+    const routeId = button.dataset.raceRoute;
+    const coords = routeCoordinates(routeId);
+    if (coords.length) {
+      routeLayers.set(routeId, L.polyline(coords, {
+        color: '#0b6b88',
+        weight: 3,
+        opacity: 0.2,
+        lineJoin: 'round',
+        interactive: false
+      }).addTo(map));
+    }
+
     button.addEventListener('click', () => activateRoute(button));
   });
 
@@ -175,7 +189,7 @@
     map.fitBounds(L.latLngBounds(allBounds), { padding: [32, 32], maxZoom: 15 });
   }
 
-  activateRoute(routeButtons.find((button) => button.getAttribute('aria-pressed') === 'true') || routeButtons[0], { fit: false });
+  activateRoute(routeButtons.find((button) => button.getAttribute('aria-pressed') === 'true') || routeButtons[0]);
 
   window.setTimeout(() => map.invalidateSize(), 0);
 })();
