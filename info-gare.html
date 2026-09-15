@@ -133,14 +133,12 @@
         <div class="race-course-map" data-race-course-map>
           <div class="race-course-map__toolbar">
             <div class="race-course-map__routes" role="group" aria-label="Seleziona il percorso da visualizzare">
-              <button class="race-course-map__route" type="button" data-race-route="master" data-route-label="Master 3 km" data-route-color="#f57c00" data-kml="assets/maps/campo-gara-master-3k.kml" data-pdf="assets/documents/campo-gara-master-3km.pdf" aria-pressed="true">Master 3 km</button>
-              <button class="race-course-map__route" type="button" data-race-route="pr3" data-route-label="PR3 II - circa 1.700 m" data-route-color="#26c6da" data-kml="assets/maps/campo-gara-pr3-ii.kml" data-pdf="assets/documents/campo-gara-pr3-ii-1700m.pdf" aria-pressed="false">PR3 II ~1.700 m</button>
-              <button class="race-course-map__route" type="button" data-race-route="senior" data-route-label="U19/U23/Senior 6 km" data-route-color="#ffee58" data-kml="assets/maps/campo-gara-senior-6k.kml" data-pdf="assets/documents/campo-gara-u19-u23-senior-6km.pdf" aria-pressed="false">U19/U23/Senior 6 km</button>
+              <button class="race-course-map__route" type="button" data-race-route="master" data-route-label="Master 3 km" data-route-color="#f57c00" data-pdf="assets/documents/campo-gara-master-3km.pdf" aria-pressed="true">Master 3 km</button>
+              <button class="race-course-map__route" type="button" data-race-route="pr3" data-route-label="PR3 II - circa 1.700 m" data-route-color="#26c6da" data-pdf="assets/documents/campo-gara-pr3-ii-1700m.pdf" aria-pressed="false">PR3 II ~1.700 m</button>
+              <button class="race-course-map__route" type="button" data-race-route="senior" data-route-label="U19/U23/Senior 6 km" data-route-color="#ffee58" data-pdf="assets/documents/campo-gara-u19-u23-senior-6km.pdf" aria-pressed="false">U19/U23/Senior 6 km</button>
             </div>
             <div class="race-course-map__downloads">
-              <a class="race-course-map__action race-course-map__action--primary" data-race-earth href="assets/maps/campo-gara-master-3k.kml" target="_blank" rel="noopener noreferrer">Apri in Google Earth</a>
-              <a class="race-course-map__action" data-race-kml-download href="assets/maps/campo-gara-master-3k.kml" download>Scarica KML</a>
-              <a class="race-course-map__action" data-race-pdf-download href="assets/documents/campo-gara-master-3km.pdf" target="_blank" rel="noopener noreferrer">Scarica PDF</a>
+              <a class="race-course-map__action race-course-map__action--primary" data-race-pdf-download data-default-pdf="assets/documents/campo-gara-completo.pdf" href="assets/documents/campo-gara-master-3km.pdf" target="_blank" rel="noopener noreferrer">Scarica PDF</a>
             </div>
           </div>
 
@@ -160,11 +158,10 @@
               <p class="race-course-map__popover-note" data-race-popover-note hidden></p>
               <div class="race-course-map__popover-actions">
                 <button type="button" data-race-popover-copy data-copy-coordinates="">Copia coordinate</button>
-                <a data-race-popover-maps href="#" target="_blank" rel="noopener noreferrer">Apri punto</a>
               </div>
             </div>
           </div>
-          <p class="race-course-map__hint">Seleziona il percorso e passa su una boa, oppure toccala, per visualizzare le coordinate WGS84 e copiarle. Le boe 1B, 3B e 4B del percorso PR3 II coincidono con boe già presenti e non sono duplicate; la boa 2B è mostrata separatamente.</p>
+          <p class="race-course-map__hint">Seleziona il percorso e passa su una boa, oppure toccala, per visualizzare le coordinate WGS84 e copiarle. Tocca di nuovo il percorso attivo per deselezionarlo: in questo caso il PDF riporta tutte le boe. Le boe 1B, 3B e 4B del percorso PR3 II coincidono con boe già presenti e non sono duplicate; la boa 2B è mostrata separatamente.</p>
 
           <details class="race-course-map__coordinates">
             <summary>Coordinate boe</summary>
@@ -188,7 +185,6 @@
           </details>
 
           <div class="race-course-map__secondary-actions">
-            <a href="assets/maps/campo-gara-completo.kml" download>Scarica campo gara completo (KML) →</a>
             <a href="#logistica">Vedi logistica dell'area evento →</a>
           </div>
 

@@ -11,8 +11,6 @@
   const activeLabel = root.querySelector('[data-race-active-label]');
   const pointRows = [...root.querySelectorAll('[data-race-point]')];
   const routeButtons = [...root.querySelectorAll('[data-race-route]')];
-  const earthLink = root.querySelector('[data-race-earth]');
-  const kmlLink = root.querySelector('[data-race-kml-download]');
   const pdfLink = root.querySelector('[data-race-pdf-download]');
   const routeDataScope = root.closest('#campo-gara') || document;
   const routeTemplates = new Map(
@@ -88,14 +86,12 @@
     const coordinateText = popover.querySelector('[data-race-popover-coordinates]');
     const note = popover.querySelector('[data-race-popover-note]');
     const copyButton = popover.querySelector('[data-race-popover-copy]');
-    const mapsLink = popover.querySelector('[data-race-popover-maps]');
 
     title.textContent = row.dataset.label;
     coordinateText.textContent = coords;
     note.textContent = row.dataset.note || '';
     note.hidden = !row.dataset.note;
     copyButton.dataset.copyCoordinates = coords;
-    mapsLink.href = `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
 
     popover.style.left = `${(point.x / mapWidth) * 100}%`;
     popover.style.top = `${(point.y / mapHeight) * 100}%`;
@@ -107,13 +103,15 @@
 
   function createHotspots() {
     pointRows.forEach((row) => {
+      if (row.dataset.pointId === 'reference') return;
+
       const lat = Number(row.dataset.lat);
       const lng = Number(row.dataset.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
       const point = mapPoint(lat, lng);
       const button = document.createElement('button');
-      const isSupplementary = ['2B', 'reference'].includes(row.dataset.pointId);
+      const isSupplementary = row.dataset.pointId === '2B';
       button.type = 'button';
       button.className = `race-course-map__hotspot${isSupplementary ? ' race-course-map__hotspot--supplementary' : ''}`;
       button.style.left = `${(point.x / mapWidth) * 100}%`;
@@ -121,9 +119,7 @@
       button.setAttribute('aria-label', `${row.dataset.label}: mostra coordinate`);
       button.setAttribute('aria-expanded', 'false');
       button.title = `${row.dataset.label} - mostra coordinate`;
-      button.textContent = isSupplementary
-        ? (row.dataset.pointId === 'reference' ? 'R' : row.dataset.markerLabel)
-        : '';
+      button.textContent = isSupplementary ? row.dataset.markerLabel : '';
       button.addEventListener('click', (event) => {
         event.stopPropagation();
         openPopover(row, button, point);
@@ -168,21 +164,35 @@
     });
   }
 
+  function clearRoute() {
+    routeButtons.forEach((item) => item.setAttribute('aria-pressed', 'false'));
+    overlay.querySelectorAll('[data-active-route-line]').forEach((node) => node.remove());
+    closePopover();
+
+    if (activeLabel) {
+      activeLabel.textContent = '';
+      activeLabel.hidden = true;
+    }
+    if (pdfLink) {
+      pdfLink.href = pdfLink.dataset.defaultPdf;
+      pdfLink.setAttribute('aria-label', 'Scarica PDF - campo gara completo');
+    }
+  }
+
   function activateRoute(button) {
+    if (button.getAttribute('aria-pressed') === 'true') {
+      clearRoute();
+      return;
+    }
+
     routeButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
     drawRoute(button);
     closePopover();
 
     const label = button.dataset.routeLabel || button.textContent.trim();
-    if (activeLabel) activeLabel.textContent = label;
-
-    if (earthLink) {
-      earthLink.href = button.dataset.kml;
-      earthLink.setAttribute('aria-label', `Apri ${label} in Google Earth`);
-    }
-    if (kmlLink) {
-      kmlLink.href = button.dataset.kml;
-      kmlLink.setAttribute('aria-label', `Scarica KML - ${label}`);
+    if (activeLabel) {
+      activeLabel.textContent = label;
+      activeLabel.hidden = false;
     }
     if (pdfLink) {
       pdfLink.href = button.dataset.pdf;
@@ -211,5 +221,11 @@
   });
 
   createHotspots();
-  activateRoute(routeButtons.find((button) => button.getAttribute('aria-pressed') === 'true') || routeButtons[0]);
+  const initialRoute = routeButtons.find((button) => button.getAttribute('aria-pressed') === 'true');
+  if (initialRoute) {
+    initialRoute.setAttribute('aria-pressed', 'false');
+    activateRoute(initialRoute);
+  } else {
+    clearRoute();
+  }
 })();
