@@ -186,11 +186,16 @@
 
       .admin-section-actions {
         width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
         justify-content: stretch;
       }
 
       .admin-section-actions .admin-button {
-        flex: 1 1 150px;
+        width: 100%;
+        min-width: 0;
+        flex: none;
       }
     }
   `;
@@ -209,24 +214,19 @@
     if (secondary) {
       const sections = Array.from(secondary.querySelectorAll(':scope > details'));
       const slotSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Slot orari');
-      const settingsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Impostazioni prenotazioni');
-      const boatsSection = sections.find((details) => details.querySelector(':scope > summary')?.textContent.trim() === 'Anagrafica barche');
-
       if (slotSection) slotSection.hidden = true;
-      if (settingsSection && boatsSection && settingsSection.nextElementSibling !== boatsSection) {
-        secondary.insertBefore(settingsSection, boatsSection);
-      }
     }
 
     const heading = document.querySelector('.admin-bookings-card .admin-section-heading');
-    const refresh = document.querySelector('[data-admin-refresh]');
     const exportButton = heading?.querySelector('[data-export-bookings-pdf]');
-    if (heading && refresh && exportButton && !heading.querySelector('[data-admin-section-actions]')) {
+    const excelButton = heading?.querySelector('[data-export-bookings-xlsx]');
+    if (heading && exportButton && !heading.querySelector('[data-admin-section-actions]')) {
       const actions = document.createElement('div');
       actions.className = 'admin-section-actions';
       actions.dataset.adminSectionActions = '';
       heading.appendChild(actions);
-      actions.append(refresh, exportButton);
+      actions.append(exportButton);
+      if (excelButton) actions.append(excelButton);
     }
   }
 

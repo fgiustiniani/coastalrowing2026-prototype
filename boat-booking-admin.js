@@ -6,6 +6,7 @@
   const api = '/api/boat-bookings-admin';
   const status = document.querySelector('[data-admin-status]');
   const loginStatus = document.querySelector('[data-login-status]');
+  const loginSection = loginForm.closest('.admin-login');
   const matrix = document.querySelector('[data-admin-matrix]');
   const bookingsContainer = document.querySelector('[data-admin-bookings]');
   const slotsContainer = document.querySelector('[data-admin-slots]');
@@ -41,6 +42,23 @@
     node.className = `booking-status${kind ? ` is-${kind}` : ''}`;
   }
 
+  function showLogin(message = '') {
+    credentials = null;
+    if (loginSection) loginSection.hidden = false;
+    dashboard.hidden = true;
+    dashboard.inert = true;
+    dashboard.setAttribute('aria-hidden', 'true');
+    if (message) setText(loginStatus, message, 'error');
+    window.requestAnimationFrame(() => loginForm.elements.username?.focus());
+  }
+
+  function showDashboard() {
+    if (loginSection) loginSection.hidden = true;
+    dashboard.hidden = false;
+    dashboard.inert = false;
+    dashboard.removeAttribute('aria-hidden');
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -68,6 +86,7 @@
     if (!response.ok) {
       const error = new Error(body.error || 'Operazione non riuscita.');
       error.code = body.code;
+      error.status = response.status;
       throw error;
     }
     return body;
@@ -181,6 +200,7 @@
         <thead>
           <tr>
             <th>Slot</th>
+            <th>Riempimento slot</th>
             ${columns.map(([builder, type]) => `<th>${builder}<br><small>${type}</small></th>`).join('')}
           </tr>
         </thead>
@@ -188,16 +208,50 @@
           ${slots.map(([code, label]) => {
             const info = slotInfo(code);
             const isInactive = info?.active === false;
+            const totals = columns.reduce((acc, [builder, type]) => {
+              const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0 };
+              acc.booked += Number(row.booked || 0);
+              acc.capacity += Number(row.capacity || 0);
+              return acc;
+            }, { booked: 0, capacity: 0 });
+            const percentage = totals.capacity > 0
+              ? Math.min(100, Math.round((totals.booked / totals.capacity) * 100))
+              : 0;
+            const fillClass = percentage >= 100 ? ' is-full' : percentage >= 80 ? ' is-high' : percentage >= 50 ? ' is-medium' : '';
+
             return `
             <tr>
               <th>${escapeHtml(info?.label || label)}${isInactive ? '<br><small>CHIUSO</small>' : ''}</th>
+              <td class="admin-matrix__occupancy">
+                <div class="admin-slot-fill${fillClass}" style="--slot-fill:${percentage}%">
+                  <span class="admin-slot-fill__value"><strong>${totals.booked}/${totals.capacity}</strong><span>${percentage}%</span></span>
+                  <span class="admin-slot-fill__track" aria-hidden="true"><span></span></span>
+                </div>
+              </td>
               ${columns.map(([builder, type]) => {
                 const row = availabilityRow(code, builder, type) || { booked: 0, capacity: 0, remaining: 0 };
-                const noBoats = Number(row.capacity) === 0;
-                const full = !noBoats && Number(row.remaining) <= 0;
-                return `<td class="admin-matrix__cell${full ? ' is-full' : ''}${noBoats ? ' is-empty' : ''}">
-                  <strong>${row.booked}/${row.capacity}</strong>
-                  <small>${isInactive ? 'SLOT CHIUSO' : noBoats ? 'NESSUNA BARCA' : full ? 'COMPLETO' : `${row.remaining} libere`}</small>
+                const booked = Number(row.booked || 0);
+                const capacity = Number(row.capacity || 0);
+                const remaining = Number(row.remaining || 0);
+                const noBoats = capacity === 0;
+                const cellPercentage = capacity > 0
+                  ? Math.min(100, Math.round((booked / capacity) * 100))
+                  : 0;
+                const cellFillClass = noBoats
+                  ? ' is-empty'
+                  : cellPercentage >= 100
+                    ? ' is-full'
+                    : cellPercentage >= 80
+                      ? ' is-high'
+                      : cellPercentage >= 50
+                        ? ' is-medium'
+                        : ' is-low';
+                return `<td class="admin-matrix__cell admin-matrix__cell--fill${cellFillClass}" style="--matrix-cell-fill:${cellPercentage}%">
+                  <div class="admin-matrix-cell-fill">
+                    <span class="admin-matrix-cell-fill__value"><strong>${booked}/${capacity}</strong><span>${noBoats ? '—' : `${cellPercentage}%`}</span></span>
+                    <span class="admin-matrix-cell-fill__track" aria-hidden="true"><span></span></span>
+                    <small>${isInactive ? 'SLOT CHIUSO' : noBoats ? 'NESSUNA BARCA' : cellPercentage >= 100 ? 'COMPLETO' : `${remaining} libere`}</small>
+                  </div>
                 </td>`;
               }).join('')}
             </tr>`;
@@ -310,6 +364,8 @@
     renderBoats();
     renderBookings();
     syncEditSlotOptions();
+    window.boatBookingAdminData = data;
+    window.dispatchEvent(new CustomEvent('boat-booking-admin:data', { detail: data }));
   }
 
   async function loadDashboard(message = '') {
@@ -394,6 +450,8 @@
     dialog.showModal();
   }
 
+  showLogin();
+
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 
@@ -406,17 +464,21 @@
 
     try {
       await adminRequest('login');
-      loginForm.closest('.admin-login').hidden = true;
-      dashboard.hidden = false;
+      showDashboard();
       await loadDashboard();
     } catch (error) {
-      credentials = null;
-      setText(loginStatus, error.message, 'error');
+      showLogin(error.message);
     }
   });
 
   refreshButton?.addEventListener('click', () => {
-    loadDashboard().catch((error) => setText(status, error.message, 'error'));
+    loadDashboard().catch((error) => {
+      if (error.status === 401 || error.status === 403) {
+        showLogin('Sessione non valida. Effettua nuovamente l’accesso.');
+        return;
+      }
+      setText(status, error.message, 'error');
+    });
   });
 
   [societyFilter, slotFilter, typeFilter, builderFilter].forEach((input) => {

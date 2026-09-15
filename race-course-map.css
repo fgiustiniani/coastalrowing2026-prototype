@@ -1,0 +1,414 @@
+.race-course-map {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.race-course-map__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.race-course-map__routes,
+.race-course-map__downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.race-course-map__route,
+.race-course-map__action {
+  appearance: none;
+  border: 1px solid rgba(15, 75, 102, 0.24);
+  border-radius: 999px;
+  background: #fff;
+  color: #123b52;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.race-course-map__route:hover,
+.race-course-map__route:focus-visible,
+.race-course-map__action:hover,
+.race-course-map__action:focus-visible {
+  border-color: #0b6b88;
+  transform: translateY(-1px);
+}
+
+.race-course-map__route[aria-pressed="true"] {
+  background: #123b52;
+  border-color: #123b52;
+  color: #fff;
+  box-shadow: inset 0 -4px 0 var(--route-color, #26c6da);
+}
+
+.race-course-map__action--primary {
+  background: #0b6b88;
+  border-color: #0b6b88;
+  color: #fff;
+}
+
+.race-course-map__canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(15, 75, 102, 0.18);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #00192e;
+  box-shadow: 0 16px 42px rgba(18, 59, 82, 0.08);
+}
+
+.race-course-map__base,
+.race-course-map__overlay,
+.race-course-map__hotspots {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.race-course-map__base {
+  display: block;
+  object-fit: contain;
+}
+
+.race-course-map__overlay {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.race-course-map__veil {
+  fill: rgba(0, 25, 46, 0.12);
+}
+
+.race-course-map__route-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 6;
+  vector-effect: non-scaling-stroke;
+}
+
+.race-course-map__route-line--shadow {
+  stroke: rgba(0, 25, 46, 0.88);
+  stroke-width: 11;
+}
+
+.race-course-map__route-turn {
+  stroke: #00192e;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.race-course-map__route-distance {
+  fill: #fff;
+  stroke: rgba(0, 25, 46, 0.95);
+  stroke-width: 5px;
+  paint-order: stroke fill;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-anchor: middle;
+  vector-effect: non-scaling-stroke;
+}
+
+.race-course-map__active-label {
+  position: absolute;
+  z-index: 2;
+  top: 3.5%;
+  right: 2.2%;
+  max-width: 42%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(0, 25, 46, 0.82);
+  color: #fff;
+  font-size: clamp(0.65rem, 1.45vw, 0.95rem);
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 8px 13px;
+  text-align: center;
+  backdrop-filter: blur(5px);
+}
+
+.race-course-map__active-label[hidden] {
+  display: none;
+}
+
+.race-course-map__hotspots {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.race-course-map__hotspot {
+  position: absolute;
+  width: clamp(30px, 4vw, 46px);
+  height: clamp(30px, 4vw, 46px);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  font: inherit;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+.race-course-map__hotspot:hover,
+.race-course-map__hotspot:focus-visible,
+.race-course-map__hotspot[aria-expanded="true"] {
+  border-color: #fff;
+  background: rgba(11, 107, 136, 0.24);
+  box-shadow: 0 0 0 4px rgba(0, 25, 46, 0.55);
+  outline: none;
+}
+
+.race-course-map__hotspot--supplementary {
+  display: grid;
+  place-items: center;
+  width: clamp(26px, 3.3vw, 38px);
+  height: clamp(26px, 3.3vw, 38px);
+  border-color: #fff;
+  background: #0b6b88;
+  color: #fff;
+  font-size: clamp(0.56rem, 1.15vw, 0.78rem);
+  font-weight: 900;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+}
+
+.race-course-map__hotspot--reference:hover,
+.race-course-map__hotspot--reference:focus-visible,
+.race-course-map__hotspot--reference[aria-expanded="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.race-course-map__popover {
+  position: absolute;
+  z-index: 5;
+  width: min(280px, calc(100% - 20px));
+  border: 1px solid rgba(15, 75, 102, 0.22);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.97);
+  color: #123b52;
+  padding: 13px;
+  transform: translate(-50%, 16px);
+  box-shadow: 0 14px 34px rgba(0, 25, 46, 0.3);
+}
+
+.race-course-map__popover[hidden] {
+  display: none;
+}
+
+.race-course-map__popover--left {
+  transform: translate(-100%, 16px);
+}
+
+.race-course-map__popover--right {
+  transform: translate(0, 16px);
+}
+
+.race-course-map__popover--above {
+  transform: translate(-50%, calc(-100% - 16px));
+}
+
+.race-course-map__popover--left.race-course-map__popover--above {
+  transform: translate(-100%, calc(-100% - 16px));
+}
+
+.race-course-map__popover--right.race-course-map__popover--above {
+  transform: translate(0, calc(-100% - 16px));
+}
+
+.race-course-map__popover-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.race-course-map__popover-title {
+  font-size: 1rem;
+}
+
+.race-course-map__popover-close {
+  border: 0;
+  background: transparent;
+  color: #4e616b;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.race-course-map__popover-coordinates {
+  display: block;
+  margin: 6px 0 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  user-select: text;
+}
+
+.race-course-map__popover-note {
+  margin: 0 0 9px;
+  color: #4e616b;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.race-course-map__popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.race-course-map__popover-actions button {
+  border: 1px solid rgba(15, 75, 102, 0.22);
+  border-radius: 8px;
+  background: #f7fbfc;
+  color: #0b5d78;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.race-course-map__hint {
+  margin: 11px 0 0;
+  color: #5d6b73;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.race-course-map__coordinates {
+  margin-top: 16px;
+  border: 1px solid rgba(15, 75, 102, 0.14);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.race-course-map__coordinates > summary {
+  cursor: pointer;
+  padding: 13px 16px;
+  color: #123b52;
+  font-weight: 800;
+}
+
+.race-course-map__table-wrap {
+  overflow-x: auto;
+  padding: 0 16px 16px;
+}
+
+.race-course-map__table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.race-course-map__table th,
+.race-course-map__table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #e4ecef;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.race-course-map__table th {
+  color: #123b52;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.race-course-map__coordinate-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  user-select: text;
+}
+
+.race-course-map__copy {
+  border: 1px solid rgba(15, 75, 102, 0.2);
+  border-radius: 8px;
+  background: #f7fbfc;
+  color: #0b5d78;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.race-course-map__secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.race-course-map__secondary-actions a {
+  color: #0b5d78;
+  font-weight: 700;
+}
+
+.race-course-map__fallback {
+  display: block;
+  margin-top: 14px;
+}
+
+.race-course-map__fallback img {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 760px) {
+  .race-course-map__toolbar {
+    align-items: stretch;
+  }
+
+  .race-course-map__routes,
+  .race-course-map__downloads {
+    width: 100%;
+  }
+
+  .race-course-map__route {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .race-course-map__action {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .race-course-map__canvas {
+    border-radius: 14px;
+  }
+
+  .race-course-map__active-label {
+    padding: 5px 9px;
+  }
+
+  .race-course-map__popover {
+    padding: 10px;
+  }
+
+  .race-course-map__secondary-actions {
+    justify-content: flex-start;
+  }
+}

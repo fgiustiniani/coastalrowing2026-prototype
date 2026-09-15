@@ -39,6 +39,14 @@
     return Number(value.toFixed(2)).toString();
   }
 
+  function occupancyPdfPalette(percentage, noBoats = false) {
+    if (noBoats) return { fill: [0.961, 0.965, 0.965], accent: [0.667, 0.710, 0.725], border: [0.875, 0.894, 0.898] };
+    if (percentage >= 100) return { fill: [1.000, 0.941, 0.933], accent: [0.706, 0.137, 0.094], border: [0.906, 0.710, 0.694] };
+    if (percentage >= 80) return { fill: [1.000, 0.953, 0.922], accent: [0.812, 0.420, 0.173], border: [0.929, 0.780, 0.682] };
+    if (percentage >= 50) return { fill: [1.000, 0.976, 0.925], accent: [0.835, 0.604, 0.184], border: [0.918, 0.839, 0.667] };
+    return { fill: [0.953, 0.980, 0.965], accent: [0.184, 0.561, 0.420], border: [0.812, 0.894, 0.847] };
+  }
+
   function wrapText(text, maxWidth, fontSize = 9) {
     const source = cleanText(text);
     if (!source) return [''];
@@ -90,12 +98,18 @@
       page.push(`${formatNumber(gray)} G ${formatNumber(width)} w ${formatNumber(x1)} ${formatNumber(this.height - y1Top)} m ${formatNumber(x2)} ${formatNumber(this.height - y2Top)} l S 0 G`);
     }
 
-    rect(page, x, yTop, width, height, { fillGray = null, strokeGray = 0.78 } = {}) {
+    rect(page, x, yTop, width, height, { fillGray = null, strokeGray = 0.78, fillRgb = null, strokeRgb = null } = {}) {
       const y = this.height - yTop - height;
-      if (fillGray !== null) {
+      if (Array.isArray(fillRgb)) {
+        const [r, g, b] = fillRgb;
+        page.push(`${formatNumber(r)} ${formatNumber(g)} ${formatNumber(b)} rg ${formatNumber(x)} ${formatNumber(y)} ${formatNumber(width)} ${formatNumber(height)} re f 0 g`);
+      } else if (fillGray !== null) {
         page.push(`${formatNumber(fillGray)} g ${formatNumber(x)} ${formatNumber(y)} ${formatNumber(width)} ${formatNumber(height)} re f 0 g`);
       }
-      if (strokeGray !== null) {
+      if (Array.isArray(strokeRgb)) {
+        const [r, g, b] = strokeRgb;
+        page.push(`${formatNumber(r)} ${formatNumber(g)} ${formatNumber(b)} RG 0.5 w ${formatNumber(x)} ${formatNumber(y)} ${formatNumber(width)} ${formatNumber(height)} re S 0 G`);
+      } else if (strokeGray !== null) {
         page.push(`${formatNumber(strokeGray)} G 0.5 w ${formatNumber(x)} ${formatNumber(y)} ${formatNumber(width)} ${formatNumber(height)} re S 0 G`);
       }
     }
@@ -280,7 +294,24 @@
     if (!table) return null;
     const headers = Array.from(table.querySelectorAll('thead th')).map((cell) => cleanText(cell.textContent));
     const rows = Array.from(table.querySelectorAll('tbody tr')).map((row) =>
-      Array.from(row.querySelectorAll('th, td')).map((cell) => cleanText(cell.textContent))
+      Array.from(row.querySelectorAll('th, td')).map((cell) => {
+        const matrixFill = cell.querySelector('.admin-matrix-cell-fill');
+        const slotFill = cell.querySelector('.admin-slot-fill');
+        const fill = matrixFill || slotFill;
+        const value = cleanText(cell.querySelector('.admin-matrix-cell-fill__value strong, .admin-slot-fill__value strong')?.textContent);
+        const percentageText = cleanText(cell.querySelector('.admin-matrix-cell-fill__value span, .admin-slot-fill__value span')?.textContent);
+        const status = cleanText(matrixFill?.querySelector('small')?.textContent);
+        const parsed = Number.parseInt(percentageText.replace('%', ''), 10);
+        return {
+          text: cleanText(cell.textContent),
+          hasFill: Boolean(fill),
+          value,
+          percentageText,
+          status,
+          percentage: Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0,
+          noBoats: cell.classList.contains('is-empty')
+        };
+      })
     );
     return { headers, rows };
   }
@@ -293,49 +324,75 @@
     }
 
     const pdf = new SimplePdf(841.89, 595.28);
-    const margin = 34;
+    const margin = 28;
     const usableWidth = pdf.width - margin * 2;
-    const firstColumn = 116;
-    const otherColumn = (usableWidth - firstColumn) / Math.max(1, table.headers.length - 1);
-    const widths = table.headers.map((_, index) => index === 0 ? firstColumn : otherColumn);
-    const headerHeight = 42;
-    const rowHeight = 48;
-    const tableTop = 100;
-    const maxRows = Math.max(1, Math.floor((pdf.height - tableTop - 32 - headerHeight) / rowHeight));
-    const chunks = [];
-    for (let index = 0; index < table.rows.length; index += maxRows) chunks.push(table.rows.slice(index, index + maxRows));
+    const firstColumn = 92;
+    const occupancyColumn = table.headers.length > 1 ? 94 : 0;
+    const dataColumns = Math.max(1, table.headers.length - (occupancyColumn ? 2 : 1));
+    const otherColumn = (usableWidth - firstColumn - occupancyColumn) / dataColumns;
+    const widths = table.headers.map((_, index) => index === 0 ? firstColumn : index === 1 && occupancyColumn ? occupancyColumn : otherColumn);
+    const tableTop = 88;
+    const headerHeight = 34;
+    const availableRowsHeight = pdf.height - tableTop - headerHeight - 26;
+    const rowHeight = Math.max(30, Math.min(42, availableRowsHeight / Math.max(1, table.rows.length)));
+    const bodyFont = rowHeight < 35 ? 6.7 : 7.4;
+    const firstFont = rowHeight < 35 ? 7.1 : 7.8;
 
-    chunks.forEach((chunk, pageIndex) => {
-      const page = pdf.addPage();
-      pdf.text(page, 'Campionati Italiani Coastal Rowing 2026 - Pesaro', margin, 38, 9, true);
-      pdf.text(page, pageIndex === 0 ? 'Occupazione prove barche per slot' : 'Occupazione prove barche per slot - continuazione', margin, 62, 17, true);
-      pdf.text(page, `Esportato il ${exportStamp()} - valori: prenotate / barche attive censite`, margin, 80, 9);
+    const page = pdf.addPage();
+    pdf.text(page, 'Campionati Italiani Coastal Rowing 2026 - Pesaro', margin, 28, 8.5, true);
+    pdf.text(page, 'Occupazione prove barche per slot', margin, 51, 16, true);
+    pdf.text(page, `Esportato il ${exportStamp()} - riempimento slot e valori prenotate / barche attive censite`, margin, 70, 8.3);
 
-      let x = margin;
-      table.headers.forEach((header, colIndex) => {
-        const width = widths[colIndex];
-        pdf.rect(page, x, tableTop, width, headerHeight, { fillGray: 0.92, strokeGray: 0.72 });
-        const lines = wrapText(header, width - 10, 8.5).slice(0, 2);
-        lines.forEach((line, lineIndex) => pdf.text(page, line, x + 5, tableTop + 16 + lineIndex * 11, 8.5, true));
-        x += width;
-      });
+    let x = margin;
+    table.headers.forEach((header, colIndex) => {
+      const width = widths[colIndex];
+      pdf.rect(page, x, tableTop, width, headerHeight, { fillGray: 0.92, strokeGray: 0.72 });
+      const lines = wrapText(header, width - 8, 7.6).slice(0, 2);
+      lines.forEach((line, lineIndex) => pdf.text(page, line, x + 4, tableTop + 13 + lineIndex * 9.5, 7.6, true));
+      x += width;
+    });
 
-      chunk.forEach((row, rowIndex) => {
-        const yTop = tableTop + headerHeight + rowIndex * rowHeight;
-        x = margin;
-        row.forEach((cell, colIndex) => {
-          const width = widths[colIndex] || otherColumn;
-          const isFull = /COMPLETO|SLOT CHIUSO|NESSUNA BARCA/i.test(cell);
-          pdf.rect(page, x, yTop, width, rowHeight, { fillGray: isFull ? 0.955 : null, strokeGray: 0.82 });
-          const lines = wrapText(cell, width - 10, colIndex === 0 ? 8.5 : 8).slice(0, 3);
-          lines.forEach((line, lineIndex) => pdf.text(page, line, x + 5, yTop + 15 + lineIndex * 10.5, colIndex === 0 ? 8.5 : 8, lineIndex === 0));
-          x += width;
+    table.rows.forEach((row, rowIndex) => {
+      const yTop = tableTop + headerHeight + rowIndex * rowHeight;
+      x = margin;
+      row.forEach((cell, colIndex) => {
+        const width = widths[colIndex] || otherColumn;
+        const cellText = typeof cell === 'string' ? cell : cell.text;
+        const hasFill = Boolean(cell?.hasFill);
+        const palette = hasFill ? occupancyPdfPalette(cell.percentage, cell.noBoats) : null;
+        const isFull = /COMPLETO|SLOT CHIUSO|NESSUNA BARCA|100%/i.test(cellText);
+        pdf.rect(page, x, yTop, width, rowHeight, {
+          fillRgb: palette?.fill || null,
+          strokeRgb: palette?.border || null,
+          fillGray: palette ? null : (isFull ? 0.955 : null),
+          strokeGray: palette ? null : 0.82
         });
+        const fontSize = colIndex === 0 ? firstFont : bodyFont;
+
+        if (hasFill) {
+          const valueLine = [cell.value, cell.percentageText].filter(Boolean).join(' · ');
+          pdf.text(page, valueLine || cellText, x + 4, yTop + 12.5, fontSize, true);
+          if (cell.status) pdf.text(page, cell.status, x + 4, yTop + 21.7, Math.max(5.8, fontSize - 0.5), false);
+
+          const trackX = x + 4;
+          const trackWidth = Math.max(8, width - 8);
+          const trackTop = yTop + rowHeight - 6;
+          pdf.rect(page, trackX, trackTop, trackWidth, 3, { fillGray: 0.90, strokeGray: null });
+          if (!cell.noBoats && cell.percentage > 0) {
+            pdf.rect(page, trackX, trackTop, trackWidth * (cell.percentage / 100), 3, { fillRgb: palette.accent, strokeGray: null });
+          }
+        } else {
+          const lines = wrapText(cellText, width - 8, fontSize).slice(0, rowHeight < 35 ? 2 : 3);
+          lines.forEach((line, lineIndex) => pdf.text(page, line, x + 4, yTop + 13 + lineIndex * 9.3, fontSize, lineIndex === 0));
+        }
+        x += width;
       });
     });
 
     downloadBlob(pdf.blob(), `occupazione-slot-prove-barche-${fileStamp()}.pdf`);
   }
+
+  window.BoatBookingPdfTools = { SimplePdf, downloadBlob, wrapText, exportStamp, fileStamp };
 
   bookingButton?.addEventListener('click', exportBookings);
   matrixButton?.addEventListener('click', exportMatrix);

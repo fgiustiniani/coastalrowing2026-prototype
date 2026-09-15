@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="boat-booking.css">
   <style>
+    .admin-dashboard[hidden],
+    .admin-login[hidden] { display: none !important; }
+
     .admin-secondary-sections {
       display: grid;
       gap: 14px;
@@ -52,7 +55,7 @@
       border-top: 1px solid #e2e9eb;
     }
     .admin-collapsible__body > :first-child { margin-top: 22px; }
-    .admin-bookings-card { order: -1; }
+    .admin-bookings-card { order: 0; }
     .admin-section-heading,
     .admin-export-row {
       display: flex;
@@ -64,6 +67,375 @@
     .admin-section-heading h2,
     .admin-export-row p { margin: 0; }
     .admin-export-button { flex: 0 0 auto; }
+
+    .admin-slot-fill {
+      display: grid;
+      gap: 5px;
+      min-width: 92px;
+    }
+    .admin-slot-fill__value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .admin-slot-fill__value strong { color: #173e4b; font-size: .92rem; }
+    .admin-slot-fill__value span { color: #64757b; font-size: .78rem; font-weight: 800; }
+    .admin-slot-fill__track {
+      display: block;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5ecee;
+    }
+    .admin-slot-fill__track > span {
+      display: block;
+      width: var(--slot-fill, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: #2f8f6b;
+    }
+    .admin-slot-fill.is-medium .admin-slot-fill__track > span { background: #d59a2f; }
+    .admin-slot-fill.is-high .admin-slot-fill__track > span { background: #cf6b2c; }
+    .admin-slot-fill.is-full .admin-slot-fill__track > span { background: #b42318; }
+
+    .admin-matrix__cell--fill {
+      --matrix-cell-color: #2f8f6b;
+      background: #f3faf6;
+      min-width: 112px;
+    }
+    .admin-matrix__cell--fill.is-medium {
+      --matrix-cell-color: #d59a2f;
+      background: #fff9ec;
+    }
+    .admin-matrix__cell--fill.is-high {
+      --matrix-cell-color: #cf6b2c;
+      background: #fff3eb;
+    }
+    .admin-matrix__cell--fill.is-full {
+      --matrix-cell-color: #b42318;
+      background: #fff0ee;
+      color: inherit;
+    }
+    .admin-matrix__cell--fill.is-empty {
+      --matrix-cell-color: #aab5b9;
+      background: #f5f6f6;
+      color: #777;
+    }
+    .admin-matrix-cell-fill {
+      display: grid;
+      gap: 5px;
+      min-width: 94px;
+    }
+    .admin-matrix-cell-fill__value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .admin-matrix-cell-fill__value strong {
+      color: #173e4b;
+      font-size: .9rem;
+    }
+    .admin-matrix-cell-fill__value span {
+      color: #64757b;
+      font-size: .74rem;
+      font-weight: 800;
+    }
+    .admin-matrix-cell-fill__track {
+      display: block;
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(16,34,53,.11);
+    }
+    .admin-matrix-cell-fill__track > span {
+      display: block;
+      width: var(--matrix-cell-fill, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--matrix-cell-color);
+    }
+    .admin-matrix-cell-fill small {
+      color: #65777e;
+      font-size: .72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .admin-society-report { display: grid; gap: 14px; }
+    .admin-society-card {
+      padding: 18px;
+      border: 1px solid #dfe8ea;
+      border-radius: 16px;
+      background: #fff;
+    }
+    .admin-society-card__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e7edef;
+    }
+    .admin-society-card__head h3 { margin: 0; color: #173e4b; font-size: 1.2rem; }
+    .admin-society-card__stats { display: flex; gap: 7px; flex-wrap: wrap; }
+    .admin-society-card__stat {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #edf6f8;
+      color: #0b6478;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+    .admin-society-card__contacts { margin: 12px 0 0; color: #52666c; font-size: .9rem; line-height: 1.5; }
+    .admin-society-bookings { display: grid; gap: 8px; margin-top: 14px; }
+    .admin-society-booking {
+      display: grid;
+      grid-template-columns: minmax(150px, .7fr) minmax(210px, 1fr) minmax(0, 1.6fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: #f7fafb;
+      color: #334b52;
+      font-size: .88rem;
+      line-height: 1.4;
+    }
+    .admin-society-booking strong { color: #173e4b; }
+
+    .admin-report-nav {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 22px 0 18px;
+      padding: 5px;
+      border-radius: 14px;
+      background: #edf3f5;
+    }
+    .admin-report-tab {
+      appearance: none;
+      min-height: 44px;
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: #52666c;
+      font: inherit;
+      font-size: .9rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .admin-report-tab:hover,
+    .admin-report-tab:focus-visible { color: #0b6478; background: rgba(255,255,255,.72); }
+    .admin-report-tab.is-active {
+      border-color: #d5e2e5;
+      background: #fff;
+      color: #173e4b;
+      box-shadow: 0 2px 8px rgba(16,34,53,.08);
+    }
+    .admin-report-tab:focus-visible { outline: 2px solid #0b6478; outline-offset: 2px; }
+    .admin-report-panel[hidden] { display: none !important; }
+    .admin-report-panel { min-width: 0; }
+    .admin-report-panel__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .admin-report-panel__copy { max-width: 720px; }
+    .admin-report-panel__copy h3 { margin: 0 0 5px; color: #173e4b; font-size: 1.1rem; }
+    .admin-report-panel__copy p { margin: 0; }
+    .admin-report-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .admin-report-filter {
+      display: grid;
+      grid-template-columns: minmax(220px, 360px);
+      margin: 0 0 16px;
+    }
+    .admin-report-filter label {
+      display: grid;
+      gap: 6px;
+      color: #52666c;
+      font-size: .86rem;
+      font-weight: 800;
+    }
+    .admin-report-filter select {
+      min-height: 42px;
+      border: 1px solid #bccbd0;
+      border-radius: 9px;
+      padding: 7px 10px;
+      background: #fff;
+      color: #173e4b;
+      font: inherit;
+    }
+
+    .admin-reports-summary {
+      flex-wrap: wrap;
+    }
+    .admin-reports-summary__title {
+      flex: 0 0 auto;
+      font-size: 1.02rem;
+    }
+    .admin-report-overview {
+      flex: 1 1 560px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+    .admin-report-overview__label {
+      color: #64757b;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .admin-report-overview__item {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #edf6f8;
+      color: #52666c;
+      font-size: .74rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+    .admin-report-overview__item strong {
+      color: #0b6478;
+      font-size: .86rem;
+    }
+    .admin-report-overview__item--societies {
+      background: #e7f1ec;
+      color: #365d4b;
+    }
+    .admin-report-overview__item--societies strong { color: #245d38; }
+
+    .admin-slot-report { display: grid; gap: 14px; }
+    .admin-slot-card {
+      --slot-report-color: #2f8f6b;
+      --slot-report-bg: #f6fbf8;
+      --slot-report-border: #cfe4d8;
+      padding: 18px;
+      border: 1px solid var(--slot-report-border);
+      border-left: 5px solid var(--slot-report-color);
+      border-radius: 16px;
+      background: var(--slot-report-bg);
+    }
+    .admin-slot-card.is-medium {
+      --slot-report-color: #b87b16;
+      --slot-report-bg: #fffaf0;
+      --slot-report-border: #ead6aa;
+    }
+    .admin-slot-card.is-high {
+      --slot-report-color: #c65f24;
+      --slot-report-bg: #fff5ed;
+      --slot-report-border: #edc7ae;
+    }
+    .admin-slot-card.is-full {
+      --slot-report-color: #b42318;
+      --slot-report-bg: #fff1f1;
+      --slot-report-border: #e7b5b1;
+    }
+    .admin-slot-card__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e7edef;
+    }
+    .admin-slot-card__head h3 { margin: 0; color: #173e4b; font-size: 1.2rem; }
+    .admin-slot-card__stats { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .admin-slot-card__stat {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.78);
+      color: #0b6478;
+      font-size: .78rem;
+      font-weight: 800;
+    }
+    .admin-slot-card__occupancy {
+      display: grid;
+      gap: 4px;
+      min-width: 128px;
+      padding: 6px 9px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.9);
+      box-shadow: inset 0 0 0 1px rgba(16,34,53,.07);
+    }
+    .admin-slot-card__occupancy-value {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      color: #52666c;
+      font-size: .76rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .admin-slot-card__occupancy-value strong {
+      color: var(--slot-report-color);
+      font-size: .9rem;
+    }
+    .admin-slot-card__occupancy-track {
+      display: block;
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e3e9eb;
+    }
+    .admin-slot-card__occupancy-track > span {
+      display: block;
+      width: var(--slot-report-fill, 0%);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--slot-report-color);
+    }
+    .admin-slot-bookings { display: grid; gap: 8px; margin-top: 14px; }
+    .admin-slot-booking {
+      display: grid;
+      grid-template-columns: minmax(180px, .9fr) minmax(180px, 1fr) minmax(0, 1.7fr);
+      gap: 12px;
+      align-items: start;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: #f7fafb;
+      color: #334b52;
+      font-size: .88rem;
+      line-height: 1.4;
+    }
+    .admin-slot-booking strong { color: #173e4b; }
+
+    .admin-settings-group + .admin-settings-group {
+      margin-top: 28px;
+      padding-top: 26px;
+      border-top: 1px solid #e2e9eb;
+    }
+    .admin-settings-group h2 { margin-top: 0; }
+
+    @media (max-width: 760px) {
+      .admin-report-nav { grid-template-columns: 1fr; }
+      .admin-reports-summary__title { order: 1; }
+      .admin-reports-summary::after { order: 2; margin-left: auto; }
+      .admin-report-overview {
+        order: 3;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+      .admin-society-booking,
+      .admin-slot-booking { grid-template-columns: 1fr; gap: 4px; }
+    }
 
     @media (max-width: 640px) {
       .admin-collapsible > summary {
@@ -83,11 +455,23 @@
       .admin-section-heading,
       .admin-export-row { align-items: stretch; }
       .admin-export-button { min-height: 44px; }
+      .admin-report-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .admin-report-actions .admin-export-button {
+        width: auto;
+        min-width: 0;
+      }
+      .admin-report-filter { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 420px) {
       .admin-booking__actions { grid-template-columns: 1fr; }
       .admin-export-button { width: 100%; }
+      .admin-report-actions .admin-export-button { width: auto; }
     }
   </style>
 </head>
@@ -110,7 +494,7 @@
         </form>
       </section>
 
-      <section class="admin-dashboard" data-admin-dashboard hidden>
+      <section class="admin-dashboard" data-admin-dashboard hidden inert aria-hidden="true">
         <div class="admin-toolbar">
           <div>
             <p class="eyebrow">Organizzazione</p>
@@ -120,10 +504,76 @@
           <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
         </div>
 
-        <section class="booking-card admin-bookings-card">
-          <div class="admin-section-heading">
-            <h2>Prenotazioni</h2>
+        <details class="booking-card admin-collapsible admin-reports-card" data-admin-reports-menu open>
+          <summary class="admin-reports-summary">
+            <span class="admin-reports-summary__title">Report</span>
+            <span class="admin-report-overview" data-admin-report-overview aria-live="polite"></span>
+          </summary>
+          <div class="admin-collapsible__body">
+            <div class="admin-report-nav" role="tablist" aria-label="Report prenotazioni">
+              <button class="admin-report-tab is-active" type="button" role="tab" aria-selected="true" data-report-target="occupancy">Occupazione slot</button>
+              <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="society">Report per società</button>
+              <button class="admin-report-tab" type="button" role="tab" aria-selected="false" data-report-target="slot">Report per slot</button>
+            </div>
+
+            <section class="admin-report-panel" data-report-panel="occupancy">
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Occupazione slot</h3>
+                  <p class="booking-card__intro">Riempimento complessivo dello slot e dettaglio prenotate / barche attive censite per cantiere e tipo.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-occupancy-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-matrix-wrap" data-admin-matrix></div>
+            </section>
+
+            <section class="admin-report-panel" data-report-panel="society" hidden>
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Report per società</h3>
+                  <p class="booking-card__intro">Una scheda riepilogativa per ogni società con prenotazioni, slot, referenti e barche assegnate.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-society-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-society-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-report-filter">
+                <label for="reportSocietyFilter">Società
+                  <select id="reportSocietyFilter" data-report-society-filter>
+                    <option value="">Tutte le società</option>
+                  </select>
+                </label>
+              </div>
+              <div class="admin-society-report" data-admin-society-report></div>
+            </section>
+
+            <section class="admin-report-panel" data-report-panel="slot" hidden>
+              <div class="admin-report-panel__head">
+                <div class="admin-report-panel__copy">
+                  <h3>Report per slot</h3>
+                  <p class="booking-card__intro">Riepilogo operativo di ogni fascia oraria con società, referenti, prenotazioni e barche assegnate.</p>
+                </div>
+                <div class="admin-report-actions">
+                  <button class="admin-button admin-export-button" data-export-slot-pdf type="button">PDF</button>
+                  <button class="admin-button admin-export-button" data-export-slot-xlsx type="button">Excel</button>
+                </div>
+              </div>
+              <div class="admin-slot-report" data-admin-slot-report></div>
+            </section>
+          </div>
+        </details>
+
+        <details class="booking-card admin-collapsible admin-bookings-card">
+          <summary>Prenotazioni</summary>
+          <div class="admin-collapsible__body">
+            <div class="admin-section-heading">
+              <h2>Elenco prenotazioni</h2>
             <button class="admin-button admin-export-button" data-export-bookings-pdf type="button">Esporta PDF</button>
+            <button class="admin-button admin-export-button" data-export-bookings-xlsx type="button">Esporta Excel</button>
           </div>
           <div class="admin-filters" style="margin-top:18px">
             <div class="booking-field"><label for="filterSociety">Società</label><input id="filterSociety" data-filter-society placeholder="Cerca società"></div>
@@ -132,66 +582,56 @@
             <div class="booking-field"><label for="filterType">Tipo barca</label><select id="filterType" data-filter-type><option value="">Tutti</option><option>C1x</option><option>C2x</option><option>C4x+</option></select></div>
           </div>
           <div class="admin-bookings" data-admin-bookings style="margin-top:18px"></div>
-        </section>
+          </div>
+        </details>
 
         <div class="admin-secondary-sections" aria-label="Altre funzioni amministrative">
           <details class="booking-card admin-collapsible">
-            <summary>Occupazione per slot</summary>
+            <summary>Impostazioni</summary>
             <div class="admin-collapsible__body">
-              <div class="admin-export-row">
-                <p class="booking-card__intro">Valori nel formato prenotate / barche attive censite.</p>
-                <button class="admin-button admin-export-button" data-export-matrix-pdf type="button">Esporta PDF</button>
-              </div>
-              <div class="admin-matrix-wrap" data-admin-matrix style="margin-top:18px"></div>
-            </div>
-          </details>
-
-          <details class="booking-card admin-collapsible">
-            <summary>Impostazioni prenotazioni</summary>
-            <div class="admin-collapsible__body">
-              <div class="admin-settings-card">
-                <div>
-                  <h2>Chiusura prenotazioni</h2>
-                  <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
-                  <div class="cutoff-state" data-cutoff-state></div>
+              <section class="admin-settings-group">
+                <div class="admin-settings-card">
+                  <div>
+                    <h2>Chiusura prenotazioni</h2>
+                    <p class="booking-card__intro">Dopo questo termine gli utenti potranno consultare la prenotazione tramite codice, ma non crearla o modificarla. L’area admin resta operativa.</p>
+                    <div class="cutoff-state" data-cutoff-state></div>
+                  </div>
+                  <form class="cutoff-form" data-cutoff-form>
+                    <div class="booking-field">
+                      <label for="cutoffLocal">Data e ora di chiusura</label>
+                      <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
+                      <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                    </div>
+                    <div class="booking-actions">
+                      <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
+                      <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                    </div>
+                  </form>
                 </div>
-                <form class="cutoff-form" data-cutoff-form>
+              </section>
+
+              <section class="admin-settings-group">
+                <h2>Anagrafica barche</h2>
+                <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
+
+                <form class="boat-registry-form" data-boat-form>
                   <div class="booking-field">
-                    <label for="cutoffLocal">Data e ora di chiusura</label>
-                    <input id="cutoffLocal" name="cutoffLocal" type="datetime-local">
-                    <span class="booking-help">Orario di Pesaro (Europe/Rome).</span>
+                    <label for="boatNumber">Numero barca</label>
+                    <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
                   </div>
-                  <div class="booking-actions">
-                    <button class="admin-button admin-button--primary" type="submit">Salva termine</button>
-                    <button class="admin-button" type="button" data-clear-cutoff>Rimuovi scadenza</button>
+                  <div class="booking-field">
+                    <label for="boatBuilder">Cantiere</label>
+                    <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
                   </div>
+                  <div class="booking-field">
+                    <label for="boatType">Tipo</label>
+                    <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
+                  </div>
+                  <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
                 </form>
-              </div>
-            </div>
-          </details>
 
-          <details class="booking-card admin-collapsible">
-            <summary>Anagrafica barche</summary>
-            <div class="admin-collapsible__body">
-              <p class="booking-card__intro">Il numero identifica la barca fisica e, una volta inserito, non può essere modificato. Le disponibilità degli slot sono calcolate automaticamente sulle barche attive.</p>
-
-              <form class="boat-registry-form" data-boat-form>
-                <div class="booking-field">
-                  <label for="boatNumber">Numero barca</label>
-                  <input id="boatNumber" name="number" maxlength="40" placeholder="Es. 101" required>
-                </div>
-                <div class="booking-field">
-                  <label for="boatBuilder">Cantiere</label>
-                  <select id="boatBuilder" name="builder" required><option value="">Scegli</option><option>LOVA</option><option>Swift</option></select>
-                </div>
-                <div class="booking-field">
-                  <label for="boatType">Tipo</label>
-                  <select id="boatType" name="boatType" required><option value="">Scegli</option><option>C1x</option><option>C2x</option><option>C4x+</option></select>
-                </div>
-                <button class="admin-button admin-button--primary" type="submit">Aggiungi barca</button>
-              </form>
-
-              <div data-boats-table></div>
+                <div data-boats-table></div>
+              </section>
             </div>
           </details>
         </div>
@@ -232,5 +672,7 @@
   <script src="boat-booking-admin.js" defer></script>
   <script src="boat-booking-admin-list-ux.js" defer></script>
   <script src="boat-booking-pdf-export.js" defer></script>
+  <script src="boat-booking-admin-reports.js" defer></script>
+  <script src="boat-booking-report-menu.js" defer></script>
 </body>
 </html>

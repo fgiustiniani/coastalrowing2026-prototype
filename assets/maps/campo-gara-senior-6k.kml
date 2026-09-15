@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>U19/U23/Senior 6 km</name>
+    <Placemark><name>Boa 1</name><Point><coordinates>12.91178571531418,43.92507837794537,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 2</name><Point><coordinates>12.92103361027470,43.91766070533492,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 3</name><Point><coordinates>12.92850608896370,43.91545809289805,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 4</name><Point><coordinates>12.93205797204911,43.90851386216023,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 5</name><Point><coordinates>12.93879039896511,43.91315207107629,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 6</name><Point><coordinates>12.92638464970508,43.92151183862977,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 7</name><Point><coordinates>12.92019546296618,43.92279427577850,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa 8</name><Point><coordinates>12.91468305031462,43.92730915081520,0</coordinates></Point></Placemark>
+    <Placemark><name>Boa riferimento partenza/arrivo</name><description>Boa di riferimento utilizzata per definire le linee immaginarie di partenza e arrivo insieme alle rispettive boe.</description><Point><coordinates>12.91334189037056,43.92624205850774,0</coordinates></Point></Placemark>
+    <Placemark><name>U19/U23/Senior 6 km</name><Style><LineStyle><color>ff005c83</color><width>4</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>12.91287328688802,43.92571957393033,0 12.92079783806704,43.91719877068466,0 12.92820944833935,43.91531504064639,0 12.93215694591383,43.90825531343765,0 12.93893600423918,43.91314203814718,0 12.93323266787790,43.91716153488071,0 12.92652375798429,43.92183709339885,0 12.92022476432652,43.92297602536480,0 12.91446686256807,43.92721186443011,0</coordinates></LineString></Placemark>
+  </Document>
+</kml>
