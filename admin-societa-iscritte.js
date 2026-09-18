@@ -19,6 +19,7 @@
   const regionFilter = document.querySelector('[data-society-filter-region]');
   const textFilter = document.querySelector('[data-society-filter-text]');
   const statusFilter = document.querySelector('[data-society-filter-status]');
+  const paymentFilter = document.querySelector('[data-society-filter-payment]');
   const resetFilters = document.querySelector('[data-society-reset-filters]');
   const unmatched = document.querySelector('[data-society-unmatched]');
   const unmatchedCount = document.querySelector('[data-society-unmatched-count]');
@@ -130,15 +131,27 @@
     ].join(' ').toLocaleLowerCase('it-IT');
   }
 
+  function matchesPaymentFilter(row, filterValue) {
+    if (!filterValue) return true;
+    const payment = paymentState(row.registration, row.status);
+    if (filterValue === 'paid') return payment.className === 'is-paid';
+    if (filterValue === 'due') return payment.className === 'is-due';
+    if (filterValue === 'overpaid') return payment.className === 'is-overpaid';
+    if (filterValue === 'none') return !payment.label;
+    return true;
+  }
+
   function visibleRows() {
     if (!data?.rows) return [];
     const region = regionFilter?.value || '';
     const status = statusFilter?.value || '';
+    const payment = paymentFilter?.value || '';
     const search = (textFilter?.value || '').trim().toLocaleLowerCase('it-IT');
 
     return data.rows
       .filter((row) => !region || row.region === region)
       .filter((row) => !status || row.status === status)
+      .filter((row) => matchesPaymentFilter(row, payment))
       .filter((row) => !search || registrationSearchText(row).includes(search))
       .sort((a, b) =>
         String(a.region || '').localeCompare(String(b.region || ''), 'it-IT', { sensitivity: 'base' }) ||
@@ -205,7 +218,8 @@
 
   function renderTable() {
     const rows = visibleRows();
-    if (visibleCount) visibleCount.textContent = `${rows.length} società visualizzate su ${data?.rows?.length || 0}`;
+    const registeredCount = rows.filter((row) => row.status === 'registered').length;
+    if (visibleCount) visibleCount.textContent = `${registeredCount} iscritte su ${rows.length}`;
     if (!rows.length) {
       tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
       window.societyAdmin?.notify();
@@ -327,11 +341,12 @@
     button.textContent = expanded ? 'Nascondi dettagli' : 'Mostra dettagli';
   });
 
-  [regionFilter, statusFilter].forEach((node) => node?.addEventListener('change', renderTable));
+  [regionFilter, statusFilter, paymentFilter].forEach((node) => node?.addEventListener('change', renderTable));
   textFilter?.addEventListener('input', renderTable);
   resetFilters?.addEventListener('click', () => {
     if (regionFilter) regionFilter.value = '';
     if (statusFilter) statusFilter.value = '';
+    if (paymentFilter) paymentFilter.value = '';
     if (textFilter) textFilter.value = '';
     renderTable();
   });
@@ -346,6 +361,15 @@
       const parts = [];
       if (regionFilter?.value) parts.push(`Regione: ${regionFilter.value}`);
       if (statusFilter?.value) parts.push(`Stato: ${statusLabel(statusFilter.value)}`);
+      if (paymentFilter?.value) {
+        const paymentLabels = {
+          paid: 'OK',
+          due: 'Da saldare',
+          overpaid: 'Da verificare',
+          none: 'Senza stato'
+        };
+        parts.push(`Pagamento: ${paymentLabels[paymentFilter.value] || paymentFilter.value}`);
+      }
       if (textFilter?.value?.trim()) parts.push(`Ricerca: ${textFilter.value.trim()}`);
       return parts.length ? parts.join(' · ') : 'Nessun filtro applicato';
     },

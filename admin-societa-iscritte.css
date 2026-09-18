@@ -176,7 +176,7 @@
 
 .society-filters {
   display: grid;
-  grid-template-columns: minmax(170px, .7fr) minmax(260px, 1.35fr) minmax(170px, .7fr) auto;
+  grid-template-columns: minmax(150px, .7fr) minmax(240px, 1.35fr) minmax(150px, .7fr) minmax(170px, .8fr) auto;
   gap: 12px;
   align-items: end;
   padding: 15px;
