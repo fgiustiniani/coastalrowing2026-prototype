@@ -536,13 +536,13 @@
       const wrapped = new Map();
       let maxLines = 1;
       const tableFontSize = 7.5;
-      const lineHeight = 9.5;
+      const lineHeight = 8.5;
       columns.forEach((col) => {
         const lines = wrapText(values[col.key], col.width - 7, tableFontSize).slice(0, col.key === 'name' ? 3 : 2);
         wrapped.set(col.key, lines);
         maxLines = Math.max(maxLines, lines.length);
       });
-      const rowHeight = Math.max(23, 8 + maxLines * lineHeight);
+      const rowHeight = Math.max(20, 5.5 + maxLines * lineHeight);
       if (y + rowHeight > pdf.height - 24) drawHeader();
 
       let x = margin;
@@ -555,7 +555,7 @@
         }
         const lines = wrapped.get(col.key) || [''];
         lines.forEach((line, lineIndex) => {
-          pdf.text(page, line, x + 3.5, y + 12.5 + lineIndex * lineHeight, tableFontSize, col.key === 'name' && lineIndex === 0);
+          pdf.text(page, line, x + 3.5, y + 10.5 + lineIndex * lineHeight, tableFontSize, col.key === 'name' && lineIndex === 0);
         });
         x += col.width;
       });
