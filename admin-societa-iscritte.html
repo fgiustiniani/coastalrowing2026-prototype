@@ -69,6 +69,23 @@
 
         <section class="society-kpis" data-society-kpis aria-label="Riepilogo iscrizioni"></section>
 
+        <section class="booking-card society-chart-card">
+          <div class="society-chart-card__head">
+            <div>
+              <h2>Iscrizioni per regione</h2>
+              <p class="booking-card__intro">Confronto tra società iscritte ai Campionati e totale delle società FIC 2026 per regione.</p>
+            </div>
+            <button class="admin-button" data-society-chart-export type="button">Esporta grafico PNG</button>
+          </div>
+          <div class="society-chart-legend" aria-hidden="true">
+            <span><i class="society-chart-legend__swatch is-registered"></i> Iscritte</span>
+            <span><i class="society-chart-legend__swatch is-total"></i> Totale società</span>
+          </div>
+          <div class="society-chart-scroll">
+            <div class="society-region-chart" data-society-region-chart aria-label="Grafico iscrizioni per regione"></div>
+          </div>
+        </section>
+
         <section class="booking-card society-controls">
           <div class="society-controls__head">
             <div>
@@ -150,6 +167,7 @@
   </div>
 
   <script src="admin-societa-iscritte.js" defer></script>
+  <script src="admin-societa-iscritte-chart.js" defer></script>
   <script src="admin-societa-iscritte-export.js" defer></script>
 </body>
 </html>

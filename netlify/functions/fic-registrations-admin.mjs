@@ -7,6 +7,12 @@ const EVENT_URLS = [
   `https://canottaggio.net/${EVENT_PATH}`
 ];
 
+const MANUAL_MATCHES_BY_FISCAL_CODE = new Map([
+  ['80008900393', '060054'], // RAVENNA SC -> Canottieri Ravenna 1873
+  ['00758160329', '050005'], // GINNASTICATS -> Società Ginnastica Triestina - Nautica
+  ['90024400088', '070077']  // SANTOSTEFANO -> Canottieri Santo Stefano al Mare
+]);
+
 const STOPWORDS = new Set([
   'ASD','SSD','SSDRL','SRL','ARL','ASS','ASSOCIAZIONE','SPORTIVA','SPORTIVO','DILETTANTISTICA',
   'DILETTANTISTICO','SOCIETA','SOCIETÀ','CIRCOLO','CIRC','CANOTTIERI','CANOTTAGGIO','CAN',
@@ -174,6 +180,10 @@ function tokenScore(master, registration, tokenFrequency) {
   return score;
 }
 
+function normalizedFiscalCode(value) {
+  return String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 function matchRegistrations(registrations) {
   const tokenFrequency = new Map();
   for (const society of FIC_SOCIETIES_2026) {
@@ -182,8 +192,27 @@ function matchRegistrations(registrations) {
     }
   }
 
+  const societyIndexByCode = new Map(
+    FIC_SOCIETIES_2026.map((society, index) => [String(society.code || ''), index])
+  );
+  const usedSocieties = new Set();
+  const registrationToSociety = new Map();
+
+  // Gli abbinamenti confermati manualmente hanno priorità sul matcher fuzzy.
+  registrations.forEach((registration, registrationIndex) => {
+    const fiscalCode = normalizedFiscalCode(registration.fiscalCode);
+    const societyCode = MANUAL_MATCHES_BY_FISCAL_CODE.get(fiscalCode);
+    const societyIndex = societyIndexByCode.get(societyCode);
+    if (societyCode && Number.isInteger(societyIndex) && !usedSocieties.has(societyIndex)) {
+      registrationToSociety.set(registrationIndex, { societyIndex, score: 1 });
+      usedSocieties.add(societyIndex);
+    }
+  });
+
   const candidates = [];
   registrations.forEach((registration, registrationIndex) => {
+    if (registrationToSociety.has(registrationIndex)) return;
+
     const ranked = FIC_SOCIETIES_2026
       .map((society, societyIndex) => ({
         societyIndex,
@@ -199,8 +228,6 @@ function matchRegistrations(registrations) {
 
   // Assegna prima le corrispondenze più nette, evitando che una società venga associata due volte.
   candidates.sort((a, b) => (b.ranked[0]?.score || 0) - (a.ranked[0]?.score || 0));
-  const usedSocieties = new Set();
-  const registrationToSociety = new Map();
   const diagnostics = [];
 
   for (const candidate of candidates) {
