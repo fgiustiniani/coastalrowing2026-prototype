@@ -254,7 +254,10 @@
   function renderTable() {
     const rows = visibleRows();
     const registeredCount = rows.filter((row) => row.status === 'registered').length;
-    if (visibleCount) visibleCount.textContent = `${registeredCount} iscritte su ${rows.length}`;
+    const registered2025Count = rows.filter((row) => row.registered2025).length;
+    if (visibleCount) {
+      visibleCount.textContent = `${registeredCount} iscritte su ${rows.length} (${registered2025Count} nel 2025)`;
+    }
     if (!rows.length) {
       tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
       if (tableScrollTop) tableScrollTop.hidden = true;

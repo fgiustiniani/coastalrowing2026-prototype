@@ -297,6 +297,10 @@
   background: #b7c8ce;
 }
 
+.society-chart-legend__swatch.is-2025 {
+  background: #497aa3;
+}
+
 .society-chart-scroll {
   width: 100%;
   overflow-x: auto;

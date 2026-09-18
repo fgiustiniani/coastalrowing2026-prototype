@@ -14,9 +14,10 @@
 
     rows.forEach((row) => {
       const region = String(row.region || 'Non indicata');
-      const current = grouped.get(region) || { region, total: 0, registered: 0 };
+      const current = grouped.get(region) || { region, total: 0, registered: 0, registered2025: 0 };
       current.total += 1;
       if (row.status === 'registered') current.registered += 1;
+      if (row.registered2025) current.registered2025 += 1;
       grouped.set(region, current);
     });
 
@@ -44,15 +45,15 @@
     const margin = { top: 28, right: 24, bottom: 150, left: 48 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
-    const maxValue = Math.max(1, ...rows.map((row) => row.total));
+    const maxValue = Math.max(1, ...rows.flatMap((row) => [row.total, row.registered2025]));
     const yMax = Math.ceil(maxValue / 5) * 5 || 5;
     const groupWidth = plotWidth / rows.length;
-    const barWidth = Math.min(20, groupWidth * 0.28);
+    const barWidth = Math.min(22, groupWidth * 0.28);
 
     const svg = svgEl('svg', {
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': 'Società iscritte e totale società FIC per regione'
+      'aria-label': 'Confronto per regione tra iscritte 2026, totale società FIC e iscritte 2025'
     });
 
     svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
@@ -74,53 +75,105 @@
 
     rows.forEach((row, index) => {
       const center = margin.left + groupWidth * index + groupWidth / 2;
+      const currentX = center - barWidth - 3;
+      const historicX = center + 3;
       const registeredHeight = (row.registered / yMax) * plotHeight;
       const totalHeight = (row.total / yMax) * plotHeight;
+      const remainingHeight = Math.max(0, totalHeight - registeredHeight);
+      const historicHeight = (row.registered2025 / yMax) * plotHeight;
       const baseY = margin.top + plotHeight;
 
-      svg.appendChild(svgEl('rect', {
-        x: center - barWidth - 2,
-        y: baseY - registeredHeight,
-        width: barWidth,
-        height: registeredHeight,
-        rx: 3,
-        fill: '#2f8f6b'
-      }));
+      // Colonna 2026 impilata: iscritte + parte restante fino al totale FIC.
+      if (row.registered > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: currentX,
+          y: baseY - registeredHeight,
+          width: barWidth,
+          height: registeredHeight,
+          rx: remainingHeight > 0 ? 0 : 3,
+          fill: '#2f8f6b'
+        }));
+      }
 
-      svg.appendChild(svgEl('rect', {
-        x: center + 2,
-        y: baseY - totalHeight,
-        width: barWidth,
-        height: totalHeight,
-        rx: 3,
-        fill: '#b7c8ce'
-      }));
+      if (remainingHeight > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: currentX,
+          y: baseY - totalHeight,
+          width: barWidth,
+          height: remainingHeight,
+          rx: 3,
+          fill: '#b7c8ce'
+        }));
+      }
+
+      // Colonna separata: società iscritte nel 2025.
+      if (row.registered2025 > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: historicX,
+          y: baseY - historicHeight,
+          width: barWidth,
+          height: historicHeight,
+          rx: 3,
+          fill: '#497aa3'
+        }));
+      }
+
+      if (row.registered > 0) {
+        svg.appendChild(svgEl('text', {
+          x: currentX + barWidth / 2,
+          y: registeredHeight >= 15 ? baseY - registeredHeight / 2 + 3 : baseY - registeredHeight - 4,
+          'text-anchor': 'middle',
+          fill: registeredHeight >= 15 ? '#ffffff' : '#245d38',
+          'font-size': 9.5,
+          'font-weight': 800
+        }, String(row.registered)));
+      }
 
       svg.appendChild(svgEl('text', {
-        x: center - barWidth / 2 - 2,
-        y: Math.max(margin.top + 11, baseY - registeredHeight - 6),
-        'text-anchor': 'middle',
-        fill: '#245d38',
-        'font-size': 10,
-        'font-weight': 800
-      }, String(row.registered)));
-
-      svg.appendChild(svgEl('text', {
-        x: center + barWidth / 2 + 2,
-        y: Math.max(margin.top + 11, baseY - totalHeight - 6),
+        x: currentX + barWidth / 2,
+        y: Math.max(margin.top + 11, baseY - totalHeight - 7),
         'text-anchor': 'middle',
         fill: '#52666c',
         'font-size': 10,
         'font-weight': 800
       }, String(row.total)));
 
+      if (row.registered2025 > 0) {
+        svg.appendChild(svgEl('text', {
+          x: historicX + barWidth / 2,
+          y: Math.max(margin.top + 11, baseY - historicHeight - 7),
+          'text-anchor': 'middle',
+          fill: '#365f80',
+          'font-size': 10,
+          'font-weight': 800
+        }, String(row.registered2025)));
+      }
+
+      svg.appendChild(svgEl('text', {
+        x: currentX + barWidth / 2,
+        y: baseY + 14,
+        'text-anchor': 'middle',
+        fill: '#52666c',
+        'font-size': 8.5,
+        'font-weight': 700
+      }, '2026'));
+
+      svg.appendChild(svgEl('text', {
+        x: historicX + barWidth / 2,
+        y: baseY + 14,
+        'text-anchor': 'middle',
+        fill: '#52666c',
+        'font-size': 8.5,
+        'font-weight': 700
+      }, '2025'));
+
       svg.appendChild(svgEl('text', {
         x: center,
-        y: baseY + 18,
+        y: baseY + 34,
         'text-anchor': 'end',
         fill: '#405a63',
         'font-size': 10.5,
-        transform: `rotate(-48 ${center} ${baseY + 18})`
+        transform: `rotate(-48 ${center} ${baseY + 34})`
       }, row.region));
     });
 
