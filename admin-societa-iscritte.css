@@ -350,6 +350,62 @@
   color: #7f7162;
 }
 
+.society-export-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  color: #173e4b;
+  box-shadow: 0 24px 70px rgba(14, 43, 54, .28);
+}
+
+.society-export-dialog::backdrop {
+  background: rgba(18, 43, 51, .52);
+  backdrop-filter: blur(2px);
+}
+
+.society-export-dialog__content {
+  padding: 26px;
+}
+
+.society-export-dialog__content h2 {
+  margin: 4px 0 8px;
+}
+
+.society-export-dialog__content > p:not(.eyebrow) {
+  margin: 0;
+  color: #5b6f76;
+}
+
+.society-export-dialog__choices {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.society-export-dialog__choices .admin-button {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.society-export-dialog__cancel {
+  border: 0;
+  background: transparent;
+  color: #61747b;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+.society-export-dialog__cancel:hover {
+  color: #173e4b;
+  text-decoration: underline;
+}
+
 @media (max-width: 1180px) {
   .society-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -111,6 +111,19 @@
           <p>Queste righe risultano presenti nel portale FIC ma non sono state abbinate automaticamente con sufficiente sicurezza all’anagrafica 2026. Non vengono conteggiate come società abbinate finché il nome non è riconosciuto con certezza.</p>
           <div data-society-unmatched-list></div>
         </details>
+
+        <dialog class="society-export-dialog" data-society-export-dialog aria-labelledby="societyExportDialogTitle">
+          <div class="society-export-dialog__content">
+            <p class="eyebrow">Esportazione</p>
+            <h2 id="societyExportDialogTitle" data-society-export-dialog-title>Scegli i dati da esportare</h2>
+            <p>Vuoi includere anche gli importi economici nell’esportazione?</p>
+            <div class="society-export-dialog__choices">
+              <button class="admin-button admin-button--primary" type="button" data-society-export-choice="with-financial">Con dati economici</button>
+              <button class="admin-button" type="button" data-society-export-choice="without-financial">Senza dati economici</button>
+              <button class="society-export-dialog__cancel" type="button" data-society-export-cancel>Annulla</button>
+            </div>
+          </div>
+        </dialog>
       </section>
     </main>
 

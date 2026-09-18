@@ -1,6 +1,10 @@
 (() => {
   const pdfButton = document.querySelector('[data-society-export-pdf]');
   const xlsxButton = document.querySelector('[data-society-export-xlsx]');
+  const exportDialog = document.querySelector('[data-society-export-dialog]');
+  const exportDialogTitle = document.querySelector('[data-society-export-dialog-title]');
+  const exportChoices = document.querySelectorAll('[data-society-export-choice]');
+  const exportCancel = document.querySelector('[data-society-export-cancel]');
   if (!pdfButton && !xlsxButton) return;
 
   function cleanText(value) {
@@ -77,9 +81,9 @@
     return name;
   }
 
-  function excelRows(rows) {
+  function excelRows(rows, includeFinancial) {
     const sourceUrl = window.societyAdmin?.getData?.()?.sourceUrl || '';
-    const output = [[
+    const header = [
       'Stato iscrizione',
       'Regione',
       'Comitato FIC',
@@ -95,18 +99,19 @@
       'Tipo pagamento',
       'Data contabile',
       'Data registrazione pagamento',
-      'Data registrazione verifica',
-      'Importo dovuto',
-      'Noleggio barche',
-      'Noleggio remi',
-      'Importo pagato',
-      'Confidenza abbinamento',
-      'Fonte FIC'
-    ]];
+      'Data registrazione verifica'
+    ];
+
+    if (includeFinancial) {
+      header.push('Importo dovuto', 'Noleggio barche', 'Noleggio remi', 'Importo pagato');
+    }
+    header.push('Confidenza abbinamento', 'Fonte FIC');
+
+    const output = [header];
 
     rows.forEach((row) => {
       const r = row.registration;
-      output.push([
+      const values = [
         window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
         row.region || '',
         row.committee || '',
@@ -122,35 +127,46 @@
         r?.paymentType || '',
         r?.accountingDate || '',
         r?.paymentRegistrationDate || '',
-        r?.verificationDate || '',
-        r ? Number(r.amountDue || 0) : '',
-        r ? Number(r.boatRental || 0) : '',
-        r ? Number(r.oarRental || 0) : '',
-        r ? Number(r.amountPaid || 0) : '',
-        row.matchConfidence ?? '',
-        sourceUrl
-      ]);
+        r?.verificationDate || ''
+      ];
+
+      if (includeFinancial) {
+        values.push(
+          r ? Number(r.amountDue || 0) : '',
+          r ? Number(r.boatRental || 0) : '',
+          r ? Number(r.oarRental || 0) : '',
+          r ? Number(r.amountPaid || 0) : ''
+        );
+      }
+
+      values.push(row.matchConfidence ?? '', sourceUrl);
+      output.push(values);
     });
 
     return output;
   }
 
-  function worksheetXml(rows) {
+  function worksheetXml(rows, includeFinancial) {
     const lastColumn = columnName(rows[0].length - 1);
     const lastCell = `${lastColumn}${rows.length}`;
-    const widths = [18,18,18,15,34,22,11,30,26,18,24,24,20,19,24,24,16,16,16,16,18,42];
+    const baseWidths = [18,18,18,15,34,22,11,30,26,18,24,24,20,19,24,24];
+    const widths = includeFinancial
+      ? [...baseWidths,16,16,16,16,18,42]
+      : [...baseWidths,18,42];
+    const confidenceIndex = includeFinancial ? 20 : 16;
     const cols = widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join('');
 
     const body = rows.map((row, rowIndex) => {
       const cells = row.map((value, colIndex) => {
         const ref = `${columnName(colIndex)}${rowIndex + 1}`;
-        const headerStyle = rowIndex === 0 ? ' s="1"' : '';
-        const moneyStyle = rowIndex > 0 && colIndex >= 16 && colIndex <= 19 ? ' s="2"' : headerStyle;
-        const confidenceStyle = rowIndex > 0 && colIndex === 20 ? ' s="3"' : headerStyle;
+        let style = rowIndex === 0 ? ' s="1"' : '';
+        if (rowIndex > 0 && includeFinancial && colIndex >= 16 && colIndex <= 19) style = ' s="2"';
+        else if (rowIndex > 0 && colIndex === confidenceIndex) style = ' s="3"';
+
         if (typeof value === 'number' && Number.isFinite(value)) {
-          return `<c r="${ref}"${moneyStyle || confidenceStyle} t="n"><v>${value}</v></c>`;
+          return `<c r="${ref}"${style} t="n"><v>${value}</v></c>`;
         }
-        return `<c r="${ref}"${headerStyle} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+        return `<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
       }).join('');
       return `<row r="${rowIndex + 1}">${cells}</row>`;
     }).join('');
@@ -279,8 +295,8 @@
     return concatBytes([...localParts, central, end]);
   }
 
-  function xlsxBlob(rows) {
-    const sheet = worksheetXml(excelRows(rows));
+  function xlsxBlob(rows, includeFinancial) {
+    const sheet = worksheetXml(excelRows(rows, includeFinancial), includeFinancial);
     const files = {
       '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -335,10 +351,12 @@
     return new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
-  function exportXlsx() {
-    const rows = getRowsOrAlert();
-    if (!rows) return;
-    downloadBlob(xlsxBlob(rows), `societa-iscritte-coastal-2026-${fileStamp()}.xlsx`);
+  function exportXlsx(rows, includeFinancial) {
+    const suffix = includeFinancial ? '' : '-senza-importi';
+    downloadBlob(
+      xlsxBlob(rows, includeFinancial),
+      `societa-iscritte-coastal-2026${suffix}-${fileStamp()}.xlsx`
+    );
   }
 
   // ---------------- PDF ----------------
@@ -462,23 +480,24 @@
     }
   }
 
-  function exportPdf() {
-    const rows = getRowsOrAlert();
-    if (!rows) return;
-
+  function exportPdf(rows, includeFinancial) {
     const pdf = new SimplePdf(841.89, 595.28);
     const margin = 28;
     const pageWidth = pdf.width - margin * 2;
     const columns = [
-      { key: 'region', label: 'Regione', width: 72 },
-      { key: 'code', label: 'Codice', width: 58 },
-      { key: 'name', label: 'Società', width: 235 },
-      { key: 'status', label: 'Stato', width: 70 },
-      { key: 'due', label: 'Dovuto', width: 82 },
-      { key: 'boats', label: 'Nol. barche', width: 82 },
-      { key: 'oars', label: 'Nol. remi', width: 82 },
-      { key: 'paid', label: 'Pagato', width: 82 }
+      { key: 'region', label: 'Regione', width: includeFinancial ? 72 : 105 },
+      { key: 'code', label: 'Codice', width: includeFinancial ? 58 : 70 },
+      { key: 'name', label: 'Società', width: includeFinancial ? 235 : 460 },
+      { key: 'status', label: 'Stato', width: includeFinancial ? 70 : 150 }
     ];
+    if (includeFinancial) {
+      columns.push(
+        { key: 'due', label: 'Dovuto', width: 82 },
+        { key: 'boats', label: 'Nol. barche', width: 82 },
+        { key: 'oars', label: 'Nol. remi', width: 82 },
+        { key: 'paid', label: 'Pagato', width: 82 }
+      );
+    }
     const totalColumnWidth = columns.reduce((sum, col) => sum + col.width, 0);
     const scale = Math.min(1, pageWidth / totalColumnWidth);
     columns.forEach((col) => { col.width *= scale; });
@@ -494,6 +513,8 @@
       pdf.text(page, 'Società iscritte - elenco amministrativo', margin, y, 16, true);
       y += 16;
       pdf.text(page, `Esportato il ${exportStamp()} - ${rows.length} società`, margin, y, 8);
+      y += 11;
+      pdf.text(page, `Dati economici: ${includeFinancial ? 'inclusi' : 'non inclusi'}`, margin, y, 8, true);
       y += 12;
       const filter = window.societyAdmin?.getFilterLabel?.() || 'Nessun filtro applicato';
       wrapText(`Filtri: ${filter}`, pageWidth, 8).forEach((line) => {
@@ -541,16 +562,65 @@
         if (col.key === 'name') {
           societyLines.forEach((line, lineIndex) => pdf.text(page, line, x + 4, y + 11 + lineIndex * 9, 7.5, lineIndex === 0));
         } else {
-          pdf.text(page, value, x + 4, y + 13, 7.2, index === 3);
+          pdf.text(page, value, x + 4, y + 13, 7.2, col.key === 'status');
         }
         x += col.width;
       });
       y += rowHeight;
     });
 
-    downloadBlob(pdf.blob(), `societa-iscritte-coastal-2026-${fileStamp()}.pdf`);
+    const suffix = includeFinancial ? '' : '-senza-importi';
+    downloadBlob(pdf.blob(), `societa-iscritte-coastal-2026${suffix}-${fileStamp()}.pdf`);
   }
 
-  pdfButton?.addEventListener('click', exportPdf);
-  xlsxButton?.addEventListener('click', exportXlsx);
+  let pendingExport = null;
+
+  function runExport(kind, rows, includeFinancial) {
+    if (kind === 'pdf') exportPdf(rows, includeFinancial);
+    else exportXlsx(rows, includeFinancial);
+  }
+
+  function requestExport(kind) {
+    const rows = getRowsOrAlert();
+    if (!rows) return;
+
+    if (!exportDialog || typeof exportDialog.showModal !== 'function') {
+      const includeFinancial = window.confirm(
+        'Vuoi includere anche i dati economici?\n\nOK = con dati economici\nAnnulla = senza dati economici'
+      );
+      runExport(kind, rows, includeFinancial);
+      return;
+    }
+
+    pendingExport = { kind, rows };
+    if (exportDialogTitle) {
+      exportDialogTitle.textContent = kind === 'pdf'
+        ? 'Esporta PDF'
+        : 'Esporta Excel';
+    }
+    exportDialog.showModal();
+  }
+
+  exportChoices.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!pendingExport) return;
+      const current = pendingExport;
+      pendingExport = null;
+      const includeFinancial = button.dataset.societyExportChoice === 'with-financial';
+      exportDialog.close();
+      runExport(current.kind, current.rows, includeFinancial);
+    });
+  });
+
+  exportCancel?.addEventListener('click', () => {
+    pendingExport = null;
+    exportDialog?.close();
+  });
+
+  exportDialog?.addEventListener('cancel', () => {
+    pendingExport = null;
+  });
+
+  pdfButton?.addEventListener('click', () => requestExport('pdf'));
+  xlsxButton?.addEventListener('click', () => requestExport('xlsx'));
 })();
