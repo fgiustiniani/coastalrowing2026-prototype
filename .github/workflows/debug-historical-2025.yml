@@ -15,85 +15,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Reconstruct physical athletes from program
+      - name: Check web archives for 2025 society list
         run: |
           python - <<'PY'
-          import collections
-          import html
           import json
-          import re
+          import urllib.parse
           import urllib.request
 
-          url = "https://canottaggioservice.canottaggio.net/dati/prx25CICR.html"
-          req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-          with urllib.request.urlopen(req, timeout=20) as r:
-              body = r.read().decode("latin1", errors="replace")
-
-          def txt(fragment):
-              fragment = re.sub(r"<br[^>]*>", "\n", fragment, flags=re.I)
-              fragment = re.sub(r"<[^>]*>", "", fragment)
-              fragment = html.unescape(fragment).replace("\r", "")
-              fragment = re.sub(r"[ 	]+", " ", fragment)
-              fragment = re.sub(r" *\n *", "\n", fragment)
-              return fragment.strip()
-
-          cells = re.findall(r"<td[^>]*class=['\"]t1['\"][^>]*>(.*?)</td>", body, flags=re.I | re.S)
-          athletes = collections.defaultdict(set)
-          crews = collections.Counter()
-          mixed = 0
-          failed = []
-
-          for fragment in cells:
-              lines = [x.strip() for x in txt(fragment).split("\n") if x.strip()]
-              if len(lines) < 3:
-                  continue
-
-              team_line = lines[1]
-              tm = re.match(r"^(.*)[(]([0-9]+)(?: +Misto)?[)]$", team_line, flags=re.I)
-              if not tm:
-                  failed.append(lines[:5])
-                  continue
-
-              main_team = tm.group(1).strip()
-              if "MISTO" in team_line.upper():
-                  mixed += 1
-              crews[main_team] += 1
-
-              footnotes = {}
-              for line in lines:
-                  fm = re.match(r"^[(]([0-9]+)[)] +(.+)$", line)
-                  if fm:
-                      footnotes[fm.group(1)] = fm.group(2).strip()
-
-              for line in lines[2:]:
-                  if line.startswith(".") or re.match(r"^[(][0-9]+[)] +", line):
-                      continue
-                  if not re.search(r"[(][A-Z0-9]+[)]", line):
-                      continue
-
-                  partner = None
-                  pm = re.search(r" +[(]([0-9]+)[)] *$", line)
-                  if pm:
-                      partner = pm.group(1)
-                      line = line[:pm.start()].rstrip()
-
-                  name = re.sub(r"[(][A-Z0-9]+[)]", "", line)
-                  name = re.sub(r" +[0-9]+ *$", "", name)
-                  name = re.sub(r" +-?Tim[.]? *$", "", name, flags=re.I)
-                  name = re.sub(r" +", " ", name).strip(" -")
-
-                  if not name or len(name) < 3:
-                      continue
-                  team = footnotes.get(partner, main_team) if partner else main_team
-                  athletes[team].add(name.upper())
-
-          print("CELLS", len(cells), "TEAMS", len(athletes), "MIXED", mixed, "FAILED", len(failed))
-          print("UNIQUE_TOTAL", sum(len(v) for v in athletes.values()))
-          print("HAS_RISERVE", "RISERVE" in body.upper())
-          print("===COUNTS===")
-          for team, names in sorted(athletes.items(), key=lambda kv: (-len(kv[1]), kv[0])):
-              print(json.dumps({"team": team, "athletes": len(names), "crews_as_main": crews[team]}, ensure_ascii=False))
-          print("===FAILED===")
-          for item in failed[:20]:
-              print(json.dumps(item, ensure_ascii=False))
+          candidates = [
+              "https://canottaggioservice.canottaggio.net/dati/pis25CICR.html",
+              "https://www.canottaggio.net/gen_si_iscr.php",
+              "https://www.canottaggio.net/elenco_societa_iscritte.php",
+          ]
+          for target in candidates:
+              cdx = "https://web.archive.org/cdx/search/cdx?" + urllib.parse.urlencode({
+                  "url": target,
+                  "output": "json",
+                  "filter": "statuscode:200",
+                  "fl": "timestamp,original,statuscode,mimetype,digest",
+                  "from": "2025",
+                  "to": "2025",
+                  "collapse": "digest"
+              })
+              try:
+                  req = urllib.request.Request(cdx, headers={"User-Agent":"Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      payload = r.read().decode("utf-8", errors="replace")
+                  print("===CDX===", target)
+                  print(payload[:20000])
+              except Exception as exc:
+                  print("===ERROR===", target, repr(exc))
           PY
