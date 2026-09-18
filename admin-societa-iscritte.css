@@ -978,25 +978,42 @@
   color: #718188;
 }
 
-.society-kpi__mail {
-  display: flex;
-  align-items: center;
+.society-kpi__mail-breakdown {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #d7e8df;
+}
+
+.society-kpi__mail-row {
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr);
   gap: 5px;
-  margin-top: 9px;
+  align-items: baseline;
   color: #4f666e;
-  font-size: .72rem;
-  line-height: 1.2;
-  font-weight: 750;
+  font-size: .7rem;
+  line-height: 1.25;
+  font-weight: 700;
 }
 
-.society-kpi__mail b {
-  color: #0b6478;
-  font-size: .9rem;
+.society-kpi__mail-row b {
+  color: #246244;
+  font-size: .86rem;
 }
 
-.society-kpi__mail-icon {
+.society-kpi__mail-row--extra {
+  color: #6a7478;
+}
+
+.society-kpi__mail-row--extra b {
   color: #0b6478;
-  font-size: .9rem;
+}
+
+.society-kpi__mail-marker {
+  color: #718188;
+  font-weight: 900;
+  text-align: center;
 }
 
 .society-kpi--athletes {

@@ -284,7 +284,10 @@
         label: 'Società iscritte',
         value: data.ficAvailable ? s.registered ?? 0 : '—',
         historic: `${s.registered2025 ?? 62} nel 2025`,
-        mailCount: s.rentalMailReceived ?? 0,
+        mailBreakdown: data.ficAvailable ? {
+          registered: s.rentalMailRegistered ?? 0,
+          other: Math.max(0, Number(s.rentalMailReceived || 0) - Number(s.rentalMailRegistered || 0))
+        } : null,
         className: 'society-kpi--registered'
       },
       {
@@ -306,7 +309,18 @@
           ${escapeHtml(card.value)}
           ${card.historic !== undefined ? `<small class="society-kpi__historic">(${escapeHtml(card.historic)})</small>` : ''}
         </strong>
-        ${card.mailCount !== undefined ? `<div class="society-kpi__mail"><span class="society-kpi__mail-icon" aria-hidden="true">✉</span><b>${escapeHtml(card.mailCount)}</b><span>mail noleggio ricevute</span></div>` : ''}
+        ${card.mailBreakdown ? `<div class="society-kpi__mail-breakdown">
+          <div class="society-kpi__mail-row">
+            <span class="society-kpi__mail-marker" aria-hidden="true">↳</span>
+            <b>${escapeHtml(card.mailBreakdown.registered)}</b>
+            <span>${card.mailBreakdown.registered === 1 ? 'ha inviato' : 'hanno inviato'} mail di noleggio</span>
+          </div>
+          <div class="society-kpi__mail-row society-kpi__mail-row--extra">
+            <span class="society-kpi__mail-marker" aria-hidden="true">+</span>
+            <b>${escapeHtml(card.mailBreakdown.other)}</b>
+            <span>${card.mailBreakdown.other === 1 ? 'altra società ha inviato' : 'altre società hanno inviato'} mail di noleggio</span>
+          </div>
+        </div>` : ''}
       </article>`).join('');
   }
 
