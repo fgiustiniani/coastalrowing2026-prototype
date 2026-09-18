@@ -169,22 +169,18 @@
       </article>`).join('');
   }
 
-  function paymentDetails(registration) {
-    if (!registration) return '—';
-    const dates = [
-      registration.accountingDate ? `Contabile: ${registration.accountingDate}` : '',
-      registration.paymentRegistrationDate ? `Pagamento: ${registration.paymentRegistrationDate}` : '',
-      registration.verificationDate ? `Verifica: ${registration.verificationDate}` : ''
-    ].filter(Boolean);
-    return `
-      <strong>${escapeHtml(registration.paymentType || '—')}</strong>
-      ${dates.map((line) => `<small>${escapeHtml(line)}</small>`).join('<br>')}`;
+  function paymentState(registration) {
+    if (!registration) return { label: '—', className: '' };
+    const due = Number(registration.amountDue || 0);
+    const paid = Number(registration.amountPaid || 0);
+    if (Math.abs(due - paid) < 0.01) return { label: 'OK', className: 'is-paid' };
+    if (paid < due) return { label: 'Da saldare', className: 'is-due' };
+    return { label: 'Da verificare', className: 'is-overpaid' };
   }
 
   function renderTable() {
     const rows = visibleRows();
     if (visibleCount) visibleCount.textContent = `${rows.length} società visualizzate su ${data?.rows?.length || 0}`;
-
     if (!rows.length) {
       tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
       window.societyAdmin?.notify();
@@ -193,43 +189,36 @@
 
     tableContainer.innerHTML = `
       <table class="society-table">
-        <thead>
-          <tr>
-            <th>Stato</th>
-            <th>Regione</th>
-            <th>Codice</th>
-            <th>Società</th>
-            <th>Dir. resp.</th>
-            <th>Tecn. resp.</th>
-            <th>Pagamento</th>
-            <th class="society-table__money">Dovuto</th>
-            <th class="society-table__money">Nol. barche</th>
-            <th class="society-table__money">Nol. remi</th>
-            <th class="society-table__money">Pagato</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>Stato</th><th>Regione</th><th>Codice</th><th>Società</th>
+          <th>Dir. resp.</th><th>Dir. tec.</th><th>Data reg.ne pagamento</th>
+          <th class="society-table__money">Importo dovuto</th>
+          <th class="society-table__money">Di cui noleggio barche</th>
+          <th class="society-table__money">Importo pagato</th><th>Stato pagamento</th>
+        </tr></thead>
         <tbody>
           ${rows.map((row) => {
             const r = row.registration;
             const statusClass = row.status === 'registered' ? 'is-registered' : row.status === 'not_registered' ? 'is-not-registered' : 'is-unknown';
+            const payment = paymentState(r);
             return `
               <tr>
-                <td><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
-                <td>${escapeHtml(row.region || '—')}<br><small>${escapeHtml(row.committee || '')}</small></td>
-                <td>${escapeHtml(row.code || '—')}</td>
-                <td class="society-table__society">
+                <td data-label="Stato"><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
+                <td data-label="Regione">${escapeHtml(row.region || '—')}</td>
+                <td data-label="Codice">${escapeHtml(row.code || '—')}</td>
+                <td data-label="Società" class="society-table__society">
                   <strong>${escapeHtml(row.name || '—')}</strong>
                   <small>${escapeHtml([row.city, row.province].filter(Boolean).join(' (') + (row.city && row.province ? ')' : ''))}</small>
                   ${row.email ? `<small>${escapeHtml(row.email)}</small>` : ''}
                   ${r?.team && r.team.toLocaleLowerCase('it-IT') !== String(row.name).toLocaleLowerCase('it-IT') ? `<small>FIC: ${escapeHtml(r.team)}</small>` : ''}
                 </td>
-                <td class="society-table__person">${escapeHtml(r?.manager || '—')}</td>
-                <td class="society-table__person">${escapeHtml(r?.coach || '—')}</td>
-                <td class="society-table__payment">${paymentDetails(r)}</td>
-                <td class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountDue))}</strong>` : '—'}</td>
-                <td class="society-table__money">${r ? escapeHtml(formatMoney(r.boatRental)) : '—'}</td>
-                <td class="society-table__money">${r ? escapeHtml(formatMoney(r.oarRental)) : '—'}</td>
-                <td class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountPaid))}</strong>` : '—'}</td>
+                <td data-label="Dir. resp." class="society-table__person">${escapeHtml(r?.manager || '—')}</td>
+                <td data-label="Dir. tec." class="society-table__person">${escapeHtml(r?.coach || '—')}</td>
+                <td data-label="Data reg.ne pagamento" class="society-table__date">${escapeHtml(r?.paymentRegistrationDate || '—')}</td>
+                <td data-label="Importo dovuto" class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountDue))}</strong>` : '—'}</td>
+                <td data-label="Di cui noleggio barche" class="society-table__money">${r ? escapeHtml(formatMoney(r.boatRental)) : '—'}</td>
+                <td data-label="Importo pagato" class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountPaid))}</strong>` : '—'}</td>
+                <td data-label="Stato pagamento">${r ? `<span class="society-payment-badge ${payment.className}">${escapeHtml(payment.label)}</span>` : '—'}</td>
               </tr>`;
           }).join('')}
         </tbody>
@@ -237,7 +226,7 @@
     window.societyAdmin?.notify();
   }
 
-  function renderUnmatched() {
+    function renderUnmatched() {
     const rows = Array.isArray(data?.unmatchedRegistrations) ? data.unmatchedRegistrations : [];
     if (!unmatched || !unmatchedList || !unmatchedCount) return;
     unmatched.hidden = !rows.length;
@@ -308,6 +297,7 @@
     getData: () => data,
     formatMoney,
     statusLabel,
+    paymentStatusLabel: (registration) => paymentState(registration).label,
     getFilterLabel: () => {
       const parts = [];
       if (regionFilter?.value) parts.push(`Regione: ${regionFilter.value}`);

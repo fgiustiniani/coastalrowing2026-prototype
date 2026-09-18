@@ -81,88 +81,48 @@
     return name;
   }
 
-  function excelRows(rows, includeFinancial) {
-    const sourceUrl = window.societyAdmin?.getData?.()?.sourceUrl || '';
-    const header = [
-      'Stato iscrizione',
-      'Regione',
-      'Comitato FIC',
-      'Codice società',
-      'Società',
-      'Località',
-      'Provincia',
-      'E-mail',
-      'Nome nel portale FIC',
-      'Codice fiscale',
-      'Dirigente responsabile',
-      'Tecnico responsabile',
-      'Tipo pagamento',
-      'Data contabile',
-      'Data registrazione pagamento',
-      'Data registrazione verifica'
-    ];
+  function paymentStatusLabel(registration) {
+    return window.societyAdmin?.paymentStatusLabel?.(registration) || '—';
+  }
 
-    if (includeFinancial) {
-      header.push('Importo dovuto', 'Noleggio barche', 'Noleggio remi', 'Importo pagato');
-    }
-    header.push('Confidenza abbinamento', 'Fonte FIC');
+  function excelRows(rows, includeFinancial) {
+    const header = ['Stato','Regione','Codice','Società','Dir. resp.','Dir. tec.','Data reg.ne pagamento'];
+    if (includeFinancial) header.push('Importo dovuto','Di cui noleggio barche','Importo pagato');
+    header.push('Stato pagamento');
 
     const output = [header];
-
     rows.forEach((row) => {
       const r = row.registration;
       const values = [
         window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
-        row.region || '',
-        row.committee || '',
-        row.code || '',
-        row.name || '',
-        row.city || '',
-        row.province || '',
-        row.email || '',
-        r?.team || '',
-        r?.fiscalCode || '',
-        r?.manager || '',
-        r?.coach || '',
-        r?.paymentType || '',
-        r?.accountingDate || '',
-        r?.paymentRegistrationDate || '',
-        r?.verificationDate || ''
+        row.region || '', row.code || '', row.name || '',
+        r?.manager || '', r?.coach || '', r?.paymentRegistrationDate || ''
       ];
-
       if (includeFinancial) {
         values.push(
           r ? Number(r.amountDue || 0) : '',
           r ? Number(r.boatRental || 0) : '',
-          r ? Number(r.oarRental || 0) : '',
           r ? Number(r.amountPaid || 0) : ''
         );
       }
-
-      values.push(row.matchConfidence ?? '', sourceUrl);
+      values.push(r ? paymentStatusLabel(r) : '');
       output.push(values);
     });
-
     return output;
   }
 
-  function worksheetXml(rows, includeFinancial) {
+    function worksheetXml(rows, includeFinancial) {
     const lastColumn = columnName(rows[0].length - 1);
     const lastCell = `${lastColumn}${rows.length}`;
-    const baseWidths = [18,18,18,15,34,22,11,30,26,18,24,24,20,19,24,24];
     const widths = includeFinancial
-      ? [...baseWidths,16,16,16,16,18,42]
-      : [...baseWidths,18,42];
-    const confidenceIndex = includeFinancial ? 20 : 16;
+      ? [16,18,15,36,25,24,22,17,20,17,18]
+      : [16,18,15,38,26,25,22,18];
     const cols = widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join('');
-
     const body = rows.map((row, rowIndex) => {
       const cells = row.map((value, colIndex) => {
         const ref = `${columnName(colIndex)}${rowIndex + 1}`;
         let style = rowIndex === 0 ? ' s="1"' : '';
-        if (rowIndex > 0 && includeFinancial && colIndex >= 16 && colIndex <= 19) style = ' s="2"';
-        else if (rowIndex > 0 && colIndex === confidenceIndex) style = ' s="3"';
-
+        if (rowIndex > 0 && includeFinancial && colIndex >= 7 && colIndex <= 9) style = ' s="2"';
         if (typeof value === 'number' && Number.isFinite(value)) {
           return `<c r="${ref}"${style} t="n"><v>${value}</v></c>`;
         }
@@ -170,7 +130,6 @@
       }).join('');
       return `<row r="${rowIndex + 1}">${cells}</row>`;
     }).join('');
-
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <dimension ref="A1:${lastCell}"/>
@@ -181,7 +140,7 @@
 </worksheet>`;
   }
 
-  const CRC_TABLE = (() => {
+    const CRC_TABLE = (() => {
     const table = new Uint32Array(256);
     for (let n = 0; n < 256; n += 1) {
       let c = n;
@@ -482,51 +441,53 @@
 
   function exportPdf(rows, includeFinancial) {
     const pdf = new SimplePdf(841.89, 595.28);
-    const margin = 28;
+    const margin = 24;
     const pageWidth = pdf.width - margin * 2;
     const columns = [
-      { key: 'region', label: 'Regione', width: includeFinancial ? 72 : 105 },
-      { key: 'code', label: 'Codice', width: includeFinancial ? 58 : 70 },
-      { key: 'name', label: 'Società', width: includeFinancial ? 235 : 460 },
-      { key: 'status', label: 'Stato', width: includeFinancial ? 70 : 150 }
+      { key: 'status', label: 'Stato', width: 60 },
+      { key: 'region', label: 'Regione', width: 68 },
+      { key: 'code', label: 'Codice', width: 52 },
+      { key: 'name', label: 'Società', width: 150 },
+      { key: 'manager', label: 'Dir. resp.', width: 105 },
+      { key: 'coach', label: 'Dir. tec.', width: 92 },
+      { key: 'paymentDate', label: 'Data pag.', width: 72 }
     ];
     if (includeFinancial) {
       columns.push(
-        { key: 'due', label: 'Dovuto', width: 82 },
-        { key: 'boats', label: 'Nol. barche', width: 82 },
-        { key: 'oars', label: 'Nol. remi', width: 82 },
-        { key: 'paid', label: 'Pagato', width: 82 }
+        { key: 'due', label: 'Dovuto', width: 68 },
+        { key: 'boats', label: 'Nol. barche', width: 72 },
+        { key: 'paid', label: 'Pagato', width: 68 }
       );
     }
+    columns.push({ key: 'paymentStatus', label: 'Stato pag.', width: 72 });
+
     const totalColumnWidth = columns.reduce((sum, col) => sum + col.width, 0);
     const scale = Math.min(1, pageWidth / totalColumnWidth);
     columns.forEach((col) => { col.width *= scale; });
 
     let page;
     let y;
-
     function drawHeader() {
       page = pdf.addPage();
-      y = 28;
+      y = 24;
       pdf.text(page, 'Campionati Italiani Coastal Rowing 2026 - Pesaro', margin, y, 9, true);
-      y += 18;
-      pdf.text(page, 'Società iscritte - elenco amministrativo', margin, y, 16, true);
-      y += 16;
+      y += 17;
+      pdf.text(page, 'Società iscritte - elenco amministrativo', margin, y, 15, true);
+      y += 15;
       pdf.text(page, `Esportato il ${exportStamp()} - ${rows.length} società`, margin, y, 8);
       y += 11;
       pdf.text(page, `Dati economici: ${includeFinancial ? 'inclusi' : 'non inclusi'}`, margin, y, 8, true);
-      y += 12;
+      y += 11;
       const filter = window.societyAdmin?.getFilterLabel?.() || 'Nessun filtro applicato';
       wrapText(`Filtri: ${filter}`, pageWidth, 8).forEach((line) => {
         pdf.text(page, line, margin, y, 8);
-        y += 10;
+        y += 9;
       });
-      y += 5;
-
+      y += 4;
       let x = margin;
       columns.forEach((col) => {
         pdf.rect(page, x, y, col.width, 20, 0.93, 0.78);
-        pdf.text(page, col.label, x + 4, y + 13, 7, true);
+        pdf.text(page, col.label, x + 3, y + 13, 6.5, true);
         x += col.width;
       });
       y += 20;
@@ -535,35 +496,40 @@
     function valuesFor(row) {
       const r = row.registration;
       return {
+        status: window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
         region: row.region || '',
         code: row.code || '',
         name: row.name || '',
-        status: window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
+        manager: r?.manager || '',
+        coach: r?.coach || '',
+        paymentDate: r?.paymentRegistrationDate || '',
         due: r ? euro(r.amountDue) : '—',
         boats: r ? euro(r.boatRental) : '—',
-        oars: r ? euro(r.oarRental) : '—',
-        paid: r ? euro(r.amountPaid) : '—'
+        paid: r ? euro(r.amountPaid) : '—',
+        paymentStatus: r ? paymentStatusLabel(r) : '—'
       };
     }
 
     drawHeader();
-
     rows.forEach((row) => {
       const values = valuesFor(row);
-      const societyLines = wrapText(values.name, columns[2].width - 8, 7.5).slice(0, 2);
-      const rowHeight = Math.max(20, 8 + societyLines.length * 9);
-
-      if (y + rowHeight > pdf.height - 28) drawHeader();
+      const wrapped = new Map();
+      let maxLines = 1;
+      columns.forEach((col) => {
+        const lines = wrapText(values[col.key], col.width - 6, 6.5).slice(0, col.key === 'name' ? 3 : 2);
+        wrapped.set(col.key, lines);
+        maxLines = Math.max(maxLines, lines.length);
+      });
+      const rowHeight = Math.max(20, 7 + maxLines * 8);
+      if (y + rowHeight > pdf.height - 24) drawHeader();
 
       let x = margin;
-      columns.forEach((col, index) => {
+      columns.forEach((col) => {
         pdf.rect(page, x, y, col.width, rowHeight, null, 0.86);
-        const value = values[col.key];
-        if (col.key === 'name') {
-          societyLines.forEach((line, lineIndex) => pdf.text(page, line, x + 4, y + 11 + lineIndex * 9, 7.5, lineIndex === 0));
-        } else {
-          pdf.text(page, value, x + 4, y + 13, 7.2, col.key === 'status');
-        }
+        const lines = wrapped.get(col.key) || [''];
+        lines.forEach((line, lineIndex) => {
+          pdf.text(page, line, x + 3, y + 11 + lineIndex * 8, 6.5, col.key === 'name' && lineIndex === 0);
+        });
         x += col.width;
       });
       y += rowHeight;
@@ -573,7 +539,7 @@
     downloadBlob(pdf.blob(), `societa-iscritte-coastal-2026${suffix}-${fileStamp()}.pdf`);
   }
 
-  let pendingExport = null;
+    let pendingExport = null;
 
   function runExport(kind, rows, includeFinancial) {
     if (kind === 'pdf') exportPdf(rows, includeFinancial);
