@@ -158,25 +158,81 @@
 
 .society-kpi--not-registered strong { color: #8a5b1e; }
 
-.society-chart-card,
 .society-controls {
   padding: 22px;
 }
 
-.society-chart-card {
-  margin: 18px 0;
+.society-chart-dialog {
+  width: min(1220px, calc(100vw - 32px));
+  max-width: none;
+  max-height: 92vh;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  color: #173e4b;
+  box-shadow: 0 24px 70px rgba(14,43,54,.3);
 }
 
-.society-chart-card__head {
+.society-chart-dialog::backdrop {
+  background: rgba(18,43,51,.58);
+  backdrop-filter: blur(2px);
+}
+
+.society-chart-dialog__content {
+  display: grid;
+  max-height: 92vh;
+  padding: 24px;
+  overflow: auto;
+}
+
+.society-chart-dialog__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 10px;
 }
 
-.society-chart-card__head h2 {
-  margin: 0 0 6px;
+.society-chart-dialog__head h2 {
+  margin: 4px 0 6px;
+}
+
+.society-chart-dialog__head > div > p:last-child {
+  margin: 0;
+  color: #5b6f76;
+}
+
+.society-chart-dialog__close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #ccd9dd;
+  border-radius: 50%;
+  background: #fff;
+  color: #405a63;
+  font: inherit;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.society-chart-dialog__close:hover,
+.society-chart-dialog__close:focus-visible {
+  border-color: #0b6478;
+  color: #0b6478;
+  background: #edf6f8;
+}
+
+.society-chart-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e3eaec;
 }
 
 .society-chart-legend {
@@ -556,7 +612,6 @@
 
   .society-admin-toolbar,
   .society-controls__head,
-  .society-chart-card__head,
   .society-source-card {
     align-items: stretch;
     flex-direction: column;
@@ -585,10 +640,34 @@
     width: 100%;
   }
 
-  .society-chart-card,
   .society-controls {
     padding: 14px;
     border-radius: 14px;
+  }
+
+  .society-chart-dialog {
+    width: calc(100vw - 14px);
+    max-height: 96vh;
+  }
+
+  .society-chart-dialog__content {
+    max-height: 96vh;
+    padding: 14px;
+  }
+
+  .society-chart-dialog__head {
+    gap: 10px;
+  }
+
+  .society-chart-dialog__actions {
+    position: sticky;
+    bottom: -14px;
+    background: #fff;
+    padding-bottom: 4px;
+  }
+
+  .society-chart-dialog__actions > * {
+    flex: 1 1 0;
   }
 
   .society-region-chart {

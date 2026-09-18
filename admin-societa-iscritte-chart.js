@@ -1,7 +1,10 @@
 (() => {
   const container = document.querySelector('[data-society-region-chart]');
+  const dialog = document.querySelector('[data-society-chart-dialog]');
+  const openButton = document.querySelector('[data-society-chart-open]');
   const exportButton = document.querySelector('[data-society-chart-export]');
-  if (!container) return;
+  const closeButtons = document.querySelectorAll('[data-society-chart-close]');
+  if (!container || !dialog || !openButton) return;
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -111,40 +114,146 @@
         'font-weight': 800
       }, String(row.total)));
 
-      const label = svgEl('text', {
+      svg.appendChild(svgEl('text', {
         x: center,
         y: baseY + 18,
         'text-anchor': 'end',
         fill: '#405a63',
         'font-size': 10.5,
         transform: `rotate(-48 ${center} ${baseY + 18})`
-      }, row.region);
-      svg.appendChild(label);
+      }, row.region));
     });
 
     container.replaceChildren(svg);
   }
 
   function fileStamp() {
-    const d = new Date();
-    const pad = (value) => String(value).padStart(2, '0');
-    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const parts = new Intl.DateTimeFormat('it-IT', {
+      timeZone: 'Europe/Rome',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(new Date());
+    const get = (type) => parts.find((part) => part.type === type)?.value || '';
+    return `${get('year')}${get('month')}${get('day')}-${get('hour')}${get('minute')}`;
   }
 
-  function exportPng() {
+  function concatBytes(parts) {
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+    parts.forEach((part) => {
+      out.set(part, offset);
+      offset += part.length;
+    });
+    return out;
+  }
+
+  function textBytes(value) {
+    return new TextEncoder().encode(value);
+  }
+
+  function jpegBytesFromDataUrl(dataUrl) {
+    const base64 = dataUrl.split(',')[1] || '';
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function pdfWithJpeg(jpegBytes, imageWidth, imageHeight) {
+    const pageWidth = 841.89;
+    const pageHeight = 595.28;
+    const margin = 28;
+    const titleSpace = 42;
+    const availableWidth = pageWidth - margin * 2;
+    const availableHeight = pageHeight - margin * 2 - titleSpace;
+    const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
+    const drawWidth = imageWidth * scale;
+    const drawHeight = imageHeight * scale;
+    const x = (pageWidth - drawWidth) / 2;
+    const y = margin + (availableHeight - drawHeight) / 2;
+
+    const objects = [];
+    const addTextObject = (content) => {
+      objects.push(textBytes(content));
+      return objects.length;
+    };
+    const catalogId = addTextObject('');
+    const pagesId = addTextObject('');
+    const pageId = addTextObject('');
+    const imageHeader = textBytes(
+      `<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`
+    );
+    const imageFooter = textBytes('\nendstream');
+    objects.push(concatBytes([imageHeader, jpegBytes, imageFooter]));
+    const imageId = objects.length;
+
+    const content = [
+      'BT /F1 15 Tf 28 554 Td (Iscrizioni per regione - Campionati Italiani Coastal Rowing 2026) Tj ET',
+      `q ${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im1 Do Q`
+    ].join('\n');
+    const contentBytes = textBytes(content);
+    const contentId = addTextObject(`<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
+    const fontId = addTextObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+
+    objects[catalogId - 1] = textBytes(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+    objects[pagesId - 1] = textBytes(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
+    objects[pageId - 1] = textBytes(
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> /XObject << /Im1 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`
+    );
+
+    const header = textBytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    const chunks = [header];
+    const offsets = [0];
+    let position = header.length;
+
+    objects.forEach((object, index) => {
+      offsets.push(position);
+      const prefix = textBytes(`${index + 1} 0 obj\n`);
+      const suffix = textBytes('\nendobj\n');
+      chunks.push(prefix, object, suffix);
+      position += prefix.length + object.length + suffix.length;
+    });
+
+    const xrefOffset = position;
+    let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (let i = 1; i <= objects.length; i += 1) {
+      xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+    }
+    xref += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    chunks.push(textBytes(xref));
+
+    return new Blob(chunks, { type: 'application/pdf' });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  function exportPdf() {
     const svg = container.querySelector('svg');
     if (!svg) return;
 
+    exportButton.disabled = true;
     const viewBox = svg.viewBox.baseVal;
     const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewBox.width * scale);
     canvas.height = Math.ceil(viewBox.height * scale);
     const context = canvas.getContext('2d');
-    if (!context) return;
+    if (!context) {
+      exportButton.disabled = false;
+      return;
+    }
 
-    const serializer = new XMLSerializer();
-    const svgText = serializer.serializeToString(svg);
+    const svgText = new XMLSerializer().serializeToString(svg);
     const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const image = new Image();
@@ -156,25 +265,36 @@
       context.drawImage(image, 0, 0, viewBox.width, viewBox.height);
       URL.revokeObjectURL(url);
 
-      canvas.toBlob((png) => {
-        if (!png) return;
-        const pngUrl = URL.createObjectURL(png);
-        const link = document.createElement('a');
-        link.href = pngUrl;
-        link.download = `iscrizioni-per-regione-coastal-2026-${fileStamp()}.png`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(pngUrl), 1500);
-      }, 'image/png');
+      const jpegBytes = jpegBytesFromDataUrl(canvas.toDataURL('image/jpeg', 0.94));
+      const pdf = pdfWithJpeg(jpegBytes, canvas.width, canvas.height);
+      downloadBlob(pdf, `iscrizioni-per-regione-coastal-2026-${fileStamp()}.pdf`);
+      exportButton.disabled = false;
     };
 
-    image.onerror = () => URL.revokeObjectURL(url);
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      exportButton.disabled = false;
+    };
+
     image.src = url;
   }
 
-  window.addEventListener('society-admin:updated', renderChart);
-  exportButton?.addEventListener('click', exportPng);
+  openButton.addEventListener('click', () => {
+    renderChart();
+    dialog.showModal();
+  });
 
-  if (window.societyAdmin?.getData?.()) renderChart();
+  closeButtons.forEach((button) => {
+    button.addEventListener('click', () => dialog.close());
+  });
+
+  exportButton?.addEventListener('click', exportPdf);
+
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+
+  window.addEventListener('society-admin:updated', () => {
+    if (dialog.open) renderChart();
+  });
 })();
