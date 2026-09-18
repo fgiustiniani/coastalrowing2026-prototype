@@ -159,6 +159,21 @@
   line-height: 1;
 }
 
+.society-kpi__historic {
+  margin-left: 4px;
+  font-size: .62em;
+  font-weight: 750;
+  color: #64767d;
+}
+
+.society-kpis-note {
+  grid-column: 1 / -1;
+  margin: -4px 2px 0;
+  color: #6b7d83;
+  font-size: .72rem;
+  line-height: 1.3;
+}
+
 .society-kpi--registered {
   border-color: #c8dfd3;
   background: #f6fbf8;
@@ -522,6 +537,28 @@
 .society-payment-badge.is-paid { background: #e7f4ec; color: #245d38; }
 .society-payment-badge.is-due { background: #fff1e5; color: #8a5517; }
 .society-payment-badge.is-overpaid { background: #fff7d9; color: #735d00; }
+
+.society-year-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 850;
+}
+
+.society-year-badge.is-yes {
+  background: #e7f4ec;
+  color: #245d38;
+}
+
+.society-year-badge.is-no {
+  background: #eef1f2;
+  color: #6b767a;
+}
 
 .society-empty {
   padding: 34px 20px;

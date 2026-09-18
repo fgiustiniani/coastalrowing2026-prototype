@@ -86,7 +86,7 @@
   }
 
   function excelRows(rows, includeFinancial) {
-    const header = ['Stato','Regione','Società','Dir. resp.','Dir. tec.'];
+    const header = ['Stato','Iscritta 2025','Regione','Società','Dir. resp.','Dir. tec.'];
     if (includeFinancial) {
       header.push(
         'Data reg.ne pagamento',
@@ -102,6 +102,7 @@
       const r = row.registration;
       const values = [
         window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
+        row.registered2025 ? 'Sì' : 'No',
         row.region || '',
         row.name || '',
         r?.manager || '',
@@ -126,15 +127,15 @@
     const lastColumn = columnName(rows[0].length - 1);
     const lastCell = `${lastColumn}${rows.length}`;
     const widths = includeFinancial
-      ? [16,18,38,26,25,22,17,20,17,18]
-      : [16,18,44,28,27];
+      ? [16,16,18,38,26,25,22,17,20,17,18]
+      : [16,16,18,44,28,27];
     const cols = widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join('');
 
     const body = rows.map((row, rowIndex) => {
       const cells = row.map((value, colIndex) => {
         const ref = `${columnName(colIndex)}${rowIndex + 1}`;
         let style = rowIndex === 0 ? ' s="1"' : '';
-        if (rowIndex > 0 && includeFinancial && colIndex >= 6 && colIndex <= 8) style = ' s="2"';
+        if (rowIndex > 0 && includeFinancial && colIndex >= 7 && colIndex <= 9) style = ' s="2"';
         if (typeof value === 'number' && Number.isFinite(value)) {
           return `<c r="${ref}"${style} t="n"><v>${value}</v></c>`;
         }
@@ -464,8 +465,9 @@
     const margin = 24;
     const pageWidth = pdf.width - margin * 2;
     const columns = [
-      { key: 'status', label: 'Stato', width: 72 },
-      { key: 'region', label: 'Regione', width: 80 },
+      { key: 'status', label: 'Stato', width: 68 },
+      { key: 'registered2025', label: 'Iscritta 2025', width: 64 },
+      { key: 'region', label: 'Regione', width: 76 },
       { key: 'name', label: 'Società', width: includeFinancial ? 160 : 275 },
       { key: 'manager', label: 'Dir. resp.', width: includeFinancial ? 110 : 180 },
       { key: 'coach', label: 'Dir. tec.', width: includeFinancial ? 100 : 175 }
@@ -518,6 +520,7 @@
       const r = row.registration;
       return {
         status: window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
+        registered2025: row.registered2025 ? 'Sì' : 'No',
         region: row.region || '',
         name: row.name || '',
         manager: r?.manager || '',

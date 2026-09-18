@@ -192,18 +192,28 @@
     if (!kpis || !data?.summary) return;
     const s = data.summary;
     const cards = [
-      ['Società FIC 2026', s.totalSocieties ?? 0, ''],
-      ['Iscritte', data.ficAvailable ? s.registered ?? 0 : '—', 'society-kpi--registered'],
-      ['Non iscritte', data.ficAvailable ? s.notRegistered ?? 0 : '—', 'society-kpi--not-registered'],
-      ['Importo dovuto', data.ficAvailable ? formatMoney(s.amountDue) : '—', ''],
-      ['Noleggio barche', data.ficAvailable ? formatMoney(s.boatRental) : '—', ''],
-      ['Importo pagato', data.ficAvailable ? formatMoney(s.amountPaid) : '—', '']
+      { label: 'Società FIC 2026', value: s.totalSocieties ?? 0, className: '' },
+      {
+        label: 'Iscritte',
+        value: data.ficAvailable ? s.registered ?? 0 : '—',
+        historic: s.registered2025 ?? 62,
+        className: 'society-kpi--registered'
+      },
+      { label: 'Non iscritte', value: data.ficAvailable ? s.notRegistered ?? 0 : '—', className: 'society-kpi--not-registered' },
+      { label: 'Importo dovuto', value: data.ficAvailable ? formatMoney(s.amountDue) : '—', className: '' },
+      { label: 'Noleggio barche', value: data.ficAvailable ? formatMoney(s.boatRental) : '—', className: '' },
+      { label: 'Importo pagato', value: data.ficAvailable ? formatMoney(s.amountPaid) : '—', className: '' }
     ];
-    kpis.innerHTML = cards.map(([label, value, className]) => `
-      <article class="society-kpi ${className}">
-        <span class="society-kpi__label">${escapeHtml(label)}</span>
-        <strong>${escapeHtml(value)}</strong>
-      </article>`).join('');
+
+    kpis.innerHTML = cards.map((card) => `
+      <article class="society-kpi ${card.className}">
+        <span class="society-kpi__label">${escapeHtml(card.label)}</span>
+        <strong>
+          ${escapeHtml(card.value)}
+          ${card.historic !== undefined ? `<small class="society-kpi__historic">(${escapeHtml(card.historic)})</small>` : ''}
+        </strong>
+      </article>`).join('') +
+      '<div class="society-kpis-note">Tra parentesi: numero di società iscritte nel 2025.</div>';
   }
 
   function paymentState(registration, registrationStatus = '') {
@@ -255,7 +265,7 @@
     tableContainer.innerHTML = `
       <table class="society-table">
         <thead><tr>
-          <th>Stato</th><th>Regione</th><th>Società</th>
+          <th>Stato</th><th>Iscritta 2025</th><th>Regione</th><th>Società</th>
           <th>Dir. resp.</th><th>Dir. tec.</th><th>Data reg.ne pagamento</th>
           <th class="society-table__money">Importo dovuto</th>
           <th class="society-table__money">Di cui noleggio barche</th>
@@ -269,6 +279,7 @@
             return `
               <tr>
                 <td data-label="Stato"><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
+                <td data-label="Iscritta 2025"><span class="society-year-badge ${row.registered2025 ? 'is-yes' : 'is-no'}">${row.registered2025 ? 'Sì' : 'No'}</span></td>
                 <td data-label="Regione">${escapeHtml(row.region || '—')}</td>
                 <td data-label="Società" class="society-table__society">
                   <strong>${escapeHtml(row.name || '—')}</strong>
