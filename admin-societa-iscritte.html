@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Area organizzazione - Società iscritte</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="boat-booking.css">
+  <link rel="stylesheet" href="admin-societa-iscritte.css">
+</head>
+<body>
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <div class="site-header__top"><a href="index.html"><img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro"></a></div>
+      <nav class="site-nav" aria-label="Navigazione principale"><a href="index.html">Home</a><a href="info-gare.html">Info per chi gareggia</a><a href="contatti.html">Contatti</a></nav>
+    </header>
+
+    <main class="admin-page society-admin-page">
+      <section class="admin-login booking-card">
+        <p class="eyebrow">Area riservata</p>
+        <h1 class="admin-page__title">Società iscritte ai Campionati</h1>
+        <p>Accedi con le credenziali dell’area organizzazione.</p>
+        <form data-society-admin-login class="booking-shell">
+          <div class="booking-field">
+            <label for="societyAdminUsername">Utente</label>
+            <input id="societyAdminUsername" name="username" autocomplete="username" required>
+          </div>
+          <div class="booking-field">
+            <label for="societyAdminPassword">Password</label>
+            <input id="societyAdminPassword" name="password" type="password" autocomplete="current-password" required>
+          </div>
+          <div class="booking-actions">
+            <button class="button button--primary" type="submit">Accedi</button>
+            <span class="booking-status" data-society-login-status aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="admin-dashboard society-dashboard" data-society-dashboard hidden inert aria-hidden="true">
+        <div class="admin-toolbar society-admin-toolbar">
+          <div>
+            <p class="eyebrow">Organizzazione</p>
+            <h1 class="admin-page__title">Società iscritte ai Campionati</h1>
+            <p class="society-admin-subtitle">Anagrafica FIC 2026 incrociata con l’elenco aggiornato delle iscrizioni al Campionato Italiano Coastal Rowing.</p>
+          </div>
+          <div class="society-toolbar-actions">
+            <a class="admin-button" href="admin-prenotazioni-barche.html">Prenotazioni barche</a>
+            <button class="admin-button admin-button--primary" data-society-refresh type="button">Aggiorna dati FIC</button>
+          </div>
+        </div>
+
+        <section class="booking-card society-source-card" aria-live="polite">
+          <div class="society-source-card__copy">
+            <strong data-society-source-title>Caricamento dati…</strong>
+            <span data-society-source-detail></span>
+          </div>
+          <a data-society-source-link href="https://www.canottaggio.net/elenco_societa_iscritte.php?ope=26CICR/270S35XZ46IJP8WH" target="_blank" rel="noopener noreferrer">Apri elenco FIC ↗</a>
+        </section>
+
+        <section class="society-kpis" data-society-kpis aria-label="Riepilogo iscrizioni"></section>
+
+        <section class="booking-card society-controls">
+          <div class="society-controls__head">
+            <div>
+              <h2>Elenco società</h2>
+              <p class="booking-card__intro">I filtri vengono applicati anche alle esportazioni PDF ed Excel.</p>
+            </div>
+            <div class="society-export-actions">
+              <button class="admin-button" data-society-export-pdf type="button">Esporta PDF</button>
+              <button class="admin-button" data-society-export-xlsx type="button">Esporta Excel</button>
+            </div>
+          </div>
+
+          <div class="society-filters">
+            <label>
+              <span>Regione</span>
+              <select data-society-filter-region>
+                <option value="">Tutte le regioni</option>
+              </select>
+            </label>
+            <label>
+              <span>Società</span>
+              <input data-society-filter-text type="search" placeholder="Nome, codice, località o e-mail">
+            </label>
+            <label>
+              <span>Iscrizione</span>
+              <select data-society-filter-status>
+                <option value="">Tutte</option>
+                <option value="registered">Iscritte</option>
+                <option value="not_registered">Non iscritte</option>
+                <option value="unknown">Stato non disponibile</option>
+              </select>
+            </label>
+            <button class="admin-button society-reset-filter" data-society-reset-filters type="button">Azzera filtri</button>
+          </div>
+
+          <div class="society-table-summary">
+            <span data-society-visible-count></span>
+            <span class="booking-status" data-society-status aria-live="polite"></span>
+          </div>
+
+          <div class="society-table-wrap" data-society-table></div>
+        </section>
+
+        <details class="booking-card society-unmatched" data-society-unmatched hidden>
+          <summary>Iscrizioni FIC da verificare <span data-society-unmatched-count></span></summary>
+          <p>Queste righe risultano presenti nel portale FIC ma non sono state abbinate automaticamente con sufficiente sicurezza all’anagrafica 2026. Non vengono conteggiate come società abbinate finché il nome non è riconosciuto con certezza.</p>
+          <div data-society-unmatched-list></div>
+        </details>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="contatti">
+      <div class="site-footer__brand"><strong>Campionati Italiani Coastal Rowing 2026 – Pesaro</strong><p>Organizzazione locale: Società Canottieri Pesaro ASD.</p></div>
+      <div class="site-footer__links"><a href="privacy-policy.html">Privacy</a></div>
+    </footer>
+  </div>
+
+  <script src="admin-societa-iscritte.js" defer></script>
+  <script src="admin-societa-iscritte-export.js" defer></script>
+</body>
+</html>
