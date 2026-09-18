@@ -4,6 +4,7 @@
   if (!loginForm || !dashboard) return;
 
   const api = '/api/fic-registrations-admin';
+  const ADMIN_SESSION_KEY = 'coastal2026-admin-session';
   const loginSection = loginForm.closest('.admin-login');
   const loginStatus = document.querySelector('[data-society-login-status]');
   const statusNode = document.querySelector('[data-society-status]');
@@ -25,6 +26,27 @@
 
   let credentials = null;
   let data = null;
+
+  function readStoredCredentials() {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY) || 'null');
+      return value?.username && value?.password ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function storeCredentials(value) {
+    try {
+      if (value?.username && value?.password) {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(value));
+      }
+    } catch {}
+  }
+
+  function clearStoredCredentials() {
+    try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch {}
+  }
 
   function setStatus(node, message = '', kind = '') {
     if (!node) return;
@@ -169,10 +191,13 @@
       </article>`).join('');
   }
 
-  function paymentState(registration) {
-    if (!registration) return { label: '—', className: '' };
+  function paymentState(registration, registrationStatus = '') {
+    if (!registration) return { label: '', className: '' };
     const due = Number(registration.amountDue || 0);
     const paid = Number(registration.amountPaid || 0);
+    if (registrationStatus === 'registered' && Math.abs(due) < 0.01 && Math.abs(paid) < 0.01) {
+      return { label: '', className: '' };
+    }
     if (Math.abs(due - paid) < 0.01) return { label: 'OK', className: 'is-paid' };
     if (paid < due) return { label: 'Da saldare', className: 'is-due' };
     return { label: 'Da verificare', className: 'is-overpaid' };
@@ -190,7 +215,7 @@
     tableContainer.innerHTML = `
       <table class="society-table">
         <thead><tr>
-          <th>Stato</th><th>Regione</th><th>Codice</th><th>Società</th>
+          <th>Stato</th><th>Regione</th><th>Società</th>
           <th>Dir. resp.</th><th>Dir. tec.</th><th>Data reg.ne pagamento</th>
           <th class="society-table__money">Importo dovuto</th>
           <th class="society-table__money">Di cui noleggio barche</th>
@@ -200,25 +225,27 @@
           ${rows.map((row) => {
             const r = row.registration;
             const statusClass = row.status === 'registered' ? 'is-registered' : row.status === 'not_registered' ? 'is-not-registered' : 'is-unknown';
-            const payment = paymentState(r);
+            const payment = paymentState(r, row.status);
             return `
               <tr>
                 <td data-label="Stato"><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
                 <td data-label="Regione">${escapeHtml(row.region || '—')}</td>
-                <td data-label="Codice">${escapeHtml(row.code || '—')}</td>
                 <td data-label="Società" class="society-table__society">
                   <strong>${escapeHtml(row.name || '—')}</strong>
                   <small>${escapeHtml([row.city, row.province].filter(Boolean).join(' (') + (row.city && row.province ? ')' : ''))}</small>
                   ${row.email ? `<small>${escapeHtml(row.email)}</small>` : ''}
                   ${r?.team && r.team.toLocaleLowerCase('it-IT') !== String(row.name).toLocaleLowerCase('it-IT') ? `<small>FIC: ${escapeHtml(r.team)}</small>` : ''}
                 </td>
-                <td data-label="Dir. resp." class="society-table__person">${escapeHtml(r?.manager || '—')}</td>
-                <td data-label="Dir. tec." class="society-table__person">${escapeHtml(r?.coach || '—')}</td>
-                <td data-label="Data reg.ne pagamento" class="society-table__date">${escapeHtml(r?.paymentRegistrationDate || '—')}</td>
-                <td data-label="Importo dovuto" class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountDue))}</strong>` : '—'}</td>
-                <td data-label="Di cui noleggio barche" class="society-table__money">${r ? escapeHtml(formatMoney(r.boatRental)) : '—'}</td>
-                <td data-label="Importo pagato" class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountPaid))}</strong>` : '—'}</td>
-                <td data-label="Stato pagamento">${r ? `<span class="society-payment-badge ${payment.className}">${escapeHtml(payment.label)}</span>` : '—'}</td>
+                <td class="society-table__mobile-toggle">
+                  <button type="button" class="society-row-toggle" data-society-row-toggle aria-expanded="false">Mostra dettagli</button>
+                </td>
+                <td data-label="Dir. resp." class="society-table__person society-table__detail">${escapeHtml(r?.manager || '—')}</td>
+                <td data-label="Dir. tec." class="society-table__person society-table__detail">${escapeHtml(r?.coach || '—')}</td>
+                <td data-label="Data reg.ne pagamento" class="society-table__date society-table__detail">${escapeHtml(r?.paymentRegistrationDate || '—')}</td>
+                <td data-label="Importo dovuto" class="society-table__money society-table__detail">${r ? `<strong>${escapeHtml(formatMoney(r.amountDue))}</strong>` : '—'}</td>
+                <td data-label="Di cui noleggio barche" class="society-table__money society-table__detail">${r ? escapeHtml(formatMoney(r.boatRental)) : '—'}</td>
+                <td data-label="Importo pagato" class="society-table__money society-table__detail">${r ? `<strong>${escapeHtml(formatMoney(r.amountPaid))}</strong>` : '—'}</td>
+                <td data-label="Stato pagamento">${payment.label ? `<span class="society-payment-badge ${payment.className}">${escapeHtml(payment.label)}</span>` : ''}</td>
               </tr>`;
           }).join('')}
         </tbody>
@@ -257,12 +284,14 @@
 
     try {
       data = await requestData();
+      storeCredentials(credentials);
       showDashboard();
       renderAll();
       setStatus(statusNode, data.ficAvailable ? 'Dati aggiornati.' : 'Anagrafica caricata; dati FIC non disponibili.', data.ficAvailable ? 'success' : 'warning');
       setStatus(loginStatus, '');
     } catch (error) {
-      if (error.status === 401) {
+      if (error.status === 401 || error.status === 403) {
+        clearStoredCredentials();
         showLogin('Credenziali non valide.');
       } else {
         setStatus(initial ? loginStatus : statusNode, error.message, 'error');
@@ -271,6 +300,10 @@
       if (refreshButton) refreshButton.disabled = false;
     }
   }
+
+  credentials = readStoredCredentials();
+  if (credentials) load({ initial: true });
+  else showLogin();
 
   loginForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -283,6 +316,17 @@
   });
 
   refreshButton?.addEventListener('click', () => load());
+
+  tableContainer?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-society-row-toggle]');
+    if (!button) return;
+    const row = button.closest('tr');
+    if (!row) return;
+    const expanded = row.classList.toggle('is-expanded');
+    button.setAttribute('aria-expanded', String(expanded));
+    button.textContent = expanded ? 'Nascondi dettagli' : 'Mostra dettagli';
+  });
+
   [regionFilter, statusFilter].forEach((node) => node?.addEventListener('change', renderTable));
   textFilter?.addEventListener('input', renderTable);
   resetFilters?.addEventListener('click', () => {
@@ -297,7 +341,7 @@
     getData: () => data,
     formatMoney,
     statusLabel,
-    paymentStatusLabel: (registration) => paymentState(registration).label,
+    paymentStatusLabel: (registration, status) => paymentState(registration, status).label,
     getFilterLabel: () => {
       const parts = [];
       if (regionFilter?.value) parts.push(`Regione: ${regionFilter.value}`);

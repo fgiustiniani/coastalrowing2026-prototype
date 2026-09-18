@@ -81,31 +81,42 @@
     return name;
   }
 
-  function paymentStatusLabel(registration) {
-    return window.societyAdmin?.paymentStatusLabel?.(registration) || '—';
+  function paymentStatusLabel(registration, status) {
+    return window.societyAdmin?.paymentStatusLabel?.(registration, status) || '';
   }
 
   function excelRows(rows, includeFinancial) {
-    const header = ['Stato','Regione','Codice','Società','Dir. resp.','Dir. tec.','Data reg.ne pagamento'];
-    if (includeFinancial) header.push('Importo dovuto','Di cui noleggio barche','Importo pagato');
-    header.push('Stato pagamento');
+    const header = ['Stato','Regione','Società','Dir. resp.','Dir. tec.'];
+    if (includeFinancial) {
+      header.push(
+        'Data reg.ne pagamento',
+        'Importo dovuto',
+        'Di cui noleggio barche',
+        'Importo pagato',
+        'Stato pagamento'
+      );
+    }
 
     const output = [header];
     rows.forEach((row) => {
       const r = row.registration;
       const values = [
         window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
-        row.region || '', row.code || '', row.name || '',
-        r?.manager || '', r?.coach || '', r?.paymentRegistrationDate || ''
+        row.region || '',
+        row.name || '',
+        r?.manager || '',
+        r?.coach || ''
       ];
+
       if (includeFinancial) {
         values.push(
+          r?.paymentRegistrationDate || '',
           r ? Number(r.amountDue || 0) : '',
           r ? Number(r.boatRental || 0) : '',
-          r ? Number(r.amountPaid || 0) : ''
+          r ? Number(r.amountPaid || 0) : '',
+          r ? paymentStatusLabel(r, row.status) : ''
         );
       }
-      values.push(r ? paymentStatusLabel(r) : '');
       output.push(values);
     });
     return output;
@@ -115,14 +126,15 @@
     const lastColumn = columnName(rows[0].length - 1);
     const lastCell = `${lastColumn}${rows.length}`;
     const widths = includeFinancial
-      ? [16,18,15,36,25,24,22,17,20,17,18]
-      : [16,18,15,38,26,25,22,18];
+      ? [16,18,38,26,25,22,17,20,17,18]
+      : [16,18,44,28,27];
     const cols = widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join('');
+
     const body = rows.map((row, rowIndex) => {
       const cells = row.map((value, colIndex) => {
         const ref = `${columnName(colIndex)}${rowIndex + 1}`;
         let style = rowIndex === 0 ? ' s="1"' : '';
-        if (rowIndex > 0 && includeFinancial && colIndex >= 7 && colIndex <= 9) style = ' s="2"';
+        if (rowIndex > 0 && includeFinancial && colIndex >= 6 && colIndex <= 8) style = ' s="2"';
         if (typeof value === 'number' && Number.isFinite(value)) {
           return `<c r="${ref}"${style} t="n"><v>${value}</v></c>`;
         }
@@ -130,6 +142,7 @@
       }).join('');
       return `<row r="${rowIndex + 1}">${cells}</row>`;
     }).join('');
+
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <dimension ref="A1:${lastCell}"/>
@@ -444,22 +457,22 @@
     const margin = 24;
     const pageWidth = pdf.width - margin * 2;
     const columns = [
-      { key: 'status', label: 'Stato', width: 60 },
-      { key: 'region', label: 'Regione', width: 68 },
-      { key: 'code', label: 'Codice', width: 52 },
-      { key: 'name', label: 'Società', width: 150 },
-      { key: 'manager', label: 'Dir. resp.', width: 105 },
-      { key: 'coach', label: 'Dir. tec.', width: 92 },
-      { key: 'paymentDate', label: 'Data pag.', width: 72 }
+      { key: 'status', label: 'Stato', width: 72 },
+      { key: 'region', label: 'Regione', width: 80 },
+      { key: 'name', label: 'Società', width: includeFinancial ? 160 : 275 },
+      { key: 'manager', label: 'Dir. resp.', width: includeFinancial ? 110 : 180 },
+      { key: 'coach', label: 'Dir. tec.', width: includeFinancial ? 100 : 175 }
     ];
+
     if (includeFinancial) {
       columns.push(
-        { key: 'due', label: 'Dovuto', width: 68 },
-        { key: 'boats', label: 'Nol. barche', width: 72 },
-        { key: 'paid', label: 'Pagato', width: 68 }
+        { key: 'paymentDate', label: 'Data pag.', width: 76 },
+        { key: 'due', label: 'Dovuto', width: 70 },
+        { key: 'boats', label: 'Nol. barche', width: 76 },
+        { key: 'paid', label: 'Pagato', width: 70 },
+        { key: 'paymentStatus', label: 'Stato pag.', width: 78 }
       );
     }
-    columns.push({ key: 'paymentStatus', label: 'Stato pag.', width: 72 });
 
     const totalColumnWidth = columns.reduce((sum, col) => sum + col.width, 0);
     const scale = Math.min(1, pageWidth / totalColumnWidth);
@@ -484,6 +497,7 @@
         y += 9;
       });
       y += 4;
+
       let x = margin;
       columns.forEach((col) => {
         pdf.rect(page, x, y, col.width, 20, 0.93, 0.78);
@@ -498,7 +512,6 @@
       return {
         status: window.societyAdmin?.statusLabel?.(row.status) || row.status || '',
         region: row.region || '',
-        code: row.code || '',
         name: row.name || '',
         manager: r?.manager || '',
         coach: r?.coach || '',
@@ -506,7 +519,7 @@
         due: r ? euro(r.amountDue) : '—',
         boats: r ? euro(r.boatRental) : '—',
         paid: r ? euro(r.amountPaid) : '—',
-        paymentStatus: r ? paymentStatusLabel(r) : '—'
+        paymentStatus: r ? paymentStatusLabel(r, row.status) : ''
       };
     }
 

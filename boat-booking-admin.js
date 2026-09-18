@@ -4,6 +4,7 @@
   if (!loginForm || !dashboard) return;
 
   const api = '/api/boat-bookings-admin';
+  const ADMIN_SESSION_KEY = 'coastal2026-admin-session';
   const status = document.querySelector('[data-admin-status]');
   const loginStatus = document.querySelector('[data-login-status]');
   const loginSection = loginForm.closest('.admin-login');
@@ -33,6 +34,27 @@
 
   let credentials = null;
   let data = { bookings: [], availability: [], boats: [], slots: [], settings: {} };
+
+  function readStoredCredentials() {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY) || 'null');
+      return value?.username && value?.password ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function storeCredentials(value) {
+    try {
+      if (value?.username && value?.password) {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(value));
+      }
+    } catch {}
+  }
+
+  function clearStoredCredentials() {
+    try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch {}
+  }
   let editing = null;
   let editingQuantities = new Map();
 
@@ -84,6 +106,7 @@
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) clearStoredCredentials();
       const error = new Error(body.error || 'Operazione non riuscita.');
       error.code = body.code;
       error.status = response.status;
@@ -450,7 +473,28 @@
     dialog.showModal();
   }
 
-  showLogin();
+  async function enterDashboard() {
+    try {
+      await adminRequest('login');
+      storeCredentials(credentials);
+      showDashboard();
+      await loadDashboard();
+      setText(loginStatus, '');
+      return true;
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) clearStoredCredentials();
+      showLogin(error.message);
+      return false;
+    }
+  }
+
+  credentials = readStoredCredentials();
+  if (credentials) {
+    setText(loginStatus, 'Accesso…');
+    enterDashboard();
+  } else {
+    showLogin();
+  }
 
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -462,18 +506,13 @@
 
     setText(loginStatus, 'Accesso…');
 
-    try {
-      await adminRequest('login');
-      showDashboard();
-      await loadDashboard();
-    } catch (error) {
-      showLogin(error.message);
-    }
+    await enterDashboard();
   });
 
   refreshButton?.addEventListener('click', () => {
     loadDashboard().catch((error) => {
       if (error.status === 401 || error.status === 403) {
+        clearStoredCredentials();
         showLogin('Sessione non valida. Effettua nuovamente l’accesso.');
         return;
       }

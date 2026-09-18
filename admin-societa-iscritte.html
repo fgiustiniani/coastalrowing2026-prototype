@@ -49,13 +49,19 @@
           </div>
           <div class="society-toolbar-actions">
             <a class="admin-button" href="admin-prenotazioni-barche.html">Prenotazioni barche</a>
-            <button class="admin-button admin-button--primary" data-society-refresh type="button">Aggiorna dati FIC</button>
           </div>
         </div>
 
         <section class="booking-card society-source-card" aria-live="polite">
           <div class="society-source-card__copy">
-            <strong data-society-source-title>Caricamento dati…</strong>
+            <div class="society-source-card__title-row">
+              <strong data-society-source-title>Caricamento dati…</strong>
+              <button class="society-refresh-icon" data-society-refresh type="button" aria-label="Aggiorna dati FIC" title="Aggiorna dati FIC">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/>
+                </svg>
+              </button>
+            </div>
             <span data-society-source-detail></span>
           </div>
           <a data-society-source-link href="https://www.canottaggio.net/elenco_societa_iscritte.php?ope=26CICR/270S35XZ46IJP8WH" target="_blank" rel="noopener noreferrer">Apri elenco FIC ↗</a>

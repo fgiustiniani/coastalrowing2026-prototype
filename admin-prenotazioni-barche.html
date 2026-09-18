@@ -14,6 +14,13 @@
     .admin-dashboard[hidden],
     .admin-login[hidden] { display: none !important; }
 
+    .admin-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .admin-secondary-sections {
       display: grid;
       gap: 14px;
@@ -424,6 +431,13 @@
     .admin-settings-group h2 { margin-top: 0; }
 
     @media (max-width: 760px) {
+      .admin-toolbar-actions {
+        width: 100%;
+      }
+      .admin-toolbar-actions > * {
+        flex: 1 1 180px;
+        text-align: center;
+      }
       .admin-report-nav { grid-template-columns: 1fr; }
       .admin-reports-summary__title { order: 1; }
       .admin-reports-summary::after { order: 2; margin-left: auto; }
@@ -501,7 +515,10 @@
             <h1 class="admin-page__title">Prenotazioni prove barche</h1>
             <span class="booking-status" data-admin-status aria-live="polite"></span>
           </div>
-          <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
+          <div class="admin-toolbar-actions">
+            <a class="admin-button" href="admin-societa-iscritte.html">Società iscritte</a>
+            <button class="admin-button" data-admin-refresh type="button">Aggiorna dati</button>
+          </div>
         </div>
 
         <details class="booking-card admin-collapsible admin-reports-card" data-admin-reports-menu open>
