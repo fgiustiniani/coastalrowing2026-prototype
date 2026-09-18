@@ -21,8 +21,16 @@
   const regionFilter = document.querySelector('[data-society-filter-region]');
   const textFilter = document.querySelector('[data-society-filter-text]');
   const statusFilter = document.querySelector('[data-society-filter-status]');
+  const historicFilter = document.querySelector('[data-society-filter-2025]');
+  const rentalMailFilter = document.querySelector('[data-society-filter-rental-mail]');
   const paymentFilter = document.querySelector('[data-society-filter-payment]');
   const resetFilters = document.querySelector('[data-society-reset-filters]');
+  const uploadForm = document.querySelector('[data-society-upload-form]');
+  const uploadFile = document.querySelector('[data-society-upload-file]');
+  const uploadDate = document.querySelector('[data-society-upload-date]');
+  const uploadSubmit = document.querySelector('[data-society-upload-submit]');
+  const uploadStatus = document.querySelector('[data-society-upload-status]');
+  const uploadHistory = document.querySelector('[data-society-upload-history]');
   const unmatched = document.querySelector('[data-society-unmatched]');
   const unmatchedCount = document.querySelector('[data-society-unmatched-count]');
   const unmatchedList = document.querySelector('[data-society-unmatched-list]');
@@ -88,6 +96,24 @@
     }
   }
 
+  function formatDate(value) {
+    if (!value) return '—';
+    const parts = String(value).split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return String(value);
+  }
+
+  function todayRome() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Rome',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const get = (type) => parts.find((part) => part.type === type)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
+
   function showLogin(message = '') {
     credentials = null;
     if (loginSection) loginSection.hidden = false;
@@ -113,6 +139,30 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error(body.error || 'Non è stato possibile caricare i dati.');
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  async function uploadHtmlSnapshot(file, updateDateValue) {
+    const html = await file.text();
+    const response = await fetch(api, {
+      method: 'POST',
+      headers: {
+        authorization: authHeader(),
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'upload-html',
+        fileName: file.name,
+        updateDate: updateDateValue,
+        html
+      })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.error || 'Non è stato possibile caricare il file HTML.');
       error.status = response.status;
       throw error;
     }
@@ -147,12 +197,16 @@
     if (!data?.rows) return [];
     const region = regionFilter?.value || '';
     const status = statusFilter?.value || '';
+    const historic = historicFilter?.value || '';
+    const rentalMail = rentalMailFilter?.value || '';
     const payment = paymentFilter?.value || '';
     const search = (textFilter?.value || '').trim().toLocaleLowerCase('it-IT');
 
     return data.rows
       .filter((row) => !region || row.region === region)
       .filter((row) => !status || row.status === status)
+      .filter((row) => !historic || (row.registered2025 ? 'yes' : 'no') === historic)
+      .filter((row) => !rentalMail || (row.rentalMailReceived ? 'yes' : 'no') === rentalMail)
       .filter((row) => matchesPaymentFilter(row, payment))
       .filter((row) => !search || registrationSearchText(row).includes(search))
       .sort((a, b) =>
@@ -173,19 +227,52 @@
 
   function renderSource() {
     if (!data) return;
-    sourceCard?.classList.toggle('is-ok', data.ficAvailable === true);
-    sourceCard?.classList.toggle('is-warning', data.ficAvailable !== true);
+    sourceCard?.classList.toggle('is-ok', data.ficAvailable === true && data.financialAvailable === true);
+    sourceCard?.classList.toggle('is-warning', data.ficAvailable !== true || data.financialAvailable !== true);
     if (sourceLink && data.sourceUrl) sourceLink.href = data.sourceUrl;
 
-    if (data.ficAvailable) {
-      sourceTitle.textContent = 'Dati FIC aggiornati';
+    if (data.registrationSource === 'upload' && data.latestUpload) {
+      sourceTitle.textContent = `Elenco iscritti aggiornato al ${formatDate(data.latestUpload.updateDate)}`;
+      const athleteText = data.latestUpload.athletesTotal === null || data.latestUpload.athletesTotal === undefined
+        ? 'atleti non disponibili'
+        : `${data.latestUpload.athletesTotal} atleti`;
       sourceDetail.textContent =
-        `Lettura effettuata il ${formatTimestamp(data.fetchedAt)} · ${data.summary?.sourceRegistrations ?? 0} società presenti nel portale FIC.` +
+        `${data.latestUpload.societyCount} società · ${athleteText} · file ${data.latestUpload.fileName}. ` +
+        (data.financialAvailable
+          ? `Dati economici FIC letti il ${formatTimestamp(data.fetchedAt)}.`
+          : `Dati economici FIC non disponibili: ${data.sourceError || 'portale non raggiungibile'}`);
+    } else if (data.ficAvailable) {
+      sourceTitle.textContent = 'Dati FIC live aggiornati';
+      sourceDetail.textContent =
+        `Lettura effettuata il ${formatTimestamp(data.fetchedAt)} · ${data.summary?.sourceRegistrations ?? 0} società presenti nel portale FIC. Nessun file HTML caricato.` +
         ((data.summary?.unmatchedRegistrations || 0) ? ` ${data.summary.unmatchedRegistrations} riga/e da verificare.` : '');
     } else {
-      sourceTitle.textContent = 'Anagrafica disponibile, aggiornamento FIC non riuscito';
-      sourceDetail.textContent = `${data.sourceError || 'Portale FIC non disponibile.'} Lo stato di iscrizione non viene dedotto dai dati precedenti.`;
+      sourceTitle.textContent = 'Anagrafica disponibile, elenco iscritti non disponibile';
+      sourceDetail.textContent = `${data.sourceError || 'Portale FIC non disponibile.'} Carica un file HTML per aggiornare lo stato delle iscrizioni.`;
     }
+  }
+
+  function renderUploadHistory() {
+    if (!uploadHistory) return;
+    const uploads = Array.isArray(data?.uploadHistory) ? data.uploadHistory : [];
+    if (!uploads.length) {
+      uploadHistory.innerHTML = '<span class="society-upload-history__empty">Nessun file HTML caricato.</span>';
+      return;
+    }
+
+    uploadHistory.innerHTML =
+      '<strong>Storico aggiornamenti</strong>' +
+      '<div class="society-upload-history__items">' +
+      uploads.slice(0, 8).map((item, index) => {
+        const athletes = item.athletesTotal === null || item.athletesTotal === undefined
+          ? 'atleti n.d.'
+          : `${item.athletesTotal} atleti`;
+        return `<div class="society-upload-history__item${index === 0 ? ' is-current' : ''}">
+          <span><b>${escapeHtml(formatDate(item.updateDate))}</b> · ${escapeHtml(item.societyCount)} società · ${escapeHtml(athletes)}</span>
+          <small>${escapeHtml(item.fileName || '')} · caricato ${escapeHtml(formatTimestamp(item.uploadedAt))}${index === 0 ? ' · in uso' : ''}</small>
+        </div>`;
+      }).join('') +
+      '</div>';
   }
 
   function renderKpis() {
@@ -194,15 +281,22 @@
     const cards = [
       { label: 'Società FIC 2026', value: s.totalSocieties ?? 0, className: '' },
       {
-        label: 'Iscritte',
+        label: 'Società iscritte',
         value: data.ficAvailable ? s.registered ?? 0 : '—',
-        historic: s.registered2025 ?? 62,
+        historic: `${s.registered2025 ?? 62} nel 2025`,
+        mailCount: s.rentalMailReceived ?? 0,
         className: 'society-kpi--registered'
       },
+      {
+        label: 'Atleti iscritti',
+        value: s.athletes2026 ?? '—',
+        historic: `${s.athletes2025 ?? 445} nel 2025`,
+        className: 'society-kpi--athletes'
+      },
       { label: 'Non iscritte', value: data.ficAvailable ? s.notRegistered ?? 0 : '—', className: 'society-kpi--not-registered' },
-      { label: 'Importo dovuto', value: data.ficAvailable ? formatMoney(s.amountDue) : '—', className: '' },
-      { label: 'Noleggio barche', value: data.ficAvailable ? formatMoney(s.boatRental) : '—', className: '' },
-      { label: 'Importo pagato', value: data.ficAvailable ? formatMoney(s.amountPaid) : '—', className: '' }
+      { label: 'Importo dovuto', value: data.financialAvailable ? formatMoney(s.amountDue) : '—', className: '' },
+      { label: 'Noleggio barche', value: data.financialAvailable ? formatMoney(s.boatRental) : '—', className: '' },
+      { label: 'Importo pagato', value: data.financialAvailable ? formatMoney(s.amountPaid) : '—', className: '' }
     ];
 
     kpis.innerHTML = cards.map((card) => `
@@ -212,8 +306,8 @@
           ${escapeHtml(card.value)}
           ${card.historic !== undefined ? `<small class="society-kpi__historic">(${escapeHtml(card.historic)})</small>` : ''}
         </strong>
-      </article>`).join('') +
-      '<div class="society-kpis-note">Tra parentesi: numero di società iscritte nel 2025.</div>';
+        ${card.mailCount !== undefined ? `<div class="society-kpi__mail"><span class="society-kpi__mail-icon" aria-hidden="true">✉</span><b>${escapeHtml(card.mailCount)}</b><span>mail noleggio ricevute</span></div>` : ''}
+      </article>`).join('');
   }
 
   function paymentState(registration, registrationStatus = '') {
@@ -255,8 +349,9 @@
     const rows = visibleRows();
     const registeredCount = rows.filter((row) => row.status === 'registered').length;
     const registered2025Count = rows.filter((row) => row.registered2025).length;
+    const rentalMailCount = rows.filter((row) => row.rentalMailReceived).length;
     if (visibleCount) {
-      visibleCount.textContent = `${registeredCount} iscritte su ${rows.length} (${registered2025Count} nel 2025)`;
+      visibleCount.textContent = `${registeredCount} iscritte su ${rows.length} (${registered2025Count} nel 2025) · ${rentalMailCount} mail noleggio`;
     }
     if (!rows.length) {
       tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
@@ -268,7 +363,7 @@
     tableContainer.innerHTML = `
       <table class="society-table">
         <thead><tr>
-          <th>Stato</th><th>Iscritta 2025</th><th>Regione</th><th>Società</th>
+          <th>Stato</th><th>Iscritta 2025</th><th>Mail di noleggio</th><th>Regione</th><th>Società</th>
           <th>Dir. resp.</th><th>Dir. tec.</th><th>Data reg.ne pagamento</th>
           <th class="society-table__money">Importo dovuto</th>
           <th class="society-table__money">Di cui noleggio barche</th>
@@ -283,6 +378,7 @@
               <tr>
                 <td data-label="Stato"><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
                 <td data-label="Iscritta 2025"><span class="society-year-badge ${row.registered2025 ? 'is-yes' : 'is-no'}">${row.registered2025 ? 'Sì' : 'No'}</span></td>
+                <td data-label="Mail di noleggio"><span class="society-mail-badge ${row.rentalMailReceived ? 'is-yes' : 'is-no'}">${row.rentalMailReceived ? 'Ricevuta' : 'No'}</span></td>
                 <td data-label="Regione">${escapeHtml(row.region || '—')}</td>
                 <td data-label="Società" class="society-table__society">
                   <strong>${escapeHtml(row.name || '—')}</strong>
@@ -328,6 +424,7 @@
     syncRegions();
     renderSource();
     renderKpis();
+    renderUploadHistory();
     renderTable();
     renderUnmatched();
   }
@@ -356,6 +453,8 @@
     }
   }
 
+  if (uploadDate && !uploadDate.value) uploadDate.value = todayRome();
+
   credentials = readStoredCredentials();
   if (credentials) load({ initial: true });
   else showLogin();
@@ -371,6 +470,49 @@
   });
 
   refreshButton?.addEventListener('click', () => load());
+
+  uploadForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const file = uploadFile?.files?.[0];
+    const updateDateValue = uploadDate?.value || '';
+    if (!file) {
+      setStatus(uploadStatus, 'Seleziona un file HTML.', 'error');
+      return;
+    }
+    if (!updateDateValue) {
+      setStatus(uploadStatus, 'Indica la data di aggiornamento.', 'error');
+      return;
+    }
+    if (file.size > 2500000) {
+      setStatus(uploadStatus, 'Il file HTML supera il limite consentito.', 'error');
+      return;
+    }
+
+    if (uploadSubmit) uploadSubmit.disabled = true;
+    setStatus(uploadStatus, 'Caricamento…');
+    try {
+      const result = await uploadHtmlSnapshot(file, updateDateValue);
+      const unknown = Array.isArray(result.unknownCodes) ? result.unknownCodes.length : 0;
+      setStatus(
+        uploadStatus,
+        unknown
+          ? `File caricato. ${unknown} codice/i società non presenti nell’anagrafica FIC 2026.`
+          : 'File caricato e impostato come aggiornamento corrente.',
+        unknown ? 'warning' : 'success'
+      );
+      if (uploadFile) uploadFile.value = '';
+      await load();
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        clearStoredCredentials();
+        showLogin('Credenziali non valide.');
+      } else {
+        setStatus(uploadStatus, error.message, 'error');
+      }
+    } finally {
+      if (uploadSubmit) uploadSubmit.disabled = false;
+    }
+  });
 
   tableContainer?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-society-row-toggle]');
@@ -398,11 +540,13 @@
 
   window.addEventListener('resize', () => requestAnimationFrame(syncHorizontalScrollbar));
 
-  [regionFilter, statusFilter, paymentFilter].forEach((node) => node?.addEventListener('change', renderTable));
+  [regionFilter, statusFilter, historicFilter, rentalMailFilter, paymentFilter].forEach((node) => node?.addEventListener('change', renderTable));
   textFilter?.addEventListener('input', renderTable);
   resetFilters?.addEventListener('click', () => {
     if (regionFilter) regionFilter.value = '';
     if (statusFilter) statusFilter.value = '';
+    if (historicFilter) historicFilter.value = '';
+    if (rentalMailFilter) rentalMailFilter.value = '';
     if (paymentFilter) paymentFilter.value = '';
     if (textFilter) textFilter.value = '';
     renderTable();
@@ -418,6 +562,8 @@
       const parts = [];
       if (regionFilter?.value) parts.push(`Regione: ${regionFilter.value}`);
       if (statusFilter?.value) parts.push(`Stato: ${statusLabel(statusFilter.value)}`);
+      if (historicFilter?.value) parts.push(`Iscritta 2025: ${historicFilter.value === 'yes' ? 'Sì' : 'No'}`);
+      if (rentalMailFilter?.value) parts.push(`Mail noleggio: ${rentalMailFilter.value === 'yes' ? 'Ricevuta' : 'Non ricevuta'}`);
       if (paymentFilter?.value) {
         const paymentLabels = {
           paid: 'OK',

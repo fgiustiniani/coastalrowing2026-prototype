@@ -127,7 +127,7 @@
 
 .society-kpis {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
   margin: 18px 0;
 }
@@ -335,7 +335,7 @@
 
 .society-filters {
   display: grid;
-  grid-template-columns: minmax(150px, .7fr) minmax(240px, 1.35fr) minmax(150px, .7fr) minmax(170px, .8fr) auto;
+  grid-template-columns: minmax(135px, .7fr) minmax(220px, 1.25fr) repeat(4, minmax(135px, .72fr)) auto;
   gap: 12px;
   align-items: end;
   padding: 15px;
@@ -423,7 +423,7 @@
 
 .society-table {
   width: 100%;
-  min-width: 1380px;
+  min-width: 1470px;
   border-collapse: collapse;
   font-size: .82rem;
 }
@@ -884,4 +884,181 @@
   }
   .society-toolbar-actions > *,
   .society-export-actions > * { flex-basis: 100%; }
+}
+
+
+/* Aggiornamento elenco iscritti e stato mail noleggio */
+.society-upload-card {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 18px;
+  padding: 20px 22px;
+}
+
+.society-upload-card__head h2 {
+  margin: 4px 0 6px;
+}
+
+.society-upload-card__head p:last-child {
+  margin: 0;
+  color: #5b6f76;
+}
+
+.society-upload-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(170px, .7fr) auto minmax(180px, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.society-upload-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.society-upload-form label > span {
+  color: #425b64;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.society-upload-form input[type="file"],
+.society-upload-form input[type="date"] {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #bdcbd0;
+  border-radius: 9px;
+  background: #fff;
+  color: #173e4b;
+  font: inherit;
+}
+
+.society-upload-status {
+  min-height: 42px;
+  align-content: center;
+}
+
+.society-upload-history {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #e3eaec;
+  color: #52666c;
+  font-size: .82rem;
+}
+
+.society-upload-history__items {
+  display: grid;
+  gap: 7px;
+}
+
+.society-upload-history__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border: 1px solid #e0e7e9;
+  border-radius: 10px;
+  background: #fafcfc;
+}
+
+.society-upload-history__item.is-current {
+  border-color: #b9d9c8;
+  background: #f6fbf8;
+}
+
+.society-upload-history__item small {
+  color: #718188;
+  text-align: right;
+}
+
+.society-upload-history__empty {
+  color: #718188;
+}
+
+.society-kpi__mail {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  color: #4f666e;
+  font-size: .72rem;
+  line-height: 1.2;
+  font-weight: 750;
+}
+
+.society-kpi__mail b {
+  color: #0b6478;
+  font-size: .9rem;
+}
+
+.society-kpi__mail-icon {
+  color: #0b6478;
+  font-size: .9rem;
+}
+
+.society-kpi--athletes {
+  border-color: #c9dce4;
+  background: #f7fbfc;
+}
+
+.society-kpi--athletes strong {
+  color: #315f70;
+}
+
+.society-mail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.society-mail-badge.is-yes {
+  background: #e7f1f6;
+  color: #245f76;
+}
+
+.society-mail-badge.is-no {
+  background: #eef1f2;
+  color: #6b767a;
+}
+
+@media (max-width: 1180px) {
+  .society-upload-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .society-upload-status {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .society-upload-card {
+    padding: 14px;
+  }
+  .society-upload-form {
+    grid-template-columns: 1fr;
+  }
+  .society-upload-form .admin-button {
+    width: 100%;
+  }
+  .society-upload-history__item {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .society-upload-history__item small {
+    text-align: left;
+  }
+  .society-mail-badge,
+  .society-year-badge {
+    justify-self: end;
+  }
 }

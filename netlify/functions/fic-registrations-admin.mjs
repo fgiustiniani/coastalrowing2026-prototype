@@ -1,3 +1,5 @@
+import { getStore } from '@netlify/blobs';
+import { randomUUID } from 'node:crypto';
 import { isAdminAuthorized, isSameOrigin, json } from './_lib/boat-bookings-common.mjs';
 import { FIC_SOCIETIES_2026 } from './_data/fic-societies-2026.mjs';
 
@@ -8,6 +10,23 @@ const EVENT_URLS = [
 ];
 
 const REGISTERED_2025_CODES = new Set(["050155","040086","030127","040165","098890","020119","030016","010109","120158","050004","100016","150003","070169","070110","080005","010168","050142","030135","030026","050005","080117","130164","110213","110014","080131","110043","030065","050174","050047","030045","050143","030005","050073","110052","110098","030024","040007","050002","100121","050001","080009","030153","010122","090024","070170","030134","040026","030014","030195","040051","100010","030104","100118","010096","040160","070101","070077","010014","040258","030011","030017","100044"]);
+
+// Fonte FIC 2025, Meeting Capitani Trieste: 62 società e 445 atleti nel Campionato.
+const ATHLETES_2025 = 445;
+
+// Snapshot delle richieste di noleggio ricevute via e-mail e verificate il 18/09/2026.
+// La presenza indica esclusivamente che una mail di noleggio è stata ricevuta, non che la richiesta sia ancora attiva.
+const RENTAL_MAIL_RECEIVED_CODES = new Set([
+  "110004","120060","030044","010096","030293","080131","020119","150003","030045","040083",
+  "030134","130017","040086","111112","060054","030011","070110","070077","050004","050174",
+  "030127","132001","070007","110043","120016","030104","040081","010109","110213","120002",
+  "120158","100044","130164","070101","050002","100037","050142","050005","030023","100118",
+  "120021","070128"
+]);
+
+const SNAPSHOT_STORE_KEY = 'uploads';
+const MAX_SNAPSHOT_UPLOADS = 30;
+const MAX_HTML_UPLOAD_CHARS = 2500000;
 
 const MANUAL_MATCHES_BY_FISCAL_CODE = new Map([
   ['80008900393', '060054'], // RAVENNA SC -> Canottieri Ravenna 1873
@@ -130,6 +149,166 @@ function parseFicHtml(html) {
     throw new Error('Nessuna società riconosciuta nella pagina FIC.');
   }
   return registrations;
+}
+
+function parseInteger(value) {
+  const match = String(value ?? '').replace(/\s+/g, '').match(/-?\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function parseRegistrationSnapshotHtml(html) {
+  const tableRows = [];
+  const rowPattern = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rowMatch;
+
+  while ((rowMatch = rowPattern.exec(html))) {
+    const cells = [];
+    const cellPattern = /<(td|th)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+    let cellMatch;
+    while ((cellMatch = cellPattern.exec(rowMatch[1]))) {
+      cells.push(cellText(cellMatch[2]));
+    }
+    if (cells.length) tableRows.push(cells);
+  }
+
+  const byCode = new Map();
+  let athletesTotal = null;
+
+  for (const cells of tableRows) {
+    const joined = cells.join(' ').toUpperCase();
+    if (joined.includes('ATLETI FISICI PRESENTI')) {
+      const numericValues = cells
+        .flatMap((cell) => String(cell).match(/\b\d+\b/g) || [])
+        .map(Number)
+        .filter(Number.isFinite);
+      if (numericValues.length) athletesTotal = numericValues[numericValues.length - 1];
+    }
+
+    if (cells.length < 7 || !/^\d+$/.test(String(cells[0] || '').trim())) continue;
+
+    const societyCell = String(cells[1] || '').trim();
+    const codeMatch = societyCell.match(/\((\d{6})\)\s*$/);
+    if (!codeMatch) continue;
+
+    const code = codeMatch[1];
+    byCode.set(code, {
+      code,
+      team: societyCell.replace(/\s*\(\d{6}\)\s*$/, '').trim(),
+      manager: cells[2] || '',
+      coach: cells[3] || '',
+      athleteEntries: parseInteger(cells[4]),
+      crews: parseInteger(cells[5]),
+      physicalAthletes: parseInteger(cells[6])
+    });
+  }
+
+  const societies = Array.from(byCode.values());
+  if (!societies.length) {
+    throw new Error('Il file HTML non contiene un elenco società riconoscibile.');
+  }
+
+  return { societies, athletesTotal };
+}
+
+function sanitizeStoreSuffix(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+function resolveSnapshotStoreName(requestUrl) {
+  const hostname = requestUrl.hostname.toLowerCase();
+  if (hostname.endsWith('.netlify.app') && hostname.includes('--')) {
+    const deployPrefix = sanitizeStoreSuffix(hostname.split('--')[0]);
+    if (deployPrefix) return `coastal-fic-admin-${deployPrefix}`;
+  }
+  return 'coastal-fic-admin';
+}
+
+async function readSnapshotUploads(store) {
+  const stored = await store.get(SNAPSHOT_STORE_KEY, { type: 'json' });
+  return Array.isArray(stored) ? stored : [];
+}
+
+function snapshotMeta(item) {
+  if (!item) return null;
+  return {
+    id: item.id,
+    updateDate: item.updateDate,
+    uploadedAt: item.uploadedAt,
+    fileName: item.fileName,
+    societyCount: Number(item.societyCount || item.societies?.length || 0),
+    athletesTotal: Number.isFinite(Number(item.athletesTotal)) ? Number(item.athletesTotal) : null
+  };
+}
+
+function latestSnapshot(uploads) {
+  return [...uploads].sort((a, b) =>
+    String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || ''))
+  )[0] || null;
+}
+
+async function saveSnapshotUpload(request, store) {
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return { error: 'Dati di upload non validi.', status: 400 };
+  }
+
+  if (String(payload.action || '') !== 'upload-html') {
+    return { error: 'Operazione non valida.', status: 400 };
+  }
+
+  const updateDate = String(payload.updateDate || '').trim();
+  const fileName = String(payload.fileName || 'elenco-iscritti.html')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim()
+    .slice(0, 180);
+  const html = String(payload.html || '');
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(updateDate)) {
+    return { error: 'Indica una data di aggiornamento valida.', status: 400 };
+  }
+  if (!html || html.length > MAX_HTML_UPLOAD_CHARS) {
+    return { error: 'Il file HTML è vuoto o troppo grande.', status: 400 };
+  }
+
+  let parsed;
+  try {
+    parsed = parseRegistrationSnapshotHtml(html);
+  } catch (error) {
+    return { error: error?.message || 'File HTML non riconosciuto.', status: 400 };
+  }
+
+  const masterCodes = new Set(FIC_SOCIETIES_2026.map((society) => String(society.code || '')));
+  const unknownCodes = parsed.societies
+    .map((society) => society.code)
+    .filter((code) => !masterCodes.has(code));
+
+  const item = {
+    id: randomUUID(),
+    updateDate,
+    uploadedAt: new Date().toISOString(),
+    fileName: fileName || 'elenco-iscritti.html',
+    societyCount: parsed.societies.length,
+    athletesTotal: parsed.athletesTotal,
+    unknownCodes,
+    societies: parsed.societies
+  };
+
+  const uploads = await readSnapshotUploads(store);
+  const updated = [item, ...uploads].slice(0, MAX_SNAPSHOT_UPLOADS);
+  await store.setJSON(SNAPSHOT_STORE_KEY, updated);
+
+  return {
+    ok: true,
+    upload: snapshotMeta(item),
+    unknownCodes,
+    uploads: updated.map(snapshotMeta)
+  };
 }
 
 function normalize(value) {
@@ -310,7 +489,7 @@ async function fetchFicPage() {
   throw lastError || new Error('Pagina FIC non raggiungibile.');
 }
 
-function summaryFrom(rows, registrations, unmatchedRegistrations, available) {
+function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAvailable, financialAvailable, snapshot) {
   const money = registrations.reduce((sum, item) => ({
     amountDue: sum.amountDue + Number(item.amountDue || 0),
     boatRental: sum.boatRental + Number(item.boatRental || 0),
@@ -318,28 +497,66 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, available) {
     amountPaid: sum.amountPaid + Number(item.amountPaid || 0)
   }), { amountDue: 0, boatRental: 0, oarRental: 0, amountPaid: 0 });
 
-  const registered = available ? rows.filter((row) => row.status === 'registered').length : 0;
+  const registered = registrationAvailable ? rows.filter((row) => row.status === 'registered').length : 0;
+  const rentalMailReceived = rows.filter((row) => row.rentalMailReceived).length;
+  const rentalMailRegistered = registrationAvailable
+    ? rows.filter((row) => row.status === 'registered' && row.rentalMailReceived).length
+    : null;
+
   return {
     totalSocieties: rows.length,
     registered2025: REGISTERED_2025_CODES.size,
+    athletes2025: ATHLETES_2025,
+    athletes2026: snapshot && Number.isFinite(Number(snapshot.athletesTotal)) ? Number(snapshot.athletesTotal) : null,
     registered,
-    notRegistered: available ? rows.length - registered : null,
-    sourceRegistrations: available ? registrations.length : null,
-    unmatchedRegistrations: available ? unmatchedRegistrations.length : null,
+    notRegistered: registrationAvailable ? rows.length - registered : null,
+    sourceRegistrations: registrationAvailable
+      ? (snapshot ? Number(snapshot.societyCount || snapshot.societies?.length || 0) : registrations.length)
+      : null,
+    financialRegistrations: financialAvailable ? registrations.length : null,
+    unmatchedRegistrations: financialAvailable ? unmatchedRegistrations.length : null,
+    rentalMailReceived,
+    rentalMailRegistered,
     ...money
   };
 }
 
 export default async (request) => {
-  if (request.method !== 'GET') return json({ error: 'Metodo non consentito.' }, 405);
   if (!isSameOrigin(request)) return json({ error: 'Origine non consentita.' }, 403);
 
   const auth = isAdminAuthorized(request);
   if (!auth.configured) return json({ error: 'L’area amministrativa non è configurata.' }, 503);
   if (!auth.valid) return json({ error: 'Credenziali non valide.' }, 401);
 
+  const requestUrl = new URL(request.url);
+  const snapshotStore = getStore(resolveSnapshotStoreName(requestUrl));
+
+  if (request.method === 'POST') {
+    try {
+      const saved = await saveSnapshotUpload(request, snapshotStore);
+      if (saved.error) return json({ error: saved.error }, saved.status || 400);
+      return json(saved);
+    } catch (error) {
+      console.error('Errore salvataggio snapshot iscritti:', error);
+      return json({ error: 'Non è stato possibile salvare il file HTML.' }, 500);
+    }
+  }
+
+  if (request.method !== 'GET') return json({ error: 'Metodo non consentito.' }, 405);
+
+  let uploads = [];
+  try {
+    uploads = await readSnapshotUploads(snapshotStore);
+  } catch (error) {
+    console.error('Errore lettura snapshot iscritti:', error);
+  }
+  const snapshot = latestSnapshot(uploads);
+  const snapshotByCode = new Map(
+    (snapshot?.societies || []).map((society) => [String(society.code || ''), society])
+  );
+
   let registrations = [];
-  let ficAvailable = false;
+  let financialAvailable = false;
   let sourceUrl = EVENT_URLS[0];
   let sourceError = '';
   let unmatchedRegistrations = [];
@@ -352,7 +569,7 @@ export default async (request) => {
     const matched = matchRegistrations(registrations);
     bySociety = matched.bySociety;
     unmatchedRegistrations = matched.unmatchedRegistrations;
-    ficAvailable = true;
+    financialAvailable = true;
   } catch (error) {
     console.error('Errore lettura elenco società FIC:', error);
     sourceError = error?.name === 'AbortError'
@@ -360,14 +577,26 @@ export default async (request) => {
       : 'Il portale FIC non è raggiungibile o il formato della pagina è cambiato.';
   }
 
+  const registrationAvailable = Boolean(snapshot) || financialAvailable;
+  const registrationSource = snapshot ? 'upload' : (financialAvailable ? 'live' : 'none');
+
   const rows = FIC_SOCIETIES_2026.map((society, index) => {
     const match = bySociety.get(index);
+    const code = String(society.code || '');
+    const snapshotRegistration = snapshotByCode.get(code) || null;
+    let status = 'unknown';
+
+    if (snapshot) status = snapshotRegistration ? 'registered' : 'not_registered';
+    else if (financialAvailable) status = match ? 'registered' : 'not_registered';
+
     return {
       ...society,
-      registered2025: REGISTERED_2025_CODES.has(String(society.code || '')),
-      status: ficAvailable ? (match ? 'registered' : 'not_registered') : 'unknown',
+      registered2025: REGISTERED_2025_CODES.has(code),
+      rentalMailReceived: RENTAL_MAIL_RECEIVED_CODES.has(code),
+      status,
       matchConfidence: match ? Number(match.confidence.toFixed(3)) : null,
-      registration: match?.registration || null
+      registration: match?.registration || null,
+      registrationSnapshot: snapshotRegistration
     };
   });
 
@@ -375,11 +604,23 @@ export default async (request) => {
     ok: true,
     fetchedAt: new Date().toISOString(),
     sourceUrl,
-    ficAvailable,
+    ficAvailable: registrationAvailable,
+    financialAvailable,
+    registrationSource,
     sourceError: sourceError || undefined,
-    summary: summaryFrom(rows, registrations, unmatchedRegistrations, ficAvailable),
+    latestUpload: snapshotMeta(snapshot),
+    uploadHistory: uploads.map(snapshotMeta),
+    rentalMailUpdatedAt: '2026-09-18',
+    summary: summaryFrom(
+      rows,
+      registrations,
+      unmatchedRegistrations,
+      registrationAvailable,
+      financialAvailable,
+      snapshot
+    ),
     rows,
-    unmatchedRegistrations
+    unmatchedRegistrations: financialAvailable ? unmatchedRegistrations : []
   });
 };
 

@@ -41,8 +41,8 @@
     }
 
     const width = Math.max(1120, rows.length * 64 + 110);
-    const height = 470;
-    const margin = { top: 28, right: 24, bottom: 150, left: 48 };
+    const height = 530;
+    const margin = { top: 92, right: 24, bottom: 150, left: 48 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
     const maxValue = Math.max(1, ...rows.flatMap((row) => [row.total, row.registered2025]));
@@ -57,6 +57,47 @@
     });
 
     svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
+
+    const summary = window.societyAdmin?.getData?.()?.summary || {};
+    const currentSocieties = summary.registered ?? rows.reduce((sum, row) => sum + row.registered, 0);
+    const historicSocieties = summary.registered2025 ?? rows.reduce((sum, row) => sum + row.registered2025, 0);
+    const currentAthletes = summary.athletes2026 ?? '—';
+    const historicAthletes = summary.athletes2025 ?? 445;
+    const summaryBoxWidth = 172;
+    const summaryGap = 12;
+    const summaryStartX = margin.left;
+
+    [
+      {
+        x: summaryStartX,
+        year: '2026',
+        societies: currentSocieties,
+        athletes: currentAthletes,
+        fill: '#f0f8f4',
+        stroke: '#bcdac9',
+        title: '#245d38'
+      },
+      {
+        x: summaryStartX + summaryBoxWidth + summaryGap,
+        year: '2025',
+        societies: historicSocieties,
+        athletes: historicAthletes,
+        fill: '#f1f6fa',
+        stroke: '#c4d5e2',
+        title: '#365f80'
+      }
+    ].forEach((item) => {
+      svg.appendChild(svgEl('rect', {
+        x: item.x, y: 12, width: summaryBoxWidth, height: 62, rx: 8,
+        fill: item.fill, stroke: item.stroke, 'stroke-width': 1
+      }));
+      svg.appendChild(svgEl('text', {
+        x: item.x + 12, y: 35, fill: item.title, 'font-size': 13, 'font-weight': 850
+      }, `${item.year} · ${item.societies} società`));
+      svg.appendChild(svgEl('text', {
+        x: item.x + 12, y: 57, fill: '#52666c', 'font-size': 11.5, 'font-weight': 750
+      }, `${item.athletes} atleti iscritti`));
+    });
 
     const gridSteps = 5;
     for (let i = 0; i <= gridSteps; i += 1) {

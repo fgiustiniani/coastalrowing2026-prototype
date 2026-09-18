@@ -69,6 +69,29 @@
 
         <section class="society-kpis" data-society-kpis aria-label="Riepilogo iscrizioni"></section>
 
+        <section class="booking-card society-upload-card">
+          <div class="society-upload-card__head">
+            <div>
+              <p class="eyebrow">Aggiornamento manuale</p>
+              <h2>Elenco iscritti da file HTML</h2>
+              <p>Il file caricato aggiorna stato delle iscrizioni e numero degli atleti. I dati economici continuano a essere letti dalla pagina FIC live.</p>
+            </div>
+          </div>
+          <form class="society-upload-form" data-society-upload-form>
+            <label>
+              <span>File HTML</span>
+              <input data-society-upload-file type="file" accept=".html,.htm,text/html" required>
+            </label>
+            <label>
+              <span>Data aggiornamento</span>
+              <input data-society-upload-date type="date" required>
+            </label>
+            <button class="admin-button admin-button--primary" data-society-upload-submit type="submit">Carica HTML</button>
+            <span class="booking-status society-upload-status" data-society-upload-status aria-live="polite"></span>
+          </form>
+          <div class="society-upload-history" data-society-upload-history></div>
+        </section>
+
         <section class="booking-card society-controls">
           <div class="society-controls__head">
             <div>
@@ -100,6 +123,22 @@
                 <option value="registered">Iscritte</option>
                 <option value="not_registered">Non iscritte</option>
                 <option value="unknown">Stato non disponibile</option>
+              </select>
+            </label>
+            <label>
+              <span>Iscritta nel 2025</span>
+              <select data-society-filter-2025>
+                <option value="">Tutte</option>
+                <option value="yes">Sì</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+            <label>
+              <span>Mail di noleggio</span>
+              <select data-society-filter-rental-mail>
+                <option value="">Tutte</option>
+                <option value="yes">Ricevuta</option>
+                <option value="no">Non ricevuta</option>
               </select>
             </label>
             <label>
@@ -138,7 +177,7 @@
               <div>
                 <p class="eyebrow">Riepilogo iscrizioni</p>
                 <h2 id="societyChartDialogTitle">Iscrizioni per regione</h2>
-                <p>Per ogni regione: colonna 2026 impilata fino al totale FIC e colonna separata con le società iscritte nel 2025.</p>
+                <p>Per ogni regione: colonna 2026 impilata fino al totale FIC e colonna separata con le società iscritte nel 2025. In alto sono riportati anche i totali società e atleti dei due anni.</p>
               </div>
               <button class="society-chart-dialog__close" data-society-chart-close type="button" aria-label="Chiudi grafico">×</button>
             </div>
