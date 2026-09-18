@@ -15,17 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Inspect 2025 event archive
+      - name: Inspect 2025 event menu markup
         run: |
           python - <<'PY'
           import html
           import json
           import re
-          import urllib.parse
           import urllib.request
 
-          menu_url = "https://canottaggioservice.canottaggio.net/menu_reg.php?k1=N&reg=25CICR&stagione=2025"
-          req = urllib.request.Request(menu_url, headers={
+          url = "https://canottaggioservice.canottaggio.net/menu_reg.php?k1=N&reg=25CICR&stagione=2025"
+          req = urllib.request.Request(url, headers={
               "User-Agent": "Mozilla/5.0 (compatible; CoastalRowingPesaro2026-debug/1.0)",
               "Accept": "text/html,application/xhtml+xml",
           })
@@ -33,40 +32,15 @@ jobs:
               body = response.read().decode("latin1", errors="replace")
               print("MENU", response.status, response.geturl(), len(body))
 
-          links = []
-          for href, label in re.findall(r'<a\\b[^>]*href=["\\\']([^"\\\']+)["\\\'][^>]*>([\\s\\S]*?)</a>', body, flags=re.I):
-              href = html.unescape(href)
-              label = re.sub(r"<[^>]*>", " ", label)
-              label = html.unescape(re.sub(r"\\s+", " ", label)).strip()
-              absolute = urllib.parse.urljoin(menu_url, href)
-              if "25CICR" in absolute.upper() or "25CICR" in label.upper() or "/dati/" in absolute:
-                  links.append((label, absolute))
+          print("===LINES===")
+          for i, line in enumerate(body.splitlines(), 1):
+              upper = line.upper()
+              if any(term in upper for term in ["25CICR", "DATI/", "STATIST", "PROGRAMMA", "RISULT", "SOCIET", "ISCRIT"]):
+                  cleaned = re.sub(r"\\s+", " ", line).strip()
+                  print(f"{i}: {cleaned}")
 
-          print("===LINKS===")
-          for label, url in links:
-              print(json.dumps({"label": label, "url": url}, ensure_ascii=False))
-
-          print("===FETCH_LINKS===")
-          seen = set()
-          for label, url in links:
-              if url in seen:
-                  continue
-              seen.add(url)
-              try:
-                  req2 = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; CoastalRowingPesaro2026-debug/1.0)"})
-                  with urllib.request.urlopen(req2, timeout=20) as response:
-                      page = response.read().decode("latin1", errors="replace")
-                      upper = re.sub(r"<[^>]*>", " ", page).upper()
-                      print(json.dumps({
-                          "label": label,
-                          "url": url,
-                          "status": response.status,
-                          "final_url": response.geturl(),
-                          "bytes": len(page),
-                          "has_atleti_fisici": "ATLETI FISICI" in upper,
-                          "has_societa": "SOCIET" in upper,
-                          "has_atleti": "ATLETI" in upper
-                      }, ensure_ascii=False))
-              except Exception as exc:
-                  print(json.dumps({"label": label, "url": url, "error": str(exc)}, ensure_ascii=False))
+          print("===ATTRS===")
+          attrs = re.findall(r'(?:href|action|src)\\s*=\\s*["\\\']([^"\\\']+)["\\\']', body, flags=re.I)
+          for item in attrs:
+              print(html.unescape(item))
           PY
