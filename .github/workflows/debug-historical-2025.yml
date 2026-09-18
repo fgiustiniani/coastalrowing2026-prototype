@@ -13,36 +13,42 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Check web archives for 2025 society list
+      - name: Search Common Crawl for 25CICR
         run: |
           python - <<'PY'
           import json
           import urllib.parse
           import urllib.request
 
-          candidates = [
-              "https://canottaggioservice.canottaggio.net/dati/pis25CICR.html",
-              "https://www.canottaggio.net/gen_si_iscr.php",
-              "https://www.canottaggio.net/elenco_societa_iscritte.php",
+          def get(url, timeout=30):
+              req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=timeout) as r:
+                  return r.read().decode("utf-8", errors="replace")
+
+          info = json.loads(get("https://index.commoncrawl.org/collinfo.json"))
+          indexes = [x["id"] for x in info if x["id"].startswith("CC-MAIN-2025")][:12]
+          print("INDEXES", indexes)
+
+          patterns = [
+              "canottaggioservice.canottaggio.net/*25CICR*",
+              "www.canottaggio.net/*25CICR*",
+              "canottaggio.net/*25CICR*",
           ]
-          for target in candidates:
-              cdx = "https://web.archive.org/cdx/search/cdx?" + urllib.parse.urlencode({
-                  "url": target,
-                  "output": "json",
-                  "filter": "statuscode:200",
-                  "fl": "timestamp,original,statuscode,mimetype,digest",
-                  "from": "2025",
-                  "to": "2025",
-                  "collapse": "digest"
-              })
-              try:
-                  req = urllib.request.Request(cdx, headers={"User-Agent":"Mozilla/5.0"})
-                  with urllib.request.urlopen(req, timeout=30) as r:
-                      payload = r.read().decode("utf-8", errors="replace")
-                  print("===CDX===", target)
-                  print(payload[:20000])
-              except Exception as exc:
-                  print("===ERROR===", target, repr(exc))
+          for idx in indexes:
+              for pattern in patterns:
+                  q = "https://index.commoncrawl.org/" + idx + "-index?" + urllib.parse.urlencode({
+                      "url": pattern,
+                      "output": "json",
+                      "filter": "status:200",
+                      "matchType": "domain",
+                  })
+                  try:
+                      payload = get(q, 20).strip()
+                      if payload:
+                          print("===FOUND===", idx, pattern)
+                          print(payload[:30000])
+                  except Exception as exc:
+                      print("ERR", idx, pattern, repr(exc))
           PY
