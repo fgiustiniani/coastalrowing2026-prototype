@@ -410,6 +410,13 @@
       if (strokeGray !== null) page.push(`${fmt(strokeGray)} G .4 w ${fmt(x)} ${fmt(y)} ${fmt(width)} ${fmt(height)} re S 0 G`);
     }
 
+    rectRgb(page, x, yTop, width, height, rgb, strokeGray = 0.78) {
+      const y = this.height - yTop - height;
+      const [r, g, b] = rgb;
+      page.push(`${fmt(r)} ${fmt(g)} ${fmt(b)} rg ${fmt(x)} ${fmt(y)} ${fmt(width)} ${fmt(height)} re f 0 g`);
+      if (strokeGray !== null) page.push(`${fmt(strokeGray)} G .4 w ${fmt(x)} ${fmt(y)} ${fmt(width)} ${fmt(height)} re S 0 G`);
+    }
+
     blob() {
       const objects = [];
       const addObject = (content) => {
@@ -482,29 +489,29 @@
     let y;
     function drawHeader() {
       page = pdf.addPage();
-      y = 24;
-      pdf.text(page, 'Campionati Italiani Coastal Rowing 2026 - Pesaro', margin, y, 9, true);
-      y += 17;
-      pdf.text(page, 'Società iscritte - elenco amministrativo', margin, y, 15, true);
-      y += 15;
-      pdf.text(page, `Esportato il ${exportStamp()} - ${rows.length} società`, margin, y, 8);
+      y = 26;
+      pdf.text(page, 'Società iscritte', margin, y, 16, true);
+      y += 18;
+      pdf.text(page, `Esportato il ${exportStamp()} - ${rows.length} società`, margin, y, 8.5);
       y += 11;
-      pdf.text(page, `Dati economici: ${includeFinancial ? 'inclusi' : 'non inclusi'}`, margin, y, 8, true);
-      y += 11;
+      if (includeFinancial) {
+        pdf.text(page, 'Dati economici: inclusi', margin, y, 8.5, true);
+        y += 11;
+      }
       const filter = window.societyAdmin?.getFilterLabel?.() || 'Nessun filtro applicato';
-      wrapText(`Filtri: ${filter}`, pageWidth, 8).forEach((line) => {
-        pdf.text(page, line, margin, y, 8);
-        y += 9;
+      wrapText(`Filtri: ${filter}`, pageWidth, 8.5).forEach((line) => {
+        pdf.text(page, line, margin, y, 8.5);
+        y += 9.5;
       });
-      y += 4;
+      y += 5;
 
       let x = margin;
       columns.forEach((col) => {
-        pdf.rect(page, x, y, col.width, 20, 0.93, 0.78);
-        pdf.text(page, col.label, x + 3, y + 13, 6.5, true);
+        pdf.rect(page, x, y, col.width, 22, 0.93, 0.78);
+        pdf.text(page, col.label, x + 3, y + 14.5, 7.2, true);
         x += col.width;
       });
-      y += 20;
+      y += 22;
     }
 
     function valuesFor(row) {
@@ -528,20 +535,27 @@
       const values = valuesFor(row);
       const wrapped = new Map();
       let maxLines = 1;
+      const tableFontSize = 7.5;
+      const lineHeight = 9.5;
       columns.forEach((col) => {
-        const lines = wrapText(values[col.key], col.width - 6, 6.5).slice(0, col.key === 'name' ? 3 : 2);
+        const lines = wrapText(values[col.key], col.width - 7, tableFontSize).slice(0, col.key === 'name' ? 3 : 2);
         wrapped.set(col.key, lines);
         maxLines = Math.max(maxLines, lines.length);
       });
-      const rowHeight = Math.max(20, 7 + maxLines * 8);
+      const rowHeight = Math.max(23, 8 + maxLines * lineHeight);
       if (y + rowHeight > pdf.height - 24) drawHeader();
 
       let x = margin;
+      const registeredRow = row.status === 'registered';
       columns.forEach((col) => {
-        pdf.rect(page, x, y, col.width, rowHeight, null, 0.86);
+        if (registeredRow) {
+          pdf.rectRgb(page, x, y, col.width, rowHeight, [0.91, 0.97, 0.93], 0.84);
+        } else {
+          pdf.rect(page, x, y, col.width, rowHeight, null, 0.86);
+        }
         const lines = wrapped.get(col.key) || [''];
         lines.forEach((line, lineIndex) => {
-          pdf.text(page, line, x + 3, y + 11 + lineIndex * 8, 6.5, col.key === 'name' && lineIndex === 0);
+          pdf.text(page, line, x + 3.5, y + 12.5 + lineIndex * lineHeight, tableFontSize, col.key === 'name' && lineIndex === 0);
         });
         x += col.width;
       });
