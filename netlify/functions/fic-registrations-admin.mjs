@@ -7,6 +7,8 @@ const EVENT_URLS = [
   `https://canottaggio.net/${EVENT_PATH}`
 ];
 
+const REGISTERED_2025_CODES = new Set(["050155","040086","030127","040165","098890","020119","030016","010109","120158","050004","100016","150003","070169","070110","080005","010168","050142","030135","030026","050005","080117","130164","110213","110014","080131","110043","030065","050174","050047","030045","050143","030005","050073","110052","110098","030024","040007","050002","100121","050001","080009","030153","010122","090024","070170","030134","040026","030014","030195","040051","100010","030104","100118","010096","040160","070101","070077","010014","040258","030011","030017","100044"]);
+
 const MANUAL_MATCHES_BY_FISCAL_CODE = new Map([
   ['80008900393', '060054'], // RAVENNA SC -> Canottieri Ravenna 1873
   ['00758160329', '050005'], // GINNASTICATS -> Società Ginnastica Triestina - Nautica
@@ -319,6 +321,7 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, available) {
   const registered = available ? rows.filter((row) => row.status === 'registered').length : 0;
   return {
     totalSocieties: rows.length,
+    registered2025: REGISTERED_2025_CODES.size,
     registered,
     notRegistered: available ? rows.length - registered : null,
     sourceRegistrations: available ? registrations.length : null,
@@ -361,6 +364,7 @@ export default async (request) => {
     const match = bySociety.get(index);
     return {
       ...society,
+      registered2025: REGISTERED_2025_CODES.has(String(society.code || '')),
       status: ficAvailable ? (match ? 'registered' : 'not_registered') : 'unknown',
       matchConfidence: match ? Number(match.confidence.toFixed(3)) : null,
       registration: match?.registration || null
