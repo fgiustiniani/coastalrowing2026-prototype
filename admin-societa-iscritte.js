@@ -15,6 +15,8 @@
   const sourceLink = document.querySelector('[data-society-source-link]');
   const kpis = document.querySelector('[data-society-kpis]');
   const tableContainer = document.querySelector('[data-society-table]');
+  const tableScrollTop = document.querySelector('[data-society-table-scroll-top]');
+  const tableScrollTopInner = document.querySelector('[data-society-table-scroll-top-inner]');
   const visibleCount = document.querySelector('[data-society-visible-count]');
   const regionFilter = document.querySelector('[data-society-filter-region]');
   const textFilter = document.querySelector('[data-society-filter-text]');
@@ -216,12 +218,36 @@
     return { label: 'Da verificare', className: 'is-overpaid' };
   }
 
+  let syncingHorizontalScroll = false;
+
+  function syncHorizontalScrollbar() {
+    if (!tableContainer || !tableScrollTop || !tableScrollTopInner) return;
+    const table = tableContainer.querySelector('.society-table');
+    if (!table) {
+      tableScrollTop.hidden = true;
+      return;
+    }
+
+    const scrollWidth = tableContainer.scrollWidth;
+    const needsScroll = scrollWidth > tableContainer.clientWidth + 2;
+    tableScrollTop.hidden = !needsScroll;
+    tableScrollTopInner.style.width = `${scrollWidth}px`;
+
+    if (!needsScroll) {
+      tableScrollTop.scrollLeft = 0;
+      tableContainer.scrollLeft = 0;
+    } else if (Math.abs(tableScrollTop.scrollLeft - tableContainer.scrollLeft) > 1) {
+      tableScrollTop.scrollLeft = tableContainer.scrollLeft;
+    }
+  }
+
   function renderTable() {
     const rows = visibleRows();
     const registeredCount = rows.filter((row) => row.status === 'registered').length;
     if (visibleCount) visibleCount.textContent = `${registeredCount} iscritte su ${rows.length}`;
     if (!rows.length) {
       tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
+      if (tableScrollTop) tableScrollTop.hidden = true;
       window.societyAdmin?.notify();
       return;
     }
@@ -264,6 +290,7 @@
           }).join('')}
         </tbody>
       </table>`;
+    requestAnimationFrame(syncHorizontalScrollbar);
     window.societyAdmin?.notify();
   }
 
@@ -340,6 +367,22 @@
     button.setAttribute('aria-expanded', String(expanded));
     button.textContent = expanded ? 'Nascondi dettagli' : 'Mostra dettagli';
   });
+
+  tableScrollTop?.addEventListener('scroll', () => {
+    if (syncingHorizontalScroll || !tableContainer) return;
+    syncingHorizontalScroll = true;
+    tableContainer.scrollLeft = tableScrollTop.scrollLeft;
+    requestAnimationFrame(() => { syncingHorizontalScroll = false; });
+  });
+
+  tableContainer?.addEventListener('scroll', () => {
+    if (syncingHorizontalScroll || !tableScrollTop || tableScrollTop.hidden) return;
+    syncingHorizontalScroll = true;
+    tableScrollTop.scrollLeft = tableContainer.scrollLeft;
+    requestAnimationFrame(() => { syncingHorizontalScroll = false; });
+  });
+
+  window.addEventListener('resize', () => requestAnimationFrame(syncHorizontalScrollbar));
 
   [regionFilter, statusFilter, paymentFilter].forEach((node) => node?.addEventListener('change', renderTable));
   textFilter?.addEventListener('input', renderTable);

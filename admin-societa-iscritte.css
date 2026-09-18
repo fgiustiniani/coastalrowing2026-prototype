@@ -1,10 +1,13 @@
 .society-admin-page {
-  width: 100%;
-  max-width: var(--section-width, 1360px);
+  position: relative;
+  left: 50%;
+  width: min(1600px, calc(100vw - 24px));
+  max-width: none;
   box-sizing: border-box;
-  margin: 0 auto;
-  padding: 36px 24px 72px;
+  margin: 0;
+  padding: 36px 12px 72px;
   min-width: 0;
+  transform: translateX(-50%);
 }
 
 .society-dashboard,
@@ -372,9 +375,28 @@
   color: #304b54;
 }
 
+.society-table-scroll-top {
+  width: 100%;
+  height: 16px;
+  margin: 2px 0 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
+
+.society-table-scroll-top[hidden] {
+  display: none !important;
+}
+
+.society-table-scroll-top > div {
+  height: 1px;
+}
+
 .society-table-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border: 1px solid #dfe7e9;
   border-radius: 14px;
   background: #fff;
@@ -382,14 +404,14 @@
 
 .society-table {
   width: 100%;
-  min-width: 1240px;
+  min-width: 1380px;
   border-collapse: collapse;
-  font-size: .85rem;
+  font-size: .82rem;
 }
 
 .society-table th,
 .society-table td {
-  padding: 11px 10px;
+  padding: 10px 8px;
   border-bottom: 1px solid #e6ecee;
   vertical-align: top;
   text-align: left;
@@ -421,7 +443,7 @@
 }
 
 .society-table__society {
-  min-width: 280px;
+  min-width: 240px;
 }
 
 .society-table__society strong {
@@ -438,14 +460,14 @@
   line-height: 1.35;
 }
 
-.society-table__person { min-width: 155px; }
+.society-table__person { min-width: 140px; }
 
 .society-table__mobile-toggle {
   display: none;
 }
 
 .society-table__date {
-  min-width: 130px;
+  min-width: 118px;
   white-space: nowrap;
 }
 
@@ -603,6 +625,15 @@
 }
 
 @media (max-width: 1180px) {
+  .society-admin-page {
+    position: static;
+    left: auto;
+    width: 100%;
+    max-width: none;
+    padding-inline: 14px;
+    transform: none;
+  }
+
   .society-kpis {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -690,6 +721,10 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;
+  }
+
+  .society-table-scroll-top {
+    display: none !important;
   }
 
   .society-table-wrap {
