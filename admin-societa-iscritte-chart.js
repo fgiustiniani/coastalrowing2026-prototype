@@ -1,75 +1,107 @@
+
 (() => {
   const container = document.querySelector('[data-society-region-chart]');
   const dialog = document.querySelector('[data-society-chart-dialog]');
   const openButton = document.querySelector('[data-society-chart-open]');
   const exportButton = document.querySelector('[data-society-chart-export]');
   const closeButtons = document.querySelectorAll('[data-society-chart-close]');
+  const modeButtons = Array.from(document.querySelectorAll('[data-society-chart-mode]'));
+  const titleNode = document.querySelector('[data-society-chart-title]');
+  const descriptionNode = document.querySelector('[data-society-chart-description]');
+  const legendNode = document.querySelector('[data-society-chart-legend]');
   if (!container || !dialog || !openButton) return;
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
+  let chartMode = 'societies';
+
+  function getData() {
+    return window.societyAdmin?.getData?.() || {};
+  }
 
   function chartRows() {
-    const rows = window.societyAdmin?.getData?.()?.rows || [];
+    const data = getData();
+    const rows = data.rows || [];
+    const historicByRegion = new Map(
+      (data.historical2025ByRegion || []).map((item) => [String(item.region || ''), item])
+    );
     const grouped = new Map();
 
     rows.forEach((row) => {
       const region = String(row.region || 'Non indicata');
-      const current = grouped.get(region) || { region, total: 0, registered: 0, registered2025: 0 };
+      const current = grouped.get(region) || {
+        region,
+        total: 0,
+        registered: 0,
+        registeredWithMail: 0,
+        registered2025: 0,
+        athletes2026: 0,
+        athletes2026Known: false,
+        athletes2025: 0,
+        societies2025: 0
+      };
+
       current.total += 1;
-      if (row.status === 'registered') current.registered += 1;
+      if (row.status === 'registered') {
+        current.registered += 1;
+        if (row.rentalMailReceived) current.registeredWithMail += 1;
+      }
       if (row.registered2025) current.registered2025 += 1;
+
+      const physicalAthletes = Number(row.registrationSnapshot?.physicalAthletes);
+      if (row.status === 'registered' && Number.isFinite(physicalAthletes)) {
+        current.athletes2026 += physicalAthletes;
+        current.athletes2026Known = true;
+      }
       grouped.set(region, current);
     });
 
-    return Array.from(grouped.values()).sort((a, b) =>
-      a.region.localeCompare(b.region, 'it-IT', { sensitivity: 'base' })
-    );
+    historicByRegion.forEach((historic, region) => {
+      const current = grouped.get(region) || {
+        region,
+        total: 0,
+        registered: 0,
+        registeredWithMail: 0,
+        registered2025: 0,
+        athletes2026: 0,
+        athletes2026Known: false,
+        athletes2025: 0,
+        societies2025: 0
+      };
+      current.athletes2025 = Number(historic.athletes || 0);
+      current.societies2025 = Number(historic.societies || 0);
+      grouped.set(region, current);
+    });
+
+    return Array.from(grouped.values())
+      .map((row) => ({
+        ...row,
+        societies2025: row.societies2025 || row.registered2025
+      }))
+      .sort((a, b) =>
+        a.region.localeCompare(b.region, 'it-IT', { sensitivity: 'base' })
+      );
   }
 
   function svgEl(name, attrs = {}, text = '') {
     const node = document.createElementNS(SVG_NS, name);
     Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
-    if (text) node.textContent = text;
+    if (text !== '') node.textContent = text;
     return node;
   }
 
-  function renderChart() {
-    const rows = chartRows();
-    if (!rows.length) {
-      container.innerHTML = '<div class="society-empty">Dati non disponibili per il grafico.</div>';
-      return;
-    }
-
-    const width = Math.max(1120, rows.length * 64 + 110);
-    const height = 530;
-    const margin = { top: 92, right: 24, bottom: 150, left: 48 };
-    const plotWidth = width - margin.left - margin.right;
-    const plotHeight = height - margin.top - margin.bottom;
-    const maxValue = Math.max(1, ...rows.flatMap((row) => [row.total, row.registered2025]));
-    const yMax = Math.ceil(maxValue / 5) * 5 || 5;
-    const groupWidth = plotWidth / rows.length;
-    const barWidth = Math.min(22, groupWidth * 0.28);
-
-    const svg = svgEl('svg', {
-      viewBox: `0 0 ${width} ${height}`,
-      role: 'img',
-      'aria-label': 'Confronto per regione tra iscritte 2026, totale società FIC e iscritte 2025'
-    });
-
-    svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
-
-    const summary = window.societyAdmin?.getData?.()?.summary || {};
+  function appendSummaryBoxes(svg, margin, rows) {
+    const summary = getData().summary || {};
     const currentSocieties = summary.registered ?? rows.reduce((sum, row) => sum + row.registered, 0);
     const historicSocieties = summary.registered2025 ?? rows.reduce((sum, row) => sum + row.registered2025, 0);
     const currentAthletes = summary.athletes2026 ?? '—';
     const historicAthletes = summary.athletes2025 ?? 445;
-    const summaryBoxWidth = 172;
-    const summaryGap = 12;
-    const summaryStartX = margin.left;
+    const boxWidth = 172;
+    const gap = 12;
+    const startX = margin.left;
 
     [
       {
-        x: summaryStartX,
+        x: startX,
         year: '2026',
         societies: currentSocieties,
         athletes: currentAthletes,
@@ -78,7 +110,7 @@
         title: '#245d38'
       },
       {
-        x: summaryStartX + summaryBoxWidth + summaryGap,
+        x: startX + boxWidth + gap,
         year: '2025',
         societies: historicSocieties,
         athletes: historicAthletes,
@@ -88,7 +120,7 @@
       }
     ].forEach((item) => {
       svg.appendChild(svgEl('rect', {
-        x: item.x, y: 12, width: summaryBoxWidth, height: 62, rx: 8,
+        x: item.x, y: 12, width: boxWidth, height: 62, rx: 8,
         fill: item.fill, stroke: item.stroke, 'stroke-width': 1
       }));
       svg.appendChild(svgEl('text', {
@@ -98,7 +130,9 @@
         x: item.x + 12, y: 57, fill: '#52666c', 'font-size': 11.5, 'font-weight': 750
       }, `${item.athletes} atleti iscritti`));
     });
+  }
 
+  function appendGrid(svg, width, margin, plotHeight, yMax) {
     const gridSteps = 5;
     for (let i = 0; i <= gridSteps; i += 1) {
       const value = Math.round((yMax / gridSteps) * i);
@@ -113,27 +147,84 @@
         'text-anchor': 'end', fill: '#62757c', 'font-size': 11
       }, String(value)));
     }
+  }
+
+  function appendRegionLabel(svg, center, baseY, region) {
+    svg.appendChild(svgEl('text', {
+      x: center,
+      y: baseY + 34,
+      'text-anchor': 'end',
+      fill: '#405a63',
+      'font-size': 10.5,
+      transform: `rotate(-48 ${center} ${baseY + 34})`
+    }, region));
+  }
+
+  function buildSocietyChart() {
+    const rows = chartRows();
+    if (!rows.length) return null;
+
+    const width = Math.max(1120, rows.length * 64 + 110);
+    const height = 530;
+    const margin = { top: 92, right: 24, bottom: 150, left: 48 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const maxValue = Math.max(1, ...rows.flatMap((row) => [row.total, row.registered2025]));
+    const yMax = Math.ceil(maxValue / 5) * 5 || 5;
+    const groupWidth = plotWidth / rows.length;
+    const barWidth = Math.min(22, groupWidth * 0.28);
+
+    const svg = svgEl('svg', {
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': 'Società iscritte per regione con evidenza delle mail di noleggio'
+    });
+    svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
+    appendSummaryBoxes(svg, margin, rows);
+    appendGrid(svg, width, margin, plotHeight, yMax);
 
     rows.forEach((row, index) => {
       const center = margin.left + groupWidth * index + groupWidth / 2;
       const currentX = center - barWidth - 3;
       const historicX = center + 3;
+      const withMail = Math.min(row.registered, row.registeredWithMail);
+      const withoutMail = Math.max(0, row.registered - withMail);
+      const withoutMailHeight = (withoutMail / yMax) * plotHeight;
+      const withMailHeight = (withMail / yMax) * plotHeight;
       const registeredHeight = (row.registered / yMax) * plotHeight;
       const totalHeight = (row.total / yMax) * plotHeight;
       const remainingHeight = Math.max(0, totalHeight - registeredHeight);
       const historicHeight = (row.registered2025 / yMax) * plotHeight;
       const baseY = margin.top + plotHeight;
 
-      // Colonna 2026 impilata: iscritte + parte restante fino al totale FIC.
-      if (row.registered > 0) {
+      if (withoutMailHeight > 0) {
         svg.appendChild(svgEl('rect', {
           x: currentX,
-          y: baseY - registeredHeight,
+          y: baseY - withoutMailHeight,
           width: barWidth,
-          height: registeredHeight,
-          rx: remainingHeight > 0 ? 0 : 3,
+          height: withoutMailHeight,
           fill: '#2f8f6b'
         }));
+      }
+
+      if (withMailHeight > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: currentX,
+          y: baseY - withoutMailHeight - withMailHeight,
+          width: barWidth,
+          height: withMailHeight,
+          fill: '#e58b2a'
+        }));
+        svg.appendChild(svgEl('text', {
+          x: currentX + barWidth / 2,
+          y: withMailHeight >= 14
+            ? baseY - withoutMailHeight - withMailHeight / 2 + 3
+            : baseY - registeredHeight - 4,
+          'text-anchor': 'middle',
+          fill: withMailHeight >= 14 ? '#ffffff' : '#b56610',
+          'font-size': 9,
+          'font-weight': 850
+        }, String(withMail)));
       }
 
       if (remainingHeight > 0) {
@@ -147,26 +238,14 @@
         }));
       }
 
-      // Colonna separata: società iscritte nel 2025.
-      if (row.registered2025 > 0) {
-        svg.appendChild(svgEl('rect', {
-          x: historicX,
-          y: baseY - historicHeight,
-          width: barWidth,
-          height: historicHeight,
-          rx: 3,
-          fill: '#497aa3'
-        }));
-      }
-
       if (row.registered > 0) {
         svg.appendChild(svgEl('text', {
           x: currentX + barWidth / 2,
-          y: registeredHeight >= 15 ? baseY - registeredHeight / 2 + 3 : baseY - registeredHeight - 4,
+          y: Math.max(margin.top + 11, baseY - registeredHeight - 7),
           'text-anchor': 'middle',
-          fill: registeredHeight >= 15 ? '#ffffff' : '#245d38',
-          'font-size': 9.5,
-          'font-weight': 800
+          fill: '#245d38',
+          'font-size': 10,
+          'font-weight': 850
         }, String(row.registered)));
       }
 
@@ -180,6 +259,14 @@
       }, String(row.total)));
 
       if (row.registered2025 > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: historicX,
+          y: baseY - historicHeight,
+          width: barWidth,
+          height: historicHeight,
+          rx: 3,
+          fill: '#497aa3'
+        }));
         svg.appendChild(svgEl('text', {
           x: historicX + barWidth / 2,
           y: Math.max(margin.top + 11, baseY - historicHeight - 7),
@@ -208,16 +295,173 @@
         'font-weight': 700
       }, '2025'));
 
-      svg.appendChild(svgEl('text', {
-        x: center,
-        y: baseY + 34,
-        'text-anchor': 'end',
-        fill: '#405a63',
-        'font-size': 10.5,
-        transform: `rotate(-48 ${center} ${baseY + 34})`
-      }, row.region));
+      appendRegionLabel(svg, center, baseY, row.region);
     });
 
+    return svg;
+  }
+
+  function buildAthleteChart() {
+    const allRows = chartRows();
+    const rows = allRows.filter((row) =>
+      row.registered > 0 || row.societies2025 > 0 || row.athletes2026 > 0 || row.athletes2025 > 0
+    );
+    if (!rows.length) return null;
+
+    const data = getData();
+    const has2026 = rows.some((row) => row.athletes2026Known);
+    const has2025 = data.historical2025Available === true;
+    const noteNeeded = !has2026 || !has2025;
+    const width = Math.max(1120, rows.length * 72 + 110);
+    const height = 540;
+    const margin = { top: noteNeeded ? 112 : 92, right: 24, bottom: 150, left: 48 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const numericValues = rows.flatMap((row) => [
+      has2026 ? row.athletes2026 : 0,
+      has2025 ? row.athletes2025 : 0
+    ]);
+    const maxValue = Math.max(1, ...numericValues);
+    const step = maxValue <= 25 ? 5 : maxValue <= 60 ? 10 : 20;
+    const yMax = Math.ceil(maxValue / step) * step || step;
+    const groupWidth = plotWidth / rows.length;
+    const barWidth = Math.min(24, groupWidth * 0.3);
+
+    const svg = svgEl('svg', {
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': 'Atleti iscritti per regione nel 2025 e 2026'
+    });
+    svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
+    appendSummaryBoxes(svg, margin, allRows);
+
+    if (noteNeeded) {
+      const notes = [];
+      if (!has2026) notes.push('2026: carica un file HTML aggiornato per il dettaglio atleti per regione.');
+      if (!has2025) notes.push('2025: dettaglio regionale non disponibile dalla fonte FIC.');
+      svg.appendChild(svgEl('text', {
+        x: margin.left,
+        y: 91,
+        fill: '#8a5b1e',
+        'font-size': 10.5,
+        'font-weight': 750
+      }, notes.join(' ')));
+    }
+
+    appendGrid(svg, width, margin, plotHeight, yMax);
+
+    rows.forEach((row, index) => {
+      const center = margin.left + groupWidth * index + groupWidth / 2;
+      const currentX = center - barWidth - 4;
+      const historicX = center + 4;
+      const currentHeight = has2026 ? (row.athletes2026 / yMax) * plotHeight : 0;
+      const historicHeight = has2025 ? (row.athletes2025 / yMax) * plotHeight : 0;
+      const baseY = margin.top + plotHeight;
+
+      if (has2026 && row.athletes2026 > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: currentX,
+          y: baseY - currentHeight,
+          width: barWidth,
+          height: currentHeight,
+          rx: 3,
+          fill: '#2f8f6b'
+        }));
+      }
+      svg.appendChild(svgEl('text', {
+        x: currentX + barWidth / 2,
+        y: has2026 && row.athletes2026 > 0
+          ? Math.max(margin.top + 11, baseY - currentHeight - 7)
+          : baseY - 7,
+        'text-anchor': 'middle',
+        fill: '#245d38',
+        'font-size': 9.5,
+        'font-weight': 850
+      }, has2026 ? `${row.athletes2026} (${row.registered})` : `— (${row.registered})`));
+
+      if (has2025 && row.athletes2025 > 0) {
+        svg.appendChild(svgEl('rect', {
+          x: historicX,
+          y: baseY - historicHeight,
+          width: barWidth,
+          height: historicHeight,
+          rx: 3,
+          fill: '#497aa3'
+        }));
+      }
+      svg.appendChild(svgEl('text', {
+        x: historicX + barWidth / 2,
+        y: has2025 && row.athletes2025 > 0
+          ? Math.max(margin.top + 11, baseY - historicHeight - 7)
+          : baseY - 7,
+        'text-anchor': 'middle',
+        fill: '#365f80',
+        'font-size': 9.5,
+        'font-weight': 850
+      }, has2025 ? `${row.athletes2025} (${row.societies2025})` : `— (${row.societies2025})`));
+
+      svg.appendChild(svgEl('text', {
+        x: currentX + barWidth / 2,
+        y: baseY + 14,
+        'text-anchor': 'middle',
+        fill: '#52666c',
+        'font-size': 8.5,
+        'font-weight': 700
+      }, '2026'));
+      svg.appendChild(svgEl('text', {
+        x: historicX + barWidth / 2,
+        y: baseY + 14,
+        'text-anchor': 'middle',
+        fill: '#52666c',
+        'font-size': 8.5,
+        'font-weight': 700
+      }, '2025'));
+
+      appendRegionLabel(svg, center, baseY, row.region);
+    });
+
+    return svg;
+  }
+
+  function updateModeUi() {
+    modeButtons.forEach((button) => {
+      const active = button.dataset.societyChartMode === chartMode;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+
+    if (chartMode === 'athletes') {
+      if (titleNode) titleNode.textContent = 'Atleti per regione';
+      if (descriptionNode) {
+        descriptionNode.textContent = 'Confronto tra atleti iscritti nel 2025 e nel 2026. Tra parentesi è indicato il numero di società iscritte della regione.';
+      }
+      if (legendNode) {
+        legendNode.innerHTML =
+          '<span><i class="society-chart-legend__swatch is-registered"></i> Atleti 2026</span>' +
+          '<span><i class="society-chart-legend__swatch is-2025"></i> Atleti 2025</span>';
+      }
+    } else {
+      if (titleNode) titleNode.textContent = 'Società per regione';
+      if (descriptionNode) {
+        descriptionNode.textContent = 'La colonna 2026 distingue le società iscritte che hanno inviato la mail di noleggio; la colonna 2025 mostra le società iscritte nello storico.';
+      }
+      if (legendNode) {
+        legendNode.innerHTML =
+          '<span><i class="society-chart-legend__swatch is-registered"></i> Iscritte 2026 senza mail</span>' +
+          '<span><i class="society-chart-legend__swatch is-rental-mail"></i> Iscritte 2026 con mail noleggio</span>' +
+          '<span><i class="society-chart-legend__swatch is-total"></i> Restanti fino al totale FIC 2026</span>' +
+          '<span><i class="society-chart-legend__swatch is-2025"></i> Iscritte 2025</span>';
+      }
+    }
+  }
+
+  function renderChart() {
+    updateModeUi();
+    const svg = chartMode === 'athletes' ? buildAthleteChart() : buildSocietyChart();
+    if (!svg) {
+      container.innerHTML = '<div class="society-empty">Dati non disponibili per il grafico.</div>';
+      return;
+    }
     container.replaceChildren(svg);
   }
 
@@ -254,46 +498,97 @@
     return bytes;
   }
 
-  function pdfWithJpeg(jpegBytes, imageWidth, imageHeight) {
+  function svgToJpeg(svg) {
+    return new Promise((resolve, reject) => {
+      const viewBox = String(svg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      const width = Number(viewBox[2] || 1120);
+      const height = Number(viewBox[3] || 530);
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(width * scale);
+      canvas.height = Math.ceil(height * scale);
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('Canvas non disponibile.'));
+        return;
+      }
+
+      const svgText = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+
+      image.onload = () => {
+        context.scale(scale, scale);
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve({
+          jpegBytes: jpegBytesFromDataUrl(canvas.toDataURL('image/jpeg', 0.94)),
+          imageWidth: canvas.width,
+          imageHeight: canvas.height
+        });
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Impossibile convertire il grafico.'));
+      };
+      image.src = url;
+    });
+  }
+
+  function pdfWithJpegPages(pages) {
     const pageWidth = 841.89;
     const pageHeight = 595.28;
     const margin = 28;
     const titleSpace = 42;
-    const availableWidth = pageWidth - margin * 2;
-    const availableHeight = pageHeight - margin * 2 - titleSpace;
-    const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
-    const drawWidth = imageWidth * scale;
-    const drawHeight = imageHeight * scale;
-    const x = (pageWidth - drawWidth) / 2;
-    const y = margin + (availableHeight - drawHeight) / 2;
-
     const objects = [];
-    const addTextObject = (content) => {
-      objects.push(textBytes(content));
+    const addObject = (bytes) => {
+      objects.push(bytes);
       return objects.length;
     };
+    const addTextObject = (content) => addObject(textBytes(content));
+
     const catalogId = addTextObject('');
     const pagesId = addTextObject('');
-    const pageId = addTextObject('');
-    const imageHeader = textBytes(
-      `<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`
-    );
-    const imageFooter = textBytes('\nendstream');
-    objects.push(concatBytes([imageHeader, jpegBytes, imageFooter]));
-    const imageId = objects.length;
-
-    const content = [
-      'BT /F1 15 Tf 28 554 Td (Iscrizioni per regione - Campionati Italiani Coastal Rowing 2026) Tj ET',
-      `q ${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im1 Do Q`
-    ].join('\n');
-    const contentBytes = textBytes(content);
-    const contentId = addTextObject(`<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
     const fontId = addTextObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+    const pageIds = [];
+
+    pages.forEach((item) => {
+      const availableWidth = pageWidth - margin * 2;
+      const availableHeight = pageHeight - margin * 2 - titleSpace;
+      const scale = Math.min(availableWidth / item.imageWidth, availableHeight / item.imageHeight);
+      const drawWidth = item.imageWidth * scale;
+      const drawHeight = item.imageHeight * scale;
+      const x = (pageWidth - drawWidth) / 2;
+      const y = margin + (availableHeight - drawHeight) / 2;
+
+      const imageHeader = textBytes(
+        `<< /Type /XObject /Subtype /Image /Width ${item.imageWidth} /Height ${item.imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${item.jpegBytes.length} >>\nstream\n`
+      );
+      const imageId = addObject(concatBytes([
+        imageHeader,
+        item.jpegBytes,
+        textBytes('\nendstream')
+      ]));
+
+      const content = [
+        `BT /F1 15 Tf 28 554 Td (${item.title}) Tj ET`,
+        `q ${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im${imageId} Do Q`
+      ].join('\n');
+      const contentBytes = textBytes(content);
+      const contentId = addTextObject(`<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
+      const pageId = addTextObject(
+        `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> /XObject << /Im${imageId} ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`
+      );
+      pageIds.push(pageId);
+    });
 
     objects[catalogId - 1] = textBytes(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
-    objects[pagesId - 1] = textBytes(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
-    objects[pageId - 1] = textBytes(
-      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> /XObject << /Im1 ${imageId} 0 R >> >> /Contents ${contentId} 0 R >>`
+    objects[pagesId - 1] = textBytes(
+      `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`
     );
 
     const header = textBytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
@@ -331,47 +626,36 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
-  function exportPdf() {
-    const svg = container.querySelector('svg');
-    if (!svg) return;
+  async function exportPdf() {
+    const societySvg = buildSocietyChart();
+    const athleteSvg = buildAthleteChart();
+    if (!societySvg || !athleteSvg) return;
 
     exportButton.disabled = true;
-    const viewBox = svg.viewBox.baseVal;
-    const scale = 2;
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(viewBox.width * scale);
-    canvas.height = Math.ceil(viewBox.height * scale);
-    const context = canvas.getContext('2d');
-    if (!context) {
+    try {
+      const [societiesPage, athletesPage] = await Promise.all([
+        svgToJpeg(societySvg),
+        svgToJpeg(athleteSvg)
+      ]);
+      const pdf = pdfWithJpegPages([
+        { ...societiesPage, title: 'Societa per regione - Campionati Italiani Coastal Rowing 2026' },
+        { ...athletesPage, title: 'Atleti per regione - confronto 2025-2026' }
+      ]);
+      downloadBlob(pdf, `grafici-iscrizioni-coastal-2026-${fileStamp()}.pdf`);
+    } catch (error) {
+      console.error('Errore esportazione grafici:', error);
+      window.alert('Non è stato possibile esportare i grafici.');
+    } finally {
       exportButton.disabled = false;
-      return;
     }
-
-    const svgText = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const image = new Image();
-
-    image.onload = () => {
-      context.scale(scale, scale);
-      context.fillStyle = '#ffffff';
-      context.fillRect(0, 0, viewBox.width, viewBox.height);
-      context.drawImage(image, 0, 0, viewBox.width, viewBox.height);
-      URL.revokeObjectURL(url);
-
-      const jpegBytes = jpegBytesFromDataUrl(canvas.toDataURL('image/jpeg', 0.94));
-      const pdf = pdfWithJpeg(jpegBytes, canvas.width, canvas.height);
-      downloadBlob(pdf, `iscrizioni-per-regione-coastal-2026-${fileStamp()}.pdf`);
-      exportButton.disabled = false;
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      exportButton.disabled = false;
-    };
-
-    image.src = url;
   }
+
+  modeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      chartMode = button.dataset.societyChartMode === 'athletes' ? 'athletes' : 'societies';
+      renderChart();
+    });
+  });
 
   openButton.addEventListener('click', () => {
     renderChart();

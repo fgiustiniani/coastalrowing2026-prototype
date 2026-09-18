@@ -176,17 +176,18 @@
             <div class="society-chart-dialog__head">
               <div>
                 <p class="eyebrow">Riepilogo iscrizioni</p>
-                <h2 id="societyChartDialogTitle">Iscrizioni per regione</h2>
-                <p>Per ogni regione: colonna 2026 impilata fino al totale FIC e colonna separata con le società iscritte nel 2025. In alto sono riportati anche i totali società e atleti dei due anni.</p>
+                <h2 id="societyChartDialogTitle" data-society-chart-title>Società per regione</h2>
+                <p data-society-chart-description>La colonna 2026 distingue le società iscritte che hanno inviato la mail di noleggio; la colonna 2025 mostra le società iscritte nello storico.</p>
               </div>
               <button class="society-chart-dialog__close" data-society-chart-close type="button" aria-label="Chiudi grafico">×</button>
             </div>
 
-            <div class="society-chart-legend" aria-hidden="true">
-              <span><i class="society-chart-legend__swatch is-registered"></i> Iscritte 2026</span>
-              <span><i class="society-chart-legend__swatch is-total"></i> Restanti fino al totale FIC 2026</span>
-              <span><i class="society-chart-legend__swatch is-2025"></i> Iscritte 2025</span>
+            <div class="society-chart-mode-toggle" role="group" aria-label="Tipo di grafico">
+              <button type="button" class="is-active" data-society-chart-mode="societies" aria-pressed="true">Società</button>
+              <button type="button" data-society-chart-mode="athletes" aria-pressed="false">Atleti</button>
             </div>
+
+            <div class="society-chart-legend" data-society-chart-legend aria-hidden="true"></div>
 
             <div class="society-chart-scroll">
               <div class="society-region-chart" data-society-region-chart aria-label="Grafico iscrizioni per regione"></div>
