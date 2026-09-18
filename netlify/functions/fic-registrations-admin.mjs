@@ -174,7 +174,7 @@ function parseRegistrationSnapshotHtml(html) {
   }
 
   const byCode = new Map();
-  let athletesTotal = null;
+  let athletesPresentTotal = null;
 
   for (const cells of tableRows) {
     const joined = cells.join(' ').toUpperCase();
@@ -183,7 +183,7 @@ function parseRegistrationSnapshotHtml(html) {
         .flatMap((cell) => String(cell).match(/\b\d+\b/g) || [])
         .map(Number)
         .filter(Number.isFinite);
-      if (numericValues.length) athletesTotal = numericValues[numericValues.length - 1];
+      if (numericValues.length) athletesPresentTotal = numericValues[numericValues.length - 1];
     }
 
     if (cells.length < 7 || !/^\d+$/.test(String(cells[0] || '').trim())) continue;
@@ -209,7 +209,12 @@ function parseRegistrationSnapshotHtml(html) {
     throw new Error('Il file HTML non contiene un elenco società riconoscibile.');
   }
 
-  return { societies, athletesTotal };
+  const athletesTotal = societies.reduce((sum, society) => {
+    const value = Number(society.physicalAthletes);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+
+  return { societies, athletesTotal, athletesPresentTotal };
 }
 
 function parseHistorical2025Stats(html) {
@@ -307,6 +312,18 @@ async function readSnapshotUploads(store) {
   return Array.isArray(stored) ? stored : [];
 }
 
+function snapshotRegisteredAthletesTotal(item) {
+  if (!item) return null;
+  const societies = Array.isArray(item.societies) ? item.societies : [];
+  if (societies.length) {
+    return societies.reduce((sum, society) => {
+      const value = Number(society.physicalAthletes);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+  }
+  return Number.isFinite(Number(item.athletesTotal)) ? Number(item.athletesTotal) : null;
+}
+
 function snapshotMeta(item) {
   if (!item) return null;
   return {
@@ -315,7 +332,10 @@ function snapshotMeta(item) {
     uploadedAt: item.uploadedAt,
     fileName: item.fileName,
     societyCount: Number(item.societyCount || item.societies?.length || 0),
-    athletesTotal: Number.isFinite(Number(item.athletesTotal)) ? Number(item.athletesTotal) : null
+    athletesTotal: snapshotRegisteredAthletesTotal(item),
+    athletesPresentTotal: Number.isFinite(Number(item.athletesPresentTotal))
+      ? Number(item.athletesPresentTotal)
+      : null
   };
 }
 
@@ -370,6 +390,7 @@ async function saveSnapshotUpload(request, store) {
     fileName: fileName || 'elenco-iscritti.html',
     societyCount: parsed.societies.length,
     athletesTotal: parsed.athletesTotal,
+    athletesPresentTotal: parsed.athletesPresentTotal,
     unknownCodes,
     societies: parsed.societies
   };
@@ -606,7 +627,7 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAv
     totalSocieties: rows.length,
     registered2025: REGISTERED_2025_CODES.size,
     athletes2025: ATHLETES_2025,
-    athletes2026: snapshot && Number.isFinite(Number(snapshot.athletesTotal)) ? Number(snapshot.athletesTotal) : null,
+    athletes2026: snapshotRegisteredAthletesTotal(snapshot),
     registered,
     notRegistered: registrationAvailable ? rows.length - registered : null,
     sourceRegistrations: registrationAvailable
