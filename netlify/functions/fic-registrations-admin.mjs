@@ -529,7 +529,9 @@ export default async (request) => {
   if (!auth.valid) return json({ error: 'Credenziali non valide.' }, 401);
 
   const requestUrl = new URL(request.url);
-  const snapshotStore = getStore(resolveSnapshotStoreName(requestUrl));
+  // Consistenza forte: dopo un upload il successivo GET deve vedere subito lo snapshot appena salvato.
+  // Il nome dello store è separato per Branch Deploy, così i dati di questa area admin non toccano produzione.
+  const snapshotStore = getStore(resolveSnapshotStoreName(requestUrl), { consistency: 'strong' });
 
   if (request.method === 'POST') {
     try {
