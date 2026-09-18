@@ -1,9 +1,21 @@
 .society-admin-page {
-  width: calc(100% - 32px);
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--section-width, 1360px);
   box-sizing: border-box;
   margin: 0 auto;
-  padding: 36px 0 72px;
+  padding: 36px 24px 72px;
+  min-width: 0;
+}
+
+.society-dashboard,
+.society-admin-toolbar,
+.society-source-card,
+.society-kpis,
+.society-controls {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .society-dashboard[hidden],
@@ -606,8 +618,8 @@
 
 @media (max-width: 760px) {
   .society-admin-page {
-    width: calc(100% - 20px);
-    padding: 24px 0 56px;
+    width: 100%;
+    padding: 24px 14px 56px;
   }
 
   .society-admin-toolbar,
@@ -786,7 +798,7 @@
 
 @media (max-width: 440px) {
   .society-kpis { grid-template-columns: 1fr; }
-  .society-admin-page { width: calc(100% - 12px); }
+  .society-admin-page { padding-inline: 6px; }
   .society-controls { padding: 10px; }
   .society-table td,
   .society-table td.society-table__money {
