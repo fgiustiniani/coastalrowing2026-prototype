@@ -1,0 +1,320 @@
+(() => {
+  const loginForm = document.querySelector('[data-society-admin-login]');
+  const dashboard = document.querySelector('[data-society-dashboard]');
+  if (!loginForm || !dashboard) return;
+
+  const api = '/api/fic-registrations-admin';
+  const loginSection = loginForm.closest('.admin-login');
+  const loginStatus = document.querySelector('[data-society-login-status]');
+  const statusNode = document.querySelector('[data-society-status]');
+  const refreshButton = document.querySelector('[data-society-refresh]');
+  const sourceCard = document.querySelector('.society-source-card');
+  const sourceTitle = document.querySelector('[data-society-source-title]');
+  const sourceDetail = document.querySelector('[data-society-source-detail]');
+  const sourceLink = document.querySelector('[data-society-source-link]');
+  const kpis = document.querySelector('[data-society-kpis]');
+  const tableContainer = document.querySelector('[data-society-table]');
+  const visibleCount = document.querySelector('[data-society-visible-count]');
+  const regionFilter = document.querySelector('[data-society-filter-region]');
+  const textFilter = document.querySelector('[data-society-filter-text]');
+  const statusFilter = document.querySelector('[data-society-filter-status]');
+  const resetFilters = document.querySelector('[data-society-reset-filters]');
+  const unmatched = document.querySelector('[data-society-unmatched]');
+  const unmatchedCount = document.querySelector('[data-society-unmatched-count]');
+  const unmatchedList = document.querySelector('[data-society-unmatched-list]');
+
+  let credentials = null;
+  let data = null;
+
+  function setStatus(node, message = '', kind = '') {
+    if (!node) return;
+    node.textContent = message;
+    node.className = `booking-status${kind ? ` is-${kind}` : ''}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function authHeader() {
+    return credentials ? `Basic ${btoa(`${credentials.username}:${credentials.password}`)}` : '';
+  }
+
+  function formatMoney(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(Number(value || 0));
+  }
+
+  function formatTimestamp(value) {
+    if (!value) return '—';
+    try {
+      return new Intl.DateTimeFormat('it-IT', {
+        timeZone: 'Europe/Rome',
+        dateStyle: 'short',
+        timeStyle: 'short'
+      }).format(new Date(value));
+    } catch {
+      return String(value);
+    }
+  }
+
+  function showLogin(message = '') {
+    credentials = null;
+    if (loginSection) loginSection.hidden = false;
+    dashboard.hidden = true;
+    dashboard.inert = true;
+    dashboard.setAttribute('aria-hidden', 'true');
+    if (message) setStatus(loginStatus, message, 'error');
+  }
+
+  function showDashboard() {
+    if (loginSection) loginSection.hidden = true;
+    dashboard.hidden = false;
+    dashboard.inert = false;
+    dashboard.removeAttribute('aria-hidden');
+  }
+
+  async function requestData() {
+    const response = await fetch(api, {
+      method: 'GET',
+      headers: { authorization: authHeader() },
+      cache: 'no-store'
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.error || 'Non è stato possibile caricare i dati.');
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  function statusLabel(status) {
+    if (status === 'registered') return 'Iscritta';
+    if (status === 'not_registered') return 'Non iscritta';
+    return 'Non disponibile';
+  }
+
+  function registrationSearchText(row) {
+    const r = row.registration || {};
+    return [
+      row.name, row.code, row.city, row.province, row.email, row.region, row.committee,
+      r.team, r.details, r.fiscalCode, r.manager, r.coach
+    ].join(' ').toLocaleLowerCase('it-IT');
+  }
+
+  function visibleRows() {
+    if (!data?.rows) return [];
+    const region = regionFilter?.value || '';
+    const status = statusFilter?.value || '';
+    const search = (textFilter?.value || '').trim().toLocaleLowerCase('it-IT');
+
+    return data.rows
+      .filter((row) => !region || row.region === region)
+      .filter((row) => !status || row.status === status)
+      .filter((row) => !search || registrationSearchText(row).includes(search))
+      .sort((a, b) =>
+        String(a.region || '').localeCompare(String(b.region || ''), 'it-IT', { sensitivity: 'base' }) ||
+        String(a.name || '').localeCompare(String(b.name || ''), 'it-IT', { sensitivity: 'base' })
+      );
+  }
+
+  function syncRegions() {
+    if (!regionFilter || !data?.rows) return;
+    const current = regionFilter.value;
+    const regions = Array.from(new Set(data.rows.map((row) => row.region).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'it-IT', { sensitivity: 'base' }));
+    regionFilter.innerHTML = '<option value="">Tutte le regioni</option>' +
+      regions.map((region) => `<option value="${escapeHtml(region)}">${escapeHtml(region)}</option>`).join('');
+    if (regions.includes(current)) regionFilter.value = current;
+  }
+
+  function renderSource() {
+    if (!data) return;
+    sourceCard?.classList.toggle('is-ok', data.ficAvailable === true);
+    sourceCard?.classList.toggle('is-warning', data.ficAvailable !== true);
+    if (sourceLink && data.sourceUrl) sourceLink.href = data.sourceUrl;
+
+    if (data.ficAvailable) {
+      sourceTitle.textContent = 'Dati FIC aggiornati';
+      sourceDetail.textContent =
+        `Lettura effettuata il ${formatTimestamp(data.fetchedAt)} · ${data.summary?.sourceRegistrations ?? 0} società presenti nel portale FIC.` +
+        ((data.summary?.unmatchedRegistrations || 0) ? ` ${data.summary.unmatchedRegistrations} riga/e da verificare.` : '');
+    } else {
+      sourceTitle.textContent = 'Anagrafica disponibile, aggiornamento FIC non riuscito';
+      sourceDetail.textContent = `${data.sourceError || 'Portale FIC non disponibile.'} Lo stato di iscrizione non viene dedotto dai dati precedenti.`;
+    }
+  }
+
+  function renderKpis() {
+    if (!kpis || !data?.summary) return;
+    const s = data.summary;
+    const cards = [
+      ['Società FIC 2026', s.totalSocieties ?? 0, ''],
+      ['Iscritte', data.ficAvailable ? s.registered ?? 0 : '—', 'society-kpi--registered'],
+      ['Non iscritte', data.ficAvailable ? s.notRegistered ?? 0 : '—', 'society-kpi--not-registered'],
+      ['Importo dovuto', data.ficAvailable ? formatMoney(s.amountDue) : '—', ''],
+      ['Noleggio barche', data.ficAvailable ? formatMoney(s.boatRental) : '—', ''],
+      ['Importo pagato', data.ficAvailable ? formatMoney(s.amountPaid) : '—', '']
+    ];
+    kpis.innerHTML = cards.map(([label, value, className]) => `
+      <article class="society-kpi ${className}">
+        <span class="society-kpi__label">${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </article>`).join('');
+  }
+
+  function paymentDetails(registration) {
+    if (!registration) return '—';
+    const dates = [
+      registration.accountingDate ? `Contabile: ${registration.accountingDate}` : '',
+      registration.paymentRegistrationDate ? `Pagamento: ${registration.paymentRegistrationDate}` : '',
+      registration.verificationDate ? `Verifica: ${registration.verificationDate}` : ''
+    ].filter(Boolean);
+    return `
+      <strong>${escapeHtml(registration.paymentType || '—')}</strong>
+      ${dates.map((line) => `<small>${escapeHtml(line)}</small>`).join('<br>')}`;
+  }
+
+  function renderTable() {
+    const rows = visibleRows();
+    if (visibleCount) visibleCount.textContent = `${rows.length} società visualizzate su ${data?.rows?.length || 0}`;
+
+    if (!rows.length) {
+      tableContainer.innerHTML = '<div class="society-empty">Nessuna società corrisponde ai filtri selezionati.</div>';
+      window.societyAdmin?.notify();
+      return;
+    }
+
+    tableContainer.innerHTML = `
+      <table class="society-table">
+        <thead>
+          <tr>
+            <th>Stato</th>
+            <th>Regione</th>
+            <th>Codice</th>
+            <th>Società</th>
+            <th>Dir. resp.</th>
+            <th>Tecn. resp.</th>
+            <th>Pagamento</th>
+            <th class="society-table__money">Dovuto</th>
+            <th class="society-table__money">Nol. barche</th>
+            <th class="society-table__money">Nol. remi</th>
+            <th class="society-table__money">Pagato</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+            const r = row.registration;
+            const statusClass = row.status === 'registered' ? 'is-registered' : row.status === 'not_registered' ? 'is-not-registered' : 'is-unknown';
+            return `
+              <tr>
+                <td><span class="society-status-badge ${statusClass}">${escapeHtml(statusLabel(row.status))}</span></td>
+                <td>${escapeHtml(row.region || '—')}<br><small>${escapeHtml(row.committee || '')}</small></td>
+                <td>${escapeHtml(row.code || '—')}</td>
+                <td class="society-table__society">
+                  <strong>${escapeHtml(row.name || '—')}</strong>
+                  <small>${escapeHtml([row.city, row.province].filter(Boolean).join(' (') + (row.city && row.province ? ')' : ''))}</small>
+                  ${row.email ? `<small>${escapeHtml(row.email)}</small>` : ''}
+                  ${r?.team && r.team.toLocaleLowerCase('it-IT') !== String(row.name).toLocaleLowerCase('it-IT') ? `<small>FIC: ${escapeHtml(r.team)}</small>` : ''}
+                </td>
+                <td class="society-table__person">${escapeHtml(r?.manager || '—')}</td>
+                <td class="society-table__person">${escapeHtml(r?.coach || '—')}</td>
+                <td class="society-table__payment">${paymentDetails(r)}</td>
+                <td class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountDue))}</strong>` : '—'}</td>
+                <td class="society-table__money">${r ? escapeHtml(formatMoney(r.boatRental)) : '—'}</td>
+                <td class="society-table__money">${r ? escapeHtml(formatMoney(r.oarRental)) : '—'}</td>
+                <td class="society-table__money">${r ? `<strong>${escapeHtml(formatMoney(r.amountPaid))}</strong>` : '—'}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    window.societyAdmin?.notify();
+  }
+
+  function renderUnmatched() {
+    const rows = Array.isArray(data?.unmatchedRegistrations) ? data.unmatchedRegistrations : [];
+    if (!unmatched || !unmatchedList || !unmatchedCount) return;
+    unmatched.hidden = !rows.length;
+    unmatchedCount.textContent = rows.length ? `(${rows.length})` : '';
+    unmatchedList.className = 'society-unmatched-list';
+    unmatchedList.innerHTML = rows.map((row) => `
+      <div class="society-unmatched-row">
+        <div><strong>${escapeHtml(row.team || 'Società FIC')}</strong><br><small>${escapeHtml(row.fiscalCode || '')}</small></div>
+        <div>${escapeHtml(row.details || row.raw || '—')}</div>
+        <div><strong>Possibili corrispondenze</strong><br>${(row.suggestions || []).map((item) =>
+          `<small>${escapeHtml(item.code || '—')} · ${escapeHtml(item.name || '—')} · ${Math.round(Number(item.score || 0) * 100)}%</small>`
+        ).join('<br>') || '<small>Nessuna</small>'}</div>
+      </div>`).join('');
+  }
+
+  function renderAll() {
+    syncRegions();
+    renderSource();
+    renderKpis();
+    renderTable();
+    renderUnmatched();
+  }
+
+  async function load({ initial = false } = {}) {
+    if (!credentials) return;
+    if (refreshButton) refreshButton.disabled = true;
+    setStatus(initial ? loginStatus : statusNode, initial ? 'Accesso in corso…' : 'Aggiornamento…');
+
+    try {
+      data = await requestData();
+      showDashboard();
+      renderAll();
+      setStatus(statusNode, data.ficAvailable ? 'Dati aggiornati.' : 'Anagrafica caricata; dati FIC non disponibili.', data.ficAvailable ? 'success' : 'warning');
+      setStatus(loginStatus, '');
+    } catch (error) {
+      if (error.status === 401) {
+        showLogin('Credenziali non valide.');
+      } else {
+        setStatus(initial ? loginStatus : statusNode, error.message, 'error');
+      }
+    } finally {
+      if (refreshButton) refreshButton.disabled = false;
+    }
+  }
+
+  loginForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const formData = new FormData(loginForm);
+    credentials = {
+      username: String(formData.get('username') || ''),
+      password: String(formData.get('password') || '')
+    };
+    load({ initial: true });
+  });
+
+  refreshButton?.addEventListener('click', () => load());
+  [regionFilter, statusFilter].forEach((node) => node?.addEventListener('change', renderTable));
+  textFilter?.addEventListener('input', renderTable);
+  resetFilters?.addEventListener('click', () => {
+    if (regionFilter) regionFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (textFilter) textFilter.value = '';
+    renderTable();
+  });
+
+  window.societyAdmin = {
+    getVisibleRows: visibleRows,
+    getData: () => data,
+    formatMoney,
+    statusLabel,
+    getFilterLabel: () => {
+      const parts = [];
+      if (regionFilter?.value) parts.push(`Regione: ${regionFilter.value}`);
+      if (statusFilter?.value) parts.push(`Stato: ${statusLabel(statusFilter.value)}`);
+      if (textFilter?.value?.trim()) parts.push(`Ricerca: ${textFilter.value.trim()}`);
+      return parts.length ? parts.join(' · ') : 'Nessun filtro applicato';
+    },
+    notify: () => window.dispatchEvent(new CustomEvent('society-admin:updated'))
+  };
+})();
