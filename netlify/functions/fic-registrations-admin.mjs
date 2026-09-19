@@ -9,12 +9,31 @@ const EVENT_URLS = [
   `https://canottaggio.net/${EVENT_PATH}`
 ];
 
-const HISTORICAL_2025_URL = 'https://canottaggioservice.canottaggio.net/dati/pis25CICR.html';
+const HISTORICAL_2025_PROGRAM_URL = 'https://canottaggioservice.canottaggio.net/dati/prx25CICR.html';
 
 const REGISTERED_2025_CODES = new Set(["050155","040086","030127","040165","098890","020119","030016","010109","120158","050004","100016","150003","070169","070110","080005","010168","050142","030135","030026","050005","080117","130164","110213","110014","080131","110043","030065","050174","050047","030045","050143","030005","050073","110052","110098","030024","040007","050002","100121","050001","080009","030153","010122","090024","070170","030134","040026","030014","030195","040051","100010","030104","100118","010096","040160","070101","070077","010014","040258","030011","030017","100044"]);
 
-// Fonte FIC 2025, Meeting Capitani Trieste: 62 società e 445 atleti nel Campionato.
+// FIC al 23/09/2025: 62 società e 445 atleti iscritti.
 const ATHLETES_2025 = 445;
+
+// Il programma gare definitivo pubblico consente di ricostruire 384 atleti unici.
+// La ripartizione regionale dei 445 iscritti al 23/09 non è pubblicamente disponibile.
+const ATHLETES_2025_PROGRAM = 384;
+const HISTORICAL_2025_PROGRAM_BY_REGION = Object.freeze([
+  { region: 'Abruzzo', athletes: 9, societies: 1 },
+  { region: 'Campania', athletes: 21, societies: 5 },
+  { region: 'Friuli Venezia Giulia', athletes: 113, societies: 10 },
+  { region: 'Lazio', athletes: 20, societies: 5 },
+  { region: 'Liguria', athletes: 33, societies: 5 },
+  { region: 'Lombardia', athletes: 74, societies: 15 },
+  { region: 'Marche', athletes: 24, societies: 2 },
+  { region: 'Piemonte', athletes: 19, societies: 5 },
+  { region: 'Puglia', athletes: 10, societies: 1 },
+  { region: 'Sardegna', athletes: 11, societies: 1 },
+  { region: 'Sicilia', athletes: 3, societies: 1 },
+  { region: 'Toscana', athletes: 9, societies: 4 },
+  { region: 'Veneto', athletes: 38, societies: 7 }
+]);
 
 // Snapshot delle richieste di noleggio ricevute via e-mail e verificate il 18/09/2026.
 // La presenza indica esclusivamente che una mail di noleggio è stata ricevuta, non che la richiesta sia ancora attiva.
@@ -215,79 +234,6 @@ function parseRegistrationSnapshotHtml(html) {
   }, 0);
 
   return { societies, athletesTotal, athletesPresentTotal };
-}
-
-function parseHistorical2025Stats(html) {
-  const tableRows = [];
-  const rowPattern = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rowMatch;
-
-  while ((rowMatch = rowPattern.exec(html))) {
-    const cells = [];
-    const cellPattern = /<(td|th)\b[^>]*>([\s\S]*?)<\/\1>/gi;
-    let cellMatch;
-    while ((cellMatch = cellPattern.exec(rowMatch[1]))) {
-      cells.push(cellText(cellMatch[2]));
-    }
-    if (cells.length) tableRows.push(cells);
-  }
-
-  const headerIndex = tableRows.findIndex((cells) => {
-    const normalized = cells.map((cell) => String(cell || '').toUpperCase());
-    return normalized.some((cell) => cell.includes('SOCIET')) &&
-      normalized.some((cell) => cell.includes('ATLETI') && (cell.includes('ISCRITTI') || cell.includes('FISICI')));
-  });
-
-  if (headerIndex < 0) throw new Error('Intestazione elenco società 2025 non riconosciuta.');
-
-  const header = tableRows[headerIndex].map((cell) => String(cell || '').toUpperCase());
-  const societyIndex = header.findIndex((cell) => cell.includes('SOCIET'));
-  const athleteIndex = header.findIndex((cell) =>
-    cell.includes('ATLETI') && (cell.includes('ISCRITTI') || cell.includes('FISICI'))
-  );
-
-  if (societyIndex < 0 || athleteIndex < 0) {
-    throw new Error('Colonne 2025 non riconosciute.');
-  }
-
-  const masterByCode = new Map(
-    FIC_SOCIETIES_2026.map((society) => [String(society.code || ''), society])
-  );
-  const seenCodes = new Set();
-  const grouped = new Map();
-
-  for (const cells of tableRows.slice(headerIndex + 1)) {
-    const societyCell = String(cells[societyIndex] || '').trim();
-    const codeMatch = societyCell.match(/\((\d{6})\)/);
-    if (!codeMatch) continue;
-
-    const code = codeMatch[1];
-    if (seenCodes.has(code)) continue;
-
-    const master = masterByCode.get(code);
-    const athletes = parseInteger(cells[athleteIndex]);
-    if (!master?.region || !Number.isFinite(athletes)) continue;
-
-    seenCodes.add(code);
-    const region = String(master.region);
-    const current = grouped.get(region) || { region, athletes: 0, societies: 0 };
-    current.athletes += athletes;
-    current.societies += 1;
-    grouped.set(region, current);
-  }
-
-  const byRegion = Array.from(grouped.values()).sort((a, b) =>
-    a.region.localeCompare(b.region, 'it-IT', { sensitivity: 'base' })
-  );
-  const societyCount = byRegion.reduce((sum, item) => sum + item.societies, 0);
-  const athleteCount = byRegion.reduce((sum, item) => sum + item.athletes, 0);
-
-  // Accettiamo il dettaglio regionale soltanto se riconcilia i totali ufficiali del meeting capitani.
-  if (societyCount !== REGISTERED_2025_CODES.size || athleteCount !== ATHLETES_2025) {
-    throw new Error(`Dettaglio 2025 non riconciliato: ${societyCount} società, ${athleteCount} atleti.`);
-  }
-
-  return { byRegion, societyCount, athleteCount };
 }
 
 function sanitizeStoreSuffix(value) {
@@ -585,30 +531,6 @@ async function fetchFicPage() {
   throw lastError || new Error('Pagina FIC non raggiungibile.');
 }
 
-async function fetchHistorical2025Page() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
-
-  try {
-    const response = await fetch(HISTORICAL_2025_URL, {
-      method: 'GET',
-      redirect: 'follow',
-      cache: 'no-store',
-      signal: controller.signal,
-      headers: {
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'accept-language': 'it-IT,it;q=0.9,en;q=0.7',
-        'user-agent': 'Mozilla/5.0 (compatible; CoastalRowingPesaro2026/1.0; +https://coastalrowing26.canottieripesaro.it/)'
-      }
-    });
-
-    if (!response.ok) throw new Error(`FIC storico HTTP ${response.status}`);
-    return { url: response.url || HISTORICAL_2025_URL, html: await response.text() };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAvailable, financialAvailable, snapshot) {
   const money = registrations.reduce((sum, item) => ({
     amountDue: sum.amountDue + Number(item.amountDue || 0),
@@ -627,6 +549,7 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAv
     totalSocieties: rows.length,
     registered2025: REGISTERED_2025_CODES.size,
     athletes2025: ATHLETES_2025,
+    athletes2025Program: ATHLETES_2025_PROGRAM,
     athletes2026: snapshotRegisteredAthletesTotal(snapshot),
     registered,
     notRegistered: registrationAvailable ? rows.length - registered : null,
@@ -683,14 +606,10 @@ export default async (request) => {
   let sourceError = '';
   let unmatchedRegistrations = [];
   let bySociety = new Map();
-  let historical2025Available = false;
-  let historical2025ByRegion = [];
-  let historical2025SourceUrl = HISTORICAL_2025_URL;
-  let historical2025Error = '';
-
-  const historical2025Promise = fetchHistorical2025Page()
-    .then((source) => ({ source }))
-    .catch((error) => ({ error }));
+  const historical2025Available = true;
+  const historical2025ByRegion = HISTORICAL_2025_PROGRAM_BY_REGION;
+  const historical2025SourceUrl = HISTORICAL_2025_PROGRAM_URL;
+  const historical2025Error = '';
 
   try {
     const source = await fetchFicPage();
@@ -705,24 +624,6 @@ export default async (request) => {
     sourceError = error?.name === 'AbortError'
       ? 'Il portale FIC non ha risposto entro il tempo previsto.'
       : 'Il portale FIC non è raggiungibile o il formato della pagina è cambiato.';
-  }
-
-  const historicalResult = await historical2025Promise;
-  if (historicalResult.source) {
-    try {
-      historical2025SourceUrl = historicalResult.source.url || HISTORICAL_2025_URL;
-      const parsedHistorical = parseHistorical2025Stats(historicalResult.source.html);
-      historical2025ByRegion = parsedHistorical.byRegion;
-      historical2025Available = true;
-    } catch (error) {
-      console.error('Errore parsing dettaglio iscritti 2025:', error);
-      historical2025Error = 'Il dettaglio regionale 2025 non è stato riconciliato con i totali ufficiali.';
-    }
-  } else {
-    console.error('Errore lettura elenco società 2025:', historicalResult.error);
-    historical2025Error = historicalResult.error?.name === 'AbortError'
-      ? 'La fonte FIC 2025 non ha risposto entro il tempo previsto.'
-      : 'La fonte FIC 2025 non è raggiungibile.';
   }
 
   const registrationAvailable = Boolean(snapshot) || financialAvailable;
@@ -762,6 +663,9 @@ export default async (request) => {
     historical2025Available,
     historical2025ByRegion,
     historical2025SourceUrl,
+    historical2025DataType: 'final-program',
+    historical2025RegisteredAthletes: ATHLETES_2025,
+    historical2025ProgramAthletes: ATHLETES_2025_PROGRAM,
     historical2025Error: historical2025Error || undefined,
     summary: summaryFrom(
       rows,
