@@ -13,42 +13,45 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
-      - name: Search Common Crawl for 25CICR
+      - name: Search Common Crawl for 25CICR assets
         run: |
           python - <<'PY'
           import json
           import urllib.parse
           import urllib.request
 
-          def get(url, timeout=30):
-              req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-              with urllib.request.urlopen(req, timeout=timeout) as r:
-                  return r.read().decode("utf-8", errors="replace")
-
-          info = json.loads(get("https://index.commoncrawl.org/collinfo.json"))
-          indexes = [x["id"] for x in info if x["id"].startswith("CC-MAIN-2025")][:12]
-          print("INDEXES", indexes)
-
+          indexes = [
+              "CC-MAIN-2025-43",
+              "CC-MAIN-2025-47",
+              "CC-MAIN-2025-51",
+              "CC-MAIN-2026-04",
+          ]
           patterns = [
               "canottaggioservice.canottaggio.net/*25CICR*",
               "www.canottaggio.net/*25CICR*",
               "canottaggio.net/*25CICR*",
           ]
-          for idx in indexes:
+
+          for index in indexes:
               for pattern in patterns:
-                  q = "https://index.commoncrawl.org/" + idx + "-index?" + urllib.parse.urlencode({
+                  params = urllib.parse.urlencode({
                       "url": pattern,
                       "output": "json",
                       "filter": "status:200",
-                      "matchType": "domain",
+                      "fl": "timestamp,url,mime,status,digest,length,offset,filename",
+                      "matchType": "domain"
                   })
+                  url = f"https://index.commoncrawl.org/{index}-index?{params}"
                   try:
-                      payload = get(q, 20).strip()
-                      if payload:
-                          print("===FOUND===", idx, pattern)
-                          print(payload[:30000])
+                      req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+                      with urllib.request.urlopen(req, timeout=20) as r:
+                          data = r.read().decode("utf-8", errors="replace")
+                      print("===QUERY===", index, pattern)
+                      for line in data.splitlines():
+                          if "25CICR" in line.upper():
+                              print(line)
                   except Exception as exc:
-                      print("ERR", idx, pattern, repr(exc))
+                      print("===ERROR===", index, pattern, repr(exc))
           PY
