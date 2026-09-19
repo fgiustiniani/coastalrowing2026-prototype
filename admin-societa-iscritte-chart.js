@@ -89,13 +89,15 @@
     return node;
   }
 
-  function appendSummaryBoxes(svg, margin, rows) {
-    const summary = getData().summary || {};
+  function appendSummaryBoxes(svg, margin, rows, { athleteMode = false } = {}) {
+    const data = getData();
+    const summary = data.summary || {};
     const currentSocieties = summary.registered ?? rows.reduce((sum, row) => sum + row.registered, 0);
     const historicSocieties = summary.registered2025 ?? rows.reduce((sum, row) => sum + row.registered2025, 0);
     const currentAthletes = summary.athletes2026 ?? '—';
-    const historicAthletes = summary.athletes2025 ?? 445;
-    const boxWidth = 172;
+    const historicRegisteredAthletes = summary.athletes2025 ?? 445;
+    const historicProgramAthletes = data.historical2025ProgramAthletes ?? summary.athletes2025Program ?? 384;
+    const boxWidth = 184;
     const gap = 12;
     const startX = margin.left;
 
@@ -105,6 +107,7 @@
         year: '2026',
         societies: currentSocieties,
         athletes: currentAthletes,
+        athleteLabel: 'atleti iscritti',
         fill: '#f0f8f4',
         stroke: '#bcdac9',
         title: '#245d38'
@@ -113,7 +116,8 @@
         x: startX + boxWidth + gap,
         year: '2025',
         societies: historicSocieties,
-        athletes: historicAthletes,
+        athletes: athleteMode ? historicProgramAthletes : historicRegisteredAthletes,
+        athleteLabel: athleteMode ? 'atleti nel programma' : 'atleti iscritti',
         fill: '#f1f6fa',
         stroke: '#c4d5e2',
         title: '#365f80'
@@ -128,7 +132,7 @@
       }, `${item.year} · ${item.societies} società`));
       svg.appendChild(svgEl('text', {
         x: item.x + 12, y: 57, fill: '#52666c', 'font-size': 11.5, 'font-weight': 750
-      }, `${item.athletes} atleti iscritti`));
+      }, `${item.athletes} ${item.athleteLabel}`));
     });
   }
 
@@ -311,10 +315,9 @@
     const data = getData();
     const has2026 = rows.some((row) => row.athletes2026Known);
     const has2025 = data.historical2025Available === true;
-    const noteNeeded = !has2026 || !has2025;
     const width = Math.max(1120, rows.length * 72 + 110);
     const height = 540;
-    const margin = { top: noteNeeded ? 112 : 92, right: 24, bottom: 150, left: 48 };
+    const margin = { top: 112, right: 24, bottom: 150, left: 48 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
     const numericValues = rows.flatMap((row) => [
@@ -330,23 +333,25 @@
     const svg = svgEl('svg', {
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': 'Atleti iscritti per regione nel 2025 e 2026'
+      'aria-label': 'Atleti 2026 e atleti presenti nel programma gare 2025 per regione'
     });
     svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
-    appendSummaryBoxes(svg, margin, allRows);
+    appendSummaryBoxes(svg, margin, allRows, { athleteMode: true });
 
-    if (noteNeeded) {
-      const notes = [];
-      if (!has2026) notes.push('2026: carica un file HTML aggiornato per il dettaglio atleti per regione.');
-      if (!has2025) notes.push('2025: dettaglio regionale non disponibile dalla fonte FIC.');
-      svg.appendChild(svgEl('text', {
-        x: margin.left,
-        y: 91,
-        fill: '#8a5b1e',
-        'font-size': 10.5,
-        'font-weight': 750
-      }, notes.join(' ')));
+    const notes = [];
+    if (!has2026) notes.push('2026: carica un file HTML aggiornato per il dettaglio atleti per regione.');
+    if (has2025) {
+      notes.push('2025: ripartizione dal programma gare definitivo (384 atleti unici); la FIC indicava 445 iscritti al 23/09, senza dettaglio regionale pubblico.');
+    } else {
+      notes.push('2025: dettaglio regionale non disponibile.');
     }
+    svg.appendChild(svgEl('text', {
+      x: margin.left,
+      y: 91,
+      fill: '#8a5b1e',
+      'font-size': 10.5,
+      'font-weight': 750
+    }, notes.join(' ')));
 
     appendGrid(svg, width, margin, plotHeight, yMax);
 
@@ -433,12 +438,12 @@
     if (chartMode === 'athletes') {
       if (titleNode) titleNode.textContent = 'Atleti per regione';
       if (descriptionNode) {
-        descriptionNode.textContent = 'Confronto tra atleti iscritti nel 2025 e nel 2026. Tra parentesi è indicato il numero di società iscritte della regione.';
+        descriptionNode.textContent = 'Confronto regionale: 2026 = atleti iscritti dall’ultimo HTML caricato; 2025 = atleti unici presenti nel programma gare definitivo. Tra parentesi è indicato il numero di società iscritte.';
       }
       if (legendNode) {
         legendNode.innerHTML =
           '<span><i class="society-chart-legend__swatch is-registered"></i> Atleti 2026</span>' +
-          '<span><i class="society-chart-legend__swatch is-2025"></i> Atleti 2025</span>';
+          '<span><i class="society-chart-legend__swatch is-2025"></i> Atleti nel programma 2025</span>';
       }
     } else {
       if (titleNode) titleNode.textContent = 'Società per regione';
@@ -639,7 +644,7 @@
       ]);
       const pdf = pdfWithJpegPages([
         { ...societiesPage, title: 'Societa per regione - Campionati Italiani Coastal Rowing 2026' },
-        { ...athletesPage, title: 'Atleti per regione - confronto 2025-2026' }
+        { ...athletesPage, title: 'Atleti per regione - 2026 iscritti / 2025 programma gare' }
       ]);
       downloadBlob(pdf, `grafici-iscrizioni-coastal-2026-${fileStamp()}.pdf`);
     } catch (error) {
