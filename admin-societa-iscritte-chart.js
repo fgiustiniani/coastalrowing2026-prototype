@@ -96,7 +96,6 @@
     const historicSocieties = summary.registered2025 ?? rows.reduce((sum, row) => sum + row.registered2025, 0);
     const currentAthletes = summary.athletes2026 ?? '—';
     const historicRegisteredAthletes = summary.athletes2025 ?? 445;
-    const historicProgramAthletes = data.historical2025ProgramAthletes ?? summary.athletes2025Program ?? 384;
     const boxWidth = 184;
     const gap = 12;
     const startX = margin.left;
@@ -116,8 +115,8 @@
         x: startX + boxWidth + gap,
         year: '2025',
         societies: historicSocieties,
-        athletes: athleteMode ? historicProgramAthletes : historicRegisteredAthletes,
-        athleteLabel: athleteMode ? 'atleti nel programma' : 'atleti iscritti',
+        athletes: historicRegisteredAthletes,
+        athleteLabel: 'atleti iscritti',
         fill: '#f1f6fa',
         stroke: '#c4d5e2',
         title: '#365f80'
