@@ -15,43 +15,89 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Search Common Crawl for 25CICR assets
+      - name: Compare physical athletes and race entries
         run: |
           python - <<'PY'
+          import collections
+          import html
           import json
-          import urllib.parse
+          import re
           import urllib.request
 
-          indexes = [
-              "CC-MAIN-2025-43",
-              "CC-MAIN-2025-47",
-              "CC-MAIN-2025-51",
-              "CC-MAIN-2026-04",
-          ]
-          patterns = [
-              "canottaggioservice.canottaggio.net/*25CICR*",
-              "www.canottaggio.net/*25CICR*",
-              "canottaggio.net/*25CICR*",
-          ]
+          url = "https://canottaggioservice.canottaggio.net/dati/prx25CICR.html"
+          req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+          with urllib.request.urlopen(req, timeout=20) as r:
+              body = r.read().decode("latin1", errors="replace")
 
-          for index in indexes:
-              for pattern in patterns:
-                  params = urllib.parse.urlencode({
-                      "url": pattern,
-                      "output": "json",
-                      "filter": "status:200",
-                      "fl": "timestamp,url,mime,status,digest,length,offset,filename",
-                      "matchType": "domain"
-                  })
-                  url = f"https://index.commoncrawl.org/{index}-index?{params}"
-                  try:
-                      req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-                      with urllib.request.urlopen(req, timeout=20) as r:
-                          data = r.read().decode("utf-8", errors="replace")
-                      print("===QUERY===", index, pattern)
-                      for line in data.splitlines():
-                          if "25CICR" in line.upper():
-                              print(line)
-                  except Exception as exc:
-                      print("===ERROR===", index, pattern, repr(exc))
+          def txt(fragment):
+              fragment = re.sub(r"<br[^>]*>", "\n", fragment, flags=re.I)
+              fragment = re.sub(r"<[^>]*>", "", fragment)
+              fragment = html.unescape(fragment).replace("\r", "")
+              fragment = re.sub(r"[ \t]+", " ", fragment)
+              fragment = re.sub(r" *\n *", "\n", fragment)
+              return fragment.strip()
+
+          cells = re.findall(r"<td[^>]*class=['\"]t1['\"][^>]*>(.*?)</td>", body, flags=re.I | re.S)
+          unique = collections.defaultdict(set)
+          entries = collections.Counter()
+          reserves = collections.Counter()
+          crews = collections.Counter()
+
+          for fragment in cells:
+              lines = [x.strip() for x in txt(fragment).split("\n") if x.strip()]
+              if len(lines) < 3:
+                  continue
+
+              team_line = lines[1]
+              tm = re.match(r"^(.*)[(]([0-9]+)(?: +Misto)?[)]$", team_line, flags=re.I)
+              if not tm:
+                  continue
+              main_team = tm.group(1).strip()
+              crews[main_team] += 1
+
+              footnotes = {}
+              for line in lines:
+                  fm = re.match(r"^[(]([0-9]+)[)] +(.+)$", line)
+                  if fm:
+                      footnotes[fm.group(1)] = fm.group(2).strip()
+
+              for line in lines[2:]:
+                  if line.startswith(".") or re.match(r"^[(][0-9]+[)] +", line):
+                      continue
+                  if not re.search(r"[(][A-Z0-9]+[)]", line):
+                      continue
+
+                  raw_line = line
+                  partner = None
+                  pm = re.search(r" +[(]([0-9]+)[)] *$", line)
+                  if pm:
+                      partner = pm.group(1)
+                      line = line[:pm.start()].rstrip()
+
+                  name = re.sub(r"[(][A-Z0-9]+[)]", "", line)
+                  name = re.sub(r" +[0-9]+ *$", "", name)
+                  name = re.sub(r" +-?Tim[.]? *$", "", name, flags=re.I)
+                  name = re.sub(r" +", " ", name).strip(" -")
+                  if not name or len(name) < 3:
+                      continue
+
+                  team = footnotes.get(partner, main_team) if partner else main_team
+                  unique[team].add(name.upper())
+                  entries[team] += 1
+                  if re.search(r"\((?:R|RIS)\)", raw_line, flags=re.I):
+                      reserves[team] += 1
+
+          print("UNIQUE_TOTAL", sum(len(v) for v in unique.values()))
+          print("ENTRY_TOTAL", sum(entries.values()))
+          print("RESERVE_MARKED_TOTAL", sum(reserves.values()))
+          print("===COUNTS===")
+          teams = sorted(set(unique) | set(entries), key=lambda t: (-entries[t], t))
+          for team in teams:
+              print(json.dumps({
+                  "team": team,
+                  "physical": len(unique[team]),
+                  "entries": entries[team],
+                  "crews": crews[team],
+                  "reserve_marked": reserves[team]
+              }, ensure_ascii=False))
           PY
