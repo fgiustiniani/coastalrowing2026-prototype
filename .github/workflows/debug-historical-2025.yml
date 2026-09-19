@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Compare physical athletes and race entries
+      - name: Reconstruct all registered crews
         run: |
           python - <<'PY'
           import collections
@@ -37,23 +37,26 @@ jobs:
               fragment = re.sub(r" *\n *", "\n", fragment)
               return fragment.strip()
 
-          cells = re.findall(r"<td[^>]*class=['\"]t1['\"][^>]*>(.*?)</td>", body, flags=re.I | re.S)
+          all_cells = re.findall(r"<td[^>]*class=['\"](t[12])['\"][^>]*>(.*?)</td>", body, flags=re.I | re.S)
+          class_counts = collections.Counter(cls.lower() for cls,_ in all_cells)
           unique = collections.defaultdict(set)
           entries = collections.Counter()
-          reserves = collections.Counter()
           crews = collections.Counter()
+          by_class = collections.Counter()
+          failed = []
 
-          for fragment in cells:
+          for cls, fragment in all_cells:
               lines = [x.strip() for x in txt(fragment).split("\n") if x.strip()]
               if len(lines) < 3:
                   continue
-
               team_line = lines[1]
               tm = re.match(r"^(.*)[(]([0-9]+)(?: +Misto)?[)]$", team_line, flags=re.I)
               if not tm:
+                  failed.append({"class":cls,"lines":lines[:6]})
                   continue
               main_team = tm.group(1).strip()
               crews[main_team] += 1
+              by_class[cls.lower()] += 1
 
               footnotes = {}
               for line in lines:
@@ -67,7 +70,6 @@ jobs:
                   if not re.search(r"[(][A-Z0-9]+[)]", line):
                       continue
 
-                  raw_line = line
                   partner = None
                   pm = re.search(r" +[(]([0-9]+)[)] *$", line)
                   if pm:
@@ -84,20 +86,23 @@ jobs:
                   team = footnotes.get(partner, main_team) if partner else main_team
                   unique[team].add(name.upper())
                   entries[team] += 1
-                  if re.search(r"\((?:R|RIS)\)", raw_line, flags=re.I):
-                      reserves[team] += 1
 
+          print("CELL_CLASS_COUNTS", json.dumps(class_counts))
+          print("PARSED_CREWS_BY_CLASS", json.dumps(by_class))
+          print("PARSED_CREWS_TOTAL", sum(crews.values()))
           print("UNIQUE_TOTAL", sum(len(v) for v in unique.values()))
           print("ENTRY_TOTAL", sum(entries.values()))
-          print("RESERVE_MARKED_TOTAL", sum(reserves.values()))
+          print("FAILED", len(failed))
           print("===COUNTS===")
-          teams = sorted(set(unique) | set(entries), key=lambda t: (-entries[t], t))
+          teams = sorted(set(unique) | set(entries), key=lambda t: (-len(unique[t]), t))
           for team in teams:
               print(json.dumps({
                   "team": team,
                   "physical": len(unique[team]),
                   "entries": entries[team],
-                  "crews": crews[team],
-                  "reserve_marked": reserves[team]
+                  "crews": crews[team]
               }, ensure_ascii=False))
+          print("===FAILED_ROWS===")
+          for item in failed[:30]:
+              print(json.dumps(item, ensure_ascii=False))
           PY
