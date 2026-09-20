@@ -56,7 +56,7 @@ function safeEqual(left, right) {
 function accessSecret() {
   const explicit = env('VOLUNTEER_ACCESS_TOKEN');
   if (explicit) return explicit;
-  const databaseSecret = env('SUPABASE_SECRET_KEY');
+  const databaseSecret = env('VOLUNTEERS_SUPABASE_SECRET_KEY') || env('SUPABASE_SECRET_KEY');
   if (!databaseSecret) throw new ApiError('Accesso volontari non configurato.', 503, 'ACCESS_NOT_CONFIGURED');
   return createHash('sha256').update(`coastal-volunteers-access|${databaseSecret}`).digest('hex');
 }
@@ -153,7 +153,7 @@ export function requireAdmin(request) {
 
 function supabaseConfig() {
   const url = env('SUPABASE_URL').replace(/\/$/, '');
-  const secretKey = env('SUPABASE_SECRET_KEY');
+  const secretKey = env('VOLUNTEERS_SUPABASE_SECRET_KEY') || env('SUPABASE_SECRET_KEY');
   if (!url || !secretKey) throw new ApiError('Database volontari non configurato.', 503, 'DATABASE_NOT_CONFIGURED');
   return { url, secretKey };
 }
