@@ -204,7 +204,7 @@
             <label class="response-choice response-choice--yes"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}><span>Confermo</span></label>
             <label class="response-choice response-choice--no"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${declined ? 'checked' : ''}><span>Non posso</span></label>
           </div>
-          <label class="field decline-note" ${declined ? '' : 'hidden'}><span>Nota facoltativa</span><textarea maxlength="1000" data-decline-note placeholder="Se vuoi, indica il motivo o una nota utile">${escapeHtml(saved.note || '')}</textarea></label>
+          <label class="field assignment-note"><span>Nota facoltativa</span><textarea maxlength="1000" data-assignment-note placeholder="Se vuoi, aggiungi una nota utile per questa attività">${escapeHtml(saved.note || '')}</textarea></label>
         </article>`;
     }).join('');
   }
@@ -245,18 +245,18 @@
     const shifts = state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts;
     const extra = shifts.filter((s) => state.availability.get(s.id)?.selected && !s.assigned);
     const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
-    const listAssignments = (items, declinedMode) => items.length
+    const listAssignments = (items) => items.length
       ? `<ul class="summary-list">${items.map((a) => {
           const response = state.responses.get(a.id) || {};
-          return `<li><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong> — ${escapeHtml(a.activity)}${a.role ? ` · ${escapeHtml(a.role)}` : ''}${declinedMode && response.note ? `<br><small>Nota: ${escapeHtml(response.note)}</small>` : ''}</li>`;
+          return `<li><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong> — ${escapeHtml(a.activity)}${a.role ? ` · ${escapeHtml(a.role)}` : ''}${response.note ? `<br><small>Nota: ${escapeHtml(response.note)}</small>` : ''}</li>`;
         }).join('')}</ul>`
       : '<p class="summary-empty">Nessuna.</p>';
 
     summary.innerHTML = `
       <section class="summary-section"><h3>Compilato da</h3><p>${escapeHtml(state.actorName)}</p></section>
       <section class="summary-section"><h3>Persona selezionata</h3><p><strong>${escapeHtml(selectedName)}</strong>${state.selectedPerson?.person_code ? ` · codice ${escapeHtml(state.selectedPerson.person_code)}` : ''}</p></section>
-      <section class="summary-section"><h3>Attività confermate</h3>${listAssignments(confirmed, false)}</section>
-      <section class="summary-section"><h3>Attività non disponibili</h3>${listAssignments(declined, true)}</section>
+      <section class="summary-section"><h3>Attività confermate</h3>${listAssignments(confirmed)}</section>
+      <section class="summary-section"><h3>Attività non disponibili</h3>${listAssignments(declined)}</section>
       <section class="summary-section"><h3>Ulteriori disponibilità</h3>${extra.length ? `<ul class="summary-list">${extra.map((s) => { const note = state.availability.get(s.id)?.note || ''; return `<li><strong>${escapeHtml(s.day)} · ${escapeHtml(s.shift)}</strong>${note ? `<br><small>Nota: ${escapeHtml(note)}</small>` : ''}</li>`; }).join('')}</ul>` : '<p class="summary-empty">Nessuna ulteriore disponibilità indicata.</p>'}</section>`;
   }
 
@@ -344,15 +344,13 @@
     if (event.target.matches('input[type="radio"]')) {
       const current = state.responses.get(assignmentId) || {};
       state.responses.set(assignmentId, { ...current, response: event.target.value });
-      const note = card.querySelector('.decline-note'); note.hidden = event.target.value !== 'declined';
-      if (event.target.value !== 'declined') { state.responses.set(assignmentId, { response: event.target.value, note: '' }); const area = card.querySelector('[data-decline-note]'); if (area) area.value = ''; }
     }
   });
   assignmentList?.addEventListener('input', (event) => {
-    if (!event.target.matches('[data-decline-note]')) return;
+    if (!event.target.matches('[data-assignment-note]')) return;
     const card = event.target.closest('[data-assignment-id]');
     const assignmentId = card.dataset.assignmentId;
-    const current = state.responses.get(assignmentId) || { response: 'declined' };
+    const current = state.responses.get(assignmentId) || {};
     state.responses.set(assignmentId, { ...current, note: event.target.value });
   });
 
