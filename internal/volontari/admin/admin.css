@@ -44,5 +44,39 @@
 .audit-event strong { display: block; }
 .audit-event small { color: var(--muted); }
 .audit-values { margin-top: 7px; padding: 8px 10px; background: var(--soft); border-radius: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (min-width: 900px) { .admin-shell { padding: 30px 24px 80px; } .kpi-grid { grid-template-columns: repeat(5, minmax(0,1fr)); } .report-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+@media (min-width: 900px) { .admin-shell { padding: 30px 24px 80px; } .kpi-grid { grid-template-columns: repeat(5, minmax(0,1fr)); } }
 @media (max-width: 700px) { .admin-header { display: grid; } .admin-header img { width: min(300px, 80vw); } .login-grid, .editor-grid, .raw-shift-grid { grid-template-columns: 1fr; } .login-grid button { width: 100%; } .field--wide, .raw-shift-grid { grid-column: auto; } .admin-toolbar, .section-head { align-items: flex-start; } .admin-toolbar { display: grid; } }
+
+.section-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 14px 0 12px; }
+.filter-grid--report { grid-template-columns: repeat(2, minmax(0, 260px)); }
+.filter-grid .field { margin: 0; }
+.compact-field { max-width: none; }
+.collapse-button { white-space: nowrap; }
+[data-collapsible-content][hidden] { display: none !important; }
+.table-link, .row-actions button {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: .75rem;
+  font-weight: 800;
+}
+.row-actions button.is-danger { color: #923716; border-color: #efc9b8; }
+.report-grid { grid-template-columns: 1fr; }
+.report-grid .admin-table { min-width: 900px; }
+.answer-yes { color: var(--ok); font-weight: 800; }
+.answer-no { color: var(--muted); font-weight: 800; }
+.notes-cell { min-width: 260px; max-width: 420px; white-space: normal; }
+.people-cell { min-width: 320px; white-space: normal; }
+.export-note { color: var(--muted); font-size: .78rem; }
+
+@media (max-width: 900px) {
+  .filter-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .section-head { align-items: flex-start; }
+}
+@media (max-width: 600px) {
+  .filter-grid, .filter-grid--report { grid-template-columns: 1fr; }
+  .section-actions { justify-content: flex-start; }
+}
