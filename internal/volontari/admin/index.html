@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Gestione volontari | Coastal Rowing Pesaro 2026</title>
+  <link rel="stylesheet" href="../volontari.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <img src="../../../assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 – Pesaro">
+      <div>
+        <p class="eyebrow">Area organizzazione</p>
+        <h1>Gestione volontari</h1>
+        <p class="intro">Assegnazioni, conferme, disponibilità aggiuntive e storico.</p>
+      </div>
+    </header>
+
+    <section class="card admin-login" data-admin-login>
+      <h2>Accesso amministratore</h2>
+      <form data-login-form class="login-grid">
+        <label class="field"><span>Utente</span><input name="username" autocomplete="username" required></label>
+        <label class="field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="button button--primary" type="submit">Accedi</button>
+        <p class="status" data-login-status aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section data-dashboard hidden>
+      <div class="admin-toolbar">
+        <div><p class="eyebrow">Situazione aggiornata</p><h2>Quadro organizzativo</h2></div>
+        <div class="toolbar-actions"><button class="button button--secondary" type="button" data-refresh>Aggiorna</button><button class="button button--secondary" type="button" data-logout>Esci</button></div>
+      </div>
+      <section class="kpi-grid" data-kpis></section>
+      <section class="card admin-section">
+        <div class="section-head"><div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div><button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button></div>
+        <label class="field compact-field"><span>Cerca</span><input type="search" data-assignment-filter placeholder="Persona, attività, giorno o ruolo"></label>
+        <div class="table-wrap" data-assignment-table></div>
+      </section>
+      <section class="card admin-section" data-assignment-editor hidden>
+        <div class="section-head"><div><p class="eyebrow">Modifica</p><h2 data-editor-title>Nuova assegnazione</h2></div><button class="link-button" type="button" data-editor-close>Chiudi</button></div>
+        <form data-assignment-form class="editor-grid">
+          <input type="hidden" name="assignmentId">
+          <label class="field"><span>Persona</span><select name="personId" required></select></label>
+          <label class="field"><span>Turno</span><select name="shiftId"></select></label>
+          <div class="raw-shift-grid" data-raw-shift hidden>
+            <label class="field"><span>Giorno non standard</span><input name="rawDay" maxlength="80"></label>
+            <label class="field"><span>Turno non standard</span><input name="rawShift" maxlength="80"></label>
+          </div>
+          <label class="field"><span>Attività</span><input name="activity" maxlength="200" required></label>
+          <label class="field"><span>Ruolo</span><input name="role" maxlength="200"></label>
+          <label class="field"><span>Profilo richiesto</span><input name="requestedProfile" maxlength="200"></label>
+          <label class="field field--wide"><span>Nota</span><textarea name="note" maxlength="1000"></textarea></label>
+          <div class="actions field--wide"><button class="button button--secondary" type="button" data-editor-cancel>Annulla</button><button class="button button--primary" type="submit">Salva assegnazione</button></div>
+          <p class="status field--wide" data-editor-status aria-live="polite"></p>
+        </form>
+      </section>
+      <section class="report-grid">
+        <article class="card admin-section"><div class="section-head"><div><p class="eyebrow">Report</p><h2>Per persona</h2></div></div><div class="table-wrap" data-person-report></div></article>
+        <article class="card admin-section"><div class="section-head"><div><p class="eyebrow">Report</p><h2>Per attività</h2></div></div><div class="table-wrap" data-activity-report></div></article>
+      </section>
+      <dialog class="audit-dialog" data-audit-dialog>
+        <div class="audit-dialog__content">
+          <div class="section-head"><div><p class="eyebrow">Storico</p><h2 data-audit-title>Audit</h2></div><button class="audit-close" type="button" data-audit-close aria-label="Chiudi">×</button></div>
+          <div data-audit-list></div>
+          <div class="actions actions--end"><button class="button button--secondary" type="button" data-audit-close>Chiudi</button></div>
+        </div>
+      </dialog>
+    </section>
+  </main>
+  <script src="admin.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+.admin-shell { width: min(1500px, 100%); margin: 0 auto; padding: 22px 14px 60px; }
+.admin-header { display: flex; align-items: flex-end; gap: 24px; padding: 8px 6px 24px; }
+.admin-header img { width: min(250px, 40vw); }
+.admin-header h1 { margin: 2px 0 5px; font-size: clamp(1.8rem, 4vw, 2.65rem); }
+.admin-login { max-width: 620px; margin: 20px auto; }
+.login-grid { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; }
+.login-grid .field { margin: 0; }
+.login-grid .status { grid-column: 1 / -1; }
+.admin-toolbar, .section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.admin-toolbar { margin: 8px 0 14px; }
+.admin-toolbar h2, .section-head h2 { margin: 0; }
+.toolbar-actions { display: flex; gap: 8px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 14px; }
+.kpi { padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: 0 8px 25px rgba(23,62,75,.07); }
+.kpi strong { display: block; font-size: 1.6rem; line-height: 1; }
+.kpi span { display: block; margin-top: 6px; color: var(--muted); font-size: .82rem; }
+.admin-section { margin-top: 14px; box-shadow: 0 10px 35px rgba(23,62,75,.08); }
+.compact-field { max-width: 520px; margin-bottom: 12px; }
+.table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.admin-table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: .84rem; }
+.admin-table th, .admin-table td { padding: 10px 9px; border-bottom: 1px solid #e7edef; text-align: left; vertical-align: top; }
+.admin-table th { background: #edf4f6; color: #36555f; white-space: nowrap; position: sticky; top: 0; }
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-table tbody tr:nth-child(even) { background: #fbfcfc; }
+.status-badge { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-weight: 800; font-size: .74rem; white-space: nowrap; }
+.status-badge.is-confirmed { background: var(--ok-bg); color: var(--ok); }
+.status-badge.is-declined { background: var(--no-bg); color: var(--no); }
+.status-badge.is-pending { background: #edf1f2; color: #607078; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.mini-button { border: 1px solid var(--line); background: white; color: var(--ink); border-radius: 8px; padding: 5px 8px; font-size: .75rem; font-weight: 800; }
+.mini-button.is-danger { color: #923716; border-color: #efc9b8; }
+.editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 0 16px; }
+.editor-grid .field { margin: 10px 0; }
+.field--wide { grid-column: 1 / -1; }
+.raw-shift-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; padding: 10px 12px; border: 1px dashed #d2b960; border-radius: 12px; background: #fff9e9; }
+.report-grid { display: grid; gap: 14px; }
+.report-grid .admin-table { min-width: 760px; }
+.audit-dialog { width: min(900px, calc(100vw - 28px)); max-height: 85vh; padding: 0; border: 0; border-radius: 20px; box-shadow: 0 30px 90px rgba(10,33,42,.28); }
+.audit-dialog::backdrop { background: rgba(10,31,39,.45); }
+.audit-dialog__content { padding: 22px; overflow: auto; max-height: 85vh; }
+.audit-close { border: 0; background: transparent; font-size: 1.8rem; line-height: 1; color: var(--muted); }
+.audit-event { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.audit-event:last-child { border-bottom: 0; }
+.audit-event strong { display: block; }
+.audit-event small { color: var(--muted); }
+.audit-values { margin-top: 7px; padding: 8px 10px; background: var(--soft); border-radius: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (min-width: 900px) { .admin-shell { padding: 30px 24px 80px; } .kpi-grid { grid-template-columns: repeat(5, minmax(0,1fr)); } .report-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+@media (max-width: 700px) { .admin-header { display: grid; } .admin-header img { width: min(300px, 80vw); } .login-grid, .editor-grid, .raw-shift-grid { grid-template-columns: 1fr; } .login-grid button { width: 100%; } .field--wide, .raw-shift-grid { grid-column: auto; } .admin-toolbar, .section-head { align-items: flex-start; } .admin-toolbar { display: grid; } }

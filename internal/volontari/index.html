@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="color-scheme" content="light">
+  <title>Disponibilità volontari | Coastal Rowing Pesaro 2026</title>
+  <link rel="stylesheet" href="volontari.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <img src="../../assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 – Pesaro">
+      <div>
+        <p class="eyebrow">Area organizzazione</p>
+        <h1>Disponibilità volontari</h1>
+        <p class="intro">Conferma le attività assegnate e indica eventuali ulteriori disponibilità.</p>
+      </div>
+    </header>
+
+    <section class="card access-card" data-access-card hidden>
+      <h2>Accesso al modulo</h2>
+      <p>Apri il link che hai ricevuto. Se il codice non è già presente nel link, inseriscilo qui.</p>
+      <form data-access-form>
+        <label class="field">
+          <span>Codice di accesso</span>
+          <input data-access-token type="password" autocomplete="off" required>
+        </label>
+        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="button button--primary" type="submit">Continua</button>
+        <p class="status" data-access-status aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section data-app hidden>
+      <nav class="stepper" aria-label="Avanzamento">
+        <button type="button" data-step-dot="1" aria-current="step"><span>1</span><small>Chi compila</small></button>
+        <button type="button" data-step-dot="2"><span>2</span><small>Persona</small></button>
+        <button type="button" data-step-dot="3"><span>3</span><small>Attività</small></button>
+        <button type="button" data-step-dot="4"><span>4</span><small>Disponibilità</small></button>
+        <button type="button" data-step-dot="5"><span>5</span><small>Riepilogo</small></button>
+      </nav>
+
+      <section class="card step" data-step="1">
+        <p class="eyebrow">Passaggio 1 di 5</p>
+        <h2>Chi sta compilando?</h2>
+        <p class="muted">Serve solo per registrare chi ha effettuato la conferma o la modifica. Non è un’autenticazione.</p>
+        <label class="field">
+          <span>Nome e cognome</span>
+          <input data-actor-name maxlength="120" autocomplete="name" placeholder="Es. Mario Rossi" required>
+        </label>
+        <div class="actions actions--end">
+          <button class="button button--primary" type="button" data-next="2">Avanti</button>
+        </div>
+      </section>
+
+      <section class="card step" data-step="2" hidden>
+        <p class="eyebrow">Passaggio 2 di 5</p>
+        <h2>Per chi stai rispondendo?</h2>
+        <label class="field">
+          <span>Cerca per cognome o nome</span>
+          <input data-person-search type="search" autocomplete="off" placeholder="Scrivi almeno una parte del nome">
+        </label>
+        <div class="person-results" data-person-results role="listbox" aria-label="Persone con attività assegnate"></div>
+        <div class="manual-box">
+          <button class="link-button" type="button" data-manual-toggle>La persona non è nell’elenco? Inseriscila manualmente</button>
+          <label class="field" data-manual-field hidden>
+            <span>Nome e cognome della persona</span>
+            <input data-manual-person maxlength="160" autocomplete="off" placeholder="Es. Luigi Bianchi">
+          </label>
+        </div>
+        <p class="selection" data-person-selection></p>
+        <div class="actions">
+          <button class="button button--secondary" type="button" data-back="1">Indietro</button>
+          <button class="button button--primary" type="button" data-next="3">Avanti</button>
+        </div>
+      </section>
+
+      <section class="card step" data-step="3" hidden>
+        <p class="eyebrow">Passaggio 3 di 5</p>
+        <h2>Conferma le attività proposte</h2>
+        <p class="muted">È necessario indicare una risposta per ogni attività.</p>
+        <div class="assignment-list" data-assignment-list></div>
+        <p class="status" data-assignment-status aria-live="polite"></p>
+        <div class="actions">
+          <button class="button button--secondary" type="button" data-back="2">Indietro</button>
+          <button class="button button--primary" type="button" data-next="4">Avanti</button>
+        </div>
+      </section>
+
+      <section class="card step" data-step="4" hidden>
+        <p class="eyebrow">Passaggio 4 di 5</p>
+        <h2>Ulteriori disponibilità</h2>
+        <p class="muted">Se puoi essere disponibile anche in altri turni, selezionali. I turni in cui hai già un’attività sono evidenziati e non vanno selezionati di nuovo.</p>
+        <div class="availability-list" data-availability-list></div>
+        <div class="actions">
+          <button class="button button--secondary" type="button" data-back="3">Indietro</button>
+          <button class="button button--primary" type="button" data-next="5">Avanti</button>
+        </div>
+      </section>
+
+      <section class="card step" data-step="5" hidden>
+        <p class="eyebrow">Passaggio 5 di 5</p>
+        <h2>Riepilogo</h2>
+        <div data-summary></div>
+        <input class="hp" data-submit-website tabindex="-1" autocomplete="off" aria-hidden="true">
+        <p class="status" data-submit-status aria-live="polite"></p>
+        <div class="actions">
+          <button class="button button--secondary" type="button" data-back="4">Indietro</button>
+          <button class="button button--primary" type="button" data-submit>Invia disponibilità</button>
+        </div>
+      </section>
+
+      <section class="card success" data-success hidden>
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <p class="eyebrow">Invio completato</p>
+        <h2>Grazie, disponibilità registrata</h2>
+        <p data-success-copy></p>
+        <p class="submission-code" data-submission-code></p>
+        <button class="button button--secondary" type="button" data-restart>Compila per un’altra persona</button>
+      </section>
+    </section>
+  </main>
+
+  <script src="volontari.js" defer></script>
+</body>
+</html>
