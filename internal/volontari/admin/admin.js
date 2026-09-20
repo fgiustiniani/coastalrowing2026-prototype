@@ -8,9 +8,16 @@
   const inviteStatus = document.querySelector('[data-invite-status]');
   const kpis = document.querySelector('[data-kpis]');
   const assignmentTable = document.querySelector('[data-assignment-table]');
-  const assignmentFilter = document.querySelector('[data-assignment-filter]');
+  const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
+  const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
+  const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
+  const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
   const personReport = document.querySelector('[data-person-report]');
+  const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
+  const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const activityReport = document.querySelector('[data-activity-report]');
+  const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
+  const activityReportPersonFilter = document.querySelector('[data-activity-report-person-filter]');
   const editor = document.querySelector('[data-assignment-editor]');
   const editorTitle = document.querySelector('[data-editor-title]');
   const editorForm = document.querySelector('[data-assignment-form]');
@@ -81,6 +88,45 @@
     return '<span class="status-badge is-pending">Da rispondere</span>';
   }
 
+  function displayActivity(row) {
+    const activity = String(row?.activity || '').trim();
+    if (activity.toLocaleLowerCase('it-IT') === 'gestione barche in spiaggia' && row?.role) {
+      return `${activity} - ${String(row.role).trim()}`;
+    }
+    return activity;
+  }
+
+  function shiftFilterKey(row) {
+    return `${row.day || ''}|||${row.shift || ''}`;
+  }
+
+  function setSelectOptions(select, options, allLabel) {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + options
+      .map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('');
+    if ([...select.options].some((option) => option.value === current)) select.value = current;
+  }
+
+  function populateFilters() {
+    const assignments = snapshot?.assignments || [];
+    const people = [...new Map(assignments.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    const shifts = [...new Map(assignments.map((row) => [shiftFilterKey(row), {
+      value: shiftFilterKey(row), label: `${row.day} · ${row.shift}`
+    }])).values()].sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    const activities = [...new Set(assignments.map((row) => row.activity).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'it'))
+      .map((value) => ({ value, label: value }));
+
+    setSelectOptions(assignmentPersonFilter, people, 'Tutte');
+    setSelectOptions(assignmentShiftFilter, shifts, 'Tutti');
+    setSelectOptions(assignmentActivityFilter, activities, 'Tutte');
+    setSelectOptions(personReportPersonFilter, people, 'Tutte');
+    setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
+    setSelectOptions(activityReportPersonFilter, people, 'Tutte');
+  }
+
   function showLogin(message = '') {
     credentials = null;
     login.hidden = false;
@@ -106,30 +152,38 @@
   }
 
   function filteredAssignments() {
-    const q = String(assignmentFilter?.value || '').trim().toLocaleLowerCase('it-IT');
-    if (!q) return snapshot?.assignments || [];
-    return (snapshot?.assignments || []).filter((row) => [row.personName, row.personCode, row.day, row.shift, row.activity, row.role, row.requestedProfile]
-      .join(' ').toLocaleLowerCase('it-IT').includes(q));
+    const personId = assignmentPersonFilter?.value || '';
+    const shift = assignmentShiftFilter?.value || '';
+    const activity = assignmentActivityFilter?.value || '';
+    const response = assignmentResponseFilter?.value || '';
+
+    return (snapshot?.assignments || []).filter((row) => {
+      const rowResponse = row.currentResponse || 'pending';
+      return (!personId || row.personId === personId)
+        && (!shift || shiftFilterKey(row) === shift)
+        && (!activity || row.activity === activity)
+        && (!response || rowResponse === response);
+    });
   }
 
   function renderAssignments() {
     const rows = filteredAssignments();
     if (!rows.length) {
-      assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde alla ricerca.</p>';
+      assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
-    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Persona</th><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${rows.map((row) => `
+    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Turno</th><th>Attività</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${rows.map((row) => `
       <tr>
-        <td><strong>${escapeHtml(row.personName)}</strong><small>${row.personCode ? `Cod. ${escapeHtml(row.personCode)}` : 'Senza codice'}</small></td>
+        <td><strong>${escapeHtml(row.personName)}</strong></td>
+        <td>${escapeHtml(row.personCode || '—')}</td>
         <td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}${row.shiftMatched ? '' : '<small class="warning-text">Turno non standard</small>'}</td>
-        <td><strong>${escapeHtml(row.activity)}</strong>${row.requestedProfile ? `<small>${escapeHtml(row.requestedProfile)}</small>` : ''}</td>
-        <td>${escapeHtml(row.role || '—')}</td>
+        <td><strong>${escapeHtml(displayActivity(row))}</strong></td>
         <td>${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}</td>
-        <td><div class="row-actions"><button type="button" data-edit-assignment="${row.id}">Modifica</button><button type="button" data-deactivate-assignment="${row.id}">Disattiva</button><button type="button" data-audit-person="${row.personId}" data-person-name="${escapeHtml(row.personName)}">Storico</button></div></td>
+        <td><div class="row-actions"><button type="button" data-edit-assignment="${row.id}">Modifica</button><button class="is-danger" type="button" data-delete-assignment="${row.id}">Elimina</button><button type="button" data-audit-person="${row.personId}" data-person-name="${escapeHtml(row.personName)}">Storico</button></div></td>
       </tr>`).join('')}</tbody></table>`;
   }
 
-  function renderPersonReport() {
+  function personReportRows() {
     const assignments = snapshot?.assignments || [];
     const byPerson = new Map();
     for (const row of assignments) {
@@ -137,38 +191,188 @@
       byPerson.get(row.personId).rows.push(row);
     }
     const personById = new Map((snapshot?.people || []).map((row) => [row.id, row]));
-    const report = [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'));
-    personReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Persona</th><th>Confermate</th><th>Non può</th><th>Da rispondere</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+    return [...byPerson.values()].map((item) => {
       const confirmed = item.rows.filter((row) => row.currentResponse === 'confirmed').length;
       const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
-      const pending = item.rows.length - confirmed - declined;
-      const latest = personById.get(item.id)?.latestSubmission;
+      const latest = personById.get(item.id)?.latestSubmission || null;
       const availability = latest?.availability || [];
-      return `<tr><td><strong>${escapeHtml(item.name)}</strong><small>${item.code ? `Cod. ${escapeHtml(item.code)}` : 'Senza codice'}</small></td><td>${confirmed}</td><td>${declined}</td><td>${pending}</td><td>${availability.length ? availability.map((a) => `<span class="availability-pill">${escapeHtml(a.day)} ${escapeHtml(a.shift)}${a.note ? ` · ${escapeHtml(a.note)}` : ''}</span>`).join('') : '—'}${latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(latest.createdAt))} · ${escapeHtml(latest.actorName)}</small>` : ''}</td><td><button class="table-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}">Storico</button></td></tr>`;
-    }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna assegnazione presente.</p>';
+      const notes = item.rows
+        .filter((row) => String(row.currentNote || '').trim())
+        .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
+      return {
+        ...item,
+        confirmed,
+        declined,
+        answered: Boolean(latest),
+        notes: notes.join('; '),
+        availability,
+        availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('; '),
+        latest
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'it'));
   }
 
-  function renderActivityReport() {
+  function filteredPersonReportRows() {
+    const personId = personReportPersonFilter?.value || '';
+    const answered = personReportResponseFilter?.value || '';
+    return personReportRows().filter((item) =>
+      (!personId || item.id === personId)
+      && (!answered || (answered === 'yes' ? item.answered : !item.answered))
+    );
+  }
+
+  function renderPersonReport() {
+    const report = filteredPersonReportRows();
+    personReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+      const availability = item.availability || [];
+      return `<tr>
+        <td><strong>${escapeHtml(item.name)}</strong></td>
+        <td>${escapeHtml(item.code || '—')}</td>
+        <td>${item.confirmed}</td>
+        <td>${item.declined}</td>
+        <td><span class="${item.answered ? 'answer-yes' : 'answer-no'}">${item.answered ? 'Sì' : 'No'}</span>${item.latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(item.latest.createdAt))} · ${escapeHtml(item.latest.actorName)}</small>` : ''}</td>
+        <td class="notes-cell">${item.notes ? escapeHtml(item.notes) : '—'}</td>
+        <td>${availability.length ? availability.map((a) => `<span class="availability-pill">${escapeHtml(a.day)} ${escapeHtml(a.shift)}${a.note ? ` · ${escapeHtml(a.note)}` : ''}</span>`).join('') : '—'}</td>
+        <td><button class="table-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}">Storico</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
+  }
+
+  function activityReportRows() {
     const groups = new Map();
     for (const row of snapshot?.assignments || []) {
       const key = `${row.activity}|${row.day}|${row.shift}`;
       if (!groups.has(key)) groups.set(key, { activity: row.activity, day: row.day, shift: row.shift, rows: [] });
       groups.get(key).rows.push(row);
     }
-    const report = [...groups.values()].sort((a, b) => `${a.day} ${a.shift} ${a.activity}`.localeCompare(`${b.day} ${b.shift} ${b.activity}`, 'it'));
-    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Attività</th><th>Turno</th><th>Persone</th><th>Confermate</th><th>Non può</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) => {
-      const confirmed = item.rows.filter((row) => row.currentResponse === 'confirmed').length;
-      const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
-      return `<tr><td><strong>${escapeHtml(item.activity)}</strong></td><td>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</td><td>${item.rows.length}<small>${item.rows.map((row) => escapeHtml(row.personName)).join(' · ')}</small></td><td>${confirmed}</td><td>${declined}</td><td>${item.rows.length - confirmed - declined}</td></tr>`;
-    }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività presente.</p>';
+    return [...groups.values()].map((item) => {
+      const peopleMap = new Map(item.rows.map((row) => [row.personId, row.personName]));
+      const people = [...peopleMap.entries()]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'it'));
+      return {
+        ...item,
+        people,
+        peopleCount: people.length,
+        peopleText: people.map((person) => person.name).join('; '),
+        pending: item.rows.filter((row) => !row.currentResponse).length
+      };
+    }).sort((a, b) => `${a.day} ${a.shift} ${a.activity}`.localeCompare(`${b.day} ${b.shift} ${b.activity}`, 'it'));
+  }
+
+  function filteredActivityReportRows() {
+    const activity = activityReportActivityFilter?.value || '';
+    const personId = activityReportPersonFilter?.value || '';
+    return activityReportRows().filter((item) =>
+      (!activity || item.activity === activity)
+      && (!personId || item.people.some((person) => person.id === personId))
+    );
+  }
+
+  function renderActivityReport() {
+    const report = filteredActivityReportRows();
+    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Attività</th><th>Turno</th><th>N. persone</th><th>Persone</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
+      `<tr><td><strong>${escapeHtml(item.activity)}</strong></td><td>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.pending}</td></tr>`
+    ).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività corrisponde ai filtri.</p>';
+  }
+
+  function xmlEscape(value) {
+    return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  }
+
+  function downloadBlob(filename, blob) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportExcel(filename, sheetName, columns, rows) {
+    const header = columns.map((column) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${xmlEscape(column.label)}</Data></Cell>`).join('');
+    const body = rows.map((row) => `<Row>${columns.map((column) =>
+      `<Cell><Data ss:Type="String">${xmlEscape(row[column.key] ?? '')}</Data></Cell>`
+    ).join('')}</Row>`).join('');
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Top"/><Font ss:FontName="Arial" ss:Size="10"/></Style>
+  <Style ss:ID="Header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/><Interior ss:Color="#EAF2F4" ss:Pattern="Solid"/></Style>
+ </Styles>
+ <Worksheet ss:Name="${xmlEscape(sheetName.slice(0, 31))}"><Table><Row>${header}</Row>${body}</Table></Worksheet>
+</Workbook>`;
+    downloadBlob(filename, new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' }));
+  }
+
+  function exportPdf(title, columns, rows) {
+    const popup = window.open('', '_blank');
+    if (!popup) {
+      alert('Il browser ha bloccato la finestra di esportazione PDF. Consenti i popup e riprova.');
+      return;
+    }
+    const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('');
+    const tableBody = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key] ?? '')}</td>`).join('')}</tr>`).join('');
+    popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+      @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#173e4b;margin:0}h1{font-size:18px;margin:0 0 4px}.meta{font-size:9px;color:#60757d;margin:0 0 12px}
+      table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #cfdcdf;padding:5px;text-align:left;vertical-align:top}th{background:#eaf2f4}tr:nth-child(even){background:#fafcfc}
+    </style></head><body><h1>${escapeHtml(title)}</h1><p class="meta">Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</p><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
+    popup.document.close();
+  }
+
+  function exportPersonReport(kind) {
+    const rows = filteredPersonReportRows().map((item) => ({
+      persona: item.name,
+      codice: item.code || '',
+      confermate: String(item.confirmed),
+      nonPuo: String(item.declined),
+      haRisposto: item.answered ? 'Sì' : 'No',
+      note: item.notes || '',
+      disponibilita: item.availabilityText || ''
+    }));
+    const columns = [
+      { key: 'persona', label: 'Persona' }, { key: 'codice', label: 'Codice' },
+      { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
+      { key: 'haRisposto', label: 'Ha risposto' }, { key: 'note', label: 'Note' },
+      { key: 'disponibilita', label: 'Disponibilità aggiuntive' }
+    ];
+    if (kind === 'excel') exportExcel('report-volontari-per-persona.xls', 'Per persona', columns, rows);
+    else exportPdf('Report volontari per persona', columns, rows);
+  }
+
+  function exportActivityReport(kind) {
+    const rows = filteredActivityReportRows().map((item) => ({
+      attivita: item.activity,
+      turno: `${item.day} · ${item.shift}`,
+      numeroPersone: String(item.peopleCount),
+      persone: item.peopleText,
+      daRispondere: String(item.pending)
+    }));
+    const columns = [
+      { key: 'attivita', label: 'Attività' }, { key: 'turno', label: 'Turno' },
+      { key: 'numeroPersone', label: 'N. persone' }, { key: 'persone', label: 'Persone' },
+      { key: 'daRispondere', label: 'Da rispondere' }
+    ];
+    if (kind === 'excel') exportExcel('report-volontari-per-attivita.xls', 'Per attività', columns, rows);
+    else exportPdf('Report volontari per attività', columns, rows);
   }
 
   function renderAll() {
-    renderKpis(); renderAssignments(); renderPersonReport(); renderActivityReport();
+    renderKpis();
+    renderAssignments();
+    renderPersonReport();
+    renderActivityReport();
   }
 
   async function loadSnapshot() {
     snapshot = await api();
+    populateFilters();
     renderAll();
   }
 
@@ -254,19 +458,40 @@
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => populateEditor());
   document.querySelectorAll('[data-editor-close],[data-editor-cancel]').forEach((button) => button.addEventListener('click', closeEditor));
-  assignmentFilter?.addEventListener('input', renderAssignments);
+  [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderAssignments));
+  [personReportPersonFilter, personReportResponseFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
+  [activityReportActivityFilter, activityReportPersonFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderActivityReport));
+
+  document.querySelector('[data-person-export-pdf]')?.addEventListener('click', () => exportPersonReport('pdf'));
+  document.querySelector('[data-person-export-excel]')?.addEventListener('click', () => exportPersonReport('excel'));
+  document.querySelector('[data-activity-export-pdf]')?.addEventListener('click', () => exportActivityReport('pdf'));
+  document.querySelector('[data-activity-export-excel]')?.addEventListener('click', () => exportActivityReport('excel'));
+
+  document.querySelectorAll('[data-collapse-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = document.getElementById(button.dataset.collapseTarget);
+      if (!target) return;
+      const collapsed = !target.hidden;
+      target.hidden = collapsed;
+      button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      button.textContent = collapsed ? 'Espandi' : 'Comprimi';
+    });
+  });
   editorForm.elements.shiftId.addEventListener('change', () => { rawShift.hidden = Boolean(editorForm.elements.shiftId.value); });
 
   assignmentTable?.addEventListener('click', async (event) => {
     const edit = event.target.closest('[data-edit-assignment]');
-    const deactivate = event.target.closest('[data-deactivate-assignment]');
+    const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     if (edit) {
       const assignment = snapshot.assignments.find((row) => row.id === edit.dataset.editAssignment);
       if (assignment) populateEditor(assignment);
-    } else if (deactivate) {
-      const assignment = snapshot.assignments.find((row) => row.id === deactivate.dataset.deactivateAssignment);
-      if (!assignment || !confirm(`Disattivare l’assegnazione “${assignment.activity}” di ${assignment.personName}? Lo storico rimarrà disponibile.`)) return;
+    } else if (remove) {
+      const assignment = snapshot.assignments.find((row) => row.id === remove.dataset.deleteAssignment);
+      if (!assignment || !confirm(`Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
       try {
         await api(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: assignment.id }) });
         await loadSnapshot();
