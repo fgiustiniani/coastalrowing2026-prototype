@@ -4,6 +4,7 @@ import {
   formatApiError,
   isSameOrigin,
   isUuid,
+  issueVolunteerInvite,
   json,
   parseJsonBody,
   requireAdmin,
@@ -162,6 +163,14 @@ export default async (request) => {
       const url = new URL(request.url);
       const view = clean(url.searchParams.get('view') || 'snapshot', 30);
       if (view === 'snapshot') return json(await adminSnapshot());
+      if (view === 'invite') {
+        const origin = new URL(request.url).origin;
+        const invite = issueVolunteerInvite();
+        return json({
+          accessUrl: `${origin}/internal/volontari/#access=${encodeURIComponent(invite)}`,
+          expiresAt: '2026-10-06T21:59:59.000Z'
+        });
+      }
       if (view === 'audit') {
         const personId = clean(url.searchParams.get('personId'), 60);
         return json({ audit: await auditForPerson(personId) });

@@ -5,6 +5,7 @@
   const loginForm = document.querySelector('[data-login-form]');
   const loginStatus = document.querySelector('[data-login-status]');
   const dashboard = document.querySelector('[data-dashboard]');
+  const inviteStatus = document.querySelector('[data-invite-status]');
   const kpis = document.querySelector('[data-kpis]');
   const assignmentTable = document.querySelector('[data-assignment-table]');
   const assignmentFilter = document.querySelector('[data-assignment-filter]');
@@ -219,6 +220,36 @@
     }
   });
 
+  async function copyVolunteerLink() {
+    const button = document.querySelector('[data-copy-volunteer-link]');
+    if (button) button.disabled = true;
+    setStatus(inviteStatus, 'Generazione link…');
+    try {
+      const body = await api(`${API}?view=invite`);
+      if (!body.accessUrl) throw new Error('Link non disponibile.');
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(body.accessUrl);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = body.accessUrl;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        const copied = document.execCommand('copy');
+        area.remove();
+        if (!copied) throw new Error('Copia automatica non disponibile.');
+      }
+      setStatus(inviteStatus, 'Link volontari copiato negli appunti.', 'success');
+    } catch (error) {
+      setStatus(inviteStatus, error.message, 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
   document.querySelector('[data-refresh]')?.addEventListener('click', () => loadSnapshot().catch((error) => alert(error.message)));
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => populateEditor());

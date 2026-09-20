@@ -53,17 +53,53 @@ function safeEqual(left, right) {
   return timingSafeEqual(leftHash, rightHash);
 }
 
+function accessSecret() {
+  const explicit = env('VOLUNTEER_ACCESS_TOKEN');
+  if (explicit) return explicit;
+  const databaseSecret = env('SUPABASE_SECRET_KEY');
+  if (!databaseSecret) throw new ApiError('Accesso volontari non configurato.', 503, 'ACCESS_NOT_CONFIGURED');
+  return createHash('sha256').update(`coastal-volunteers-access|${databaseSecret}`).digest('hex');
+}
+
 function sessionKey() {
-  const accessToken = env('VOLUNTEER_ACCESS_TOKEN');
-  if (!accessToken) throw new ApiError('Accesso volontari non configurato.', 503, 'ACCESS_NOT_CONFIGURED');
-  return createHash('sha256').update(`coastal-volunteers-session|${accessToken}`).digest();
+  return createHash('sha256').update(`coastal-volunteers-session|${accessSecret()}`).digest();
+}
+
+function inviteKey() {
+  return createHash('sha256').update(`coastal-volunteers-invite|${accessSecret()}`).digest();
+}
+
+export function issueVolunteerInvite() {
+  const payload = {
+    v: 1,
+    scope: 'volunteers',
+    exp: Math.floor(Date.parse('2026-10-06T21:59:59Z') / 1000)
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const signature = createHmac('sha256', inviteKey()).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
+
+function verifyInviteToken(value) {
+  const [encoded, signature, extra] = String(value || '').split('.');
+  if (!encoded || !signature || extra) return false;
+  const expected = createHmac('sha256', inviteKey()).update(encoded).digest('base64url');
+  if (!safeEqual(signature, expected)) return false;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    const now = Math.floor(Date.now() / 1000);
+    return payload?.v === 1 && payload?.scope === 'volunteers' && Number.isFinite(payload?.exp) && payload.exp > now;
+  } catch {
+    return false;
+  }
 }
 
 export function verifySharedAccessToken(value) {
-  const expected = env('VOLUNTEER_ACCESS_TOKEN');
-  if (!expected) throw new ApiError('Accesso volontari non configurato.', 503, 'ACCESS_NOT_CONFIGURED');
-  const supplied = clean(value, 500);
-  return Boolean(supplied) && safeEqual(supplied, expected);
+  const supplied = clean(value, 1000);
+  if (!supplied) return false;
+  const explicit = env('VOLUNTEER_ACCESS_TOKEN');
+  if (explicit && safeEqual(supplied, explicit)) return true;
+  return verifyInviteToken(supplied);
 }
 
 export function issueVolunteerSession() {
