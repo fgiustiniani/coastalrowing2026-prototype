@@ -74,8 +74,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .response-choice--yes input:checked + span { background: var(--ok-bg); }
 .response-choice--no { color: var(--no); }
 .response-choice--no input:checked + span { background: var(--no-bg); }
-.decline-note { margin: 10px 0 0; }
-.decline-note textarea { min-height: 68px; }
+.assignment-note { margin: 10px 0 0; }
+.assignment-note textarea { min-height: 68px; }
 .availability-card { display: grid; gap: 10px; }
 .availability-card.is-assigned { background: #edf6f7; border-color: #a9cdd3; }
 .availability-card label.check { display: flex; align-items: center; gap: 10px; font-weight: 800; }
