@@ -1,5 +1,6 @@
 import {
   ApiError,
+  SupabaseError,
   clean,
   formatApiError,
   isSameOrigin,
@@ -14,39 +15,48 @@ import {
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
+async function adminRead(operation, path, options) {
+  try {
+    return await supabaseRequest(path, options);
+  } catch (error) {
+    if (error instanceof SupabaseError) error.operation = operation;
+    throw error;
+  }
+}
+
 async function adminSnapshot() {
   const [people, shifts, activities, assignments, submissions, responses, availability] = await Promise.all([
-    supabaseRequest('volunteer_people', {
+    adminRead('persone', 'volunteer_people', {
       query: {
         select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
         active: 'eq.true',
         order: 'surname.asc,given_name.asc,display_name.asc'
       }
     }),
-    supabaseRequest('volunteer_shifts', {
+    adminRead('turni', 'volunteer_shifts', {
       query: {
         select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable,active',
         active: 'eq.true',
         order: 'sort_order.asc'
       }
     }),
-    supabaseRequest('volunteer_activities', {
+    adminRead('attività', 'volunteer_activities', {
       query: { select: 'id,name,active', active: 'eq.true', order: 'name.asc' }
     }),
-    supabaseRequest('volunteer_assignments', {
+    adminRead('assegnazioni', 'volunteer_assignments', {
       query: {
         select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,created_at,updated_at',
         active: 'eq.true',
         order: 'created_at.asc'
       }
     }),
-    supabaseRequest('volunteer_submissions', {
+    adminRead('invii', 'volunteer_submissions', {
       query: { select: 'id,session_id,actor_name,person_id,selected_person_name,person_code,created_at', order: 'created_at.desc' }
     }),
-    supabaseRequest('volunteer_assignment_responses', {
+    adminRead('risposte', 'volunteer_assignment_responses', {
       query: { select: 'id,submission_id,assignment_id,response,note,created_at', order: 'created_at.desc' }
     }),
-    supabaseRequest('volunteer_availability', {
+    adminRead('disponibilità', 'volunteer_availability', {
       query: { select: 'id,submission_id,shift_id,note,created_at', order: 'created_at.desc' }
     })
   ]);
@@ -224,6 +234,21 @@ export default async (request) => {
 
     return json({ error: 'Metodo non consentito.' }, 405);
   } catch (error) {
+    if (error instanceof SupabaseError) {
+      const dbCode = clean(error.payload?.code || '', 50) || 'DATABASE_ERROR';
+      const dbMessage = clean(error.payload?.message || error.message || 'Errore database.', 260);
+      const operation = clean(error.operation || 'operazione', 80);
+      console.error('Errore database area volontari admin:', {
+        operation,
+        status: error.status,
+        code: dbCode,
+        message: dbMessage
+      });
+      return json({
+        error: `Database (${operation}): ${dbMessage} [${dbCode}]`,
+        code: dbCode
+      }, 500);
+    }
     return formatApiError(error);
   }
 };
