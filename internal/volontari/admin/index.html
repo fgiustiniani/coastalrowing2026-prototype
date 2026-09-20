@@ -34,6 +34,7 @@
         <div><p class="eyebrow">Situazione aggiornata</p><h2>Quadro organizzativo</h2></div>
         <div class="toolbar-actions"><button class="button button--secondary" type="button" data-refresh>Aggiorna</button><button class="button button--secondary" type="button" data-logout>Esci</button></div>
       </div>
+
       <section class="card admin-section">
         <div class="section-head">
           <div><p class="eyebrow">Condivisione</p><h2>Link volontari</h2></div>
@@ -42,12 +43,28 @@
         <p class="intro">Il link firmato consente l’accesso diretto al modulo e resta valido fino al 6 ottobre 2026. Il segreto usato per firmarlo non viene mai inviato al browser.</p>
         <p class="status" data-invite-status aria-live="polite"></p>
       </section>
+
       <section class="kpi-grid" data-kpis></section>
+
       <section class="card admin-section">
-        <div class="section-head"><div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div><button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button></div>
-        <label class="field compact-field"><span>Cerca</span><input type="search" data-assignment-filter placeholder="Persona, attività, giorno o ruolo"></label>
-        <div class="table-wrap" data-assignment-table></div>
+        <div class="section-head">
+          <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
+          <div class="section-actions">
+            <button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button>
+            <button class="button button--secondary collapse-button" type="button" data-collapse-target="assignments-content" aria-expanded="true">Comprimi</button>
+          </div>
+        </div>
+        <div id="assignments-content" data-collapsible-content>
+          <div class="filter-grid">
+            <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter><option value="">Tutti</option></select></label>
+            <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
+          </div>
+          <div class="table-wrap" data-assignment-table></div>
+        </div>
       </section>
+
       <section class="card admin-section" data-assignment-editor hidden>
         <div class="section-head"><div><p class="eyebrow">Modifica</p><h2 data-editor-title>Nuova assegnazione</h2></div><button class="link-button" type="button" data-editor-close>Chiudi</button></div>
         <form data-assignment-form class="editor-grid">
@@ -66,10 +83,45 @@
           <p class="status field--wide" data-editor-status aria-live="polite"></p>
         </form>
       </section>
+
       <section class="report-grid">
-        <article class="card admin-section"><div class="section-head"><div><p class="eyebrow">Report</p><h2>Per persona</h2></div></div><div class="table-wrap" data-person-report></div></article>
-        <article class="card admin-section"><div class="section-head"><div><p class="eyebrow">Report</p><h2>Per attività</h2></div></div><div class="table-wrap" data-activity-report></div></article>
+        <article class="card admin-section">
+          <div class="section-head">
+            <div><p class="eyebrow">Report</p><h2>Per persona</h2></div>
+            <div class="section-actions">
+              <button class="button button--secondary" type="button" data-person-export-pdf>PDF</button>
+              <button class="button button--secondary" type="button" data-person-export-excel>Excel</button>
+              <button class="button button--secondary collapse-button" type="button" data-collapse-target="person-report-content" aria-expanded="true">Comprimi</button>
+            </div>
+          </div>
+          <div id="person-report-content" data-collapsible-content>
+            <div class="filter-grid filter-grid--report">
+              <label class="field compact-field"><span>Persona</span><select data-person-report-person-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Ha risposto</span><select data-person-report-response-filter><option value="">Tutte</option><option value="yes">Sì</option><option value="no">No</option></select></label>
+            </div>
+            <div class="table-wrap" data-person-report></div>
+          </div>
+        </article>
+
+        <article class="card admin-section">
+          <div class="section-head">
+            <div><p class="eyebrow">Report</p><h2>Per attività</h2></div>
+            <div class="section-actions">
+              <button class="button button--secondary" type="button" data-activity-export-pdf>PDF</button>
+              <button class="button button--secondary" type="button" data-activity-export-excel>Excel</button>
+              <button class="button button--secondary collapse-button" type="button" data-collapse-target="activity-report-content" aria-expanded="true">Comprimi</button>
+            </div>
+          </div>
+          <div id="activity-report-content" data-collapsible-content>
+            <div class="filter-grid filter-grid--report">
+              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter><option value="">Tutte</option></select></label>
+            </div>
+            <div class="table-wrap" data-activity-report></div>
+          </div>
+        </article>
       </section>
+
       <dialog class="audit-dialog" data-audit-dialog>
         <div class="audit-dialog__content">
           <div class="section-head"><div><p class="eyebrow">Storico</p><h2 data-audit-title>Audit</h2></div><button class="audit-close" type="button" data-audit-close aria-label="Chiudi">×</button></div>
