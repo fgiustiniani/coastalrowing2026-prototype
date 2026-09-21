@@ -593,17 +593,22 @@ export default async (request) => {
 
         if (!saved) throw new ApiError('Persona non salvata.', 500, 'PERSON_SAVE_FAILED');
 
-        if (personId && raceProgram !== null) {
-          await supabaseRequest('volunteer_race_program', {
-            method: 'PATCH',
-            query: { person_id: `eq.${personId}`, active: 'eq.true' },
-            body: {
-              person_code: personCode,
-              person_name: displayName,
-              updated_at: now
-            },
-            prefer: 'return=minimal'
+        if (personId) {
+          const raceProgramProbe = await adminReadOptional('programma gare', 'volunteer_race_program', {
+            query: { select: 'id', limit: 1 }
           });
+          if (raceProgramProbe !== null) {
+            await supabaseRequest('volunteer_race_program', {
+              method: 'PATCH',
+              query: { person_id: `eq.${personId}`, active: 'eq.true' },
+              body: {
+                person_code: personCode,
+                person_name: displayName,
+                updated_at: now
+              },
+              prefer: 'return=minimal'
+            });
+          }
         }
 
         await auditAdminChange({
@@ -647,7 +652,10 @@ export default async (request) => {
           throw new ApiError('Non puoi eliminare una persona finché ha assegnazioni attive.', 409, 'PERSON_HAS_ASSIGNMENTS');
         }
 
-        if (raceProgram !== null) {
+        const raceProgramProbe = await adminReadOptional('programma gare', 'volunteer_race_program', {
+          query: { select: 'id', limit: 1 }
+        });
+        if (raceProgramProbe !== null) {
           const raceRowsForPerson = await supabaseRequest('volunteer_race_program', {
             query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
           });
