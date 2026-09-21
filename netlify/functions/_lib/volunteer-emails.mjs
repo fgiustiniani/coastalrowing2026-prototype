@@ -71,6 +71,12 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
   const availability = (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
     .filter((shift) => shift.selected && !shift.assigned);
 
+  const hasConfirmedActivity = assignments.some((row) => row.currentResponse === 'confirmed');
+  const hasAdditionalAvailability = availability.length > 0;
+  const showThanks = hasConfirmedActivity || hasAdditionalAvailability;
+  const availabilityFollowUp = 'Al più presto sarai contattato per condividere le attività da fare nei turni per i quali hai dato disponibilità';
+  const thanksMessage = 'Grazie per la disponibilità mostrata!!';
+
   const assignmentText = assignments.length
     ? assignments.map((row) => {
         const note = clean(row.currentNote, 1000);
@@ -105,7 +111,9 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
     'Disponibilità aggiuntive:',
     availabilityText,
     '',
-    'Questo messaggio riepiloga l’ultima compilazione registrata.'
+    'Questo messaggio riepiloga l’ultima compilazione registrata.',
+    ...(hasAdditionalAvailability ? ['', availabilityFollowUp] : []),
+    ...(showThanks ? ['', thanksMessage] : [])
   ].join('\n');
 
   const html = `
@@ -116,6 +124,8 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
     <h3>Disponibilità aggiuntive</h3>
     ${availabilityHtml}
     <p><small>Questo messaggio riepiloga l’ultima compilazione registrata.</small></p>
+    ${hasAdditionalAvailability ? `<p>${escapeHtml(availabilityFollowUp)}</p>` : ''}
+    ${showThanks ? `<p><strong>${escapeHtml(thanksMessage)}</strong></p>` : ''}
   `;
 
   const transporter = nodemailer.createTransport({
