@@ -108,12 +108,16 @@
     return prettifyActivityName(activity);
   }
 
-  function memberPeople() {
-    return (snapshot?.people || []).filter((person) => person.active !== false && person.source_type === 'member');
+  function assignablePeople() {
+    return (snapshot?.people || []).filter((person) =>
+      person.active !== false
+      && person.selectable !== false
+      && person.source_type !== 'external'
+    );
   }
 
   function personOptions(selectedId, includeCurrent = true) {
-    const options = memberPeople().map((person) => ({ id: person.id, label: person.display_name, code: person.person_code || '' }));
+    const options = assignablePeople().map((person) => ({ id: person.id, label: person.display_name, code: person.person_code || '' }));
     const current = (snapshot?.people || []).find((person) => person.id === selectedId);
     if (includeCurrent && current && !options.some((person) => person.id === current.id)) {
       options.unshift({ id: current.id, label: current.display_name, code: current.person_code || '' });
