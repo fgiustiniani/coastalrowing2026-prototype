@@ -1342,21 +1342,28 @@
         column,
         groupId: paletteTarget.dataset.boardGroupId || '',
         targetGroup: null,
+        targetContainer: null,
         targetBox: null,
         paletteTarget
       };
     }
 
     const targetBox = element.closest('.assignment-board__activity[data-board-requirement-id]');
+    const targetContainer = element.closest('[data-board-activity-container]');
     const targetGroup = element.closest('[data-board-activity-group]');
-    if (!targetBox && !targetGroup) return null;
+    if (!targetBox && !targetContainer && !targetGroup) return null;
+
+    const groupId = targetContainer
+      ? (targetContainer.dataset.boardGroupId || '')
+      : targetGroup
+        ? (targetGroup.dataset.boardGroupId || '')
+        : (targetBox?.dataset.boardGroupId || '');
 
     return {
       column,
-      groupId: targetGroup
-        ? (targetGroup.dataset.boardGroupId || '')
-        : (targetBox?.dataset.boardGroupId || ''),
+      groupId,
       targetGroup,
+      targetContainer,
       targetBox,
       paletteTarget: null
     };
@@ -1668,16 +1675,29 @@
               </button>
               <span class="assignment-board__group-count">${groupRequirements.length}</span>
             </header>
-            <div class="assignment-board__group-body" data-board-group-body ${collapsed ? 'hidden' : ''}>
+            <div class="assignment-board__group-body"
+              data-board-group-body
+              data-board-activity-container
+              data-board-group-id="${escapeHtml(group.id)}"
+              ${collapsed ? 'hidden' : ''}>
               ${groupRequirements.map(renderActivityBox).join('')}
             </div>
           </section>`;
       }).join('');
 
-      const ungroupedHtml = shiftRequirements
+      const ungroupedRequirements = shiftRequirements
         .filter((item) => !item.activityGroupId)
-        .map(renderActivityBox)
-        .join('');
+        .sort((a, b) =>
+          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+          || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+        );
+      const ungroupedHtml = `
+        <div class="assignment-board__ungrouped-zone ${ungroupedRequirements.length ? 'has-activities' : ''}"
+          data-board-activity-container
+          data-board-group-id="">
+          ${ungroupedRequirements.map(renderActivityBox).join('')}
+          <div class="assignment-board__ungrouped-drop-hint">Rilascia qui per togliere l’attività dal gruppo</div>
+        </div>`;
 
       const groupDropPalette = `
         <div class="assignment-board__group-drop-palette" data-board-group-drop-palette>
@@ -3840,7 +3860,7 @@
     if (target.groupId !== boardActivityPointerDrag.sourceGroupId) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.canDropAtEnd = false;
-      (target.paletteTarget || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
+      (target.paletteTarget || target.targetContainer || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
       return;
     }
 
@@ -3861,12 +3881,12 @@
       return;
     }
 
-    const groupBody = element.closest('[data-board-group-body]');
-    if (groupBody) {
+    const activityContainer = target.targetContainer || element.closest('[data-board-activity-container]');
+    if (activityContainer) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.placeAfter = false;
       boardActivityPointerDrag.canDropAtEnd = true;
-      groupBody.classList.add('is-activity-reorder-end');
+      activityContainer.classList.add('is-activity-reorder-end');
     }
   });
 
@@ -4063,7 +4083,7 @@
       clearBoardGroupReorderMarkers();
 
       if (target.groupId !== (boardActivityDragState.sourceGroupId || '')) {
-        (target.paletteTarget || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
+        (target.paletteTarget || target.targetContainer || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
         return;
       }
 
@@ -4073,8 +4093,8 @@
         const rect = targetBox.getBoundingClientRect();
         const after = event.clientY > rect.top + rect.height / 2;
         targetBox.classList.add(after ? 'is-activity-reorder-after' : 'is-activity-reorder-before');
-      } else if (!targetBox && target.targetGroup) {
-        target.targetGroup.querySelector('[data-board-group-body]')?.classList.add('is-activity-reorder-end');
+      } else if (!targetBox && target.targetContainer) {
+        target.targetContainer.classList.add('is-activity-reorder-end');
       }
       return;
     }
