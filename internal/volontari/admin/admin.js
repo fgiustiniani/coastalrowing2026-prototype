@@ -409,47 +409,61 @@
   }
 
   function assignmentRowHtml(row, isNew = false) {
+    const isAvailability = Boolean(row?.isAvailability);
     const personId = row?.personId || '';
-    const activityLabel = row ? displayActivity(row) : '';
-    const responseHtml = isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`;
-    const assignmentId = row?.id || '';
+    const activityLabel = row && !isAvailability ? displayActivity(row) : '';
+    const responseHtml = isAvailability
+      ? '<span class="status-badge is-availability">Disponibilità</span>'
+      : (isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
+    const assignmentId = row && !isAvailability ? row.id : '';
     const warnings = row ? assignmentWarningDetails(row) : [];
+    const rowClass = [isNew ? 'is-new-row' : '', isAvailability ? 'is-availability-row' : ''].filter(Boolean).join(' ');
+
+    const shiftCell = isAvailability
+      ? `<input type="hidden" data-inline-shift value="${escapeHtml(row.shiftId)}">
+         <button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button>
+         <small class="availability-source-label">Disponibilità indicata dal volontario</small>`
+      : (isNew
+        ? `<select class="inline-select" data-inline-shift>${shiftOptions(row)}</select>`
+        : `<div class="inline-display-row" data-shift-display>
+             <button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId || '')}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button>
+             <button class="inline-edit-button" type="button" data-edit-shift aria-label="Cambia turno" title="Cambia turno">✎</button>
+           </div>
+           <select class="inline-select" data-inline-shift hidden>${shiftOptions(row)}</select>
+           ${!row.shiftMatched ? '<small class="warning-text">Turno non standard: seleziona un turno dall’anagrafica se vuoi modificarlo.</small>' : ''}`);
+
+    const activityCell = (isAvailability || isNew)
+      ? `<select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(null)}</select>`
+      : `<div class="inline-display-row" data-activity-display>
+           <button class="inline-activity-link" type="button" data-show-activity="${escapeHtml(activityLabel)}">${escapeHtml(activityLabel)}</button>
+           <button class="inline-edit-button" type="button" data-edit-activity aria-label="Cambia attività" title="Cambia attività">✎</button>
+         </div>
+         <select class="inline-select inline-select--activity" data-inline-activity hidden>${activityOptions(row)}</select>`;
+
+    const personCell = isAvailability
+      ? `<input type="hidden" data-inline-person value="${escapeHtml(row.personId)}">
+         <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
+         ${row.note ? `<small class="availability-source-note">Nota disponibilità: ${escapeHtml(row.note)}</small>` : ''}`
+      : (isNew
+        ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>`
+        : `<div class="inline-display-row" data-person-display>
+             <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
+             <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
+           </div>
+           <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>`);
 
     return `
-      <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" class="${isNew ? 'is-new-row' : ''}">
-        <td>
-          <select class="inline-select" data-inline-shift>${shiftOptions(row)}</select>
-          ${row && !row.shiftMatched ? '<small class="warning-text">Turno non standard: seleziona un turno dall’anagrafica se vuoi modificarlo.</small>' : ''}
-        </td>
-        <td class="inline-activity-cell">
-          <div class="inline-controls">
-            ${isNew ? `<select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(row)}</select>` : `
-              <div class="inline-display-row" data-activity-display>
-                <button class="inline-activity-link" type="button" data-show-activity="${escapeHtml(activityLabel)}">${escapeHtml(activityLabel)}</button>
-                <button class="inline-edit-button" type="button" data-edit-activity aria-label="Cambia attività" title="Cambia attività">✎</button>
-              </div>
-              <select class="inline-select inline-select--activity" data-inline-activity hidden>${activityOptions(row)}</select>
-            `}
-          </div>
-        </td>
-        <td class="inline-person-cell">
-          <div class="inline-controls">
-            ${isNew ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>` : `
-              <div class="inline-display-row" data-person-display>
-                <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
-                <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
-              </div>
-              <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>
-            `}
-          </div>
-        </td>
+      <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" ${isAvailability ? `data-availability-key="${escapeHtml(row.id)}"` : ''} class="${rowClass}">
+        <td>${shiftCell}</td>
+        <td class="inline-activity-cell"><div class="inline-controls">${activityCell}</div></td>
+        <td class="inline-person-cell"><div class="inline-controls">${personCell}</div></td>
         <td class="warning-cell" data-warning-cell>${warningHtml(warnings)}</td>
         <td>${responseHtml}</td>
         <td>
           <div class="row-actions">
             <button type="button" data-save-inline-assignment>Salva</button>
             <button type="button" data-cancel-inline-assignment>Annulla</button>
-            ${isNew ? '' : `<button class="is-danger" type="button" data-delete-assignment="${escapeHtml(row.id)}">Elimina</button><button type="button" data-audit-person="${escapeHtml(row.personId)}" data-person-name="${escapeHtml(row.personName)}">Storico</button>`}
+            ${(!isNew && !isAvailability) ? `<button class="is-danger" type="button" data-delete-assignment="${escapeHtml(row.id)}">Elimina</button><button type="button" data-audit-person="${escapeHtml(row.personId)}" data-person-name="${escapeHtml(row.personName)}">Storico</button>` : ''}
           </div>
           <small class="row-save-status" data-row-status></small>
         </td>
@@ -458,13 +472,16 @@
 
   function renderAssignments() {
     const rows = filteredAssignments();
+    if (availabilityFilterStatus) availabilityFilterStatus.hidden = !availabilityOnly;
     const body = [
-      ...(newAssignmentOpen ? [assignmentRowHtml(null, true)] : []),
+      ...(newAssignmentOpen && !availabilityOnly ? [assignmentRowHtml(null, true)] : []),
       ...rows.map((row) => assignmentRowHtml(row, false))
     ].join('');
 
     if (!body) {
-      assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
+      assignmentTable.innerHTML = availabilityOnly
+        ? '<p class="empty-state">Non ci sono disponibilità da assegnare.</p>'
+        : '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
     assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
