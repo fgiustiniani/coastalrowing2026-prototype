@@ -144,3 +144,19 @@
     min-width: 190px;
   }
 }
+
+.inline-display-row { display: flex; align-items: center; gap: 6px; min-height: 38px; }
+.inline-edit-button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--accent-dark);
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+.inline-edit-button:hover { border-color: #a9cdd3; background: #eef8fa; }
