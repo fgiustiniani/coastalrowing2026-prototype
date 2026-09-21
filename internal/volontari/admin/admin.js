@@ -335,7 +335,9 @@
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
     setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
-    setSelectOptions(activityReportPersonFilter, people, 'Tutte');
+    const assignedPeople = [...new Map(assignments.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    setSelectOptions(activityReportPersonFilter, assignedPeople, 'Tutte');
 
     const racePeople = [...new Map((snapshot?.raceProgram || []).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
