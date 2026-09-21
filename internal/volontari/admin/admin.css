@@ -253,3 +253,37 @@
   gap: 7px;
   margin-top: 10px;
 }
+
+button.is-busy {
+  cursor: wait;
+  opacity: .82;
+}
+button.is-busy,
+.row-actions button.is-busy,
+.table-link.is-busy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.button-spinner {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: admin-button-spin .7s linear infinite;
+}
+tr.is-busy {
+  opacity: .72;
+}
+tr.is-busy button.is-busy {
+  opacity: 1;
+}
+@keyframes admin-button-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner { animation-duration: 1.4s; }
+}
