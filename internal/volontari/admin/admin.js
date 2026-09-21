@@ -2551,6 +2551,8 @@
       .filter((shift) => visibleShiftIds.has(shift.id))
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
 
+    const groups = activityGroups();
+
     return shifts.map((shift) => {
       const shiftRequirements = visibleRequirements
         .filter((item) => item.shiftId === shift.id)
@@ -2558,12 +2560,18 @@
           Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
           || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
         );
+      const orderedRequirements = [
+        ...groups.flatMap((group) =>
+          shiftRequirements.filter((item) => (item.activityGroupId || '') === group.id)
+        ),
+        ...shiftRequirements.filter((item) => !item.activityGroupId)
+      ];
 
       return {
         shiftId: shift.id,
         day: shift.day_label,
         shift: shift.shift_label,
-        activities: shiftRequirements.map((requirement) => ({
+        activities: orderedRequirements.map((requirement) => ({
           activity: prettifyActivityName(requirement.activity),
           groupName: requirement.activityGroupId ? (activityGroupById(requirement.activityGroupId)?.name || '') : '',
           people: rows
