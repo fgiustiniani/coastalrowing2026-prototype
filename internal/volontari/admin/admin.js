@@ -8,6 +8,10 @@
   const inviteStatus = document.querySelector('[data-invite-status]');
   const kpis = document.querySelector('[data-kpis]');
   const assignmentTable = document.querySelector('[data-assignment-table]');
+  const assignmentBoard = document.querySelector('[data-assignment-board]');
+  const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
+  const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
+  const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
   const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
@@ -55,6 +59,12 @@
   let newActivityOpen = false;
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
+  let assignmentView = 'list';
+  let boardDragState = null;
+  let boardDragEndedAt = 0;
+  try {
+    assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
+  } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -715,11 +725,316 @@
       </tr>`;
   }
 
+  function boardActivityDefinitions() {
+    const definitions = new Map();
+    const activityNamesWithVariants = new Set();
+
+    for (const row of snapshot?.assignments || []) {
+      const activity = String(row.activity || '').trim();
+      if (!activity) continue;
+      const role = String(row.role || '').trim();
+      const label = displayActivity(row);
+      const key = `${activity}|||${role}`;
+      definitions.set(key, { key, activity, role, label });
+      activityNamesWithVariants.add(activity.toLocaleLowerCase('it-IT'));
+    }
+
+    for (const activity of snapshot?.activities || []) {
+      const name = String(activity.name || '').trim();
+      if (!name || activityNamesWithVariants.has(name.toLocaleLowerCase('it-IT'))) continue;
+      const key = `${name}|||`;
+      definitions.set(key, { key, activity: name, role: '', label: prettifyActivityName(name) });
+    }
+
+    const selectedActivities = selectedFilterValues(assignmentActivityFilter);
+    return [...definitions.values()]
+      .filter((item) => !selectedActivities.length || selectedActivities.includes(item.label))
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+  }
+
+  function filteredBoardRows() {
+    const types = selectedFilterValues(assignmentTypeFilter);
+    const personIds = selectedFilterValues(assignmentPersonFilter);
+    const shifts = selectedFilterValues(assignmentShiftFilter);
+    const activities = selectedFilterValues(assignmentActivityFilter);
+    const responses = selectedFilterValues(assignmentResponseFilter);
+    const warningFilters = selectedFilterValues(assignmentWarningFilter);
+
+    return allAssignmentRows().filter((row) => {
+      const rowType = row.isAvailability ? 'availability' : 'assigned';
+      if (!filterMatches(types, rowType)) return false;
+      if (!filterMatches(personIds, row.personId)) return false;
+      if (!filterMatches(shifts, shiftFilterKey(row))) return false;
+
+      if (row.isAvailability) {
+        if (responses.length || warningFilters.length) return false;
+        return true;
+      }
+
+      if (activities.length && !activities.includes(displayActivity(row))) return false;
+      const rowResponse = row.currentResponse || 'pending';
+      if (responses.length && !responses.includes(rowResponse)) return false;
+
+      const warnings = assignmentWarningDetails(row);
+      if (warningFilters.length && !warningFilters.some((warning) =>
+        (warning === 'any' && warnings.length > 0)
+        || (warning === 'none' && warnings.length === 0)
+        || warnings.some((item) => item.type === warning)
+      )) return false;
+
+      return true;
+    });
+  }
+
+  function boardResponseMeta(row) {
+    if (row.isAvailability) return { className: 'is-availability', label: 'Disponibile', mark: '+' };
+    if (row.currentResponse === 'confirmed') return { className: 'is-confirmed', label: 'Confermata', mark: '✓' };
+    if (row.currentResponse === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
+    return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
+  }
+
+  function boardPersonCard(row) {
+    const warnings = row.isAvailability ? [] : assignmentWarningDetails(row);
+    const warningText = warnings.map((warning) => warning.text).join(' · ');
+    const response = boardResponseMeta(row);
+    const dragKind = row.isAvailability ? 'availability' : 'assignment';
+    const dragId = row.id || '';
+    const responsibleTitle = row.isAvailability
+      ? 'Trascina il nominativo su un’attività dello stesso turno'
+      : (row.isResponsible
+        ? 'Responsabile. Clicca per rimuovere il ruolo; trascina per spostare.'
+        : 'Clicca per impostare come responsabile; trascina per spostare.');
+
+    return `
+      <button type="button"
+        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${warnings.length ? 'has-warning' : ''}"
+        draggable="true"
+        data-board-drag-kind="${escapeHtml(dragKind)}"
+        data-board-drag-id="${escapeHtml(dragId)}"
+        ${row.isAvailability ? '' : `data-board-assignment-id="${escapeHtml(row.id)}"`}
+        title="${escapeHtml(responsibleTitle)}">
+        <span class="assignment-board__person-main">
+          <span class="assignment-board__person-name">${row.isResponsible ? '★ ' : ''}${escapeHtml(row.personName)}</span>
+          ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
+        </span>
+        <span class="assignment-board__person-meta">
+          <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(response.label)}</span>
+          ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">nota</span>` : ''}
+        </span>
+      </button>`;
+  }
+
+  function boardCanDrop(dragged, targetShiftId) {
+    if (!dragged) return false;
+    if (dragged.kind !== 'availability') return true;
+    const availability = unassignedAvailabilityRows().find((row) => row.id === dragged.id);
+    return Boolean(availability && availability.shiftId === targetShiftId);
+  }
+
+  function renderAssignmentBoard() {
+    if (!assignmentBoard) return;
+    const rows = filteredBoardRows();
+    const activityDefinitions = boardActivityDefinitions();
+    const selectedShifts = selectedFilterValues(assignmentShiftFilter);
+    const shifts = [...(snapshot?.shifts || [])]
+      .filter((shift) => {
+        const key = `${shift.day_label || ''}|||${shift.shift_label || ''}`;
+        return !selectedShifts.length || selectedShifts.includes(key);
+      })
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+
+    const nonStandardCount = rows.filter((row) => !row.isAvailability && !row.shiftId).length;
+    const columns = shifts.map((shift) => {
+      const shiftRows = rows.filter((row) => row.shiftId === shift.id);
+      const assigned = shiftRows.filter((row) => !row.isAvailability);
+      const availability = shiftRows.filter((row) => row.isAvailability);
+
+      const activitiesHtml = activityDefinitions.map((definition) => {
+        const people = assigned.filter((row) =>
+          String(row.activity || '').trim() === definition.activity
+          && String(row.role || '').trim() === definition.role
+        );
+        return `
+          <section class="assignment-board__activity"
+            data-board-drop
+            data-board-shift-id="${escapeHtml(shift.id)}"
+            data-board-activity="${escapeHtml(definition.activity)}"
+            data-board-role="${escapeHtml(definition.role)}">
+            <header class="assignment-board__activity-head">
+              <strong>${escapeHtml(definition.label)}</strong>
+              <span>${people.length}</span>
+            </header>
+            <div class="assignment-board__people">
+              ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Trascina qui</span>'}
+            </div>
+          </section>`;
+      }).join('');
+
+      return `
+        <article class="assignment-board__column" data-board-shift-column="${escapeHtml(shift.id)}">
+          <header class="assignment-board__header">
+            <strong>${escapeHtml(shift.day_label)}</strong>
+            <span>${escapeHtml(shift.shift_label)}</span>
+          </header>
+          <div class="assignment-board__activities">
+            ${activitiesHtml || '<p class="empty-state">Nessuna attività disponibile con i filtri correnti.</p>'}
+          </div>
+          <section class="assignment-board__availability">
+            <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
+            <div class="assignment-board__availability-people">
+              ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
+            </div>
+          </section>
+        </article>`;
+    }).join('');
+
+    assignmentBoard.innerHTML = `
+      <div class="assignment-board__help">
+        <strong>Gestione a schede</strong>
+        <span>Trascina un nominativo su un’altra attività o turno. Clicca su un nominativo assegnato per impostarlo o rimuoverlo come responsabile.</span>
+        ${nonStandardCount ? `<span class="assignment-board__notice">⚠ ${nonStandardCount} assegnazion${nonStandardCount === 1 ? 'e' : 'i'} con turno non standard restano gestibili nella vista Elenco.</span>` : ''}
+      </div>
+      <div class="assignment-board">${columns || '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>'}</div>`;
+  }
+
+  function setAssignmentView(nextView, { render = true } = {}) {
+    assignmentView = nextView === 'board' ? 'board' : 'list';
+    try { sessionStorage.setItem('coastal2026-admin-assignment-view', assignmentView); } catch {}
+
+    const isBoard = assignmentView === 'board';
+    if (assignmentViewToggle) {
+      assignmentViewToggle.textContent = isBoard ? 'Vista elenco' : 'Vista schede';
+      assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
+      assignmentViewToggle.classList.toggle('is-active', isBoard);
+    }
+    assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
+    if (assignmentTable) assignmentTable.hidden = isBoard;
+    if (assignmentBoard) assignmentBoard.hidden = !isBoard;
+    if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
+    if (render) renderAssignments();
+  }
+
+  async function moveBoardItem(dragged, targetShiftId, targetActivity, targetRole = '') {
+    if (!dragged || !targetShiftId || !targetActivity) return;
+
+    let current = null;
+    let personId = '';
+    let assignmentId = null;
+    let sourceName = '';
+
+    if (dragged.kind === 'assignment') {
+      current = (snapshot?.assignments || []).find((row) => row.id === dragged.id);
+      if (!current) {
+        setStatus(assignmentBoardStatus, 'Assegnazione non più disponibile. Aggiorna la pagina.', 'error');
+        return;
+      }
+      personId = current.personId;
+      assignmentId = current.id;
+      sourceName = current.personName;
+      const sameDestination = current.shiftId === targetShiftId
+        && String(current.activity || '').trim() === targetActivity
+        && String(current.role || '').trim() === String(targetRole || '').trim();
+      if (sameDestination) {
+        setStatus(assignmentBoardStatus, 'Il nominativo è già in questa attività e turno.');
+        return;
+      }
+    } else {
+      const availability = unassignedAvailabilityRows().find((row) => row.id === dragged.id);
+      if (!availability) {
+        setStatus(assignmentBoardStatus, 'Disponibilità non più presente. Aggiorna la pagina.', 'error');
+        return;
+      }
+      if (availability.shiftId !== targetShiftId) {
+        setStatus(assignmentBoardStatus, 'La disponibilità può essere assegnata solo nel turno indicato dal volontario.', 'error');
+        return;
+      }
+      personId = availability.personId;
+      sourceName = availability.personName;
+    }
+
+    setStatus(assignmentBoardStatus, `Salvataggio spostamento di ${sourceName}…`);
+    assignmentBoard?.classList.add('is-saving');
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save-assignment',
+          assignmentId,
+          personId,
+          shiftId: targetShiftId,
+          rawDay: null,
+          rawShift: null,
+          activity: targetActivity,
+          role: targetRole || null,
+          requestedProfile: current?.requestedProfile || null,
+          note: current?.note || null
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, `${sourceName} spostato e salvato.`, 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
+  }
+
+  async function toggleBoardResponsible(assignmentId, button) {
+    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+    if (!row) return;
+    if (!snapshot?.responsibilityAvailable) {
+      setStatus(assignmentBoardStatus, 'La funzione responsabile non è disponibile.', 'error');
+      return;
+    }
+
+    const next = !row.isResponsible;
+    const restore = setButtonBusy(button, next ? 'Impostazione…' : 'Rimozione…');
+    setStatus(assignmentBoardStatus, next
+      ? `Impostazione di ${row.personName} come responsabile…`
+      : `Rimozione di ${row.personName} come responsabile…`);
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-assignment-responsible',
+          assignmentId: row.id,
+          isResponsible: next
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, next
+        ? `${row.personName} impostato come responsabile.`
+        : `Responsabile rimosso per ${displayActivity(row)}.`, 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      restore();
+    }
+  }
+
   function renderAssignments() {
     const rows = filteredAssignments();
-    const type = assignmentTypeFilter?.value || 'all';
-    const onlyAvailability = type === 'availability';
-    if (availabilityFilterStatus) availabilityFilterStatus.hidden = !onlyAvailability;
+    const types = selectedFilterValues(assignmentTypeFilter);
+    const onlyAvailability = types.length === 1 && types[0] === 'availability';
+    const isBoard = assignmentView === 'board';
+
+    if (availabilityFilterStatus) availabilityFilterStatus.hidden = isBoard || !onlyAvailability;
+    if (assignmentTable) assignmentTable.hidden = isBoard;
+    if (assignmentBoard) assignmentBoard.hidden = !isBoard;
+    if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
+    assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
+    if (assignmentViewToggle) {
+      assignmentViewToggle.textContent = isBoard ? 'Vista elenco' : 'Vista schede';
+      assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
+      assignmentViewToggle.classList.toggle('is-active', isBoard);
+    }
+
+    if (isBoard) {
+      renderAssignmentBoard();
+      return;
+    }
 
     const body = [
       ...(newAssignmentOpen && !onlyAvailability ? [assignmentRowHtml(null, true)] : []),
@@ -1546,7 +1861,12 @@
   });
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
+  assignmentViewToggle?.addEventListener('click', () => {
+    setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
+  });
+
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
+    setAssignmentView('list', { render: false });
     setMultiFilterValues(assignmentTypeFilter, ['assigned']);
     newAssignmentOpen = true;
     renderAssignments();
@@ -1688,6 +2008,78 @@
         catch (error) { alert(error.message); }
       });
     }
+  });
+
+  assignmentBoard?.addEventListener('dragstart', (event) => {
+    const card = event.target.closest('[data-board-drag-kind]');
+    if (!card) return;
+    boardDragState = {
+      kind: card.dataset.boardDragKind,
+      id: card.dataset.boardDragId
+    };
+    card.classList.add('is-dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', card.dataset.boardDragId || '');
+    setStatus(assignmentBoardStatus, '');
+  });
+
+  assignmentBoard?.addEventListener('dragover', (event) => {
+    const dropzone = event.target.closest('[data-board-drop]');
+    if (!dropzone || !boardDragState) return;
+    const targetShiftId = dropzone.dataset.boardShiftId || '';
+    const allowed = boardCanDrop(boardDragState, targetShiftId);
+    if (!allowed) {
+      event.dataTransfer.dropEffect = 'none';
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => {
+      if (node !== dropzone) node.classList.remove('is-drop-target');
+    });
+    dropzone.classList.add('is-drop-target');
+
+    const rect = assignmentBoard.getBoundingClientRect();
+    if (event.clientX < rect.left + 70) assignmentBoard.scrollLeft -= 18;
+    else if (event.clientX > rect.right - 70) assignmentBoard.scrollLeft += 18;
+  });
+
+  assignmentBoard?.addEventListener('dragleave', (event) => {
+    const dropzone = event.target.closest('[data-board-drop]');
+    if (!dropzone) return;
+    if (event.relatedTarget && dropzone.contains(event.relatedTarget)) return;
+    dropzone.classList.remove('is-drop-target');
+  });
+
+  assignmentBoard?.addEventListener('drop', async (event) => {
+    const dropzone = event.target.closest('[data-board-drop]');
+    if (!dropzone || !boardDragState) return;
+    const dragged = { ...boardDragState };
+    const targetShiftId = dropzone.dataset.boardShiftId || '';
+    if (!boardCanDrop(dragged, targetShiftId)) return;
+    event.preventDefault();
+    dropzone.classList.remove('is-drop-target');
+    await moveBoardItem(
+      dragged,
+      targetShiftId,
+      dropzone.dataset.boardActivity || '',
+      dropzone.dataset.boardRole || ''
+    );
+  });
+
+  assignmentBoard?.addEventListener('dragend', (event) => {
+    event.target.closest('[data-board-drag-kind]')?.classList.remove('is-dragging');
+    assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
+    boardDragState = null;
+    boardDragEndedAt = Date.now();
+  });
+
+  assignmentBoard?.addEventListener('click', async (event) => {
+    if (event.target.closest('.assignment-board__warning')) return;
+    if (Date.now() - boardDragEndedAt < 300) return;
+    const card = event.target.closest('[data-board-assignment-id]');
+    if (!card) return;
+    await toggleBoardResponsible(card.dataset.boardAssignmentId, card);
   });
 
   activityCatalog?.addEventListener('click', async (event) => {

@@ -50,6 +50,7 @@
         <div class="section-head">
           <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
           <div class="section-actions">
+            <button class="button button--secondary assignment-view-toggle" type="button" data-assignment-view-toggle aria-pressed="false">Vista schede</button>
             <button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button>
             <button class="button button--secondary collapse-button" type="button" data-collapse-target="assignments-content" aria-expanded="true">Comprimi</button>
           </div>
@@ -57,7 +58,7 @@
         <div id="assignments-content" data-collapsible-content>
           <div class="filter-grid">
             <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter multiple><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni già fatte</option><option value="availability">Solo disponibilità</option></select></label>
-            <label class="field compact-field"><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
+            <label class="field compact-field" data-assignment-list-only><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
             <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter multiple><option value="">Tutte</option></select></label>
             <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter multiple><option value="">Tutti</option></select></label>
             <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter multiple><option value="">Tutte</option></select></label>
@@ -70,6 +71,8 @@
             <span>Stai visualizzando solo i turni offerti dai volontari che non hanno ancora un’attività nello stesso turno.</span>
             <button class="link-button" type="button" data-clear-availability-filter>Mostra tutte le assegnazioni</button>
           </div>
+          <p class="status assignment-board-status" data-assignment-board-status aria-live="polite"></p>
+          <div class="assignment-board-wrap" data-assignment-board hidden></div>
           <div class="table-wrap" data-assignment-table></div>
         </div>
       </section>
