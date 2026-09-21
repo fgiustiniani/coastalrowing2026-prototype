@@ -409,8 +409,9 @@
   function activityReportRows() {
     const groups = new Map();
     for (const row of snapshot?.assignments || []) {
-      const key = `${row.activity}|${row.day}|${row.shift}`;
-      if (!groups.has(key)) groups.set(key, { activity: row.activity, day: row.day, shift: row.shift, rows: [] });
+      const activityLabel = displayActivity(row);
+      const key = `${activityLabel}|${row.day}|${row.shift}`;
+      if (!groups.has(key)) groups.set(key, { activity: activityLabel, day: row.day, shift: row.shift, rows: [] });
       groups.get(key).rows.push(row);
     }
     return [...groups.values()].map((item) => {
