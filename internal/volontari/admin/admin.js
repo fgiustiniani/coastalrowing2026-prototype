@@ -431,14 +431,20 @@
         answered: Boolean(latest),
         notes: notes.join('; '),
         availability,
+        activities: [...item.rows]
+          .sort((a, b) => {
+            const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
+            const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
+            return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
+          })
+          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`),
         activitiesText: [...item.rows]
           .sort((a, b) => {
             const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
             const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
             return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
           })
-          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`)
-          .join('; '),
+          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`).join('\n'),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
@@ -460,7 +466,7 @@
       const availability = item.availability || [];
       return `<tr>
         <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td class="people-cell">${item.activitiesText ? escapeHtml(item.activitiesText) : '—'}</td>
+        <td class="people-cell">${item.activities?.length ? `<div class="activity-report-list">${item.activities.map((activity) => `<div class="activity-report-line">${escapeHtml(activity)}</div>`).join('')}</div>` : '—'}</td>
         <td>${item.confirmed}</td>
         <td>${item.declined}</td>
         <td><span class="${item.answered ? 'answer-yes' : 'answer-no'}">${item.answered ? 'Sì' : 'No'}</span>${item.latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(item.latest.createdAt))} · ${escapeHtml(item.latest.actorName)}</small>` : ''}</td>
