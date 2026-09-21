@@ -130,7 +130,7 @@
 
   function renderPeople() {
     const query = String(personSearch?.value || '').trim();
-    if (manualBox) manualBox.hidden = query.length < 2 || Boolean(state.selectedPerson);
+    if (manualBox) manualBox.hidden = query.length < 2 || Boolean(state.selectedPerson) || state.people.length > 0;
     if (state.selectedPerson && query === sortLabel(state.selectedPerson)) {
       personResults.innerHTML = '';
       return;
@@ -184,6 +184,7 @@
     state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
     state.responses = new Map();
     state.availability = new Map();
+    if (manualBox) manualBox.hidden = true;
     if (manualField) manualField.hidden = false;
     if (manualInput) {
       manualInput.value = suggested;
