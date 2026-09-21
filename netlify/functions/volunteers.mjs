@@ -1,5 +1,7 @@
+import { randomBytes } from 'node:crypto';
 import {
   ApiError,
+  SupabaseError,
   clean,
   formatApiError,
   isSameOrigin,
@@ -18,18 +20,63 @@ const rows = (value) => Array.isArray(value) ? value : [];
 async function listPeople(searchText = '') {
   const query = clean(searchText, 120).trim().toLocaleLowerCase('it-IT');
   if (query.length < 2) return [];
-  const [people, assignments] = await Promise.all([
-    supabaseRequest('volunteer_people', { query: { select: 'id,person_code,display_name,surname,given_name', active: 'eq.true', selectable: 'eq.true', order: 'surname.asc,given_name.asc,display_name.asc' } }),
-    supabaseRequest('volunteer_assignments', { query: { select: 'person_id', active: 'eq.true' } })
-  ]);
-  const assigned = new Set(rows(assignments).map((row) => row.person_id));
+  const people = await supabaseRequest('volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,source_type',
+      active: 'eq.true',
+      selectable: 'eq.true',
+      order: 'surname.asc,given_name.asc,display_name.asc'
+    }
+  });
   return rows(people)
-    .filter((person) => assigned.has(person.id))
     .filter((person) => {
       const haystack = `${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_code || ''}`.toLocaleLowerCase('it-IT');
       return haystack.includes(query);
     })
     .slice(0, 12);
+}
+
+function normalizePersonName(value) {
+  return clean(value, 160).replace(/\s+/g, ' ').trim();
+}
+
+async function resolveManualPerson(displayName) {
+  const normalized = normalizePersonName(displayName);
+  if (normalized.length < 2) throw new ApiError('Inserisci nome e cognome.', 400, 'PERSON_REQUIRED');
+
+  const people = rows(await supabaseRequest('volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,source_type',
+      active: 'eq.true',
+      selectable: 'eq.true',
+      order: 'display_name.asc'
+    }
+  }));
+  const existing = people.find((person) =>
+    normalizePersonName(person.display_name).toLocaleLowerCase('it-IT') === normalized.toLocaleLowerCase('it-IT')
+  );
+  if (existing) return { person: existing, created: false };
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const personCode = `SB${randomBytes(4).toString('hex').toUpperCase()}`;
+    try {
+      const created = rows(await supabaseRequest('volunteer_people', {
+        method: 'POST',
+        body: {
+          person_code: personCode,
+          display_name: normalized,
+          source_type: 'manual',
+          selectable: true,
+          active: true
+        },
+        prefer: 'return=representation'
+      }))[0];
+      if (created) return { person: created, created: true };
+    } catch (error) {
+      if (!(error instanceof SupabaseError) || error.status !== 409) throw error;
+    }
+  }
+  throw new ApiError('Non è stato possibile generare il codice del nominativo.', 500, 'MANUAL_PERSON_CODE_FAILED');
 }
 
 async function listSelectableShifts() {
@@ -161,15 +208,62 @@ export default async (request) => {
       if (personId && !isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
       if (!isUuid(clientSubmissionId)) throw new ApiError('Identificativo invio non valido.', 400, 'INVALID_SUBMISSION_ID');
 
-      const result = await rpc('submit_volunteer_submission', {
-        p_actor_name: actorName,
-        p_person_id: personId,
-        p_manual_person_name: manualPersonName,
-        p_client_submission_id: clientSubmissionId,
-        p_session_id: clean(session.jti, 100),
-        p_responses: responses.map((item) => ({ assignmentId: clean(item?.assignmentId, 60), response: clean(item?.response, 20), note: clean(item?.note, 1000) })),
-        p_availability: availability.map((item) => ({ shiftId: clean(item?.shiftId, 60), note: clean(item?.note, 1000) }))
-      });
+      let resolvedPersonId = personId;
+      let createdManualPerson = null;
+      if (!resolvedPersonId) {
+        const resolved = await resolveManualPerson(manualPersonName);
+        resolvedPersonId = resolved.person.id;
+        if (resolved.created) createdManualPerson = resolved.person;
+      }
+
+      let result;
+      try {
+        result = await rpc('submit_volunteer_submission', {
+          p_actor_name: actorName,
+          p_person_id: resolvedPersonId,
+          p_manual_person_name: null,
+          p_client_submission_id: clientSubmissionId,
+          p_session_id: clean(session.jti, 100),
+          p_responses: responses.map((item) => ({ assignmentId: clean(item?.assignmentId, 60), response: clean(item?.response, 20), note: clean(item?.note, 1000) })),
+          p_availability: availability.map((item) => ({ shiftId: clean(item?.shiftId, 60), note: clean(item?.note, 1000) }))
+        });
+      } catch (error) {
+        if (createdManualPerson?.id) {
+          try {
+            await supabaseRequest('volunteer_people', {
+              method: 'DELETE',
+              query: { id: `eq.${createdManualPerson.id}` },
+              prefer: 'return=minimal'
+            });
+          } catch {}
+        }
+        throw error;
+      }
+
+      if (createdManualPerson) {
+        try {
+          await supabaseRequest('volunteer_audit_log', {
+            method: 'POST',
+            body: {
+              submission_id: result?.id || null,
+              actor_name: actorName,
+              person_id: createdManualPerson.id,
+              person_code: createdManualPerson.person_code,
+              action_type: 'person_manual_created',
+              entity_type: 'person',
+              entity_id: createdManualPerson.id,
+              new_value: {
+                displayName: createdManualPerson.display_name,
+                personCode: createdManualPerson.person_code
+              }
+            },
+            prefer: 'return=minimal'
+          });
+        } catch (auditError) {
+          console.error('Volunteer manual person audit failed', auditError?.message || auditError);
+        }
+      }
+
       return json({ ok: true, submission: result });
     }
 
