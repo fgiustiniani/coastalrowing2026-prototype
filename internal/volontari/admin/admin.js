@@ -532,9 +532,89 @@
     else exportPdf('Report volontari per attività', columns, rows);
   }
 
+  function renderActivityCatalog() {
+    const rows = (snapshot?.activityCatalog || []).filter((item) => item.active);
+    const body = [
+      ...(newActivityOpen ? [`<tr class="is-new-row" data-activity-row data-activity-id=""><td><input class="name-input" data-activity-name maxlength="200" placeholder="Nuova attività"></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button type="button" data-cancel-new-activity>Annulla</button></div><small class="row-save-status" data-row-status></small></td></tr>`] : []),
+      ...rows.map((item) => `<tr data-activity-row data-activity-id="${escapeHtml(item.id)}"><td><input class="name-input" data-activity-name maxlength="200" value="${escapeHtml(item.name)}"></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button class="is-danger" type="button" data-delete-activity>Elimina</button></div><small class="row-save-status" data-row-status></small></td></tr>`)
+    ].join('');
+    activityCatalog.innerHTML = body
+      ? `<table class="admin-table catalog-table"><thead><tr><th>Attività</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      : '<p class="empty-state">Nessuna attività attiva.</p>';
+  }
+
+  function filteredRaceProgram() {
+    const personId = racePersonFilter?.value || '';
+    const q = String(raceCrewFilter?.value || '').trim().toLocaleLowerCase('it-IT');
+    return (snapshot?.raceProgram || []).filter((row) =>
+      (!personId || row.personId === personId)
+      && (!q || `${row.personName} ${row.personCode} ${row.crewLabel}`.toLocaleLowerCase('it-IT').includes(q))
+    );
+  }
+
+  function raceRowHtml(row = null, isNew = false) {
+    const personId = row?.personId || '';
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    const code = person?.person_code || row?.personCode || '';
+    return `<tr class="${isNew ? 'is-new-row' : ''}" data-race-row data-race-id="${escapeHtml(row?.id || '')}">
+      <td><select class="person-select" data-race-person>${personOptions(personId)}</select></td>
+      <td><span class="inline-code" data-race-code>${escapeHtml(code || '—')}</span></td>
+      <td><input class="crew-input" data-race-crew maxlength="240" value="${escapeHtml(row?.crewLabel || '')}" placeholder="Equipaggio / categoria"></td>
+      <td><input class="date-input" data-race-date type="date" value="${escapeHtml(row?.raceDate || '')}"></td>
+      <td><input class="time-input" data-race-time type="time" value="${escapeHtml(row?.raceTime || '')}"></td>
+      <td><div class="row-actions"><button type="button" data-save-race>Salva</button>${isNew ? '<button type="button" data-cancel-new-race>Annulla</button>' : '<button class="is-danger" type="button" data-delete-race>Elimina</button>'}</div><small class="row-save-status" data-row-status></small></td>
+    </tr>`;
+  }
+
+  function renderRaceProgram() {
+    if (!snapshot?.raceProgramAvailable) {
+      setStatus(raceProgramStatus, 'Anagrafica non ancora inizializzata nel database: la migrazione è pronta ma non è stata applicata.', 'error');
+      raceProgram.innerHTML = '<div class="catalog-unavailable">Il file Programma gare per org.xlsx è stato elaborato, ma la nuova tabella non è ancora stata creata nel database condiviso.</div>';
+      return;
+    }
+    setStatus(raceProgramStatus, '');
+    const rows = filteredRaceProgram();
+    const body = [
+      ...(newRaceEntryOpen ? [raceRowHtml(null, true)] : []),
+      ...rows.map((row) => raceRowHtml(row, false))
+    ].join('');
+    raceProgram.innerHTML = body
+      ? `<table class="admin-table race-table"><thead><tr><th>Persona</th><th>Codice</th><th>Equipaggio / categoria</th><th>Giorno gara</th><th>Ora gara</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      : '<p class="empty-state">Nessuna voce del programma corrisponde ai filtri.</p>';
+  }
+
+  function showPersonDetail(personId) {
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    const rows = (snapshot?.assignments || []).filter((item) => item.personId === personId)
+      .sort((a, b) => `${a.day} ${a.shift} ${displayActivity(a)}`.localeCompare(`${b.day} ${b.shift} ${displayActivity(b)}`, 'it'));
+    detailTitle.textContent = person ? `${person.display_name} · ${person.person_code || 'senza codice'}` : 'Attività della persona';
+    detailContent.innerHTML = rows.length
+      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Attività</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${responseBadge(row.currentResponse)}</td></tr>`).join('')}</tbody></table>`
+      : '<p class="empty-state">Nessuna attività assegnata.</p>';
+    detailDialog.showModal();
+  }
+
+  function showActivityDetail(activityLabel) {
+    const rows = (snapshot?.assignments || []).filter((item) => displayActivity(item) === activityLabel);
+    const groups = new Map();
+    for (const row of rows) {
+      const key = `${row.day} · ${row.shift}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row.personName);
+    }
+    detailTitle.textContent = activityLabel;
+    const grouped = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'it'));
+    detailContent.innerHTML = grouped.length
+      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Persone assegnate</th></tr></thead><tbody>${grouped.map(([turno, people]) => `<tr><td>${escapeHtml(turno)}</td><td>${escapeHtml([...new Set(people)].sort((a,b)=>a.localeCompare(b,'it')).join('; '))}</td></tr>`).join('')}</tbody></table>`
+      : '<p class="empty-state">Nessuna persona assegnata.</p>';
+    detailDialog.showModal();
+  }
+
   function renderAll() {
     renderKpis();
     renderAssignments();
+    renderActivityCatalog();
+    renderRaceProgram();
     renderPersonReport();
     renderActivityReport();
   }
@@ -544,34 +624,6 @@
     populateFilters();
     renderAll();
   }
-
-  function populateEditor(assignment = null) {
-    editorForm.reset();
-    const personSelect = editorForm.elements.personId;
-    const shiftSelect = editorForm.elements.shiftId;
-    personSelect.innerHTML = '<option value="">Seleziona…</option>' + (snapshot?.people || [])
-      .filter((person) => person.selectable)
-      .map((person) => `<option value="${person.id}">${escapeHtml(person.display_name)}${person.person_code ? ` · ${escapeHtml(person.person_code)}` : ''}</option>`).join('');
-    shiftSelect.innerHTML = '<option value="">Turno non standard…</option>' + (snapshot?.shifts || [])
-      .map((shift) => `<option value="${shift.id}">${escapeHtml(shift.day_label)} · ${escapeHtml(shift.shift_label)}</option>`).join('');
-
-    editorForm.elements.assignmentId.value = assignment?.id || '';
-    personSelect.value = assignment?.personId || '';
-    shiftSelect.value = assignment?.shiftId || '';
-    editorForm.elements.rawDay.value = assignment && !assignment.shiftMatched ? assignment.day : '';
-    editorForm.elements.rawShift.value = assignment && !assignment.shiftMatched ? assignment.shift : '';
-    editorForm.elements.activity.value = assignment?.activity || '';
-    editorForm.elements.role.value = assignment?.role || '';
-    editorForm.elements.requestedProfile.value = assignment?.requestedProfile || '';
-    editorForm.elements.note.value = assignment?.note || '';
-    rawShift.hidden = Boolean(shiftSelect.value);
-    editorTitle.textContent = assignment ? 'Modifica assegnazione' : 'Nuova assegnazione';
-    setStatus(editorStatus);
-    editor.hidden = false;
-    editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function closeEditor() { editor.hidden = true; setStatus(editorStatus); }
 
   async function showAudit(personId, personName) {
     const result = await api(`${API}?view=audit&personId=${encodeURIComponent(personId)}`);
