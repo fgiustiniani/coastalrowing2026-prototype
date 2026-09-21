@@ -335,8 +335,7 @@
           if (!normalized) return true;
           const haystack = normalizeFilterSearch(option.textContent);
           return normalized.split(/\s+/).filter(Boolean).every((token) => haystack.includes(token));
-        })
-        .slice(0, 80);
+        });
 
       activeIndex = options.length ? 0 : -1;
       panel.innerHTML = options.length
