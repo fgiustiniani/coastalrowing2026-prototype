@@ -393,6 +393,8 @@
     );
   }
 
+  const multiFilterWidgets = new WeakMap();
+
   function selectedFilterValues(select) {
     if (!select) return [];
     return [...new Set([...select.selectedOptions]
@@ -404,14 +406,112 @@
     return !values.length || values.includes(String(value ?? ''));
   }
 
+  function filterAllOption(select) {
+    return [...(select?.options || [])].find((option) => option.value === '' || option.value === 'all') || null;
+  }
+
+  function closeMultiFilters(except = null) {
+    document.querySelectorAll('.multi-filter.is-open').forEach((wrapper) => {
+      if (wrapper === except) return;
+      wrapper.classList.remove('is-open');
+      wrapper.querySelector('.multi-filter__button')?.setAttribute('aria-expanded', 'false');
+      const panel = wrapper.querySelector('.multi-filter__panel');
+      if (panel) panel.hidden = true;
+    });
+  }
+
+  function syncMultiFilter(select) {
+    const widget = multiFilterWidgets.get(select);
+    if (!widget) return;
+    const values = selectedFilterValues(select);
+    const selected = new Set(values);
+    const allOption = filterAllOption(select);
+    const allLabel = allOption?.textContent?.trim() || 'Tutti';
+    const labels = [...select.options].filter((option) => selected.has(option.value)).map((option) => option.textContent.trim());
+
+    widget.label.textContent = labels.length === 0 ? allLabel : labels.length === 1 ? labels[0] : `${labels.length} selezionati`;
+    widget.button.title = labels.length > 1 ? labels.join(', ') : '';
+    widget.panel.innerHTML = [...select.options].map((option, index) => {
+      const isAll = option.value === '' || option.value === 'all';
+      const checked = isAll ? values.length === 0 : selected.has(option.value);
+      return `<label class="multi-filter__option${isAll ? ' is-all' : ''}"><input type="checkbox" data-multi-filter-index="${index}" ${checked ? 'checked' : ''}><span>${escapeHtml(option.textContent)}</span></label>`;
+    }).join('');
+
+    widget.panel.querySelectorAll('[data-multi-filter-index]').forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        const option = select.options[Number(checkbox.dataset.multiFilterIndex)];
+        if (!option) return;
+        const isAll = option.value === '' || option.value === 'all';
+        if (isAll) {
+          [...select.options].forEach((item) => { item.selected = false; });
+          option.selected = true;
+        } else {
+          option.selected = checkbox.checked;
+          const sentinel = filterAllOption(select);
+          if (sentinel) sentinel.selected = false;
+          if (!selectedFilterValues(select).length && sentinel) sentinel.selected = true;
+        }
+        syncMultiFilter(select);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  }
+
+  function setMultiFilterValues(select, values = []) {
+    if (!select) return;
+    const wanted = new Set((Array.isArray(values) ? values : [values]).filter(Boolean));
+    [...select.options].forEach((option) => { option.selected = wanted.has(option.value); });
+    const allOption = filterAllOption(select);
+    if (!wanted.size && allOption) allOption.selected = true;
+    syncMultiFilter(select);
+  }
+
+  function initMultiFilter(select) {
+    if (!select || multiFilterWidgets.has(select)) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'multi-filter';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.classList.add('multi-filter__source');
+    select.setAttribute('aria-hidden', 'true');
+    select.tabIndex = -1;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'multi-filter__button';
+    button.setAttribute('aria-expanded', 'false');
+    button.innerHTML = '<span class="multi-filter__button-label"></span><span class="multi-filter__chevron" aria-hidden="true">⌄</span>';
+
+    const panel = document.createElement('div');
+    panel.className = 'multi-filter__panel';
+    panel.hidden = true;
+    wrapper.append(button, panel);
+
+    multiFilterWidgets.set(select, { wrapper, button, label: button.querySelector('.multi-filter__button-label'), panel });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      const opening = !wrapper.classList.contains('is-open');
+      closeMultiFilters(wrapper);
+      wrapper.classList.toggle('is-open', opening);
+      button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      panel.hidden = !opening;
+    });
+    syncMultiFilter(select);
+  }
+
+  function initMultiFilters() {
+    document.querySelectorAll('.filter-grid select[multiple]').forEach(initMultiFilter);
+  }
+
   function setSelectOptions(select, options, allLabel) {
     if (!select) return;
     const current = new Set(selectedFilterValues(select));
     select.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + options
       .map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('');
-    [...select.options].forEach((option) => {
-      option.selected = current.has(option.value);
-    });
+    [...select.options].forEach((option) => { option.selected = current.has(option.value); });
+    const allOption = filterAllOption(select);
+    if (!current.size && allOption) allOption.selected = true;
+    syncMultiFilter(select);
   }
 
   function populateFilters() {
@@ -1431,7 +1531,7 @@
     }
   });
   document.querySelector('[data-clear-availability-filter]')?.addEventListener('click', () => {
-    if (assignmentTypeFilter) assignmentTypeFilter.value = 'all';
+    setMultiFilterValues(assignmentTypeFilter, []);
     renderAssignments();
   });
   document.querySelector('[data-refresh]')?.addEventListener('click', async (event) => {
@@ -1447,7 +1547,7 @@
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
-    if (assignmentTypeFilter) assignmentTypeFilter.value = 'assigned';
+    setMultiFilterValues(assignmentTypeFilter, ['assigned']);
     newAssignmentOpen = true;
     renderAssignments();
     assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1762,9 +1862,9 @@
 
     const filterAvailability = event.target.closest('[data-filter-unassigned-availability]');
     if (filterAvailability) {
-      if (assignmentTypeFilter) assignmentTypeFilter.value = 'availability';
+      setMultiFilterValues(assignmentTypeFilter, ['availability']);
       [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
-        .forEach((filter) => { if (filter) filter.value = ''; });
+        .forEach((filter) => setMultiFilterValues(filter, []));
       detailDialog.close();
       renderAssignments();
       assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1799,6 +1899,14 @@
   personActivitiesDialog?.addEventListener('click', (event) => { if (event.target === personActivitiesDialog) personActivitiesDialog.close(); });
     document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
   auditDialog?.addEventListener('click', (event) => { if (event.target === auditDialog) auditDialog.close(); });
+
+  initMultiFilters();
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.multi-filter')) closeMultiFilters();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMultiFilters();
+  });
 
   credentials = storedCredentials();
   if (credentials) {
