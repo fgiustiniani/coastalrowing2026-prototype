@@ -1,4 +1,5 @@
 (() => {
+  // Branch deploy trigger: 2026-09-21 requirements rollout
   const API = '/api/volunteers-admin';
   const SESSION_KEY = 'coastal2026-admin-session';
   const login = document.querySelector('[data-admin-login]');
