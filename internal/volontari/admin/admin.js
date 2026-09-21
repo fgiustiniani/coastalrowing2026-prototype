@@ -13,6 +13,7 @@
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
   const assignmentWarningFilter = document.querySelector('[data-assignment-warning-filter]');
+  const availabilityFilterStatus = document.querySelector('[data-availability-filter-status]');
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
@@ -38,6 +39,8 @@
   let newAssignmentOpen = false;
   let newActivityOpen = false;
   let newRaceEntryOpen = false;
+  let availabilityOnly = false;
+  let detailTargetRow = null;
 
   const escapeHtml = (value) => String(value ?? '')
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -255,6 +258,52 @@
 
   function shiftFilterKey(row) {
     return `${row.day || ''}|||${row.shift || ''}`;
+  }
+
+  function unassignedAvailabilityRows() {
+    const assignments = snapshot?.assignments || [];
+    const assignedKeys = new Set(
+      assignments
+        .filter((row) => row.personId && row.shiftId)
+        .map((row) => `${row.personId}|${row.shiftId}`)
+    );
+    const rows = [];
+    for (const person of snapshot?.people || []) {
+      const availability = person.latestSubmission?.availability || [];
+      for (const item of availability) {
+        if (!item.shiftId) continue;
+        const key = `${person.id}|${item.shiftId}`;
+        if (assignedKeys.has(key)) continue;
+        rows.push({
+          id: `availability:${person.id}:${item.shiftId}`,
+          isAvailability: true,
+          personId: person.id,
+          personCode: person.person_code || '',
+          personName: person.display_name,
+          shiftId: item.shiftId,
+          day: item.day || '',
+          shift: item.shift || '',
+          shiftMatched: true,
+          activity: '',
+          role: '',
+          requestedProfile: '',
+          note: item.note || '',
+          currentResponse: null,
+          currentNote: '',
+          currentResponseAt: null,
+          currentActorName: ''
+        });
+      }
+    }
+    const orderByShift = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift.sort_order ?? 9999]));
+    return rows.sort((a, b) =>
+      (orderByShift.get(a.shiftId) ?? 9999) - (orderByShift.get(b.shiftId) ?? 9999)
+      || a.personName.localeCompare(b.personName, 'it')
+    );
+  }
+
+  function allAssignmentRows() {
+    return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])];
   }
 
   function setSelectOptions(select, options, allLabel) {
