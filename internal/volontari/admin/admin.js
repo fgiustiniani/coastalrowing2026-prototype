@@ -659,6 +659,14 @@
     detailDialog.showModal();
   }
 
+  function showRespondedPeople() {
+    const people = respondedAssignedPeople();
+    detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
+    detailContent.innerHTML = people.length
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th></tr></thead><tbody>${people.map((person) => `<tr><td><strong>${escapeHtml(person.display_name)}</strong></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td></tr>`).join('')}</tbody></table>`
+      : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
+    detailDialog.showModal();
+  }
   function renderAll() {
     renderKpis();
     renderAssignments();
@@ -780,6 +788,7 @@
   }
 
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
+  kpis?.addEventListener('click', (event) => { if (event.target.closest('[data-show-responded]')) showRespondedPeople(); });
   document.querySelector('[data-refresh]')?.addEventListener('click', () => loadSnapshot().catch((error) => alert(error.message)));
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
