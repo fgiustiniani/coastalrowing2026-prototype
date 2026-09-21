@@ -3874,12 +3874,34 @@
   assignmentBoard?.addEventListener('pointercancel', (event) => { void finishPointerReorder(event, true); });
 
   assignmentBoard?.addEventListener('dragstart', (event) => {
+    const groupHandle = event.target.closest('[data-board-group-drag-handle]');
+    if (groupHandle) {
+      const groupId = groupHandle.dataset.boardGroupId || '';
+      const column = groupHandle.closest('[data-board-shift-column]');
+      const groupNode = groupHandle.closest('[data-board-activity-group]');
+      if (!groupId || !column || !groupNode) return;
+      boardGroupDragState = {
+        id: groupId,
+        shiftId: column.dataset.boardShiftColumn || ''
+      };
+      groupNode.classList.add('is-group-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', groupId);
+      setStatus(assignmentBoardStatus, '');
+      return;
+    }
+
     const activityHandle = event.target.closest('[data-board-activity-drag-handle]');
     if (activityHandle) {
       const requirement = requirementById(activityHandle.dataset.boardRequirementId || '');
       const box = activityHandle.closest('.assignment-board__activity');
       if (!requirement || !box) return;
-      boardActivityDragState = { id: requirement.id, shiftId: requirement.shiftId };
+      boardActivityDragState = {
+        id: requirement.id,
+        activityId: requirement.activityId,
+        sourceGroupId: requirement.activityGroupId || '',
+        shiftId: requirement.shiftId
+      };
       box.classList.add('is-activity-dragging');
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', requirement.id);
@@ -3901,6 +3923,33 @@
   });
 
   assignmentBoard?.addEventListener('dragover', (event) => {
+    if (boardGroupDragState || boardActivityDragState || boardDragState) {
+      autoScrollBoardDrag(event.clientX, event.clientY);
+    }
+
+    if (boardGroupDragState) {
+      const column = event.target.closest('[data-board-shift-column]');
+      if (!column || column.dataset.boardShiftColumn !== boardGroupDragState.shiftId) {
+        event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+
+      const targetGroup = event.target.closest('[data-board-activity-group]');
+      const targetGroupId = targetGroup?.dataset.boardGroupId || '';
+      if (!targetGroup || !targetGroupId || targetGroupId === boardGroupDragState.id) {
+        event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      clearBoardGroupReorderMarkers();
+      const rect = targetGroup.getBoundingClientRect();
+      const after = event.clientY > rect.top + rect.height / 2;
+      targetGroup.classList.add(after ? 'is-group-reorder-after' : 'is-group-reorder-before');
+      return;
+    }
+
     if (boardActivityDragState) {
       const column = event.target.closest('[data-board-shift-column]');
       if (!column || column.dataset.boardShiftColumn !== boardActivityDragState.shiftId) {
@@ -3908,9 +3957,22 @@
         return;
       }
 
+      const targetGroup = event.target.closest('[data-board-activity-group]');
+      if (!targetGroup) {
+        event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       clearBoardActivityReorderMarkers();
+      clearBoardGroupReorderMarkers();
+
+      const targetGroupId = targetGroup.dataset.boardGroupId || '';
+      if (targetGroupId !== (boardActivityDragState.sourceGroupId || '')) {
+        targetGroup.classList.add('is-activity-group-drop-target');
+        return;
+      }
 
       const targetBox = event.target.closest('.assignment-board__activity[data-board-requirement-id]');
       const draggedBox = assignmentBoard.querySelector(`.assignment-board__activity[data-board-requirement-id="${CSS.escape(boardActivityDragState.id)}"]`);
@@ -3919,12 +3981,8 @@
         const after = event.clientY > rect.top + rect.height / 2;
         targetBox.classList.add(after ? 'is-activity-reorder-after' : 'is-activity-reorder-before');
       } else if (!targetBox) {
-        column.querySelector('.assignment-board__activities')?.classList.add('is-activity-reorder-end');
+        targetGroup.querySelector('[data-board-group-body]')?.classList.add('is-activity-reorder-end');
       }
-
-      const rect = assignmentBoard.getBoundingClientRect();
-      if (event.clientX < rect.left + 70) assignmentBoard.scrollLeft -= 18;
-      else if (event.clientX > rect.right - 70) assignmentBoard.scrollLeft += 18;
       return;
     }
 
@@ -3961,27 +4019,46 @@
       });
       dropzone.classList.add('is-drop-target');
     }
-
-    const rect = assignmentBoard.getBoundingClientRect();
-    if (event.clientX < rect.left + 70) assignmentBoard.scrollLeft -= 18;
-    else if (event.clientX > rect.right - 70) assignmentBoard.scrollLeft += 18;
   });
 
   assignmentBoard?.addEventListener('dragleave', (event) => {
     const dropzone = event.target.closest('[data-board-drop]');
-    if (!dropzone) return;
-    if (event.relatedTarget && dropzone.contains(event.relatedTarget)) return;
-    dropzone.classList.remove('is-drop-target');
-    clearBoardReorderMarkers();
+    if (dropzone && (!event.relatedTarget || !dropzone.contains(event.relatedTarget))) {
+      dropzone.classList.remove('is-drop-target');
+    }
   });
 
   assignmentBoard?.addEventListener('drop', async (event) => {
+    if (boardGroupDragState) {
+      const dragged = { ...boardGroupDragState };
+      const column = event.target.closest('[data-board-shift-column]');
+      const targetGroup = event.target.closest('[data-board-activity-group]');
+      const targetGroupId = targetGroup?.dataset.boardGroupId || '';
+      if (!column || column.dataset.boardShiftColumn !== dragged.shiftId || !targetGroupId || targetGroupId === dragged.id) return;
+
+      event.preventDefault();
+      const rect = targetGroup.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      clearBoardGroupReorderMarkers();
+      await reorderBoardActivityGroup(dragged.id, targetGroupId, placeAfter);
+      return;
+    }
+
     if (boardActivityDragState) {
       const dragged = { ...boardActivityDragState };
       const column = event.target.closest('[data-board-shift-column]');
-      if (!column || column.dataset.boardShiftColumn !== dragged.shiftId) return;
+      const targetGroup = event.target.closest('[data-board-activity-group]');
+      if (!column || column.dataset.boardShiftColumn !== dragged.shiftId || !targetGroup) return;
 
       event.preventDefault();
+      const targetGroupId = targetGroup.dataset.boardGroupId || '';
+      if (targetGroupId !== (dragged.sourceGroupId || '')) {
+        clearBoardActivityReorderMarkers();
+        clearBoardGroupReorderMarkers();
+        await setBoardActivityGroup(dragged.activityId, targetGroupId);
+        return;
+      }
+
       const targetBox = event.target.closest('.assignment-board__activity[data-board-requirement-id]');
       if (targetBox?.dataset.boardRequirementId === dragged.id) {
         clearBoardActivityReorderMarkers();
@@ -3997,6 +4074,7 @@
       }
 
       clearBoardActivityReorderMarkers();
+      clearBoardGroupReorderMarkers();
       await reorderBoardRequirement(dragged.id, targetRequirementId, placeAfter);
       return;
     }
@@ -4036,12 +4114,15 @@
   });
 
   assignmentBoard?.addEventListener('dragend', (event) => {
+    event.target.closest('[data-board-activity-group]')?.classList.remove('is-group-dragging');
     event.target.closest('.assignment-board__activity')?.classList.remove('is-activity-dragging');
-    clearBoardActivityReorderMarkers();
-    boardActivityDragState = null;
     event.target.closest('[data-board-drag-kind]')?.classList.remove('is-dragging');
     assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
+    clearBoardActivityReorderMarkers();
+    clearBoardGroupReorderMarkers();
     clearBoardReorderMarkers();
+    boardGroupDragState = null;
+    boardActivityDragState = null;
     boardDragState = null;
     boardDragEndedAt = Date.now();
   });
