@@ -50,7 +50,7 @@ async function personState(personId) {
 
   const [assignments, activities, shifts, submissions] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
-    supabaseRequest('volunteer_activities', { query: { select: 'id,name', active: 'eq.true', order: 'name.asc' } }),
+    supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } })
   ]);
