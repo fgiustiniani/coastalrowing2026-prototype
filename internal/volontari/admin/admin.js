@@ -904,8 +904,12 @@
   function showPersonActivitiesPopup(personId) {
     const person = (snapshot?.people || []).find((item) => item.id === personId);
     if (!person || !personActivitiesDialog) return;
+    const assignments = (snapshot?.assignments || []).filter((item) => item.personId === personId);
+    const days = new Set(assignments.map((item) => item.day).filter(Boolean));
     personActivitiesTitle.textContent = person.display_name || 'Attività';
-    personActivitiesContent.innerHTML = personActivitiesHtml(personId);
+    personActivitiesContent.innerHTML = assignments.length
+      ? `<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>${personActivitiesHtml(personId)}`
+      : '<p class="empty-state">Non risultano attività già assegnate a questa persona.</p>';
     personActivitiesDialog.showModal();
   }
 
@@ -1146,6 +1150,10 @@
     }
 
     if (event.target.matches('[data-inline-person], [data-inline-shift]')) refreshRowWarnings(rowNode);
+
+    if (event.target.matches('select[data-inline-person]') && event.target.value) {
+      showPersonActivitiesPopup(event.target.value);
+    }
   });
 
   assignmentTable?.addEventListener('click', async (event) => {
