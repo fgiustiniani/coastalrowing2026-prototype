@@ -36,13 +36,19 @@ async function listPeople(searchText = '') {
     .slice(0, 12);
 }
 
-function normalizePersonName(value) {
-  return clean(value, 160).replace(/\s+/g, ' ').trim();
+function normalizePersonName(value, maxLength = 160) {
+  return clean(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
-async function resolveManualPerson(displayName) {
-  const normalized = normalizePersonName(displayName);
-  if (normalized.length < 2) throw new ApiError('Inserisci nome e cognome.', 400, 'PERSON_REQUIRED');
+async function resolveManualPerson(surnameValue, givenNameValue, legacyDisplayName = '') {
+  const surname = normalizePersonName(surnameValue, 80);
+  const givenName = normalizePersonName(givenNameValue, 80);
+  let displayName = [surname, givenName].filter(Boolean).join(' ');
+
+  if ((!surname || !givenName) && legacyDisplayName) {
+    displayName = normalizePersonName(legacyDisplayName);
+  }
+  if (displayName.length < 2) throw new ApiError('Inserisci cognome e nome.', 400, 'PERSON_REQUIRED');
 
   const people = rows(await supabaseRequest('volunteer_people', {
     query: {
@@ -52,9 +58,13 @@ async function resolveManualPerson(displayName) {
       order: 'display_name.asc'
     }
   }));
-  const existing = people.find((person) =>
-    normalizePersonName(person.display_name).toLocaleLowerCase('it-IT') === normalized.toLocaleLowerCase('it-IT')
-  );
+  const displayKey = normalizePersonName(displayName).toLocaleLowerCase('it-IT');
+  const existing = people.find((person) => {
+    const exactFields = surname && givenName
+      && normalizePersonName(person.surname || '', 80).toLocaleLowerCase('it-IT') === surname.toLocaleLowerCase('it-IT')
+      && normalizePersonName(person.given_name || '', 80).toLocaleLowerCase('it-IT') === givenName.toLocaleLowerCase('it-IT');
+    return exactFields || normalizePersonName(person.display_name).toLocaleLowerCase('it-IT') === displayKey;
+  });
   if (existing) return { person: existing, created: false };
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -64,7 +74,9 @@ async function resolveManualPerson(displayName) {
         method: 'POST',
         body: {
           person_code: personCode,
-          display_name: normalized,
+          surname: surname || null,
+          given_name: givenName || null,
+          display_name: displayName,
           source_type: 'manual',
           selectable: true,
           active: true
@@ -78,7 +90,6 @@ async function resolveManualPerson(displayName) {
   }
   throw new ApiError('Non è stato possibile generare il codice del nominativo.', 500, 'MANUAL_PERSON_CODE_FAILED');
 }
-
 async function listSelectableShifts() {
   const shifts = await supabaseRequest('volunteer_shifts', {
     query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', availability_selectable: 'eq.true', order: 'sort_order.asc' }
@@ -199,19 +210,21 @@ export default async (request) => {
       const actorName = clean(body.actorName, 120);
       const personId = clean(body.personId, 60) || null;
       const manualPersonName = clean(body.manualPersonName, 160) || null;
+      const manualSurname = clean(body.manualSurname, 80) || null;
+      const manualGivenName = clean(body.manualGivenName, 80) || null;
       const clientSubmissionId = clean(body.clientSubmissionId, 60);
       const responses = Array.isArray(body.responses) ? body.responses.slice(0, 200) : [];
       const availability = Array.isArray(body.availability) ? body.availability.slice(0, 50) : [];
 
       if (actorName.length < 2) throw new ApiError('Inserisci nome e cognome di chi sta compilando.', 400, 'ACTOR_REQUIRED');
-      if (!personId && (!manualPersonName || manualPersonName.length < 2)) throw new ApiError('Seleziona una persona o inseriscila manualmente.', 400, 'PERSON_REQUIRED');
+      if (!personId && ((!manualSurname || manualSurname.length < 2 || !manualGivenName || manualGivenName.length < 2) && (!manualPersonName || manualPersonName.length < 2))) throw new ApiError('Seleziona una persona o inserisci cognome e nome.', 400, 'PERSON_REQUIRED');
       if (personId && !isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
       if (!isUuid(clientSubmissionId)) throw new ApiError('Identificativo invio non valido.', 400, 'INVALID_SUBMISSION_ID');
 
       let resolvedPersonId = personId;
       let createdManualPerson = null;
       if (!resolvedPersonId) {
-        const resolved = await resolveManualPerson(manualPersonName);
+        const resolved = await resolveManualPerson(manualSurname, manualGivenName, manualPersonName);
         resolvedPersonId = resolved.person.id;
         if (resolved.created) createdManualPerson = resolved.person;
       }
@@ -253,6 +266,8 @@ export default async (request) => {
               entity_type: 'person',
               entity_id: createdManualPerson.id,
               new_value: {
+                surname: createdManualPerson.surname || null,
+                givenName: createdManualPerson.given_name || null,
                 displayName: createdManualPerson.display_name,
                 personCode: createdManualPerson.person_code
               }
