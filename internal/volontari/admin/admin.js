@@ -1838,6 +1838,11 @@
     detailDialog.showModal();
   }
 
+  function personActivityWarningHtml(row) {
+    const warnings = assignmentWarningDetails(row);
+    return warnings.length ? warningHtml(warnings) : '<span class="warning-none">—</span>';
+  }
+
   function personActivitiesHtml(personId, selectedAssignmentId = '') {
     const rows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
@@ -1846,11 +1851,52 @@
         const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
+
     return rows.length
-      ? `<table class="detail-table person-activities-table"><thead><tr><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) =>
-          `<tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}"><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td><td>${responseBadge(row.currentResponse)}</td></tr>`
-        ).join('')}</tbody></table>`
+      ? `<div class="person-activities-table-wrap"><table class="detail-table person-activities-table">
+          <thead><tr><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th><th>Warning</th><th></th></tr></thead>
+          <tbody>${rows.map((row) => `
+            <tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}" data-person-assignment-row="${escapeHtml(row.id)}">
+              <td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td>
+              <td>
+                <select class="person-activity-move-select" data-person-move-activity>
+                  ${activityOptions(row)}
+                </select>
+              </td>
+              <td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td>
+              <td>${responseBadge(row.currentResponse)}</td>
+              <td class="person-activity-warning" data-person-row-warning>${personActivityWarningHtml(row)}</td>
+              <td><button class="table-link" type="button" data-person-move-assignment="${escapeHtml(row.id)}">Sposta</button></td>
+            </tr>`).join('')}</tbody>
+        </table></div>`
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
+  }
+
+  function personAddActivityForm(personId, defaultShiftId = '') {
+    const source = defaultShiftId
+      ? { shiftId: defaultShiftId, shiftMatched: true }
+      : null;
+    const candidate = defaultShiftId ? { id: null, personId, shiftId: defaultShiftId } : null;
+    return `
+      <div class="person-add-activity" data-person-add-activity-form hidden>
+        <div class="person-add-activity__grid">
+          <label class="field"><span>Turno</span>
+            <select data-person-add-shift>${shiftOptions(source)}</select>
+          </label>
+          <label class="field"><span>Attività</span>
+            <select data-person-add-activity>${activityOptions(null)}</select>
+          </label>
+          <div class="person-add-activity__warning">
+            <span>Warning</span>
+            <div data-person-add-warning>${candidate ? personActivityWarningHtml(candidate) : '<span class="warning-none">—</span>'}</div>
+          </div>
+          <div class="person-add-activity__actions">
+            <button class="button button--secondary" type="button" data-person-add-cancel>Annulla</button>
+            <button class="button button--primary" type="button" data-person-add-save>Aggiungi</button>
+          </div>
+        </div>
+        <p class="status" data-person-add-status aria-live="polite"></p>
+      </div>`;
   }
 
   function showPersonActivitiesPopup(personId, selectedAssignmentId = '') {
@@ -1868,6 +1914,7 @@
           <div>
             <span class="eyebrow">Attività selezionata</span>
             <strong>${escapeHtml(selected.day)} · ${escapeHtml(selected.shift)} — ${escapeHtml(displayActivity(selected))}</strong>
+            <div class="person-activity-selected__warning">${personActivityWarningHtml(selected)}</div>
           </div>
           <button class="button ${selected.isResponsible ? 'button--secondary' : 'button--primary'}" type="button"
             data-person-responsible-assignment="${escapeHtml(selected.id)}"
@@ -1877,12 +1924,116 @@
           </button>
         </div>
         <p class="status" data-person-activities-status aria-live="polite"></p>`
-      : '';
+      : '<p class="status" data-person-activities-status aria-live="polite"></p>';
 
-    personActivitiesContent.innerHTML = assignments.length
-      ? `${selectedControls}<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>${personActivitiesHtml(personId, selectedAssignmentId)}`
+    const intro = assignments.length
+      ? `<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>`
       : '<p class="empty-state">Non risultano attività già assegnate a questa persona.</p>';
+
+    personActivitiesContent.dataset.personId = personId;
+    personActivitiesContent.dataset.selectedAssignmentId = selectedAssignmentId || '';
+    personActivitiesContent.innerHTML = `
+      ${selectedControls}
+      <div class="person-activities-toolbar">
+        <button class="button button--primary" type="button" data-person-add-activity-open>＋ Aggiungi un'altra attività</button>
+      </div>
+      ${personAddActivityForm(personId, selected?.shiftId || '')}
+      ${intro}
+      ${personActivitiesHtml(personId, selectedAssignmentId)}`;
     personActivitiesDialog.showModal();
+  }
+
+  async function movePersonAssignmentFromPopup(assignmentId, button) {
+    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+    const rowNode = button?.closest('[data-person-assignment-row]');
+    const activity = rowNode?.querySelector('[data-person-move-activity]')?.value || '';
+    const statusNode = personActivitiesContent?.querySelector('[data-person-activities-status]');
+    if (!row || !activity) return;
+
+    const currentActivity = assignmentCatalogValue(row);
+    if (activity === currentActivity) {
+      setStatus(statusNode, 'Seleziona un’attività diversa da quella attuale.');
+      return;
+    }
+
+    await withButtonBusy(button, 'Spostamento…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save-assignment',
+            assignmentId: row.id,
+            personId: row.personId,
+            shiftId: row.shiftId || null,
+            rawDay: row.shiftId ? null : row.day,
+            rawShift: row.shiftId ? null : row.shift,
+            activity,
+            role: null,
+            requestedProfile: row.requestedProfile || null,
+            note: row.note || null
+          })
+        });
+        const personId = row.personId;
+        await loadSnapshot();
+        const replacement = (snapshot?.assignments || [])
+          .filter((item) => item.personId === personId && item.shiftId === row.shiftId)
+          .sort((a, b) => String(b.id).localeCompare(String(a.id)))[0] || null;
+        showPersonActivitiesPopup(personId, replacement?.id || '');
+        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), 'Attività spostata e salvata.', 'success');
+      } catch (error) {
+        setStatus(statusNode, error.message, 'error');
+      }
+    });
+  }
+
+  function refreshPersonAddWarning() {
+    const personId = personActivitiesContent?.dataset.personId || '';
+    const shiftId = personActivitiesContent?.querySelector('[data-person-add-shift]')?.value || '';
+    const warningNode = personActivitiesContent?.querySelector('[data-person-add-warning]');
+    if (!warningNode) return;
+    if (!personId || !shiftId) {
+      warningNode.innerHTML = '<span class="warning-none">—</span>';
+      return;
+    }
+    warningNode.innerHTML = personActivityWarningHtml({ id: null, personId, shiftId });
+  }
+
+  async function addPersonActivityFromPopup(button) {
+    const personId = personActivitiesContent?.dataset.personId || '';
+    const shiftId = personActivitiesContent?.querySelector('[data-person-add-shift]')?.value || '';
+    const activity = personActivitiesContent?.querySelector('[data-person-add-activity]')?.value || '';
+    const statusNode = personActivitiesContent?.querySelector('[data-person-add-status]');
+    if (!personId || !shiftId || !activity) {
+      setStatus(statusNode, 'Seleziona turno e attività.', 'error');
+      return;
+    }
+
+    await withButtonBusy(button, 'Aggiunta…', async () => {
+      try {
+        const result = await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save-assignment',
+            assignmentId: null,
+            personId,
+            shiftId,
+            rawDay: null,
+            rawShift: null,
+            activity,
+            role: null,
+            requestedProfile: null,
+            note: null
+          })
+        });
+        await loadSnapshot();
+        showPersonActivitiesPopup(personId, result?.assignment?.id || '');
+        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), 'Nuova attività aggiunta.', 'success');
+      } catch (error) {
+        setStatus(statusNode, error.message, 'error');
+      }
+    });
   }
 
 
@@ -2588,15 +2739,65 @@
   detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
   detailDialog?.addEventListener('close', () => { detailTargetRow = null; });
   personActivitiesContent?.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-person-responsible-assignment]');
-    if (!button) return;
-    const assignmentId = button.dataset.personResponsibleAssignment || '';
-    const next = button.dataset.personResponsibleNext === 'true';
-    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
-    if (!row) return;
-    const statusNode = personActivitiesContent.querySelector('[data-person-activities-status]');
-    const ok = await updateBoardResponsible(assignmentId, next, button, statusNode);
-    if (ok) showPersonActivitiesPopup(row.personId, assignmentId);
+    const responsible = event.target.closest('[data-person-responsible-assignment]');
+    if (responsible) {
+      const assignmentId = responsible.dataset.personResponsibleAssignment || '';
+      const next = responsible.dataset.personResponsibleNext === 'true';
+      const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+      if (!row) return;
+      const statusNode = personActivitiesContent.querySelector('[data-person-activities-status]');
+      const ok = await updateBoardResponsible(assignmentId, next, responsible, statusNode);
+      if (ok) showPersonActivitiesPopup(row.personId, assignmentId);
+      return;
+    }
+
+    const move = event.target.closest('[data-person-move-assignment]');
+    if (move) {
+      await movePersonAssignmentFromPopup(move.dataset.personMoveAssignment || '', move);
+      return;
+    }
+
+    const openAdd = event.target.closest('[data-person-add-activity-open]');
+    if (openAdd) {
+      const form = personActivitiesContent.querySelector('[data-person-add-activity-form]');
+      if (form) {
+        form.hidden = false;
+        openAdd.hidden = true;
+        refreshPersonAddWarning();
+        form.querySelector('[data-person-add-activity]')?.focus();
+      }
+      return;
+    }
+
+    const cancelAdd = event.target.closest('[data-person-add-cancel]');
+    if (cancelAdd) {
+      const form = personActivitiesContent.querySelector('[data-person-add-activity-form]');
+      const open = personActivitiesContent.querySelector('[data-person-add-activity-open]');
+      if (form) form.hidden = true;
+      if (open) open.hidden = false;
+      setStatus(personActivitiesContent.querySelector('[data-person-add-status]'), '');
+      return;
+    }
+
+    const saveAdd = event.target.closest('[data-person-add-save]');
+    if (saveAdd) {
+      await addPersonActivityFromPopup(saveAdd);
+    }
+  });
+
+  personActivitiesContent?.addEventListener('change', (event) => {
+    if (event.target.matches('[data-person-add-shift]')) {
+      refreshPersonAddWarning();
+      return;
+    }
+
+    const rowNode = event.target.closest('[data-person-assignment-row]');
+    if (rowNode && event.target.matches('[data-person-move-activity]')) {
+      const assignmentId = rowNode.dataset.personAssignmentRow || '';
+      const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+      const warningNode = rowNode.querySelector('[data-person-row-warning]');
+      if (row && warningNode) warningNode.innerHTML = personActivityWarningHtml(row);
+    }
   });
 
   document.querySelectorAll('[data-person-activities-close]').forEach((button) => button.addEventListener('click', () => personActivitiesDialog?.close()));

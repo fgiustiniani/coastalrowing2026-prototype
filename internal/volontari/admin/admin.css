@@ -1301,3 +1301,110 @@ tr.is-busy button.is-busy {
   background: #e8f7f9;
   box-shadow: inset 0 0 0 1px var(--accent), 0 4px 12px rgba(10,107,125,.12);
 }
+
+/* Popup persona: spostamento attività, warning e aggiunta rapida */
+[data-person-activities-dialog] {
+  width: min(1180px, calc(100vw - 28px));
+}
+.person-activities-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 10px;
+}
+.person-activities-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.person-activities-table {
+  min-width: 980px;
+}
+.person-activities-table th,
+.person-activities-table td {
+  vertical-align: middle;
+}
+.person-activities-table td:nth-child(1) {
+  min-width: 170px;
+}
+.person-activities-table td:nth-child(2) {
+  min-width: 260px;
+}
+.person-activities-table td:nth-child(5) {
+  min-width: 220px;
+}
+.person-activity-move-select {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font-size: .8rem;
+}
+.person-activity-warning .warning-stack {
+  margin-top: 0;
+}
+.person-activity-selected {
+  align-items: flex-start;
+}
+.person-activity-selected__warning {
+  margin-top: 7px;
+}
+.person-add-activity {
+  margin: 8px 0 14px;
+  padding: 12px;
+  border: 1px solid #a9cdd3;
+  border-radius: 12px;
+  background: #f2f9fa;
+}
+.person-add-activity[hidden] {
+  display: none !important;
+}
+.person-add-activity__grid {
+  display: grid;
+  grid-template-columns: minmax(190px, .9fr) minmax(250px, 1.35fr) minmax(220px, 1fr) auto;
+  gap: 10px 12px;
+  align-items: end;
+}
+.person-add-activity__grid .field {
+  margin: 0;
+}
+.person-add-activity__warning {
+  display: grid;
+  gap: 6px;
+  align-self: stretch;
+  align-content: center;
+  padding: 8px 10px;
+  border: 1px solid #cbdadd;
+  border-radius: 9px;
+  background: #fff;
+}
+.person-add-activity__warning > span:first-child {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.person-add-activity__actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .person-add-activity__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .person-add-activity__warning,
+  .person-add-activity__actions {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 620px) {
+  .person-add-activity__grid {
+    grid-template-columns: 1fr;
+  }
+  .person-add-activity__warning,
+  .person-add-activity__actions {
+    grid-column: auto;
+  }
+}
