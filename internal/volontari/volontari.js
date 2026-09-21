@@ -47,7 +47,6 @@
   const summaryEmailSubmit = document.querySelector('[data-summary-email-submit]');
   const summaryWhatsAppForm = document.querySelector('[data-summary-whatsapp-form]');
   const summaryWhatsAppPhone = document.querySelector('[data-summary-whatsapp-phone]');
-  const summaryWhatsAppConsent = document.querySelector('[data-summary-whatsapp-consent]');
   const summaryWhatsAppStatus = document.querySelector('[data-summary-whatsapp-status]');
   const summaryWhatsAppSubmit = document.querySelector('[data-summary-whatsapp-submit]');
 
@@ -444,7 +443,7 @@
 
   async function sendSummaryWhatsApp(event) {
     event.preventDefault();
-    if (!state.latestSubmissionId || !summaryWhatsAppPhone || !summaryWhatsAppConsent) return;
+    if (!state.latestSubmissionId || !summaryWhatsAppPhone) return;
     const phone = String(summaryWhatsAppPhone.value || '').trim();
     if (!summaryWhatsAppForm?.checkValidity()) {
       summaryWhatsAppForm?.reportValidity();
@@ -465,14 +464,12 @@
         body: JSON.stringify({
           action: 'whatsapp-summary',
           submissionId: state.latestSubmissionId,
-          phone,
-          consent: summaryWhatsAppConsent.checked === true
+          phone
         })
       });
       setStatus(summaryWhatsAppStatus, 'Riepilogo inviato su WhatsApp.', 'success');
       if (summaryWhatsAppSubmit) summaryWhatsAppSubmit.textContent = 'Riepilogo inviato';
       summaryWhatsAppPhone.disabled = true;
-      summaryWhatsAppConsent.disabled = true;
     } catch (error) {
       if (error.status === 401) {
         clearSession();

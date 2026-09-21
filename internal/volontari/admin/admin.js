@@ -393,12 +393,25 @@
     );
   }
 
+  function selectedFilterValues(select) {
+    if (!select) return [];
+    return [...new Set([...select.selectedOptions]
+      .map((option) => option.value)
+      .filter((value) => value && value !== 'all'))];
+  }
+
+  function filterMatches(values, value) {
+    return !values.length || values.includes(String(value ?? ''));
+  }
+
   function setSelectOptions(select, options, allLabel) {
     if (!select) return;
-    const current = select.value;
+    const current = new Set(selectedFilterValues(select));
     select.innerHTML = `<option value="">${escapeHtml(allLabel)}</option>` + options
       .map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join('');
-    if ([...select.options].some((option) => option.value === current)) select.value = current;
+    [...select.options].forEach((option) => {
+      option.selected = current.has(option.value);
+    });
   }
 
   function populateFilters() {
@@ -484,28 +497,29 @@
   }
 
   function filteredAssignments() {
-    const type = assignmentTypeFilter?.value || 'all';
-    const personId = assignmentPersonFilter?.value || '';
-    const shift = assignmentShiftFilter?.value || '';
-    const activity = assignmentActivityFilter?.value || '';
-    const response = assignmentResponseFilter?.value || '';
-    const warning = assignmentWarningFilter?.value || '';
+    const types = selectedFilterValues(assignmentTypeFilter);
+    const personIds = selectedFilterValues(assignmentPersonFilter);
+    const shifts = selectedFilterValues(assignmentShiftFilter);
+    const activities = selectedFilterValues(assignmentActivityFilter);
+    const responses = selectedFilterValues(assignmentResponseFilter);
+    const warningFilters = selectedFilterValues(assignmentWarningFilter);
 
     const rows = allAssignmentRows().filter((row) => {
-      if (type === 'assigned' && row.isAvailability) return false;
-      if (type === 'availability' && !row.isAvailability) return false;
+      const rowType = row.isAvailability ? 'availability' : 'assigned';
+      if (!filterMatches(types, rowType)) return false;
 
       const rowResponse = row.currentResponse || 'pending';
       const warnings = assignmentWarningDetails(row);
-      const warningMatch = !warning
-        || (warning === 'any' && warnings.length > 0)
+      const warningMatch = !warningFilters.length || warningFilters.some((warning) =>
+        (warning === 'any' && warnings.length > 0)
         || (warning === 'none' && warnings.length === 0)
-        || warnings.some((item) => item.type === warning);
+        || warnings.some((item) => item.type === warning)
+      );
 
-      return (!personId || row.personId === personId)
-        && (!shift || shiftFilterKey(row) === shift)
-        && (!activity || (!row.isAvailability && displayActivity(row) === activity))
-        && (!response || (!row.isAvailability && rowResponse === response))
+      return filterMatches(personIds, row.personId)
+        && filterMatches(shifts, shiftFilterKey(row))
+        && (!activities.length || (!row.isAvailability && activities.includes(displayActivity(row))))
+        && (!responses.length || (!row.isAvailability && responses.includes(rowResponse)))
         && warningMatch;
     });
 
@@ -680,11 +694,11 @@
   }
 
   function filteredPersonReportRows() {
-    const personId = personReportPersonFilter?.value || '';
-    const answered = personReportResponseFilter?.value || '';
+    const personIds = selectedFilterValues(personReportPersonFilter);
+    const answers = selectedFilterValues(personReportResponseFilter);
     return personReportRows().filter((item) =>
-      (!personId || item.id === personId)
-      && (!answered || (answered === 'yes' ? item.answered : !item.answered))
+      filterMatches(personIds, item.id)
+      && filterMatches(answers, item.answered ? 'yes' : 'no')
     );
   }
 
@@ -705,11 +719,11 @@
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
 
-  function reportAssignmentRows({ personId = '', activity = '', shiftId = '' } = {}) {
+  function reportAssignmentRows({ personIds = [], activities = [], shiftIds = [] } = {}) {
     return (snapshot?.assignments || []).filter((row) =>
-      (!personId || row.personId === personId)
-      && (!activity || displayActivity(row) === activity)
-      && (!shiftId || row.shiftId === shiftId)
+      filterMatches(personIds, row.personId)
+      && filterMatches(activities, displayActivity(row))
+      && filterMatches(shiftIds, row.shiftId)
     );
   }
 
@@ -756,10 +770,10 @@
   }
 
   function filteredActivityReportRows() {
-    const personId = activityReportPersonFilter?.value || '';
-    const activity = activityReportActivityFilter?.value || '';
-    const shiftId = activityReportShiftFilter?.value || '';
-    return groupedReportRows(reportAssignmentRows({ personId, activity, shiftId }));
+    const personIds = selectedFilterValues(activityReportPersonFilter);
+    const activities = selectedFilterValues(activityReportActivityFilter);
+    const shiftIds = selectedFilterValues(activityReportShiftFilter);
+    return groupedReportRows(reportAssignmentRows({ personIds, activities, shiftIds }));
   }
 
   function renderActivityReport() {
@@ -770,10 +784,10 @@
   }
 
   function shiftBoardGroups() {
-    const personId = shiftBoardPersonFilter?.value || '';
-    const activity = shiftBoardActivityFilter?.value || '';
-    const shiftId = shiftBoardShiftFilter?.value || '';
-    const rows = reportAssignmentRows({ personId, activity, shiftId });
+    const personIds = selectedFilterValues(shiftBoardPersonFilter);
+    const activities = selectedFilterValues(shiftBoardActivityFilter);
+    const shiftIds = selectedFilterValues(shiftBoardShiftFilter);
+    const rows = reportAssignmentRows({ personIds, activities, shiftIds });
     const byShift = new Map();
 
     for (const row of rows) {
@@ -1042,10 +1056,10 @@
   }
 
   function filteredRaceProgram() {
-    const personId = racePersonFilter?.value || '';
+    const personIds = selectedFilterValues(racePersonFilter);
     const q = String(raceCrewFilter?.value || '').trim().toLocaleLowerCase('it-IT');
     return (snapshot?.raceProgram || []).filter((row) =>
-      (!personId || row.personId === personId)
+      filterMatches(personIds, row.personId)
       && (!q || `${row.personName} ${row.personCode} ${row.crewLabel}`.toLocaleLowerCase('it-IT').includes(q))
     );
   }

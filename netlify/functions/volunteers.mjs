@@ -265,7 +265,6 @@ export default async (request) => {
         const phone = clean(body.phone, 40);
         const submissionId = clean(body.submissionId, 60);
         if (!isUuid(submissionId)) throw new ApiError('Invio non valido.', 400, 'INVALID_SUBMISSION_ID');
-        if (body.consent !== true) throw new ApiError('È necessario acconsentire all’invio tramite WhatsApp.', 400, 'WHATSAPP_CONSENT_REQUIRED');
 
         const submissions = rows(await supabaseRequest('volunteer_submissions', {
           query: {

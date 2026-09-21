@@ -660,3 +660,12 @@ tr.is-busy button.is-busy {
   margin-top: 4px;
   border-style: dashed;
 }
+
+.filter-grid select[multiple] {
+  min-height: 112px;
+  padding: 6px 8px;
+}
+.filter-grid select[multiple] option {
+  padding: 5px 6px;
+  border-radius: 6px;
+}

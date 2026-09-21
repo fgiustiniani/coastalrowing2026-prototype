@@ -161,19 +161,3 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   color: var(--accent-dark);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
-.consent-check {
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 10px;
-  align-items: start;
-  max-width: 560px;
-  margin: 8px 0 2px;
-  color: #405b64;
-  line-height: 1.45;
-  font-size: .9rem;
-}
-.consent-check input {
-  width: 20px;
-  min-height: 20px;
-  margin: 2px 0 0;
-}

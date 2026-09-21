@@ -56,13 +56,13 @@
         </div>
         <div id="assignments-content" data-collapsible-content>
           <div class="filter-grid">
-            <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni già fatte</option><option value="availability">Solo disponibilità</option></select></label>
+            <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter multiple size="4"><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni già fatte</option><option value="availability">Solo disponibilità</option></select></label>
             <label class="field compact-field"><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
-            <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter><option value="">Tutte</option></select></label>
-            <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter><option value="">Tutti</option></select></label>
-            <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter><option value="">Tutte</option></select></label>
-            <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
-            <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
+            <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter multiple size="4"><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter multiple size="4"><option value="">Tutti</option></select></label>
+            <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter multiple size="4"><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter multiple size="4"><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
+            <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter multiple size="4"><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
           </div>
           <p class="intro inline-help">Puoi modificare turno, attività e persona direttamente nella riga. I warning si aggiornano prima del salvataggio.</p>
           <div class="availability-filter-banner" data-availability-filter-status hidden>
@@ -99,7 +99,7 @@
         <div id="race-program-content" data-collapsible-content hidden>
           <p class="intro">L’elenco deriva da <strong>Programma gare per org.xlsx</strong> ed è integrato con il programma gare provvisorio. Per i Master sono già riportati giorno e ora quando determinabili univocamente; per U19, U23 e Senior è precompilato il giorno, mentre l’ora individuale va completata qui.</p>
           <div class="filter-grid filter-grid--report">
-            <label class="field compact-field"><span>Persona</span><select data-race-person-filter><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Persona</span><select data-race-person-filter multiple size="4"><option value="">Tutte</option></select></label>
             <label class="field compact-field"><span>Equipaggio / categoria</span><input type="search" data-race-crew-filter placeholder="Cerca..."></label>
           </div>
           <p class="status" data-race-program-status aria-live="polite"></p>
@@ -119,8 +119,8 @@
           </div>
           <div id="person-report-content" data-collapsible-content>
             <div class="filter-grid filter-grid--report">
-              <label class="field compact-field"><span>Persona</span><select data-person-report-person-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Ha risposto</span><select data-person-report-response-filter><option value="">Tutte</option><option value="yes">Sì</option><option value="no">No</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-person-report-person-filter multiple size="4"><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Ha risposto</span><select data-person-report-response-filter multiple size="4"><option value="">Tutte</option><option value="yes">Sì</option><option value="no">No</option></select></label>
             </div>
             <div class="table-wrap" data-person-report></div>
           </div>
@@ -137,9 +137,9 @@
           </div>
           <div id="activity-report-content" data-collapsible-content>
             <div class="filter-grid filter-grid--report-three">
-              <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Turno</span><select data-activity-report-shift-filter><option value="">Tutti</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter multiple size="4"><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter multiple size="4"><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Turno</span><select data-activity-report-shift-filter multiple size="4"><option value="">Tutti</option></select></label>
             </div>
             <div class="table-wrap" data-activity-report></div>
           </div>
@@ -156,9 +156,9 @@
           </div>
           <div id="shift-board-report-content" data-collapsible-content>
             <div class="filter-grid filter-grid--report-three">
-              <label class="field compact-field"><span>Persona</span><select data-shift-board-person-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Attività</span><select data-shift-board-activity-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Turno</span><select data-shift-board-shift-filter><option value="">Tutti</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-shift-board-person-filter multiple size="4"><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-shift-board-activity-filter multiple size="4"><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Turno</span><select data-shift-board-shift-filter multiple size="4"><option value="">Tutti</option></select></label>
             </div>
             <div class="shift-board-wrap" data-shift-board-report></div>
           </div>
