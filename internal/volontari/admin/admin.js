@@ -2468,7 +2468,7 @@
         <td class="planning-choice-cell">
           <select class="inline-select planning-select" data-requirement-shift>${shiftIdOptions(row?.shiftId || '', { allowNew: true })}</select>
           <div class="planning-new-fields planning-new-shift" data-new-shift-fields hidden>
-            <label><span>Data</span><input type="date" data-new-shift-date value="2026-10-03"></label>
+            <label><span>Data</span><input type="date" data-new-shift-date></label>
             <label><span>Da</span><input type="time" data-new-shift-start></label>
             <label><span>A</span><input type="time" data-new-shift-end></label>
             <small>Il nuovo turno sarà interno all’organizzazione e non comparirà automaticamente tra le disponibilità dei volontari.</small>
