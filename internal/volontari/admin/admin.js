@@ -1408,8 +1408,8 @@
                   class="assignment-board__copy-from"
                   data-board-copy-from
                   data-board-requirement-id="${escapeHtml(requirement.id)}"
-                  aria-label="Copia persone da altri turni per ${escapeHtml(prettifyActivityName(requirement.activity))}"
-                  title="Copia persone dalla stessa attività in altri turni">Copia da</button>
+                  aria-label="Copia persone da un’altra coppia turno-attività"
+                  title="Copia persone da un’altra coppia turno-attività">Copia da</button>
                 <button type="button"
                   class="assignment-board__add-person"
                   data-board-add-person
