@@ -94,12 +94,129 @@
     return '<span class="status-badge is-pending">Da rispondere</span>';
   }
 
+  function prettifyActivityName(value) {
+    return String(value || '').trim()
+      .replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
+  }
+
   function displayActivity(row) {
     const activity = String(row?.activity || '').trim();
-    if (activity.toLocaleLowerCase('it-IT') === 'gestione barche in spiaggia' && row?.role) {
-      return `${activity} - ${String(row.role).trim()}`;
+    const role = String(row?.role || '').trim();
+    if (activity.toLocaleLowerCase('it-IT') === 'gestione barche in spiaggia' && role) return `${activity} - ${role}`;
+    if (activity.toLocaleLowerCase('it-IT') === 'piloti gommoni' && /^Pilota gommone /i.test(role)) return role;
+    return prettifyActivityName(activity);
+  }
+
+  function memberPeople() {
+    return (snapshot?.people || []).filter((person) => person.active !== false && person.source_type === 'member');
+  }
+
+  function personOptions(selectedId, includeCurrent = true) {
+    const options = memberPeople().map((person) => ({ id: person.id, label: person.display_name, code: person.person_code || '' }));
+    const current = (snapshot?.people || []).find((person) => person.id === selectedId);
+    if (includeCurrent && current && !options.some((person) => person.id === current.id)) {
+      options.unshift({ id: current.id, label: current.display_name, code: current.person_code || '' });
     }
-    return activity;
+    return '<option value="">Seleziona…</option>' + options
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'))
+      .map((person) => `<option value="${escapeHtml(person.id)}" ${person.id === selectedId ? 'selected' : ''}>${escapeHtml(person.label)}</option>`)
+      .join('');
+  }
+
+  function assignmentCatalogValue(row) {
+    const activities = snapshot?.activities || [];
+    const exact = (value) => activities.find((activity) => String(activity.name).toLocaleLowerCase('it-IT') === String(value).toLocaleLowerCase('it-IT'))?.name || '';
+    const activity = String(row?.activity || '').trim();
+    const role = String(row?.role || '').trim();
+    if (activity.toLocaleLowerCase('it-IT') === 'gestione barche in spiaggia' && role) return exact(`${activity}-${role}`);
+    if (activity.toLocaleLowerCase('it-IT') === 'piloti gommoni' && role) return exact(role);
+    if (activity.toLocaleLowerCase('it-IT') === 'spostamento barche via mare') return exact('Barche noleggiate-trasporto via mare');
+    if (activity.toLocaleLowerCase('it-IT') === 'supporto sitemazione barche') return exact('Barche noleggiate-sistemazioe in spiaggia');
+    return exact(activity);
+  }
+
+  function activityOptions(row = null) {
+    const active = [...(snapshot?.activities || [])].sort((a, b) => a.name.localeCompare(b.name, 'it'));
+    const selected = row ? assignmentCatalogValue(row) : '';
+    const options = active.map((activity) => `<option value="${escapeHtml(activity.name)}" ${activity.name === selected ? 'selected' : ''}>${escapeHtml(prettifyActivityName(activity.name))}</option>`);
+    if (row && !selected) {
+      options.unshift(`<option value="" selected>Seleziona dall’anagrafica… (precedente: ${escapeHtml(displayActivity(row))})</option>`);
+    } else {
+      options.unshift('<option value="">Seleziona…</option>');
+    }
+    return options.join('');
+  }
+
+  function shiftOptions(row = null) {
+    const options = (snapshot?.shifts || []).map((shift) =>
+      `<option value="${escapeHtml(shift.id)}" ${row?.shiftId === shift.id ? 'selected' : ''}>${escapeHtml(shift.day_label)} · ${escapeHtml(shift.shift_label)}</option>`
+    );
+    if (row && !row.shiftMatched) {
+      options.unshift(`<option value="raw" selected>Non standard: ${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</option>`);
+    } else {
+      options.unshift('<option value="">Seleziona…</option>');
+    }
+    return options.join('');
+  }
+
+  function localDateKey(value) {
+    if (!value) return '';
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date(value));
+      const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${map.year}-${map.month}-${map.day}`;
+    } catch { return ''; }
+  }
+
+  function duplicateAssignmentWarnings() {
+    const groups = new Map();
+    for (const row of snapshot?.assignments || []) {
+      const key = `${row.personId}|${row.shiftId || shiftFilterKey(row)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row.id);
+    }
+    const warned = new Set();
+    for (const ids of groups.values()) if (ids.length > 1) ids.forEach((id) => warned.add(id));
+    return warned;
+  }
+
+  function raceWarningMap() {
+    const warnings = new Map();
+    if (!snapshot?.raceProgramAvailable) return warnings;
+    const shifts = (snapshot?.shifts || []).map((shift) => ({
+      ...shift,
+      startMs: Date.parse(shift.starts_at),
+      endMs: Date.parse(shift.ends_at),
+      dateKey: localDateKey(shift.starts_at)
+    }));
+    const raceByPerson = new Map();
+    for (const race of snapshot?.raceProgram || []) {
+      if (!race.raceDate || !race.raceTime) continue;
+      if (!raceByPerson.has(race.personId)) raceByPerson.set(race.personId, []);
+      raceByPerson.get(race.personId).push(race);
+    }
+
+    for (const assignment of snapshot?.assignments || []) {
+      if (!assignment.shiftId) continue;
+      const assignedShift = shifts.find((shift) => shift.id === assignment.shiftId);
+      if (!assignedShift) continue;
+      for (const race of raceByPerson.get(assignment.personId) || []) {
+        if (assignedShift.dateKey !== race.raceDate) continue;
+        const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
+        if (!Number.isFinite(raceMs)) continue;
+        const dayShifts = shifts.filter((shift) => shift.dateKey === race.raceDate).sort((a, b) => a.startMs - b.startMs);
+        const coinciding = dayShifts.find((shift) => shift.startMs <= raceMs && raceMs < shift.endMs) || null;
+        const preceding = [...dayShifts].filter((shift) => shift.endMs <= raceMs).sort((a, b) => b.endMs - a.endMs)[0] || null;
+        if (assignedShift.id === coinciding?.id || assignedShift.id === preceding?.id) {
+          if (!warnings.has(assignment.id)) warnings.set(assignment.id, []);
+          warnings.get(assignment.id).push(`Gara: ${race.crewLabel} · ${race.raceTime}`);
+        }
+      }
+    }
+    for (const [id, values] of warnings) warnings.set(id, [...new Set(values)]);
+    return warnings;
   }
 
   function shiftFilterKey(row) {
