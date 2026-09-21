@@ -373,3 +373,127 @@ tr.is-busy button.is-busy {
     grid-auto-columns: minmax(260px, 82vw);
   }
 }
+
+/* Desktop-first admin workspace */
+.admin-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 18px 64px;
+}
+
+.admin-section,
+.report-grid,
+[data-dashboard] {
+  width: 100%;
+  max-width: none;
+}
+
+.table-wrap {
+  max-height: min(72vh, 820px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+#assignments-content .table-wrap {
+  max-height: min(76vh, 900px);
+}
+
+#person-report-content .table-wrap,
+#activity-report-content .table-wrap,
+#activity-catalog-content .table-wrap,
+#race-program-content .table-wrap {
+  max-height: min(68vh, 760px);
+}
+
+.shift-board-wrap {
+  max-height: min(72vh, 820px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-table {
+  min-width: 1080px;
+}
+
+[data-assignment-table] .admin-table {
+  min-width: 1320px;
+}
+
+.responsible-cell {
+  min-width: 132px;
+  white-space: nowrap;
+}
+
+.responsible-toggle {
+  border: 1px solid #cbd7da;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  padding: 6px 9px;
+  font-size: .74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.responsible-toggle.is-active {
+  border-color: #c79d21;
+  background: #fff7d9;
+  color: #755a00;
+}
+
+.responsible-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff2bd;
+  color: #725600;
+  font-size: .74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.responsibility-unavailable {
+  color: var(--muted);
+}
+
+.is-responsible-row > td {
+  background: #fffdf3;
+}
+
+.shift-board__people span.is-responsible {
+  color: #725600;
+  font-weight: 900;
+}
+
+@media (min-width: 1200px) {
+  .admin-shell {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .filter-grid {
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
+  }
+
+  .filter-grid--report {
+    grid-template-columns: repeat(2, minmax(220px, 320px));
+  }
+
+  .filter-grid--report-three {
+    grid-template-columns: repeat(3, minmax(220px, 320px));
+  }
+}
+
+@media (min-width: 1600px) {
+  .admin-shell {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  [data-assignment-table] .admin-table {
+    min-width: 100%;
+  }
+}
