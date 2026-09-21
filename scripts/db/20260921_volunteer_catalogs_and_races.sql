@@ -4,8 +4,11 @@
 -- attività.xlsx sha256 d9a158cd4dd9f16c8e3c91be2eaeee8faa1201c68cbba1812c26dc32c62883eb
 -- Programma gare per org.xlsx sha256 69de5661bda2f9690b96157985907c461c6a383c45632c0c99d9bc8396497b42
 --
--- Programma gare per org.xlsx non contiene giorno/orario gara:
--- race_date e race_time restano NULL e vanno completati dall'admin.
+-- Programma gare per org.xlsx non contiene giorno/orario gara.
+-- Il programma gare provvisorio PDF consente di valorizzare:
+-- - giorno + ora per le specialità Master identificabili univocamente;
+-- - solo il giorno per Under 19, Under 23 e Senior, perché il file organizzativo
+--   non specifica barca/genere e quindi l'ora individuale non è determinabile senza ulteriori dati.
 -- Nessuna tabella boat_test_* viene modificata.
 
 begin;
@@ -88,12 +91,39 @@ where name in (
 );
 
 insert into public.volunteer_race_program
-  (person_id, person_code, person_name, crew_label, source_type, source_row, active)
+  (person_id, person_code, person_name, crew_label, race_date, race_time, source_type, source_row, active)
 select
   p.id,
   src.person_code,
   p.display_name,
   src.crew_label,
+  case
+    when src.crew_label ilike '%UNDER 19%' then date '2026-10-03'
+    when src.crew_label ilike '%UNDER 23%' then date '2026-10-03'
+    when src.crew_label ilike '%SENIOR%' then date '2026-10-04'
+    when src.crew_label ilike '%MASTER%' then
+      case
+        when src.crew_label ilike '%43-54%' and src.crew_label ilike '%Mix%' then
+          case when src.crew_label ilike '%C2X%' then date '2026-10-03' else date '2026-10-04' end
+        when src.crew_label ilike '%55-64%' and src.crew_label ilike '%Mix%' then
+          case when src.crew_label ilike '%C2X%' then date '2026-10-03' else date '2026-10-04' end
+        else date '2026-10-03'
+      end
+    else null
+  end,
+  case
+    when src.crew_label ilike '%C4X+ MASTER F 43-54%' then time '08:00'
+    when src.crew_label ilike '%C4X+ MASTER M 55-64%' then time '08:20'
+    when src.crew_label ilike '%C2X MASTER Mix 43-54%' then time '10:20'
+    when src.crew_label ilike '%C4X+ MASTER M OVER 64%' then time '10:40'
+    when src.crew_label ilike '%C4X+ MASTER M 43-54%' then time '12:20'
+    when src.crew_label ilike '%C2X MASTER Mix 55-64%' then time '12:40'
+    when src.crew_label ilike '%C4X+ MASTER MIX OVER 64%' then time '12:40'
+    when src.crew_label ilike '%C4X+ MASTER Mix 43-54%' then time '10:00'
+    when src.crew_label ilike '%C4X+ MASTER Mix 55-64%' then time '08:20'
+    when src.crew_label ilike '%C4X+ MASTER F 55-64%' then time '10:20'
+    else null
+  end,
   'excel',
   src.source_row,
   true
@@ -161,6 +191,8 @@ join public.volunteer_people p
 on conflict (person_code, crew_label) do update set
   person_id = excluded.person_id,
   person_name = excluded.person_name,
+  race_date = excluded.race_date,
+  race_time = excluded.race_time,
   source_type = excluded.source_type,
   source_row = excluded.source_row,
   active = true,
