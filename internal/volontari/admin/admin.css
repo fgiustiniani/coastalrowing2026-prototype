@@ -2844,3 +2844,11 @@ tr.is-busy button.is-busy {
     min-height: 40px;
   }
 }
+
+
+/* Warning rifiuto nello stesso turno */
+.warning-badge--declined {
+  background: #fdeceb;
+  color: #963b32;
+  border: 1px solid #efc4bf;
+}
