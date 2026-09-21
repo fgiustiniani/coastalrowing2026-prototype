@@ -3623,6 +3623,68 @@
   });
 
   assignmentBoard?.addEventListener('pointerdown', (event) => {
+    const handle = event.target.closest('[data-board-group-drag-handle]');
+    if (!handle || event.pointerType === 'mouse') return;
+    const groupId = handle.dataset.boardGroupId || '';
+    const column = handle.closest('[data-board-shift-column]');
+    const groupNode = handle.closest('[data-board-activity-group]');
+    if (!groupId || !column || !groupNode) return;
+
+    boardGroupPointerDrag = {
+      pointerId: event.pointerId,
+      id: groupId,
+      shiftId: column.dataset.boardShiftColumn || '',
+      targetGroupId: '',
+      placeAfter: false
+    };
+    groupNode.classList.add('is-group-dragging');
+    try { handle.setPointerCapture(event.pointerId); } catch {}
+    event.preventDefault();
+  });
+
+  assignmentBoard?.addEventListener('pointermove', (event) => {
+    if (!boardGroupPointerDrag || boardGroupPointerDrag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    autoScrollBoardDrag(event.clientX, event.clientY);
+    clearBoardGroupReorderMarkers();
+
+    const element = document.elementFromPoint(event.clientX, event.clientY);
+    const column = element?.closest?.('[data-board-shift-column]');
+    if (!column || column.dataset.boardShiftColumn !== boardGroupPointerDrag.shiftId) {
+      boardGroupPointerDrag.targetGroupId = '';
+      return;
+    }
+
+    const targetGroup = element.closest('[data-board-activity-group]');
+    const targetGroupId = targetGroup?.dataset.boardGroupId || '';
+    if (!targetGroup || !targetGroupId || targetGroupId === boardGroupPointerDrag.id) {
+      boardGroupPointerDrag.targetGroupId = targetGroupId === boardGroupPointerDrag.id ? targetGroupId : '';
+      return;
+    }
+
+    const rect = targetGroup.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+    boardGroupPointerDrag.targetGroupId = targetGroupId;
+    boardGroupPointerDrag.placeAfter = placeAfter;
+    targetGroup.classList.add(placeAfter ? 'is-group-reorder-after' : 'is-group-reorder-before');
+  });
+
+  const finishGroupPointerReorder = async (event, cancelled = false) => {
+    if (!boardGroupPointerDrag || boardGroupPointerDrag.pointerId !== event.pointerId) return;
+    const drag = { ...boardGroupPointerDrag };
+    boardGroupPointerDrag = null;
+    assignmentBoard?.querySelectorAll(`[data-board-activity-group][data-board-group-id="${CSS.escape(drag.id)}"]`).forEach((node) => node.classList.remove('is-group-dragging'));
+    clearBoardGroupReorderMarkers();
+    boardDragEndedAt = Date.now();
+
+    if (cancelled || !drag.targetGroupId || drag.targetGroupId === drag.id) return;
+    await reorderBoardActivityGroup(drag.id, drag.targetGroupId, drag.placeAfter);
+  };
+
+  assignmentBoard?.addEventListener('pointerup', (event) => { void finishGroupPointerReorder(event, false); });
+  assignmentBoard?.addEventListener('pointercancel', (event) => { void finishGroupPointerReorder(event, true); });
+
+  assignmentBoard?.addEventListener('pointerdown', (event) => {
     const handle = event.target.closest('[data-board-activity-drag-handle]');
     if (!handle || event.pointerType === 'mouse') return;
     const requirementId = handle.dataset.boardRequirementId || '';
@@ -3633,7 +3695,11 @@
     boardActivityPointerDrag = {
       pointerId: event.pointerId,
       id: requirement.id,
+      activityId: requirement.activityId,
+      sourceGroupId: requirement.activityGroupId || '',
       shiftId: requirement.shiftId,
+      hasTargetGroup: false,
+      targetGroupId: null,
       targetRequirementId: '',
       placeAfter: false,
       canDropAtEnd: false
@@ -3646,13 +3712,37 @@
   assignmentBoard?.addEventListener('pointermove', (event) => {
     if (!boardActivityPointerDrag || boardActivityPointerDrag.pointerId !== event.pointerId) return;
     event.preventDefault();
+    autoScrollBoardDrag(event.clientX, event.clientY);
     clearBoardActivityReorderMarkers();
+    clearBoardGroupReorderMarkers();
 
     const element = document.elementFromPoint(event.clientX, event.clientY);
     const column = element?.closest?.('[data-board-shift-column]');
     if (!column || column.dataset.boardShiftColumn !== boardActivityPointerDrag.shiftId) {
+      boardActivityPointerDrag.hasTargetGroup = false;
+      boardActivityPointerDrag.targetGroupId = null;
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.canDropAtEnd = false;
+      return;
+    }
+
+    const targetGroup = element.closest('[data-board-activity-group]');
+    if (!targetGroup) {
+      boardActivityPointerDrag.hasTargetGroup = false;
+      boardActivityPointerDrag.targetGroupId = null;
+      boardActivityPointerDrag.targetRequirementId = '';
+      boardActivityPointerDrag.canDropAtEnd = false;
+      return;
+    }
+
+    const targetGroupId = targetGroup.dataset.boardGroupId || '';
+    boardActivityPointerDrag.hasTargetGroup = true;
+    boardActivityPointerDrag.targetGroupId = targetGroupId;
+
+    if (targetGroupId !== boardActivityPointerDrag.sourceGroupId) {
+      boardActivityPointerDrag.targetRequirementId = '';
+      boardActivityPointerDrag.canDropAtEnd = false;
+      targetGroup.classList.add('is-activity-group-drop-target');
       return;
     }
 
@@ -3673,12 +3763,12 @@
       return;
     }
 
-    const activities = element.closest('.assignment-board__activities');
-    if (activities) {
+    const groupBody = element.closest('[data-board-group-body]');
+    if (groupBody) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.placeAfter = false;
       boardActivityPointerDrag.canDropAtEnd = true;
-      activities.classList.add('is-activity-reorder-end');
+      groupBody.classList.add('is-activity-reorder-end');
     }
   });
 
@@ -3688,9 +3778,15 @@
     boardActivityPointerDrag = null;
     assignmentBoard?.querySelector(`.assignment-board__activity[data-board-requirement-id="${CSS.escape(drag.id)}"]`)?.classList.remove('is-activity-dragging');
     clearBoardActivityReorderMarkers();
+    clearBoardGroupReorderMarkers();
     boardDragEndedAt = Date.now();
 
-    if (cancelled || drag.targetRequirementId === drag.id) return;
+    if (cancelled || !drag.hasTargetGroup) return;
+    if ((drag.targetGroupId || '') !== (drag.sourceGroupId || '')) {
+      await setBoardActivityGroup(drag.activityId, drag.targetGroupId || '');
+      return;
+    }
+    if (drag.targetRequirementId === drag.id) return;
     if (!drag.targetRequirementId && !drag.canDropAtEnd) return;
     await reorderBoardRequirement(drag.id, drag.targetRequirementId || '', drag.placeAfter);
   };
@@ -3722,6 +3818,7 @@
   assignmentBoard?.addEventListener('pointermove', (event) => {
     if (!boardPointerDrag || boardPointerDrag.pointerId !== event.pointerId) return;
     event.preventDefault();
+    autoScrollBoardDrag(event.clientX, event.clientY);
     clearBoardReorderMarkers();
 
     const element = document.elementFromPoint(event.clientX, event.clientY);
