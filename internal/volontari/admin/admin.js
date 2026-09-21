@@ -11,6 +11,7 @@
   const assignmentBoard = document.querySelector('[data-assignment-board]');
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
+  const boardActivityToggle = document.querySelector('[data-board-activity-toggle]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
@@ -42,6 +43,13 @@
   const personActivitiesDialog = document.querySelector('[data-person-activities-dialog]');
   const personActivitiesTitle = document.querySelector('[data-person-activities-title]');
   const personActivitiesContent = document.querySelector('[data-person-activities-content]');
+  const boardEditDialog = document.querySelector('[data-board-edit-dialog]');
+  const boardEditTitle = document.querySelector('[data-board-edit-title]');
+  const boardEditContent = document.querySelector('[data-board-edit-content]');
+  const boardEditStatus = document.querySelector('[data-board-edit-status]');
+  const boardEditSave = document.querySelector('[data-board-edit-save]');
+  const boardEditDelete = document.querySelector('[data-board-edit-delete]');
+  const boardEditHistory = document.querySelector('[data-board-edit-history]');
   const responsibleDialog = document.querySelector('[data-responsible-dialog]');
   const responsibleTitle = document.querySelector('[data-responsible-title]');
   const responsibleSummary = document.querySelector('[data-responsible-summary]');
@@ -60,10 +68,13 @@
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
   let assignmentView = 'list';
+  let boardActivityVisibility = 'assigned';
   let boardDragState = null;
   let boardDragEndedAt = 0;
+  let boardEditContext = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
+    boardActivityVisibility = sessionStorage.getItem('coastal2026-admin-board-activities') === 'all' ? 'all' : 'assigned';
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -799,30 +810,40 @@
     const response = boardResponseMeta(row);
     const dragKind = row.isAvailability ? 'availability' : 'assignment';
     const dragId = row.id || '';
-    const responsibleTitle = row.isAvailability
-      ? 'Trascina il nominativo su un’attività dello stesso turno'
-      : (row.isResponsible
-        ? 'Responsabile. Clicca per rimuovere il ruolo; trascina per spostare.'
-        : 'Clicca per impostare come responsabile; trascina per spostare.');
+    const assignmentId = row.isAvailability ? '' : row.id;
 
     return `
-      <button type="button"
+      <div
         class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${warnings.length ? 'has-warning' : ''}"
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
-        ${row.isAvailability ? '' : `data-board-assignment-id="${escapeHtml(row.id)}"`}
-        title="${escapeHtml(responsibleTitle)}">
-        <span class="assignment-board__person-main">
-          <span class="assignment-board__person-name">${row.isResponsible ? '★ ' : ''}${escapeHtml(row.personName)}</span>
-          ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
-        </span>
-        <span class="assignment-board__person-meta">
+        ${assignmentId ? `data-board-assignment-id="${escapeHtml(assignmentId)}"` : ''}>
+        <div class="assignment-board__person-main">
+          <button type="button"
+            class="assignment-board__person-name"
+            data-board-person-open="${escapeHtml(row.personId)}"
+            data-board-person-assignment-id="${escapeHtml(assignmentId)}"
+            title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
+            ${row.isResponsible ? '★ ' : ''}${escapeHtml(row.personName)}
+          </button>
+          <span class="assignment-board__person-tools">
+            ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
+            <button type="button"
+              class="assignment-board__edit"
+              data-board-edit-kind="${escapeHtml(dragKind)}"
+              data-board-edit-id="${escapeHtml(dragId)}"
+              aria-label="Modifica ${escapeHtml(row.personName)}"
+              title="Modifica assegnazione">✎</button>
+          </span>
+        </div>
+        <div class="assignment-board__person-meta">
           <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(response.label)}</span>
           ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">nota</span>` : ''}
-        </span>
-      </button>`;
+        </div>
+      </div>`;
   }
+
 
   function boardCanDrop(dragged, targetShiftId) {
     if (!dragged) return false;
@@ -848,8 +869,14 @@
       const shiftRows = rows.filter((row) => row.shiftId === shift.id);
       const assigned = shiftRows.filter((row) => !row.isAvailability);
       const availability = shiftRows.filter((row) => row.isAvailability);
+      const visibleDefinitions = boardActivityVisibility === 'all'
+        ? activityDefinitions
+        : activityDefinitions.filter((definition) => assigned.some((row) =>
+            String(row.activity || '').trim() === definition.activity
+            && String(row.role || '').trim() === definition.role
+          ));
 
-      const activitiesHtml = activityDefinitions.map((definition) => {
+      const activitiesHtml = visibleDefinitions.map((definition) => {
         const people = assigned.filter((row) =>
           String(row.activity || '').trim() === definition.activity
           && String(row.role || '').trim() === definition.role
@@ -877,7 +904,7 @@
             <span>${escapeHtml(shift.shift_label)}</span>
           </header>
           <div class="assignment-board__activities">
-            ${activitiesHtml || '<p class="empty-state">Nessuna attività disponibile con i filtri correnti.</p>'}
+            ${activitiesHtml || `<p class="empty-state">${boardActivityVisibility === 'assigned' ? 'Nessuna attività con assegnazioni.' : 'Nessuna attività disponibile con i filtri correnti.'}</p>`}
           </div>
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
@@ -891,10 +918,23 @@
     assignmentBoard.innerHTML = `
       <div class="assignment-board__help">
         <strong>Gestione a schede</strong>
-        <span>Trascina un nominativo su un’altra attività o turno. Clicca su un nominativo assegnato per impostarlo o rimuoverlo come responsabile.</span>
+        <span>Trascina un nominativo per spostarlo. Clicca sul nome per vedere tutte le sue attività; usa ✎ per modificarlo con gli stessi controlli della vista elenco.</span>
+        ${boardActivityVisibility === 'assigned' ? '<span>Per spostare una persona su un’attività vuota, usa “Mostra tutte le attività”.</span>' : ''}
         ${nonStandardCount ? `<span class="assignment-board__notice">⚠ ${nonStandardCount} assegnazion${nonStandardCount === 1 ? 'e' : 'i'} con turno non standard restano gestibili nella vista Elenco.</span>` : ''}
       </div>
       <div class="assignment-board">${columns || '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>'}</div>`;
+  }
+
+
+  function syncBoardActivityToggle() {
+    if (!boardActivityToggle) return;
+    const isBoard = assignmentView === 'board';
+    boardActivityToggle.hidden = !isBoard;
+    boardActivityToggle.textContent = boardActivityVisibility === 'all'
+      ? 'Mostra solo attività con assegnazioni'
+      : 'Mostra tutte le attività';
+    boardActivityToggle.setAttribute('aria-pressed', boardActivityVisibility === 'all' ? 'true' : 'false');
+    boardActivityToggle.classList.toggle('is-active', boardActivityVisibility === 'all');
   }
 
   function setAssignmentView(nextView, { render = true } = {}) {
@@ -907,12 +947,14 @@
       assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
       assignmentViewToggle.classList.toggle('is-active', isBoard);
     }
+    syncBoardActivityToggle();
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentTable) assignmentTable.hidden = isBoard;
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
     if (render) renderAssignments();
   }
+
 
   async function moveBoardItem(dragged, targetShiftId, targetActivity, targetRole = '') {
     if (!dragged || !targetShiftId || !targetActivity) return;
@@ -980,17 +1022,16 @@
     }
   }
 
-  async function toggleBoardResponsible(assignmentId, button) {
+  async function updateBoardResponsible(assignmentId, isResponsible, button, statusNode = assignmentBoardStatus) {
     const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
-    if (!row) return;
+    if (!row) return false;
     if (!snapshot?.responsibilityAvailable) {
-      setStatus(assignmentBoardStatus, 'La funzione responsabile non è disponibile.', 'error');
-      return;
+      setStatus(statusNode, 'La funzione responsabile non è disponibile.', 'error');
+      return false;
     }
 
-    const next = !row.isResponsible;
-    const restore = setButtonBusy(button, next ? 'Impostazione…' : 'Rimozione…');
-    setStatus(assignmentBoardStatus, next
+    const restore = setButtonBusy(button, isResponsible ? 'Impostazione…' : 'Rimozione…');
+    setStatus(statusNode, isResponsible
       ? `Impostazione di ${row.personName} come responsabile…`
       : `Rimozione di ${row.personName} come responsabile…`);
     try {
@@ -1000,19 +1041,152 @@
         body: JSON.stringify({
           action: 'set-assignment-responsible',
           assignmentId: row.id,
-          isResponsible: next
+          isResponsible
         })
       });
       await loadSnapshot();
-      setStatus(assignmentBoardStatus, next
+      setStatus(statusNode, isResponsible
         ? `${row.personName} impostato come responsabile.`
         : `Responsabile rimosso per ${displayActivity(row)}.`, 'success');
+      return true;
     } catch (error) {
-      setStatus(assignmentBoardStatus, error.message, 'error');
+      setStatus(statusNode, error.message, 'error');
+      return false;
     } finally {
       restore();
     }
   }
+
+  function boardEditSource() {
+    if (!boardEditContext) return null;
+    if (boardEditContext.kind === 'assignment') {
+      return (snapshot?.assignments || []).find((row) => row.id === boardEditContext.id) || null;
+    }
+    return unassignedAvailabilityRows().find((row) => row.id === boardEditContext.id) || null;
+  }
+
+  function boardEditCandidate() {
+    const source = boardEditSource();
+    if (!source || !boardEditContent) return null;
+    const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || source.personId || '';
+    const shiftId = boardEditContent.querySelector('[data-board-edit-shift]')?.value || source.shiftId || '';
+    return {
+      id: boardEditContext?.kind === 'assignment' ? source.id : null,
+      personId,
+      shiftId
+    };
+  }
+
+  function refreshBoardEditWarnings() {
+    const node = boardEditContent?.querySelector('[data-board-edit-warnings]');
+    if (!node) return;
+    const candidate = boardEditCandidate();
+    node.innerHTML = candidate ? warningHtml(assignmentWarningDetails(candidate)) : '<span class="warning-none">—</span>';
+  }
+
+  function openBoardEdit(kind, id) {
+    boardEditContext = { kind, id };
+    const source = boardEditSource();
+    if (!source || !boardEditDialog) return;
+
+    const isAvailability = kind === 'availability';
+    const response = isAvailability ? '<span class="status-badge is-availability">Disponibilità</span>' : responseBadge(source.currentResponse);
+    boardEditTitle.textContent = isAvailability ? `Assegna ${source.personName}` : `Modifica ${source.personName}`;
+    setStatus(boardEditStatus, '');
+
+    boardEditContent.innerHTML = `
+      <div class="board-edit-grid">
+        <label class="field"><span>Persona</span>
+          <select data-board-edit-person ${isAvailability ? 'disabled' : ''}>${personOptions(source.personId)}</select>
+        </label>
+        <label class="field"><span>Turno</span>
+          <select data-board-edit-shift ${isAvailability ? 'disabled' : ''}>${shiftOptions(source)}</select>
+        </label>
+        <label class="field field--wide"><span>Attività</span>
+          <select data-board-edit-activity>${activityOptions(isAvailability ? null : source)}</select>
+        </label>
+        <div class="board-edit-info field--wide">
+          <div><span>Risposta</span>${response}</div>
+          <div><span>Responsabile</span>${!isAvailability && source.isResponsible ? responsibleBadge(source.personName) : '—'}</div>
+        </div>
+        <div class="board-edit-warning field--wide">
+          <span>Warning</span>
+          <div data-board-edit-warnings></div>
+        </div>
+      </div>`;
+
+    if (boardEditDelete) boardEditDelete.hidden = isAvailability;
+    if (boardEditHistory) boardEditHistory.hidden = isAvailability;
+    refreshBoardEditWarnings();
+    boardEditDialog.showModal();
+  }
+
+  async function saveBoardEdit() {
+    const source = boardEditSource();
+    if (!source || !boardEditContent) return;
+    const isAvailability = boardEditContext?.kind === 'availability';
+    const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || '';
+    const shiftId = boardEditContent.querySelector('[data-board-edit-shift]')?.value || '';
+    const activity = boardEditContent.querySelector('[data-board-edit-activity]')?.value || '';
+
+    if (!personId || !shiftId || !activity) {
+      setStatus(boardEditStatus, 'Seleziona persona, turno e attività.', 'error');
+      return;
+    }
+
+    await withButtonBusy(boardEditSave, 'Salvataggio…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save-assignment',
+            assignmentId: isAvailability ? null : source.id,
+            personId,
+            shiftId,
+            rawDay: null,
+            rawShift: null,
+            activity,
+            role: null,
+            requestedProfile: isAvailability ? null : (source.requestedProfile || null),
+            note: source.note || null
+          })
+        });
+        const personName = source.personName;
+        boardEditDialog.close();
+        boardEditContext = null;
+        await loadSnapshot();
+        setStatus(assignmentBoardStatus, `${personName}: assegnazione salvata.`, 'success');
+      } catch (error) {
+        setStatus(boardEditStatus, error.message, 'error');
+      }
+    });
+  }
+
+  async function deleteBoardEdit() {
+    if (boardEditContext?.kind !== 'assignment') return;
+    const source = boardEditSource();
+    if (!source) return;
+    if (!confirm(`Eliminare l’assegnazione “${displayActivity(source)}” di ${source.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
+
+    await withButtonBusy(boardEditDelete, 'Eliminazione…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: source.id })
+        });
+        const personName = source.personName;
+        boardEditDialog.close();
+        boardEditContext = null;
+        await loadSnapshot();
+        setStatus(assignmentBoardStatus, `${personName}: assegnazione eliminata.`, 'success');
+      } catch (error) {
+        setStatus(boardEditStatus, error.message, 'error');
+      }
+    });
+  }
+
 
   function renderAssignments() {
     const rows = filteredAssignments();
@@ -1030,6 +1204,7 @@
       assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
       assignmentViewToggle.classList.toggle('is-active', isBoard);
     }
+    syncBoardActivityToggle();
 
     if (isBoard) {
       renderAssignmentBoard();
@@ -1589,7 +1764,7 @@
     detailDialog.showModal();
   }
 
-  function personActivitiesHtml(personId) {
+  function personActivitiesHtml(personId, selectedAssignmentId = '') {
     const rows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
@@ -1598,23 +1773,44 @@
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
     return rows.length
-      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Attività</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) =>
-          `<tr><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${responseBadge(row.currentResponse)}</td></tr>`
+      ? `<table class="detail-table person-activities-table"><thead><tr><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) =>
+          `<tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}"><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td><td>${responseBadge(row.currentResponse)}</td></tr>`
         ).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
   }
 
-  function showPersonActivitiesPopup(personId) {
+  function showPersonActivitiesPopup(personId, selectedAssignmentId = '') {
     const person = (snapshot?.people || []).find((item) => item.id === personId);
     if (!person || !personActivitiesDialog) return;
     const assignments = (snapshot?.assignments || []).filter((item) => item.personId === personId);
     const days = new Set(assignments.map((item) => item.day).filter(Boolean));
+    const selected = selectedAssignmentId
+      ? assignments.find((item) => item.id === selectedAssignmentId) || null
+      : null;
+
     personActivitiesTitle.textContent = person.display_name || 'Attività';
+    const selectedControls = selected
+      ? `<div class="person-activity-selected">
+          <div>
+            <span class="eyebrow">Attività selezionata</span>
+            <strong>${escapeHtml(selected.day)} · ${escapeHtml(selected.shift)} — ${escapeHtml(displayActivity(selected))}</strong>
+          </div>
+          <button class="button ${selected.isResponsible ? 'button--secondary' : 'button--primary'}" type="button"
+            data-person-responsible-assignment="${escapeHtml(selected.id)}"
+            data-person-responsible-next="${selected.isResponsible ? 'false' : 'true'}"
+            ${snapshot?.responsibilityAvailable ? '' : 'disabled'}>
+            ${selected.isResponsible ? 'Togli responsabile' : 'Rendi responsabile'}
+          </button>
+        </div>
+        <p class="status" data-person-activities-status aria-live="polite"></p>`
+      : '';
+
     personActivitiesContent.innerHTML = assignments.length
-      ? `<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>${personActivitiesHtml(personId)}`
+      ? `${selectedControls}<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>${personActivitiesHtml(personId, selectedAssignmentId)}`
       : '<p class="empty-state">Non risultano attività già assegnate a questa persona.</p>';
     personActivitiesDialog.showModal();
   }
+
 
   function showRespondedPeople() {
     const people = respondedAssignedPeople();
@@ -1865,6 +2061,13 @@
     setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
   });
 
+  boardActivityToggle?.addEventListener('click', () => {
+    boardActivityVisibility = boardActivityVisibility === 'all' ? 'assigned' : 'all';
+    try { sessionStorage.setItem('coastal2026-admin-board-activities', boardActivityVisibility); } catch {}
+    syncBoardActivityToggle();
+    renderAssignmentBoard();
+  });
+
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
     setAssignmentView('list', { render: false });
     setMultiFilterValues(assignmentTypeFilter, ['assigned']);
@@ -2074,12 +2277,23 @@
     boardDragEndedAt = Date.now();
   });
 
-  assignmentBoard?.addEventListener('click', async (event) => {
-    if (event.target.closest('.assignment-board__warning')) return;
+  assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
-    const card = event.target.closest('[data-board-assignment-id]');
-    if (!card) return;
-    await toggleBoardResponsible(card.dataset.boardAssignmentId, card);
+    const edit = event.target.closest('[data-board-edit-kind]');
+    if (edit) {
+      event.stopPropagation();
+      openBoardEdit(edit.dataset.boardEditKind, edit.dataset.boardEditId);
+      return;
+    }
+
+    const person = event.target.closest('[data-board-person-open]');
+    if (person) {
+      event.stopPropagation();
+      showPersonActivitiesPopup(
+        person.dataset.boardPersonOpen,
+        person.dataset.boardPersonAssignmentId || ''
+      );
+    }
   });
 
   activityCatalog?.addEventListener('click', async (event) => {
@@ -2287,8 +2501,42 @@
   document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
   detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
   detailDialog?.addEventListener('close', () => { detailTargetRow = null; });
+  personActivitiesContent?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-person-responsible-assignment]');
+    if (!button) return;
+    const assignmentId = button.dataset.personResponsibleAssignment || '';
+    const next = button.dataset.personResponsibleNext === 'true';
+    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+    if (!row) return;
+    const statusNode = personActivitiesContent.querySelector('[data-person-activities-status]');
+    const ok = await updateBoardResponsible(assignmentId, next, button, statusNode);
+    if (ok) showPersonActivitiesPopup(row.personId, assignmentId);
+  });
+
   document.querySelectorAll('[data-person-activities-close]').forEach((button) => button.addEventListener('click', () => personActivitiesDialog?.close()));
   personActivitiesDialog?.addEventListener('click', (event) => { if (event.target === personActivitiesDialog) personActivitiesDialog.close(); });
+
+  boardEditContent?.addEventListener('change', (event) => {
+    if (event.target.matches('[data-board-edit-person], [data-board-edit-shift]')) refreshBoardEditWarnings();
+  });
+  boardEditSave?.addEventListener('click', saveBoardEdit);
+  boardEditDelete?.addEventListener('click', deleteBoardEdit);
+  boardEditHistory?.addEventListener('click', async () => {
+    const source = boardEditSource();
+    if (!source) return;
+    boardEditDialog?.close();
+    boardEditContext = null;
+    try { await showAudit(source.personId, source.personName || 'Persona'); }
+    catch (error) { alert(error.message); }
+  });
+  document.querySelectorAll('[data-board-edit-close]').forEach((button) =>
+    button.addEventListener('click', () => boardEditDialog?.close())
+  );
+  boardEditDialog?.addEventListener('click', (event) => { if (event.target === boardEditDialog) boardEditDialog.close(); });
+  boardEditDialog?.addEventListener('close', () => {
+    boardEditContext = null;
+    setStatus(boardEditStatus, '');
+  });
     document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
   auditDialog?.addEventListener('click', (event) => { if (event.target === auditDialog) auditDialog.close(); });
 

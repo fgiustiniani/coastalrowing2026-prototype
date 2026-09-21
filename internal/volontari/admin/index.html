@@ -51,6 +51,7 @@
           <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
           <div class="section-actions">
             <button class="button button--secondary assignment-view-toggle" type="button" data-assignment-view-toggle aria-pressed="false">Vista schede</button>
+            <button class="button button--secondary board-activity-toggle" type="button" data-board-activity-toggle hidden>Mostra tutte le attività</button>
             <button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button>
             <button class="button button--secondary collapse-button" type="button" data-collapse-target="assignments-content" aria-expanded="true">Comprimi</button>
           </div>
@@ -181,6 +182,23 @@
           <div class="section-head"><div><p class="eyebrow">Attività della persona</p><h2 data-person-activities-title>Attività</h2></div><button class="audit-close" type="button" data-person-activities-close aria-label="Chiudi">×</button></div>
           <div data-person-activities-content></div>
           <div class="actions actions--end"><button class="button button--secondary" type="button" data-person-activities-close>Chiudi</button></div>
+        </div>
+      </dialog>
+
+      <dialog class="audit-dialog board-edit-dialog" data-board-edit-dialog>
+        <div class="audit-dialog__content">
+          <div class="section-head">
+            <div><p class="eyebrow">Modifica assegnazione</p><h2 data-board-edit-title>Assegnazione</h2></div>
+            <button class="audit-close" type="button" data-board-edit-close aria-label="Chiudi">×</button>
+          </div>
+          <div data-board-edit-content></div>
+          <p class="status" data-board-edit-status aria-live="polite"></p>
+          <div class="actions actions--end">
+            <button class="button button--secondary" type="button" data-board-edit-history>Storico</button>
+            <button class="button button--secondary is-danger" type="button" data-board-edit-delete>Elimina</button>
+            <button class="button button--secondary" type="button" data-board-edit-close>Chiudi</button>
+            <button class="button button--primary" type="button" data-board-edit-save>Salva</button>
+          </div>
         </div>
       </dialog>
 
