@@ -77,6 +77,7 @@
   let boardDragState = null;
   let boardDragEndedAt = 0;
   let boardEditContext = null;
+  let copyRequirementContext = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
   } catch {}
@@ -1210,6 +1211,12 @@
               <span class="assignment-board__activity-actions">
                 <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
                 <button type="button"
+                  class="assignment-board__copy-from"
+                  data-board-copy-from
+                  data-board-requirement-id="${escapeHtml(requirement.id)}"
+                  aria-label="Copia persone da altri turni per ${escapeHtml(prettifyActivityName(requirement.activity))}"
+                  title="Copia persone dalla stessa attività in altri turni">Copia da</button>
+                <button type="button"
                   class="assignment-board__add-person"
                   data-board-add-person
                   data-board-requirement-id="${escapeHtml(requirement.id)}"
@@ -1248,6 +1255,191 @@
         <span>Sono mostrate tutte le attività previste. I box rossi non hanno ancora raggiunto il numero di persone necessario. Trascina un nominativo su una coppia turno-attività per spostarlo.</span>
       </div>
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
+  }
+
+  function copySourceGroups(targetRequirement) {
+    if (!targetRequirement) return [];
+
+    const targetPeople = new Set(
+      (snapshot?.assignments || [])
+        .filter((row) => row.shiftId === targetRequirement.shiftId && row.activityId === targetRequirement.activityId)
+        .map((row) => row.personId)
+    );
+
+    const sourceRequirements = requirements()
+      .filter((item) =>
+        item.activityId === targetRequirement.activityId
+        && item.shiftId !== targetRequirement.shiftId
+      )
+      .sort((a, b) => (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999));
+
+    return sourceRequirements.map((requirement) => {
+      const people = (snapshot?.assignments || [])
+        .filter((row) => row.shiftId === requirement.shiftId && row.activityId === targetRequirement.activityId)
+        .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'))
+        .map((row) => {
+          const warnings = assignmentWarningDetails({
+            id: null,
+            personId: row.personId,
+            shiftId: targetRequirement.shiftId,
+            day: targetRequirement.day,
+            shift: targetRequirement.shift
+          });
+          return {
+            row,
+            alreadyAssigned: targetPeople.has(row.personId),
+            warnings
+          };
+        });
+
+      return { requirement, people };
+    }).filter((group) => group.people.length);
+  }
+
+  function renderCopyFromDialog(targetRequirement) {
+    const groups = copySourceGroups(targetRequirement);
+    const availableCount = new Set(
+      groups.flatMap((group) =>
+        group.people.filter((item) => !item.alreadyAssigned).map((item) => item.row.personId)
+      )
+    ).size;
+
+    detailTitle.textContent = `Copia da · ${prettifyActivityName(targetRequirement.activity)}`;
+
+    if (!groups.length) {
+      detailContent.innerHTML = `
+        <p class="intro detail-intro">Turno di destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)}</strong>.</p>
+        <p class="empty-state">Non ci sono persone assegnate a questa attività in altri turni.</p>`;
+      return;
+    }
+
+    detailContent.innerHTML = `
+      <div class="copy-from-dialog">
+        <p class="intro detail-intro">
+          Destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)}</strong>.
+          Seleziona le persone da copiare dalla stessa attività negli altri turni.
+        </p>
+        <div class="copy-from-groups">
+          ${groups.map((group) => {
+            const selectable = group.people.filter((item) => !item.alreadyAssigned);
+            return `
+              <section class="copy-from-group">
+                <header class="copy-from-group__header">
+                  <div>
+                    <strong>${escapeHtml(group.requirement.day)} · ${escapeHtml(group.requirement.shift)}</strong>
+                    <span>${group.people.length} ${group.people.length === 1 ? 'persona' : 'persone'}</span>
+                  </div>
+                  ${selectable.length ? `<label class="copy-from-select-all"><input type="checkbox" data-copy-source-all="${escapeHtml(group.requirement.id)}"> <span>Tutti</span></label>` : ''}
+                </header>
+                <div class="copy-from-people">
+                  ${group.people.map(({ row, alreadyAssigned, warnings }) => {
+                    const warningText = warnings.map((warning) => warning.text).join(' · ');
+                    return `
+                      <label class="copy-from-person ${alreadyAssigned ? 'is-already-assigned' : ''}">
+                        <input type="checkbox"
+                          data-copy-person
+                          data-copy-source-requirement="${escapeHtml(group.requirement.id)}"
+                          value="${escapeHtml(row.personId)}"
+                          ${alreadyAssigned ? 'disabled' : ''}>
+                        <span class="copy-from-person__name">${escapeHtml(row.personName)}</span>
+                        ${warnings.length ? `<span class="copy-from-person__warning" title="${escapeHtml(warningText)}">⚠ ${escapeHtml(warningText)}</span>` : ''}
+                        ${alreadyAssigned ? '<span class="copy-from-person__already">Già assegnato</span>' : ''}
+                      </label>`;
+                  }).join('')}
+                </div>
+              </section>`;
+          }).join('')}
+        </div>
+        <p class="status" data-copy-from-status aria-live="polite"></p>
+        <div class="copy-from-actions">
+          <span data-copy-from-count>0 selezionati</span>
+          <button class="button button--primary" type="button" data-copy-from-save ${availableCount ? '' : 'disabled'}>Copia selezionati</button>
+        </div>
+      </div>`;
+  }
+
+  function refreshCopyFromCount() {
+    const selected = new Set(
+      [...(detailContent?.querySelectorAll('[data-copy-person]:checked') || [])]
+        .map((input) => input.value)
+        .filter(Boolean)
+    );
+    const countNode = detailContent?.querySelector('[data-copy-from-count]');
+    const save = detailContent?.querySelector('[data-copy-from-save]');
+    if (countNode) countNode.textContent = `${selected.size} ${selected.size === 1 ? 'selezionato' : 'selezionati'}`;
+    if (save) save.disabled = selected.size === 0;
+  }
+
+  function showCopyFromRequirement(requirementId) {
+    const targetRequirement = requirementById(requirementId);
+    if (!targetRequirement || !detailDialog) return;
+    copyRequirementContext = requirementId;
+    detailTargetRow = null;
+    renderCopyFromDialog(targetRequirement);
+    detailDialog.showModal();
+  }
+
+  async function copyPeopleToRequirement(button) {
+    const targetRequirement = requirementById(copyRequirementContext);
+    const statusNode = detailContent?.querySelector('[data-copy-from-status]');
+    if (!targetRequirement) {
+      setStatus(statusNode, 'Attività di destinazione non più disponibile.', 'error');
+      return;
+    }
+
+    const selectedPersonIds = [...new Set(
+      [...(detailContent?.querySelectorAll('[data-copy-person]:checked') || [])]
+        .map((input) => input.value)
+        .filter(Boolean)
+    )];
+
+    if (!selectedPersonIds.length) {
+      setStatus(statusNode, 'Seleziona almeno una persona.', 'error');
+      return;
+    }
+
+    await withButtonBusy(button, 'Copiando…', async () => {
+      let copied = 0;
+      const errors = [];
+
+      for (const personId of selectedPersonIds) {
+        const person = (snapshot?.people || []).find((item) => item.id === personId);
+        try {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'save-assignment',
+              assignmentId: null,
+              personId,
+              requirementId: targetRequirement.id,
+              requestedProfile: null,
+              note: null
+            })
+          });
+          copied += 1;
+        } catch (error) {
+          errors.push(`${person?.display_name || 'Persona'}: ${error.message}`);
+        }
+      }
+
+      await loadSnapshot();
+
+      if (!errors.length) {
+        detailDialog.close();
+        setStatus(assignmentBoardStatus, `${copied} ${copied === 1 ? 'persona copiata' : 'persone copiate'} in ${prettifyActivityName(targetRequirement.activity)} · ${targetRequirement.day} ${targetRequirement.shift}.`, 'success');
+        return;
+      }
+
+      copyRequirementContext = targetRequirement.id;
+      renderCopyFromDialog(requirementById(targetRequirement.id) || targetRequirement);
+      const refreshedStatus = detailContent?.querySelector('[data-copy-from-status]');
+      setStatus(
+        refreshedStatus,
+        `${copied} copiate. ${errors.length} non copiate: ${errors.join(' · ')}`,
+        copied ? 'error' : 'error'
+      );
+    });
   }
 
   function setAssignmentView(nextView, { render = true } = {}) {
@@ -2940,6 +3132,13 @@
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
 
+    const copyFrom = event.target.closest('[data-board-copy-from]');
+    if (copyFrom) {
+      event.stopPropagation();
+      showCopyFromRequirement(copyFrom.dataset.boardRequirementId || '');
+      return;
+    }
+
     const addPerson = event.target.closest('[data-board-add-person]');
     if (addPerson) {
       event.stopPropagation();
@@ -3209,7 +3408,13 @@
     if (event.target === responsibleDialog) responsibleDialog.close();
   });
 
-  detailContent?.addEventListener('click', (event) => {
+  detailContent?.addEventListener('click', async (event) => {
+    const copySave = event.target.closest('[data-copy-from-save]');
+    if (copySave) {
+      await copyPeopleToRequirement(copySave);
+      return;
+    }
+
     const personLink = event.target.closest('[data-open-person-activities]');
     if (personLink) {
       showPersonActivitiesPopup(personLink.dataset.openPersonActivities);
@@ -3242,9 +3447,35 @@
     }
     detailDialog.close();
   });
+  detailContent?.addEventListener('change', (event) => {
+    const selectAll = event.target.closest('[data-copy-source-all]');
+    if (selectAll) {
+      const sourceRequirementId = selectAll.dataset.copySourceAll || '';
+      detailContent.querySelectorAll(`[data-copy-person][data-copy-source-requirement="${CSS.escape(sourceRequirementId)}"]:not(:disabled)`).forEach((input) => {
+        input.checked = selectAll.checked;
+      });
+      refreshCopyFromCount();
+      return;
+    }
+
+    if (event.target.matches('[data-copy-person]')) {
+      const sourceRequirementId = event.target.dataset.copySourceRequirement || '';
+      const items = [...detailContent.querySelectorAll(`[data-copy-person][data-copy-source-requirement="${CSS.escape(sourceRequirementId)}"]:not(:disabled)`)];
+      const selectAllForGroup = detailContent.querySelector(`[data-copy-source-all="${CSS.escape(sourceRequirementId)}"]`);
+      if (selectAllForGroup) {
+        selectAllForGroup.checked = Boolean(items.length) && items.every((input) => input.checked);
+        selectAllForGroup.indeterminate = items.some((input) => input.checked) && !items.every((input) => input.checked);
+      }
+      refreshCopyFromCount();
+    }
+  });
+
   document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
   detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
-  detailDialog?.addEventListener('close', () => { detailTargetRow = null; });
+  detailDialog?.addEventListener('close', () => {
+    detailTargetRow = null;
+    copyRequirementContext = null;
+  });
   personActivitiesContent?.addEventListener('click', async (event) => {
     const responsible = event.target.closest('[data-person-responsible-assignment]');
     if (responsible) {
