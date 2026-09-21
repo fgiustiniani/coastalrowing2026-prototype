@@ -546,6 +546,7 @@ export default async (request) => {
 
         let current = null;
         let saved = null;
+        let raceProgramAvailable = false;
         const now = new Date().toISOString();
 
         if (personId) {
@@ -558,6 +559,20 @@ export default async (request) => {
           });
           current = rows(currentRows)[0] || null;
           if (!current) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
+
+          const raceProgramProbe = await adminReadOptional('programma gare', 'volunteer_race_program', {
+            query: { select: 'id', limit: 1 }
+          });
+          raceProgramAvailable = raceProgramProbe !== null;
+
+          if (raceProgramAvailable && !personCode) {
+            const raceRowsForPerson = await supabaseRequest('volunteer_race_program', {
+              query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
+            });
+            if (rows(raceRowsForPerson).length) {
+              throw new ApiError('La persona è presente nel programma gare: il codice non può essere vuoto.', 409, 'PERSON_CODE_REQUIRED');
+            }
+          }
 
           const result = await supabaseRequest('volunteer_people', {
             method: 'PATCH',
@@ -593,28 +608,17 @@ export default async (request) => {
 
         if (!saved) throw new ApiError('Persona non salvata.', 500, 'PERSON_SAVE_FAILED');
 
-        if (personId) {
-          const raceProgramProbe = await adminReadOptional('programma gare', 'volunteer_race_program', {
-            query: { select: 'id', limit: 1 }
+        if (personId && raceProgramAvailable) {
+          await supabaseRequest('volunteer_race_program', {
+            method: 'PATCH',
+            query: { person_id: `eq.${personId}`, active: 'eq.true' },
+            body: {
+              person_code: personCode,
+              person_name: displayName,
+              updated_at: now
+            },
+            prefer: 'return=minimal'
           });
-          if (raceProgramProbe !== null) {
-            const raceRowsForPerson = await supabaseRequest('volunteer_race_program', {
-              query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
-            });
-            if (rows(raceRowsForPerson).length && !personCode) {
-              throw new ApiError('La persona è presente nel programma gare: il codice non può essere vuoto.', 409, 'PERSON_CODE_REQUIRED');
-            }
-            await supabaseRequest('volunteer_race_program', {
-              method: 'PATCH',
-              query: { person_id: `eq.${personId}`, active: 'eq.true' },
-              body: {
-                person_code: personCode,
-                person_name: displayName,
-                updated_at: now
-              },
-              prefer: 'return=minimal'
-            });
-          }
         }
 
         await auditAdminChange({
