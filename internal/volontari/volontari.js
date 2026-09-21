@@ -8,7 +8,6 @@
     people: [],
     cachedShifts: [],
     selectedPerson: null,
-    manualPersonName: '',
     personState: null,
     responses: new Map(),
     availability: new Map(),
@@ -24,9 +23,6 @@
   const personSearch = document.querySelector('[data-person-search]');
   const personResults = document.querySelector('[data-person-results]');
   const personSelection = document.querySelector('[data-person-selection]');
-  const manualToggle = document.querySelector('[data-manual-toggle]');
-  const manualField = document.querySelector('[data-manual-field]');
-  const manualInput = document.querySelector('[data-manual-person]');
   const assignmentList = document.querySelector('[data-assignment-list]');
   const assignmentStatus = document.querySelector('[data-assignment-status]');
   const availabilityList = document.querySelector('[data-availability-list]');
@@ -112,8 +108,9 @@
     saveSession({ token: body.token, expiresAt: body.expiresAt });
   }
 
-  async function loadPeople() {
-    const body = await apiRequest(`${api}?view=people`);
+  async function loadPeople(searchText = '') {
+    const query = String(searchText || '').trim();
+    const body = await apiRequest(`${api}?view=people&q=${encodeURIComponent(query)}`);
     state.people = Array.isArray(body.people) ? body.people : [];
     state.cachedShifts = Array.isArray(body.shifts) ? body.shifts : [];
     renderPeople();
@@ -127,20 +124,21 @@
   }
 
   function renderPeople() {
-    const query = String(personSearch?.value || '').trim().toLocaleLowerCase('it-IT');
-    const filtered = state.people
-      .filter((person) => {
-        const text = `${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_code || ''}`.toLocaleLowerCase('it-IT');
-        return !query || text.includes(query);
-      })
-      .slice(0, 100);
-
-    if (!filtered.length) {
-      personResults.innerHTML = '<p class="muted">Nessuna persona trovata tra quelle con attività assegnate.</p>';
+    const query = String(personSearch?.value || '').trim();
+    if (state.selectedPerson && query === sortLabel(state.selectedPerson)) {
+      personResults.innerHTML = '';
       return;
     }
-    personResults.innerHTML = filtered.map((person) => `
-      <button class="person-option${state.selectedPerson?.id === person.id ? ' is-selected' : ''}" type="button" data-person-id="${escapeHtml(person.id)}" role="option" aria-selected="${state.selectedPerson?.id === person.id}">
+    if (query.length < 2) {
+      personResults.innerHTML = '';
+      return;
+    }
+    if (!state.people.length) {
+      personResults.innerHTML = '<p class="muted person-search-empty">Nessun nominativo trovato.</p>';
+      return;
+    }
+    personResults.innerHTML = state.people.map((person) => `
+      <button class="person-option" type="button" data-person-id="${escapeHtml(person.id)}" role="option">
         <strong>${escapeHtml(sortLabel(person))}</strong>
         ${person.person_code ? `<small>Codice ${escapeHtml(person.person_code)}</small>` : ''}
       </button>
@@ -149,10 +147,9 @@
 
   async function selectPerson(person) {
     state.selectedPerson = person;
-    state.manualPersonName = '';
-    manualInput.value = '';
-    manualField.hidden = true;
-    personSelection.textContent = `Selezionato: ${sortLabel(person)}${person.person_code ? ` · codice ${person.person_code}` : ''}`;
+    personSearch.value = sortLabel(person);
+    setStatus(personSelection, 'Nominativo selezionato.', 'success');
+    state.people = [];
     renderPeople();
     setStatus(assignmentStatus, 'Caricamento attività…');
     const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(person.id)}`);
@@ -168,19 +165,6 @@
     renderAssignments();
     renderAvailability();
     setStatus(assignmentStatus, '');
-  }
-
-  function useManualPerson() {
-    state.selectedPerson = null;
-    state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
-    state.responses = new Map();
-    state.availability = new Map();
-    manualField.hidden = false;
-    manualInput.focus();
-    personSelection.textContent = '';
-    renderPeople();
-    renderAssignments();
-    renderAvailability();
   }
 
   function displayActivityName(value) {
@@ -219,16 +203,28 @@
       availabilityList.innerHTML = '<p class="muted">Nessun turno disponibile.</p>';
       return;
     }
-    availabilityList.innerHTML = shifts.map((shift) => {
-      const selected = state.availability.get(shift.id)?.selected || false;
-      const note = state.availability.get(shift.id)?.note || '';
-      return `
-        <article class="availability-card${shift.assigned ? ' is-assigned' : ''}" data-shift-id="${escapeHtml(shift.id)}">
-          <div class="availability-card__head"><div><h3>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</h3>${shift.assigned ? '<span class="pill">Già assegnato</span>' : ''}</div></div>
-          <label class="check"><input type="checkbox" data-availability-check ${selected ? 'checked' : ''} ${shift.assigned ? 'disabled' : ''}><span>${shift.assigned ? 'Turno già coperto da una tua attività' : 'Sono disponibile anche in questo turno'}</span></label>
-          <label class="field availability-note" ${selected && !shift.assigned ? '' : 'hidden'}><span>Nota facoltativa</span><textarea maxlength="1000" data-availability-note placeholder="Es. disponibile solo per alcune attività">${escapeHtml(note)}</textarea></label>
-        </article>`;
-    }).join('');
+    const groups = new Map();
+    for (const shift of shifts) {
+      if (!groups.has(shift.day)) groups.set(shift.day, []);
+      groups.get(shift.day).push(shift);
+    }
+    availabilityList.innerHTML = [...groups.entries()].map(([day, dayShifts]) => `
+      <section class="availability-day">
+        <h3 class="availability-day__title">${escapeHtml(day)}</h3>
+        <div class="availability-day__shifts">
+          ${dayShifts.map((shift) => {
+            const selected = state.availability.get(shift.id)?.selected || false;
+            const note = state.availability.get(shift.id)?.note || '';
+            return `
+              <article class="availability-card${shift.assigned ? ' is-assigned' : ''}" data-shift-id="${escapeHtml(shift.id)}">
+                <div class="availability-card__head"><div><h4>${escapeHtml(shift.shift)}</h4>${shift.assigned ? '<span class="pill">Già assegnato</span>' : ''}</div></div>
+                <label class="check"><input type="checkbox" data-availability-check ${selected ? 'checked' : ''} ${shift.assigned ? 'disabled' : ''}><span>${shift.assigned ? 'Turno già coperto da una tua attività' : 'Sono disponibile anche in questo turno'}</span></label>
+                <label class="field availability-note" ${selected && !shift.assigned ? '' : 'hidden'}><span>Nota facoltativa</span><textarea maxlength="1000" data-availability-note placeholder="Es. disponibile solo per alcune attività">${escapeHtml(note)}</textarea></label>
+              </article>`;
+          }).join('')}
+        </div>
+      </section>`
+    ).join('');
   }
 
   function validateAssignments() {
@@ -248,7 +244,7 @@
     const declined = assignments.filter((a) => state.responses.get(a.id)?.response === 'declined');
     const shifts = state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts;
     const extra = shifts.filter((s) => state.availability.get(s.id)?.selected && !s.assigned);
-    const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
+    const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : '';
     const listAssignments = (items) => items.length
       ? `<ul class="summary-list">${items.map((a) => {
           const response = state.responses.get(a.id) || {};
@@ -284,15 +280,12 @@
       }
     }
     if (step === 3) {
-      state.manualPersonName = String(manualInput.value || '').trim();
-      if (!state.selectedPerson && state.manualPersonName.length < 2) {
-        personSelection.textContent = 'Seleziona una persona oppure inseriscila manualmente.';
+      if (!state.selectedPerson) {
+        setStatus(personSelection, 'Seleziona il tuo nominativo dai risultati della ricerca.', 'error');
+        personSearch.focus();
         return;
       }
-      if (!state.selectedPerson) {
-        state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
-        renderAssignments(); renderAvailability();
-      }
+      setStatus(personSelection, '');
     }
     if (step === 4 && !validateAssignments()) return;
     showStep(step);
@@ -307,7 +300,7 @@
         action: 'submit',
         actorName: state.actorName,
         personId: state.selectedPerson?.id || null,
-        manualPersonName: state.selectedPerson ? null : state.manualPersonName,
+        manualPersonName: null,
         clientSubmissionId: state.clientSubmissionId,
         website: submitWebsite.value || '',
         responses: Array.from(state.responses.entries()).map(([assignmentId, value]) => ({ assignmentId, response: value.response, note: value.note || '' })),
@@ -316,7 +309,7 @@
       const body = await apiRequest(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       document.querySelectorAll('[data-step], .stepper').forEach((node) => { node.hidden = true; });
       success.hidden = false;
-      successCopy.textContent = `Le risposte per ${body.submission?.personName || (state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName)} sono state registrate.`;
+      successCopy.textContent = `Le risposte per ${body.submission?.personName || sortLabel(state.selectedPerson)} sono state registrate.`;
       submissionCode.textContent = body.submission?.id ? `Riferimento: ${body.submission.id}` : '';
       setStatus(submitStatus, '');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -326,21 +319,32 @@
     } finally { submitButton.disabled = false; }
   }
 
-  function restart() {
-    state.step = 1; state.actorName = ''; state.selectedPerson = null; state.manualPersonName = ''; state.personState = null;
-    state.responses = new Map(); state.availability = new Map(); state.clientSubmissionId = crypto.randomUUID();
-    actorInput.value = ''; personSearch.value = ''; manualInput.value = ''; manualField.hidden = true; personSelection.textContent = '';
-    success.hidden = true; document.querySelector('.stepper').hidden = false; renderPeople(); showStep(1);
-  }
-
-  personSearch?.addEventListener('input', renderPeople);
+  let personSearchTimer = null;
+  personSearch?.addEventListener('input', () => {
+    const query = personSearch.value.trim();
+    if (state.selectedPerson && query !== sortLabel(state.selectedPerson)) {
+      state.selectedPerson = null;
+      state.personState = null;
+      state.responses = new Map();
+      state.availability = new Map();
+      setStatus(personSelection, '');
+    }
+    clearTimeout(personSearchTimer);
+    if (query.length < 2) {
+      state.people = [];
+      renderPeople();
+      return;
+    }
+    personResults.innerHTML = '<p class="muted person-search-empty">Ricerca…</p>';
+    personSearchTimer = setTimeout(() => {
+      loadPeople(query).catch((error) => setStatus(personSelection, error.message, 'error'));
+    }, 180);
+  });
   personResults?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-person-id]'); if (!button) return;
     const person = state.people.find((row) => row.id === button.dataset.personId); if (!person) return;
     selectPerson(person).catch((error) => { personSelection.textContent = error.message; });
   });
-  manualToggle?.addEventListener('click', useManualPerson);
-  manualInput?.addEventListener('input', () => { state.manualPersonName = manualInput.value.trim(); personSelection.textContent = state.manualPersonName ? `Inserimento manuale: ${state.manualPersonName}` : ''; });
 
   assignmentList?.addEventListener('change', (event) => {
     const card = event.target.closest('[data-assignment-id]'); if (!card) return;
@@ -373,7 +377,6 @@
   document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => next(Number(button.dataset.next))));
   document.querySelectorAll('[data-back]').forEach((button) => button.addEventListener('click', () => showStep(Number(button.dataset.back))));
   submitButton?.addEventListener('click', submit);
-  document.querySelector('[data-restart]')?.addEventListener('click', restart);
 
   accessForm?.addEventListener('submit', async (event) => {
     event.preventDefault(); setStatus(accessStatus, 'Verifica accesso…');
