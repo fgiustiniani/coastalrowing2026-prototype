@@ -57,10 +57,16 @@
         <div id="person-results" class="person-results" data-person-results role="listbox" aria-label="Risultati ricerca nominativo"></div>
         <div class="manual-box" data-manual-box hidden>
           <button class="link-button" type="button" data-manual-toggle>Non trovi il tuo nominativo? Inseriscilo manualmente</button>
-          <label class="field" data-manual-field hidden>
-            <span>Nome e cognome</span>
-            <input data-manual-person maxlength="160" autocomplete="name" placeholder="Es. Mario Rossi">
-          </label>
+          <div class="manual-fields" data-manual-field hidden>
+            <label class="field">
+              <span>Cognome</span>
+              <input data-manual-surname maxlength="80" autocomplete="family-name" placeholder="Es. Rossi">
+            </label>
+            <label class="field">
+              <span>Nome</span>
+              <input data-manual-given-name maxlength="80" autocomplete="given-name" placeholder="Es. Mario">
+            </label>
+          </div>
         </div>
         <p class="status" data-person-selection aria-live="polite"></p>
         <div class="actions">
