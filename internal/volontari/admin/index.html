@@ -63,6 +63,11 @@
             <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
           </div>
           <p class="intro inline-help">Puoi modificare turno, attività e persona direttamente nella riga. I warning si aggiornano prima del salvataggio.</p>
+          <div class="availability-filter-banner" data-availability-filter-status hidden>
+            <strong>Disponibilità da assegnare</strong>
+            <span>Stai visualizzando solo i turni offerti dai volontari che non hanno ancora un’attività nello stesso turno.</span>
+            <button class="link-button" type="button" data-clear-availability-filter>Mostra tutte le assegnazioni</button>
+          </div>
           <div class="table-wrap" data-assignment-table></div>
         </div>
       </section>
