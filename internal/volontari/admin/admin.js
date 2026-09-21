@@ -4574,56 +4574,60 @@
     }
 
     setStatus(activityCatalogStatus, `Salvataggio di ${payloads.length} modifiche…`);
-    await withButtonBusy(activitySaveAll, 'Salvataggio…', async () => {
-      let saved = 0;
-      const failures = [];
+    payloads.forEach((item) => setRowBusy(item.rowNode, true));
+    try {
+      await withButtonBusy(activitySaveAll, 'Salvataggio…', async () => {
+        let saved = 0;
+        const failures = [];
 
-      for (const item of payloads) {
-        const status = item.rowNode.querySelector('[data-row-status]');
-        setRowBusy(item.rowNode, true);
-        try {
-          await api(API, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              action: 'save-activity',
-              activityId: item.activityId,
-              name: item.name,
-              groupId: item.groupId
-            })
-          });
-          item.rowNode.dataset.initialName = item.name;
-          item.rowNode.dataset.initialGroupId = item.groupId || '';
-          activityDrafts.delete(item.activityId);
-          item.rowNode.classList.remove('is-dirty-row');
-          if (status) {
-            status.textContent = 'Salvata';
-            status.className = 'row-save-status is-ok';
+        for (const item of payloads) {
+          const status = item.rowNode.querySelector('[data-row-status]');
+          try {
+            await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save-activity',
+                activityId: item.activityId,
+                name: item.name,
+                groupId: item.groupId
+              })
+            });
+            item.rowNode.dataset.initialName = item.name;
+            item.rowNode.dataset.initialGroupId = item.groupId || '';
+            activityDrafts.delete(item.activityId);
+            item.rowNode.classList.remove('is-dirty-row');
+            if (status) {
+              status.textContent = 'Salvata';
+              status.className = 'row-save-status is-ok';
+            }
+            saved += 1;
+          } catch (error) {
+            failures.push({ item, error });
+            if (status) {
+              status.textContent = error.message;
+              status.className = 'row-save-status is-error';
+            }
           }
-          saved += 1;
-        } catch (error) {
-          failures.push({ item, error });
-          if (status) {
-            status.textContent = error.message;
-            status.className = 'row-save-status is-error';
-          }
-        } finally {
-          setRowBusy(item.rowNode, false);
         }
-      }
 
-      if (!failures.length) {
-        await loadSnapshot();
-        setStatus(activityCatalogStatus, `${saved} ${saved === 1 ? 'modifica salvata' : 'modifiche salvate'}.`, 'success');
-      } else {
-        updateActivityBulkSaveState();
-        setStatus(
-          activityCatalogStatus,
-          `${saved} salvate, ${failures.length} non salvate. Correggi le righe evidenziate e riprova.`,
-          'error'
-        );
-      }
-    });
+        if (!failures.length) {
+          await loadSnapshot();
+          setStatus(activityCatalogStatus, `${saved} ${saved === 1 ? 'modifica salvata' : 'modifiche salvate'}.`, 'success');
+        } else {
+          updateActivityBulkSaveState();
+          setStatus(
+            activityCatalogStatus,
+            `${saved} salvate, ${failures.length} non salvate. Correggi le righe evidenziate e riprova.`,
+            'error'
+          );
+        }
+      });
+    } finally {
+      payloads.forEach((item) => {
+        if (item.rowNode.isConnected) setRowBusy(item.rowNode, false);
+      });
+    }
   });
 
   activityCatalog?.addEventListener('click', async (event) => {
