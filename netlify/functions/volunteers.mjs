@@ -14,6 +14,7 @@ import {
   supabaseRequest,
   verifySharedAccessToken
 } from './_lib/volunteers-common.mjs';
+import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
@@ -204,6 +205,61 @@ export default async (request) => {
       }
 
       const session = requireVolunteerSession(request);
+
+      if (action === 'email-summary') {
+        const email = clean(body.email, 254);
+        const submissionId = clean(body.submissionId, 60);
+        if (!isUuid(submissionId)) throw new ApiError('Invio non valido.', 400, 'INVALID_SUBMISSION_ID');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
+
+        const submissions = rows(await supabaseRequest('volunteer_submissions', {
+          query: {
+            select: 'id,session_id,actor_name,person_id,person_code,selected_person_name,created_at',
+            id: `eq.${submissionId}`,
+            session_id: `eq.${clean(session.jti, 100)}`,
+            limit: 1
+          }
+        }));
+        const submission = submissions[0];
+        if (!submission) throw new ApiError('Invio non trovato per questa sessione.', 404, 'SUBMISSION_NOT_FOUND');
+
+        const previousEmails = rows(await supabaseRequest('volunteer_audit_log', {
+          query: {
+            select: 'id',
+            submission_id: `eq.${submissionId}`,
+            action_type: 'eq.summary_email_sent',
+            limit: 3
+          }
+        }));
+        if (previousEmails.length >= 3) {
+          throw new ApiError('Hai già richiesto più volte il riepilogo per questo invio.', 429, 'EMAIL_RATE_LIMIT');
+        }
+
+        const state = await personState(submission.person_id);
+        await sendVolunteerSummaryEmail({ email, personState: state, requestUrl: request.url });
+
+        try {
+          await supabaseRequest('volunteer_audit_log', {
+            method: 'POST',
+            body: {
+              submission_id: submission.id,
+              actor_name: submission.actor_name || 'Volontario',
+              person_id: submission.person_id,
+              person_code: submission.person_code || null,
+              action_type: 'summary_email_sent',
+              entity_type: 'submission',
+              entity_id: submission.id,
+              new_value: { sent: true }
+            },
+            prefer: 'return=minimal'
+          });
+        } catch (auditError) {
+          console.error('Audit invio riepilogo volontario fallito:', auditError?.message || auditError);
+        }
+
+        return json({ ok: true, sent: true });
+      }
+
       if (action !== 'submit') throw new ApiError('Operazione non valida.', 400, 'INVALID_ACTION');
       if (clean(body.website, 200)) return json({ ok: true });
 
