@@ -108,3 +108,18 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   .stepper { margin-bottom: 16px; }
   .stepper small { display: block; }
 }
+
+.manual-fields {
+  display: grid;
+  gap: 10px;
+}
+.check--only {
+  width: fit-content;
+  min-height: 28px;
+}
+.check--only input {
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .manual-fields { grid-template-columns: 1fr 1fr; }
+}
