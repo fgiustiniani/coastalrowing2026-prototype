@@ -107,6 +107,7 @@ select
           case when src.crew_label ilike '%C2X%' then date '2026-10-03' else date '2026-10-04' end
         when src.crew_label ilike '%55-64%' and src.crew_label ilike '%Mix%' then
           case when src.crew_label ilike '%C2X%' then date '2026-10-03' else date '2026-10-04' end
+        when src.crew_label ilike '%C4X+ MASTER F 55-64%' then date '2026-10-04'
         else date '2026-10-03'
       end
     else null
