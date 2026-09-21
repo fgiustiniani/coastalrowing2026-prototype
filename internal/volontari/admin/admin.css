@@ -2852,3 +2852,48 @@ tr.is-busy button.is-busy {
   color: #963b32;
   border: 1px solid #efc4bf;
 }
+
+
+/* Correzioni gruppi vista schede */
+.assignment-board__group-drop-palette {
+  display: none;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed #b7cdd1;
+  border-radius: 10px;
+  background: #f8fbfb;
+}
+.is-activity-drag-mode .assignment-board__group-drop-palette {
+  display: grid;
+}
+.assignment-board__group-drop-label {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 850;
+}
+.assignment-board__group-drop-target {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid #d1dfe2;
+  border-radius: 8px;
+  background: #fff;
+  color: #38565e;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.assignment-board__group-drop-target--ungrouped {
+  border-style: dashed;
+  color: #64777c;
+}
+.assignment-board__group-drop-target.is-activity-group-drop-target,
+.assignment-board__activity.is-activity-group-drop-target {
+  border-color: var(--accent);
+  background: #eaf7f9;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.assignment-board__activity-group + .assignment-board__activity,
+.assignment-board__activity + .assignment-board__activity {
+  margin-top: 0;
+}
