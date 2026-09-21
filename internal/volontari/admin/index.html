@@ -188,12 +188,22 @@
           <p class="status" data-requirement-status aria-live="polite"></p>
           <div class="table-wrap" data-requirement-catalog></div>
 
+          <div class="planning-group-manager">
+            <div class="section-head section-head--sub">
+              <div><p class="eyebrow">Organizzazione</p><h3>Gruppi di attività</h3></div>
+              <button class="button button--secondary" type="button" data-new-activity-group>Nuovo gruppo</button>
+            </div>
+            <p class="intro">Crea e rinomina i raggruppamenti usati nella vista a schede. Eliminando un gruppo le attività restano disponibili e tornano in “Altre attività”. L’ordine dei gruppi può essere modificato direttamente nella vista a schede.</p>
+            <p class="status" data-activity-group-status aria-live="polite"></p>
+            <div class="table-wrap" data-activity-group-catalog></div>
+          </div>
+
           <div class="planning-activity-manager">
             <div class="section-head section-head--sub">
               <div><p class="eyebrow">Anagrafica</p><h3>Attività disponibili</h3></div>
               <button class="button button--secondary" type="button" data-new-activity>Nuova attività</button>
             </div>
-            <p class="intro">Da qui puoi rinominare o disattivare le attività esistenti. Un’attività usata in un abbinamento attivo non può essere eliminata.</p>
+            <p class="intro">Da qui puoi rinominare o disattivare le attività esistenti e assegnarle a un gruppo. Un’attività usata in un abbinamento attivo non può essere eliminata.</p>
             <div class="table-wrap" data-activity-catalog></div>
           </div>
         </div>
