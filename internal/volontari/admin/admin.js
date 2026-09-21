@@ -433,6 +433,21 @@
     return [...(select?.options || [])].find((option) => option.value === '' || option.value === 'all') || null;
   }
 
+  function normalizeFilterSearch(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('it-IT')
+      .trim();
+  }
+
+  function multiFilterOptionMatches(option, query) {
+    if (!query) return true;
+    const haystack = normalizeFilterSearch(option.textContent);
+    const tokens = normalizeFilterSearch(query).split(/\s+/).filter(Boolean);
+    return tokens.every((token) => haystack.includes(token));
+  }
+
   function closeMultiFilters(except = null) {
     document.querySelectorAll('.multi-filter.is-open').forEach((wrapper) => {
       if (wrapper === except) return;
@@ -443,24 +458,35 @@
     });
   }
 
-  function syncMultiFilter(select) {
+  function syncMultiFilter(select, { focusSearch = false } = {}) {
     const widget = multiFilterWidgets.get(select);
     if (!widget) return;
+
     const values = selectedFilterValues(select);
     const selected = new Set(values);
     const allOption = filterAllOption(select);
     const allLabel = allOption?.textContent?.trim() || 'Tutti';
     const labels = [...select.options].filter((option) => selected.has(option.value)).map((option) => option.textContent.trim());
+    const query = widget.search?.value || '';
+    const visibleOptions = [...select.options]
+      .map((option, index) => ({ option, index }))
+      .filter(({ option }) => {
+        const isAll = option.value === '' || option.value === 'all';
+        return isAll ? !query : multiFilterOptionMatches(option, query);
+      });
 
     widget.label.textContent = labels.length === 0 ? allLabel : labels.length === 1 ? labels[0] : `${labels.length} selezionati`;
     widget.button.title = labels.length > 1 ? labels.join(', ') : '';
-    widget.panel.innerHTML = [...select.options].map((option, index) => {
-      const isAll = option.value === '' || option.value === 'all';
-      const checked = isAll ? values.length === 0 : selected.has(option.value);
-      return `<label class="multi-filter__option${isAll ? ' is-all' : ''}"><input type="checkbox" data-multi-filter-index="${index}" ${checked ? 'checked' : ''}><span>${escapeHtml(option.textContent)}</span></label>`;
-    }).join('');
 
-    widget.panel.querySelectorAll('[data-multi-filter-index]').forEach((checkbox) => {
+    widget.options.innerHTML = visibleOptions.length
+      ? visibleOptions.map(({ option, index }) => {
+          const isAll = option.value === '' || option.value === 'all';
+          const checked = isAll ? values.length === 0 : selected.has(option.value);
+          return `<label class="multi-filter__option${isAll ? ' is-all' : ''}"><input type="checkbox" data-multi-filter-index="${index}" ${checked ? 'checked' : ''}><span>${escapeHtml(option.textContent)}</span></label>`;
+        }).join('')
+      : '<p class="multi-filter__empty">Nessun valore corrispondente.</p>';
+
+    widget.options.querySelectorAll('[data-multi-filter-index]').forEach((checkbox) => {
       checkbox.addEventListener('change', () => {
         const option = select.options[Number(checkbox.dataset.multiFilterIndex)];
         if (!option) return;
@@ -474,10 +500,18 @@
           if (sentinel) sentinel.selected = false;
           if (!selectedFilterValues(select).length && sentinel) sentinel.selected = true;
         }
-        syncMultiFilter(select);
+        syncMultiFilter(select, { focusSearch: true });
         select.dispatchEvent(new Event('change', { bubbles: true }));
       });
     });
+
+    if (focusSearch && widget.search && !widget.panel.hidden) {
+      requestAnimationFrame(() => {
+        widget.search.focus();
+        const end = widget.search.value.length;
+        widget.search.setSelectionRange(end, end);
+      });
+    }
   }
 
   function setMultiFilterValues(select, values = []) {
@@ -508,17 +542,66 @@
     const panel = document.createElement('div');
     panel.className = 'multi-filter__panel';
     panel.hidden = true;
+
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'multi-filter__search-wrap';
+    searchWrap.innerHTML = '<input class="multi-filter__search" type="search" autocomplete="off" placeholder="Digita per cercare…" aria-label="Cerca nei valori del filtro">';
+
+    const options = document.createElement('div');
+    options.className = 'multi-filter__options';
+
+    panel.append(searchWrap, options);
     wrapper.append(button, panel);
 
-    multiFilterWidgets.set(select, { wrapper, button, label: button.querySelector('.multi-filter__button-label'), panel });
+    const search = searchWrap.querySelector('.multi-filter__search');
+    multiFilterWidgets.set(select, {
+      wrapper,
+      button,
+      label: button.querySelector('.multi-filter__button-label'),
+      panel,
+      search,
+      options
+    });
+
+    const openFilter = (initialQuery = '') => {
+      closeMultiFilters(wrapper);
+      wrapper.classList.add('is-open');
+      button.setAttribute('aria-expanded', 'true');
+      panel.hidden = false;
+      search.value = initialQuery;
+      syncMultiFilter(select, { focusSearch: true });
+    };
+
     button.addEventListener('click', (event) => {
       event.preventDefault();
       const opening = !wrapper.classList.contains('is-open');
-      closeMultiFilters(wrapper);
-      wrapper.classList.toggle('is-open', opening);
-      button.setAttribute('aria-expanded', opening ? 'true' : 'false');
-      panel.hidden = !opening;
+      if (opening) openFilter('');
+      else {
+        wrapper.classList.remove('is-open');
+        button.setAttribute('aria-expanded', 'false');
+        panel.hidden = true;
+      }
     });
+
+    button.addEventListener('keydown', (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.length === 1 && /\S/.test(event.key)) {
+        event.preventDefault();
+        openFilter(event.key);
+      }
+    });
+
+    search.addEventListener('input', () => syncMultiFilter(select));
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        wrapper.classList.remove('is-open');
+        button.setAttribute('aria-expanded', 'false');
+        panel.hidden = true;
+        button.focus();
+      }
+    });
+
     syncMultiFilter(select);
   }
 

@@ -1560,3 +1560,45 @@ tr.is-busy button.is-busy {
     transform: rotate(90deg);
   }
 }
+
+/* Ricerca e suggerimenti nei filtri multiselezione */
+.multi-filter__panel {
+  padding: 0;
+  overflow: hidden;
+}
+.multi-filter__search-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 7px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.multi-filter__search {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid #cbdadd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: .82rem;
+}
+.multi-filter__search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10,107,125,.10);
+}
+.multi-filter__options {
+  max-height: 238px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.multi-filter__empty {
+  margin: 0;
+  padding: 12px 9px;
+  color: var(--muted);
+  font-size: .78rem;
+  text-align: center;
+}
