@@ -1330,6 +1330,36 @@
     }
   }
 
+  function boardActivityDropContext(element, shiftId) {
+    const column = element?.closest?.('[data-board-shift-column]');
+    if (!column || column.dataset.boardShiftColumn !== shiftId) return null;
+
+    const paletteTarget = element.closest('[data-board-group-drop-target]');
+    if (paletteTarget) {
+      return {
+        column,
+        groupId: paletteTarget.dataset.boardGroupId || '',
+        targetGroup: null,
+        targetBox: null,
+        paletteTarget
+      };
+    }
+
+    const targetBox = element.closest('.assignment-board__activity[data-board-requirement-id]');
+    const targetGroup = element.closest('[data-board-activity-group]');
+    if (!targetBox && !targetGroup) return null;
+
+    return {
+      column,
+      groupId: targetGroup
+        ? (targetGroup.dataset.boardGroupId || '')
+        : (targetBox?.dataset.boardGroupId || ''),
+      targetGroup,
+      targetBox,
+      paletteTarget: null
+    };
+  }
+
   function boardActivityGroupIds() {
     return activityGroups().map((group) => group.id);
   }
@@ -1373,7 +1403,7 @@
     }
     if ((activity.group_id || '') === (groupId || '')) return;
 
-    const targetName = groupId ? (activityGroupById(groupId)?.name || 'gruppo') : 'Altre attività';
+    const targetName = groupId ? (activityGroupById(groupId)?.name || 'gruppo') : 'Senza gruppo';
     assignmentBoard?.classList.add('is-saving');
     setStatus(assignmentBoardStatus, `Spostamento di ${prettifyActivityName(activity.name)} in ${targetName}…`);
     try {
@@ -2146,7 +2176,7 @@
           <div data-board-edit-warnings><span class="warning-none">—</span></div>
         </div>
         <div class="board-edit-person-activities field--wide">
-          <span>Altre attività assegnate</span>
+          <span>Senza gruppo assegnate</span>
           <div data-board-edit-person-activities></div>
         </div>
       </div>`;
@@ -2188,7 +2218,7 @@
           <div data-board-edit-warnings></div>
         </div>
         <div class="board-edit-person-activities field--wide">
-          <span>Altre attività assegnate</span>
+          <span>Senza gruppo assegnate</span>
           <div data-board-edit-person-activities></div>
         </div>
       </div>`;
@@ -2811,7 +2841,7 @@
 
     activityGroupCatalog.innerHTML = body
       ? `<table class="admin-table catalog-table activity-group-table"><thead><tr><th>Gruppo</th><th>Attività</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
-      : '<p class="empty-state">Nessun gruppo creato. Le attività vengono mostrate in “Altre attività”.</p>';
+      : '<p class="empty-state">Nessun gruppo creato. Le attività vengono mostrate in “Senza gruppo”.</p>';
   }
 
   function renderActivityCatalog() {
@@ -3750,6 +3780,7 @@
       canDropAtEnd: false
     };
     box.classList.add('is-activity-dragging');
+    assignmentBoard.classList.add('is-activity-drag-mode');
     try { handle.setPointerCapture(event.pointerId); } catch {}
     event.preventDefault();
   });
@@ -3762,8 +3793,8 @@
     clearBoardGroupReorderMarkers();
 
     const element = document.elementFromPoint(event.clientX, event.clientY);
-    const column = element?.closest?.('[data-board-shift-column]');
-    if (!column || column.dataset.boardShiftColumn !== boardActivityPointerDrag.shiftId) {
+    const target = boardActivityDropContext(element, boardActivityPointerDrag.shiftId);
+    if (!target) {
       boardActivityPointerDrag.hasTargetGroup = false;
       boardActivityPointerDrag.targetGroupId = null;
       boardActivityPointerDrag.targetRequirementId = '';
@@ -3771,27 +3802,17 @@
       return;
     }
 
-    const targetGroup = element.closest('[data-board-activity-group]');
-    if (!targetGroup) {
-      boardActivityPointerDrag.hasTargetGroup = false;
-      boardActivityPointerDrag.targetGroupId = null;
-      boardActivityPointerDrag.targetRequirementId = '';
-      boardActivityPointerDrag.canDropAtEnd = false;
-      return;
-    }
-
-    const targetGroupId = targetGroup.dataset.boardGroupId || '';
     boardActivityPointerDrag.hasTargetGroup = true;
-    boardActivityPointerDrag.targetGroupId = targetGroupId;
+    boardActivityPointerDrag.targetGroupId = target.groupId;
 
-    if (targetGroupId !== boardActivityPointerDrag.sourceGroupId) {
+    if (target.groupId !== boardActivityPointerDrag.sourceGroupId) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.canDropAtEnd = false;
-      targetGroup.classList.add('is-activity-group-drop-target');
+      (target.paletteTarget || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
       return;
     }
 
-    const targetBox = element.closest('.assignment-board__activity[data-board-requirement-id]');
+    const targetBox = target.targetBox;
     if (targetBox?.dataset.boardRequirementId === boardActivityPointerDrag.id) {
       boardActivityPointerDrag.targetRequirementId = boardActivityPointerDrag.id;
       boardActivityPointerDrag.canDropAtEnd = false;
@@ -3822,6 +3843,7 @@
     const drag = { ...boardActivityPointerDrag };
     boardActivityPointerDrag = null;
     assignmentBoard?.querySelector(`.assignment-board__activity[data-board-requirement-id="${CSS.escape(drag.id)}"]`)?.classList.remove('is-activity-dragging');
+    assignmentBoard?.classList.remove('is-activity-drag-mode');
     clearBoardActivityReorderMarkers();
     clearBoardGroupReorderMarkers();
     boardDragEndedAt = Date.now();
@@ -3948,6 +3970,7 @@
         shiftId: requirement.shiftId
       };
       box.classList.add('is-activity-dragging');
+      assignmentBoard.classList.add('is-activity-drag-mode');
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', requirement.id);
       setStatus(assignmentBoardStatus, '');
@@ -3996,14 +4019,8 @@
     }
 
     if (boardActivityDragState) {
-      const column = event.target.closest('[data-board-shift-column]');
-      if (!column || column.dataset.boardShiftColumn !== boardActivityDragState.shiftId) {
-        event.dataTransfer.dropEffect = 'none';
-        return;
-      }
-
-      const targetGroup = event.target.closest('[data-board-activity-group]');
-      if (!targetGroup) {
+      const target = boardActivityDropContext(event.target, boardActivityDragState.shiftId);
+      if (!target) {
         event.dataTransfer.dropEffect = 'none';
         return;
       }
@@ -4013,20 +4030,19 @@
       clearBoardActivityReorderMarkers();
       clearBoardGroupReorderMarkers();
 
-      const targetGroupId = targetGroup.dataset.boardGroupId || '';
-      if (targetGroupId !== (boardActivityDragState.sourceGroupId || '')) {
-        targetGroup.classList.add('is-activity-group-drop-target');
+      if (target.groupId !== (boardActivityDragState.sourceGroupId || '')) {
+        (target.paletteTarget || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
         return;
       }
 
-      const targetBox = event.target.closest('.assignment-board__activity[data-board-requirement-id]');
+      const targetBox = target.targetBox;
       const draggedBox = assignmentBoard.querySelector(`.assignment-board__activity[data-board-requirement-id="${CSS.escape(boardActivityDragState.id)}"]`);
       if (targetBox && targetBox !== draggedBox) {
         const rect = targetBox.getBoundingClientRect();
         const after = event.clientY > rect.top + rect.height / 2;
         targetBox.classList.add(after ? 'is-activity-reorder-after' : 'is-activity-reorder-before');
-      } else if (!targetBox) {
-        targetGroup.querySelector('[data-board-group-body]')?.classList.add('is-activity-reorder-end');
+      } else if (!targetBox && target.targetGroup) {
+        target.targetGroup.querySelector('[data-board-group-body]')?.classList.add('is-activity-reorder-end');
       }
       return;
     }
@@ -4091,22 +4107,22 @@
 
     if (boardActivityDragState) {
       const dragged = { ...boardActivityDragState };
-      const column = event.target.closest('[data-board-shift-column]');
-      const targetGroup = event.target.closest('[data-board-activity-group]');
-      if (!column || column.dataset.boardShiftColumn !== dragged.shiftId || !targetGroup) return;
+      const target = boardActivityDropContext(event.target, dragged.shiftId);
+      if (!target) return;
 
       event.preventDefault();
-      const targetGroupId = targetGroup.dataset.boardGroupId || '';
-      if (targetGroupId !== (dragged.sourceGroupId || '')) {
+      if (target.groupId !== (dragged.sourceGroupId || '')) {
         clearBoardActivityReorderMarkers();
         clearBoardGroupReorderMarkers();
-        await setBoardActivityGroup(dragged.activityId, targetGroupId);
+        assignmentBoard.classList.remove('is-activity-drag-mode');
+        await setBoardActivityGroup(dragged.activityId, target.groupId || '');
         return;
       }
 
-      const targetBox = event.target.closest('.assignment-board__activity[data-board-requirement-id]');
+      const targetBox = target.targetBox;
       if (targetBox?.dataset.boardRequirementId === dragged.id) {
         clearBoardActivityReorderMarkers();
+        assignmentBoard.classList.remove('is-activity-drag-mode');
         return;
       }
 
@@ -4120,6 +4136,7 @@
 
       clearBoardActivityReorderMarkers();
       clearBoardGroupReorderMarkers();
+      assignmentBoard.classList.remove('is-activity-drag-mode');
       await reorderBoardRequirement(dragged.id, targetRequirementId, placeAfter);
       return;
     }
@@ -4166,6 +4183,7 @@
     clearBoardActivityReorderMarkers();
     clearBoardGroupReorderMarkers();
     clearBoardReorderMarkers();
+    assignmentBoard.classList.remove('is-activity-drag-mode');
     boardGroupDragState = null;
     boardActivityDragState = null;
     boardDragState = null;
@@ -4370,7 +4388,7 @@
       const groupId = rowNode.dataset.activityGroupId || '';
       const group = activityGroupById(groupId);
       if (!group) return;
-      if (!confirm(`Eliminare il gruppo “${group.name}”? Le attività non verranno eliminate e passeranno in “Altre attività”.`)) return;
+      if (!confirm(`Eliminare il gruppo “${group.name}”? Le attività non verranno eliminate e passeranno in “Senza gruppo”.`)) return;
       try {
         const result = await api(API, {
           method: 'POST',
@@ -4380,7 +4398,7 @@
         boardCollapsedGroups.delete(boardGroupKey(groupId));
         persistBoardCollapsedGroups();
         await loadSnapshot();
-        setStatus(activityGroupStatus, `Gruppo eliminato. ${result?.group?.activitiesUngrouped || 0} attività spostate in “Altre attività”.`, 'success');
+        setStatus(activityGroupStatus, `Gruppo eliminato. ${result?.group?.activitiesUngrouped || 0} attività spostate in “Senza gruppo”.`, 'success');
       } catch (error) {
         alert(error.message);
       }
