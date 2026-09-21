@@ -1181,3 +1181,63 @@ tr.is-busy button.is-busy {
     width: 100%;
   }
 }
+
+/* Vista schede: nominativo, risposta e ruolo sulla stessa riga */
+.assignment-board__person {
+  min-height: 34px;
+  padding: 5px 6px;
+  gap: 0;
+}
+.assignment-board__person-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.assignment-board__person-name {
+  font-size: .76rem;
+}
+.assignment-board__response {
+  flex: 0 0 auto;
+  padding: 2px 5px;
+  font-size: .64rem;
+  white-space: nowrap;
+}
+.assignment-board__responsible-mark {
+  display: inline-grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  flex: 0 0 21px;
+  border-radius: 50%;
+  background: #fff0af;
+  color: #725600;
+  font-size: .72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.assignment-board__note {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  flex: 0 0 20px;
+  border-radius: 50%;
+  background: #fff2c9;
+  color: #745a00;
+  font-size: .62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.assignment-board__warning {
+  width: 20px;
+  height: 20px;
+  font-size: .69rem;
+}
+.assignment-board__edit {
+  width: 21px;
+  height: 21px;
+  flex-basis: 21px;
+  font-size: .68rem;
+}

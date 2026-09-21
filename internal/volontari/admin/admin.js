@@ -811,6 +811,13 @@
     const dragKind = row.isAvailability ? 'availability' : 'assignment';
     const dragId = row.id || '';
     const assignmentId = row.isAvailability ? '' : row.id;
+    const responseLabel = row.currentResponse === 'confirmed'
+      ? 'Confermata'
+      : row.currentResponse === 'declined'
+        ? 'Non può'
+        : row.isAvailability
+          ? 'Disponibile'
+          : 'Da risp.';
 
     return `
       <div
@@ -825,21 +832,18 @@
             data-board-person-open="${escapeHtml(row.personId)}"
             data-board-person-assignment-id="${escapeHtml(assignmentId)}"
             title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
-            ${row.isResponsible ? '★ ' : ''}${escapeHtml(row.personName)}
+            ${escapeHtml(row.personName)}
           </button>
-          <span class="assignment-board__person-tools">
-            ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
-            <button type="button"
-              class="assignment-board__edit"
-              data-board-edit-kind="${escapeHtml(dragKind)}"
-              data-board-edit-id="${escapeHtml(dragId)}"
-              aria-label="Modifica ${escapeHtml(row.personName)}"
-              title="Modifica assegnazione">✎</button>
-          </span>
-        </div>
-        <div class="assignment-board__person-meta">
-          <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(response.label)}</span>
-          ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">nota</span>` : ''}
+          <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>
+          ${row.isResponsible ? '<span class="assignment-board__responsible-mark" title="Responsabile dell’attività in questo turno" aria-label="Responsabile">★</span>' : ''}
+          ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">N</span>` : ''}
+          ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
+          <button type="button"
+            class="assignment-board__edit"
+            data-board-edit-kind="${escapeHtml(dragKind)}"
+            data-board-edit-id="${escapeHtml(dragId)}"
+            aria-label="Modifica ${escapeHtml(row.personName)}"
+            title="Modifica assegnazione">✎</button>
         </div>
       </div>`;
   }
