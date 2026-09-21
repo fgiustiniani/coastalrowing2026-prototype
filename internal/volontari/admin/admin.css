@@ -1899,3 +1899,86 @@ tr.is-busy button.is-busy {
     grid-column: auto;
   }
 }
+
+
+/* Selettore ricercabile persona nei popup assegnazioni */
+.person-search-select {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.person-search-select__source {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.person-search-select__input {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid #cbdadd;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+.person-search-select__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10,107,125,.10);
+}
+.person-search-select__panel {
+  position: absolute;
+  z-index: 180;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  min-width: 260px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #cbdadd;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(23,62,75,.18);
+}
+.person-search-select__panel[hidden] {
+  display: none !important;
+}
+.person-search-select__option {
+  width: 100%;
+  display: block;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: .84rem;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+.person-search-select__option:hover,
+.person-search-select__option.is-active {
+  background: var(--soft);
+}
+.person-search-select__empty {
+  margin: 0;
+  padding: 10px 9px;
+  color: var(--muted);
+  font-size: .78rem;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .person-search-select__panel {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
+}
