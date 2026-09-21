@@ -183,6 +183,10 @@
     renderAvailability();
   }
 
+  function displayActivityName(value) {
+    return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
+  }
+
   function renderAssignments() {
     const assignments = state.personState?.assignments || [];
     if (!assignments.length) {
@@ -194,7 +198,7 @@
       const declined = saved.response === 'declined';
       return `
         <article class="assignment-card" data-assignment-id="${escapeHtml(assignment.id)}">
-          <div class="assignment-card__head"><div><h3>${escapeHtml(assignment.activity)}</h3><div class="meta">
+          <div class="assignment-card__head"><div><h3>${escapeHtml(displayActivityName(assignment.activity))}</h3><div class="meta">
             <span class="pill">${escapeHtml(assignment.day)}</span><span class="pill">${escapeHtml(assignment.shift)}</span>
             ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
             ${!assignment.shiftMatched ? '<span class="pill pill--warn">Turno da verificare</span>' : ''}
@@ -248,7 +252,7 @@
     const listAssignments = (items) => items.length
       ? `<ul class="summary-list">${items.map((a) => {
           const response = state.responses.get(a.id) || {};
-          return `<li><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong> — ${escapeHtml(a.activity)}${a.role ? ` · ${escapeHtml(a.role)}` : ''}${response.note ? `<br><small>Nota: ${escapeHtml(response.note)}</small>` : ''}</li>`;
+          return `<li><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong> — ${escapeHtml(displayActivityName(a.activity))}${a.role ? ` · ${escapeHtml(a.role)}` : ''}${response.note ? `<br><small>Nota: ${escapeHtml(response.note)}</small>` : ''}</li>`;
         }).join('')}</ul>`
       : '<p class="summary-empty">Nessuna.</p>';
 
