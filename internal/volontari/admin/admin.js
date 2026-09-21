@@ -18,11 +18,14 @@
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
   const activityReportPersonFilter = document.querySelector('[data-activity-report-person-filter]');
-  const editor = document.querySelector('[data-assignment-editor]');
-  const editorTitle = document.querySelector('[data-editor-title]');
-  const editorForm = document.querySelector('[data-assignment-form]');
-  const editorStatus = document.querySelector('[data-editor-status]');
-  const rawShift = document.querySelector('[data-raw-shift]');
+  const activityCatalog = document.querySelector('[data-activity-catalog]');
+  const raceProgram = document.querySelector('[data-race-program]');
+  const raceProgramStatus = document.querySelector('[data-race-program-status]');
+  const racePersonFilter = document.querySelector('[data-race-person-filter]');
+  const raceCrewFilter = document.querySelector('[data-race-crew-filter]');
+  const detailDialog = document.querySelector('[data-detail-dialog]');
+  const detailTitle = document.querySelector('[data-detail-title]');
+  const detailContent = document.querySelector('[data-detail-content]');
   const auditDialog = document.querySelector('[data-audit-dialog]');
   const auditTitle = document.querySelector('[data-audit-title]');
   const auditList = document.querySelector('[data-audit-list]');
@@ -31,6 +34,9 @@
 
   let credentials = null;
   let snapshot = null;
+  let newAssignmentOpen = false;
+  let newActivityOpen = false;
+  let newRaceEntryOpen = false;
 
   const escapeHtml = (value) => String(value ?? '')
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
