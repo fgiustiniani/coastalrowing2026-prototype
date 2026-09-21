@@ -65,14 +65,14 @@ async function adminSnapshot() {
     }),
     adminRead('assegnazioni', 'volunteer_assignments', {
       query: {
-        select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,created_at,updated_at',
+        select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,display_order,created_at,updated_at',
         active: 'eq.true',
         order: 'created_at.asc'
       }
     }),
     adminRead('storico assegnazioni', 'volunteer_assignments', {
       query: {
-        select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,created_at,updated_at',
+        select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,display_order,created_at,updated_at',
         order: 'created_at.asc'
       }
     }),
@@ -178,6 +178,7 @@ async function adminSnapshot() {
       note: assignment.note || '',
       sourceType: assignment.source_type,
       sourceRow: assignment.source_row,
+      displayOrder: Number(assignment.display_order || 0),
       isResponsible: responsibilityByAssignmentId.get(assignment.id) || false,
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
@@ -530,6 +531,168 @@ export default async (request) => {
       const body = await parseJsonBody(request);
       const action = clean(body.action, 40);
       const actorName = `admin:${clean(admin.username, 100)}`;
+
+      if (action === 'save-person') {
+        const personId = clean(body.personId, 60) || null;
+        const personCode = clean(body.personCode, 40) || null;
+        const surname = clean(body.surname, 100) || null;
+        const givenName = clean(body.givenName, 100) || null;
+        const displayName = clean(body.displayName, 160)
+          || [surname, givenName].filter(Boolean).join(' ').trim();
+        const selectable = body.selectable !== false;
+
+        if (personId && !isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+        if (!displayName || displayName.length < 2) throw new ApiError('Indica il nominativo.', 400, 'PERSON_NAME_REQUIRED');
+
+        let current = null;
+        let saved = null;
+        const now = new Date().toISOString();
+
+        if (personId) {
+          const currentRows = await supabaseRequest('volunteer_people', {
+            query: {
+              select: 'id,person_code,surname,given_name,display_name,source_type,selectable,active',
+              id: `eq.${personId}`,
+              limit: 1
+            }
+          });
+          current = rows(currentRows)[0] || null;
+          if (!current) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
+
+          const result = await supabaseRequest('volunteer_people', {
+            method: 'PATCH',
+            query: { id: `eq.${personId}` },
+            body: {
+              person_code: personCode,
+              surname,
+              given_name: givenName,
+              display_name: displayName,
+              selectable,
+              active: true,
+              updated_at: now
+            },
+            prefer: 'return=representation'
+          });
+          saved = rows(result)[0] || null;
+        } else {
+          const result = await supabaseRequest('volunteer_people', {
+            method: 'POST',
+            body: {
+              person_code: personCode,
+              surname,
+              given_name: givenName,
+              display_name: displayName,
+              source_type: 'manual',
+              selectable,
+              active: true
+            },
+            prefer: 'return=representation'
+          });
+          saved = rows(result)[0] || null;
+        }
+
+        if (!saved) throw new ApiError('Persona non salvata.', 500, 'PERSON_SAVE_FAILED');
+
+        if (personId && raceProgram !== null) {
+          await supabaseRequest('volunteer_race_program', {
+            method: 'PATCH',
+            query: { person_id: `eq.${personId}`, active: 'eq.true' },
+            body: {
+              person_code: personCode,
+              person_name: displayName,
+              updated_at: now
+            },
+            prefer: 'return=minimal'
+          });
+        }
+
+        await auditAdminChange({
+          actorName,
+          actionType: current ? 'person_updated' : 'person_created',
+          entityType: 'person',
+          entityId: saved.id,
+          person: saved,
+          previousValue: current,
+          newValue: {
+            id: saved.id,
+            personCode: saved.person_code,
+            surname: saved.surname,
+            givenName: saved.given_name,
+            displayName: saved.display_name,
+            selectable: saved.selectable,
+            active: saved.active
+          }
+        });
+        return json({ ok: true, person: saved });
+      }
+
+      if (action === 'delete-person') {
+        const personId = clean(body.personId, 60);
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+
+        const currentRows = await supabaseRequest('volunteer_people', {
+          query: {
+            select: 'id,person_code,surname,given_name,display_name,source_type,selectable,active',
+            id: `eq.${personId}`,
+            limit: 1
+          }
+        });
+        const current = rows(currentRows)[0] || null;
+        if (!current) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
+
+        const assignmentRowsForPerson = await supabaseRequest('volunteer_assignments', {
+          query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
+        });
+        if (rows(assignmentRowsForPerson).length) {
+          throw new ApiError('Non puoi eliminare una persona finché ha assegnazioni attive.', 409, 'PERSON_HAS_ASSIGNMENTS');
+        }
+
+        if (raceProgram !== null) {
+          const raceRowsForPerson = await supabaseRequest('volunteer_race_program', {
+            query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
+          });
+          if (rows(raceRowsForPerson).length) {
+            throw new ApiError('Non puoi eliminare una persona finché è presente nel programma gare.', 409, 'PERSON_HAS_RACES');
+          }
+        }
+
+        await supabaseRequest('volunteer_people', {
+          method: 'PATCH',
+          query: { id: `eq.${personId}` },
+          body: { active: false, selectable: false, updated_at: new Date().toISOString() },
+          prefer: 'return=minimal'
+        });
+        await auditAdminChange({
+          actorName,
+          actionType: 'person_deactivated',
+          entityType: 'person',
+          entityId: personId,
+          person: current,
+          previousValue: current,
+          newValue: { ...current, active: false, selectable: false }
+        });
+        return json({ ok: true });
+      }
+
+      if (action === 'reorder-assignments') {
+        const shiftId = clean(body.shiftId, 60);
+        const activityId = clean(body.activityId, 60);
+        const assignmentIds = Array.isArray(body.assignmentIds)
+          ? body.assignmentIds.map((value) => clean(value, 60))
+          : [];
+
+        if (!isUuid(shiftId) || !isUuid(activityId) || assignmentIds.some((id) => !isUuid(id))) {
+          throw new ApiError('Ordine assegnazioni non valido.', 400, 'INVALID_ASSIGNMENT_ORDER');
+        }
+
+        const result = await rpc('admin_reorder_volunteer_assignments', {
+          p_actor_name: actorName,
+          p_shift_id: shiftId,
+          p_activity_id: activityId,
+          p_assignment_ids: assignmentIds
+        });
+        return json({ ok: true, order: result });
+      }
 
       if (action === 'save-assignment') {
         const personId = clean(body.personId, 60);
