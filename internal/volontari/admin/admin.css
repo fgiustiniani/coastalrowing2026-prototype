@@ -1241,3 +1241,63 @@ tr.is-busy button.is-busy {
   flex-basis: 21px;
   font-size: .68rem;
 }
+
+/* Vista schede: attività più marcate e aggiunta rapida persona */
+.assignment-board__activity {
+  border: 1px solid #8fbfc8;
+  background: #f2f9fa;
+  box-shadow: 0 2px 8px rgba(10,107,125,.08);
+}
+.assignment-board__activity-head {
+  align-items: center;
+  padding: 7px 8px;
+  border-bottom: 1px solid #b8d8de;
+  border-radius: 10px 10px 0 0;
+  background: #dceff2;
+  color: #214d59;
+}
+.assignment-board__activity-head strong {
+  font-weight: 900;
+}
+.assignment-board__activity-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+.assignment-board__activity-count {
+  min-width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #36555f;
+  font-size: .7rem;
+  font-weight: 900;
+  border: 1px solid #b6d4da;
+}
+.assignment-board__add-person {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid #6faab5;
+  border-radius: 7px;
+  padding: 0;
+  background: #fff;
+  color: var(--accent-dark);
+  font-size: .95rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.assignment-board__add-person:hover {
+  border-color: var(--accent);
+  background: #e9f6f8;
+}
+.assignment-board__activity.is-drop-target {
+  border-color: var(--accent);
+  background: #e8f7f9;
+  box-shadow: inset 0 0 0 1px var(--accent), 0 4px 12px rgba(10,107,125,.12);
+}

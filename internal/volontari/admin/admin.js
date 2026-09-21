@@ -893,7 +893,17 @@
             data-board-role="${escapeHtml(definition.role)}">
             <header class="assignment-board__activity-head">
               <strong>${escapeHtml(definition.label)}</strong>
-              <span>${people.length}</span>
+              <span class="assignment-board__activity-actions">
+                <span class="assignment-board__activity-count">${people.length}</span>
+                <button type="button"
+                  class="assignment-board__add-person"
+                  data-board-add-person
+                  data-board-shift-id="${escapeHtml(shift.id)}"
+                  data-board-activity="${escapeHtml(definition.activity)}"
+                  data-board-role="${escapeHtml(definition.role)}"
+                  aria-label="Aggiungi persona a ${escapeHtml(definition.label)}"
+                  title="Aggiungi persona">＋</button>
+              </span>
             </header>
             <div class="assignment-board__people">
               ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Trascina qui</span>'}
@@ -1066,7 +1076,29 @@
     if (boardEditContext.kind === 'assignment') {
       return (snapshot?.assignments || []).find((row) => row.id === boardEditContext.id) || null;
     }
-    return unassignedAvailabilityRows().find((row) => row.id === boardEditContext.id) || null;
+    if (boardEditContext.kind === 'availability') {
+      return unassignedAvailabilityRows().find((row) => row.id === boardEditContext.id) || null;
+    }
+    if (boardEditContext.kind === 'new') {
+      const shift = (snapshot?.shifts || []).find((row) => row.id === boardEditContext.shiftId);
+      if (!shift) return null;
+      return {
+        id: null,
+        personId: '',
+        personName: '',
+        shiftId: shift.id,
+        day: shift.day_label || '',
+        shift: shift.shift_label || '',
+        shiftMatched: true,
+        activity: boardEditContext.activity || '',
+        role: boardEditContext.role || '',
+        requestedProfile: '',
+        note: '',
+        currentResponse: null,
+        isResponsible: false
+      };
+    }
+    return null;
   }
 
   function boardEditCandidate() {
@@ -1086,6 +1118,42 @@
     if (!node) return;
     const candidate = boardEditCandidate();
     node.innerHTML = candidate ? warningHtml(assignmentWarningDetails(candidate)) : '<span class="warning-none">—</span>';
+  }
+
+  function openBoardAddPerson(shiftId, activity, role = '') {
+    boardEditContext = { kind: 'new', shiftId, activity, role };
+    const source = boardEditSource();
+    if (!source || !boardEditDialog) return;
+
+    boardEditTitle.textContent = `Aggiungi persona · ${displayActivity(source)}`;
+    setStatus(boardEditStatus, '');
+
+    boardEditContent.innerHTML = `
+      <div class="board-edit-grid">
+        <label class="field"><span>Persona</span>
+          <select data-board-edit-person>${personOptions('')}</select>
+        </label>
+        <label class="field"><span>Turno</span>
+          <select data-board-edit-shift>${shiftOptions(source)}</select>
+        </label>
+        <label class="field field--wide"><span>Attività</span>
+          <select data-board-edit-activity>${activityOptions(source)}</select>
+        </label>
+        <div class="board-edit-info field--wide">
+          <div><span>Risposta</span>—</div>
+          <div><span>Responsabile</span>—</div>
+        </div>
+        <div class="board-edit-warning field--wide">
+          <span>Warning</span>
+          <div data-board-edit-warnings><span class="warning-none">—</span></div>
+        </div>
+      </div>`;
+
+    if (boardEditDelete) boardEditDelete.hidden = true;
+    if (boardEditHistory) boardEditHistory.hidden = true;
+    refreshBoardEditWarnings();
+    boardEditDialog.showModal();
+    window.setTimeout(() => boardEditContent?.querySelector('[data-board-edit-person]')?.focus(), 0);
   }
 
   function openBoardEdit(kind, id) {
@@ -1129,6 +1197,7 @@
     const source = boardEditSource();
     if (!source || !boardEditContent) return;
     const isAvailability = boardEditContext?.kind === 'availability';
+    const isNew = boardEditContext?.kind === 'new';
     const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || '';
     const shiftId = boardEditContent.querySelector('[data-board-edit-shift]')?.value || '';
     const activity = boardEditContent.querySelector('[data-board-edit-activity]')?.value || '';
@@ -1145,18 +1214,19 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             action: 'save-assignment',
-            assignmentId: isAvailability ? null : source.id,
+            assignmentId: (isAvailability || isNew) ? null : source.id,
             personId,
             shiftId,
             rawDay: null,
             rawShift: null,
-            activity,
-            role: null,
-            requestedProfile: isAvailability ? null : (source.requestedProfile || null),
+            activity: isNew && activity === assignmentCatalogValue(source) ? source.activity : activity,
+            role: isNew && activity === assignmentCatalogValue(source) ? (source.role || null) : null,
+            requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
             note: source.note || null
           })
         });
-        const personName = source.personName;
+        const selectedPerson = (snapshot?.people || []).find((person) => person.id === personId);
+        const personName = selectedPerson?.display_name || source.personName || 'Persona';
         boardEditDialog.close();
         boardEditContext = null;
         await loadSnapshot();
@@ -2283,6 +2353,18 @@
 
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
+
+    const addPerson = event.target.closest('[data-board-add-person]');
+    if (addPerson) {
+      event.stopPropagation();
+      openBoardAddPerson(
+        addPerson.dataset.boardShiftId || '',
+        addPerson.dataset.boardActivity || '',
+        addPerson.dataset.boardRole || ''
+      );
+      return;
+    }
+
     const edit = event.target.closest('[data-board-edit-kind]');
     if (edit) {
       event.stopPropagation();
