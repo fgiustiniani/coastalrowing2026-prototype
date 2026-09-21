@@ -548,12 +548,12 @@
     return activityGroups().find((group) => group.id === id) || null;
   }
 
-  function boardGroupKey(groupId) {
-    return groupId || '__ungrouped__';
+  function boardGroupKey(shiftId, groupId) {
+    return `${shiftId || 'shift'}|${groupId || '__ungrouped__'}`;
   }
 
-  function boardGroupCollapsed(groupId) {
-    return boardCollapsedGroups.has(boardGroupKey(groupId));
+  function boardGroupCollapsed(shiftId, groupId) {
+    return boardCollapsedGroups.has(boardGroupKey(shiftId, groupId));
   }
 
   function persistBoardCollapsedGroups() {
@@ -1535,20 +1535,11 @@
       .filter((shift) => visibleShiftIds.has(shift.id))
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
 
-    const groupDefinitions = [
-      ...activityGroups().map((group) => ({
-        id: group.id,
-        name: group.name,
-        isUngrouped: false,
-        displayOrder: Number(group.display_order ?? group.displayOrder ?? 0)
-      })),
-      {
-        id: '',
-        name: 'Altre attività',
-        isUngrouped: true,
-        displayOrder: 999999
-      }
-    ];
+    const groups = activityGroups().map((group) => ({
+      id: group.id,
+      name: group.name,
+      displayOrder: Number(group.display_order ?? group.displayOrder ?? 0)
+    }));
 
     const renderActivityBox = (requirement) => {
       const people = rows.filter((row) =>
@@ -1608,15 +1599,20 @@
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
 
-      const groupsHtml = groupDefinitions.map((group) => {
+      const groupedHtml = groups.map((group) => {
         const groupRequirements = shiftRequirements
           .filter((item) => (item.activityGroupId || '') === group.id)
           .sort((a, b) =>
             Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
             || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
           );
-        const collapsed = boardGroupCollapsed(group.id);
-        const groupKey = boardGroupKey(group.id);
+
+        // In modalità normale non mostriamo gruppi vuoti: in ogni turno
+        // compaiono solo attività realmente abbinate a quel turno.
+        if (!groupRequirements.length) return '';
+
+        const collapsed = boardGroupCollapsed(shift.id, group.id);
+        const groupKey = boardGroupKey(shift.id, group.id);
         return `
           <section class="assignment-board__activity-group ${collapsed ? 'is-collapsed' : ''}"
             data-board-activity-group
@@ -1624,13 +1620,12 @@
             data-board-group-key="${escapeHtml(groupKey)}"
             data-board-shift-id="${escapeHtml(shift.id)}">
             <header class="assignment-board__activity-group-head">
-              ${group.isUngrouped ? '<span class="assignment-board__group-spacer" aria-hidden="true"></span>' : `
-                <span class="assignment-board__group-drag-handle"
-                  draggable="true"
-                  data-board-group-drag-handle
-                  data-board-group-id="${escapeHtml(group.id)}"
-                  title="Trascina per spostare il gruppo in alto o in basso"
-                  aria-label="Trascina per spostare il gruppo in alto o in basso">⋮⋮</span>`}
+              <span class="assignment-board__group-drag-handle"
+                draggable="true"
+                data-board-group-drag-handle
+                data-board-group-id="${escapeHtml(group.id)}"
+                title="Trascina per spostare il gruppo in alto o in basso"
+                aria-label="Trascina per spostare il gruppo in alto o in basso">⋮⋮</span>
               <button type="button"
                 class="assignment-board__group-toggle"
                 data-board-group-toggle="${escapeHtml(groupKey)}"
@@ -1642,12 +1637,28 @@
               <span class="assignment-board__group-count">${groupRequirements.length}</span>
             </header>
             <div class="assignment-board__group-body" data-board-group-body ${collapsed ? 'hidden' : ''}>
-              ${groupRequirements.length
-                ? groupRequirements.map(renderActivityBox).join('')
-                : '<div class="assignment-board__group-empty">Trascina qui un’attività</div>'}
+              ${groupRequirements.map(renderActivityBox).join('')}
             </div>
           </section>`;
       }).join('');
+
+      const ungroupedHtml = shiftRequirements
+        .filter((item) => !item.activityGroupId)
+        .map(renderActivityBox)
+        .join('');
+
+      const groupDropPalette = `
+        <div class="assignment-board__group-drop-palette" data-board-group-drop-palette>
+          <span class="assignment-board__group-drop-label">Sposta nel gruppo:</span>
+          ${groups.map((group) => `
+            <div class="assignment-board__group-drop-target"
+              data-board-group-drop-target
+              data-board-group-id="${escapeHtml(group.id)}">${escapeHtml(group.name)}</div>`
+          ).join('')}
+          <div class="assignment-board__group-drop-target assignment-board__group-drop-target--ungrouped"
+            data-board-group-drop-target
+            data-board-group-id="">Senza gruppo</div>
+        </div>`;
 
       return `
         <article class="assignment-board__column" data-board-shift-column="${escapeHtml(shift.id)}">
@@ -1656,7 +1667,9 @@
             <span>${escapeHtml(shift.shift_label)}</span>
           </header>
           <div class="assignment-board__activities">
-            ${groupsHtml}
+            ${groupDropPalette}
+            ${groupedHtml}
+            ${ungroupedHtml}
           </div>
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
@@ -1670,7 +1683,7 @@
     assignmentBoard.innerHTML = `
       <div class="assignment-board__help">
         <strong>Gestione a schede</strong>
-        <span>Comprimi o espandi i gruppi, trascinali per cambiarne l’ordine e trascina un box attività in un altro gruppo per riclassificare l’attività in tutti i turni. Le maniglie dei nominativi continuano a gestire le singole assegnazioni.</span>
+        <span>Ogni turno mostra solo le attività realmente previste. I gruppi si comprimono indipendentemente per turno; trascina un’attività su un altro gruppo per riclassificarla in tutti i turni.</span>
       </div>
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
   }
@@ -4166,11 +4179,21 @@
     if (groupToggle) {
       event.stopPropagation();
       const key = groupToggle.dataset.boardGroupToggle || '';
-      if (!key) return;
-      if (boardCollapsedGroups.has(key)) boardCollapsedGroups.delete(key);
-      else boardCollapsedGroups.add(key);
+      const groupNode = groupToggle.closest('[data-board-activity-group]');
+      const body = groupNode?.querySelector('[data-board-group-body]');
+      const chevron = groupToggle.querySelector('.assignment-board__group-chevron');
+      if (!key || !groupNode || !body) return;
+
+      const collapsed = !groupNode.classList.contains('is-collapsed');
+      groupNode.classList.toggle('is-collapsed', collapsed);
+      body.hidden = collapsed;
+      groupToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      groupToggle.title = collapsed ? 'Espandi gruppo' : 'Comprimi gruppo';
+      if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
+
+      if (collapsed) boardCollapsedGroups.add(key);
+      else boardCollapsedGroups.delete(key);
       persistBoardCollapsedGroups();
-      renderAssignmentBoard();
       return;
     }
 
