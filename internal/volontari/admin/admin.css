@@ -2464,3 +2464,91 @@ tr.is-busy button.is-busy {
     min-width: 980px;
   }
 }
+
+
+/* Pianificazione unificata attività e turni */
+.planning-table {
+  min-width: 1180px;
+}
+.planning-choice-cell {
+  min-width: 320px;
+  vertical-align: top !important;
+}
+.planning-select {
+  width: 100%;
+  min-width: 290px;
+}
+.planning-new-fields {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 9px;
+  border: 1px solid #bfd6da;
+  border-radius: 10px;
+  background: #f2f9fa;
+}
+.planning-new-fields[hidden] {
+  display: none !important;
+}
+.planning-new-fields label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.planning-new-fields label > span {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+}
+.planning-new-fields input {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #cbdadd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: .8rem;
+}
+.planning-new-fields small {
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.35;
+}
+.planning-new-shift {
+  grid-template-columns: minmax(150px, 1.2fr) minmax(100px, .8fr) minmax(100px, .8fr);
+}
+.planning-new-shift small {
+  grid-column: 1 / -1;
+}
+.planning-new-activity {
+  grid-template-columns: 1fr;
+}
+.planning-activity-manager {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.planning-activity-manager .catalog-table {
+  min-width: 620px;
+}
+
+@media (max-width: 700px) {
+  .planning-table {
+    min-width: 980px;
+  }
+  .planning-choice-cell {
+    min-width: 270px;
+  }
+  .planning-select {
+    min-width: 250px;
+  }
+  .planning-new-shift {
+    grid-template-columns: 1fr 1fr;
+  }
+  .planning-new-shift label:first-child,
+  .planning-new-shift small {
+    grid-column: 1 / -1;
+  }
+}
