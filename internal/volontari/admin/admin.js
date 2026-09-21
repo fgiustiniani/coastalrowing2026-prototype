@@ -950,6 +950,73 @@
     return { columns, rows };
   }
 
+  function exportShiftBoardPdfByDay() {
+    const groups = shiftBoardGroups();
+    if (!groups.length) {
+      alert('Nessun dato da esportare con i filtri correnti.');
+      return;
+    }
+
+    const popup = window.open('', '_blank');
+    if (!popup) {
+      alert('Il browser ha bloccato la finestra di esportazione PDF. Consenti i popup e riprova.');
+      return;
+    }
+
+    const byDay = new Map();
+    for (const group of groups) {
+      if (!byDay.has(group.day)) byDay.set(group.day, []);
+      byDay.get(group.day).push(group);
+    }
+
+    const pages = [...byDay.entries()].map(([day, dayGroups]) => `
+      <section class="day-page">
+        <header class="page-header">
+          <div>
+            <h1>Report volontari - vista per turni</h1>
+            <h2>${escapeHtml(day)}</h2>
+          </div>
+          <span>Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</span>
+        </header>
+        <div class="turn-grid" style="grid-template-columns:repeat(${dayGroups.length},minmax(0,1fr))">
+          ${dayGroups.map((group) => `
+            <article class="turn-column">
+              <h3>${escapeHtml(group.shift)}</h3>
+              ${group.activities.map((item) => `
+                <section class="activity-block">
+                  <strong>${escapeHtml(item.activity)}</strong>
+                  <div class="people-list">${item.people.map((person) =>
+                    `<span class="${person.isResponsible ? 'responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>`
+                  ).join('')}</div>
+                </section>`).join('')}
+            </article>`).join('')}
+        </div>
+      </section>`).join('');
+
+    popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Report volontari - vista per turni</title><style>
+      @page { size: A3 landscape; margin: 8mm; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; }
+      .day-page { break-after: page; page-break-after: always; width: 100%; }
+      .day-page:last-child { break-after: auto; page-break-after: auto; }
+      .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+      h1 { margin: 0; font-size: 14px; }
+      h2 { margin: 2px 0 0; font-size: 18px; }
+      .page-header span { font-size: 6.5px; color: #60757d; white-space: nowrap; }
+      .turn-grid { display: grid; gap: 6px; align-items: start; width: 100%; }
+      .turn-column { border: 1px solid #cfdcdf; border-radius: 6px; overflow: hidden; min-width: 0; }
+      .turn-column h3 { margin: 0; padding: 5px 6px; background: #eaf2f4; font-size: 9px; border-bottom: 1px solid #cfdcdf; }
+      .activity-block { padding: 5px 6px; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
+      .activity-block:last-child { border-bottom: 0; }
+      .activity-block > strong { display: block; margin-bottom: 2px; font-size: 7px; line-height: 1.15; }
+      .people-list { font-size: 6.2px; line-height: 1.2; }
+      .people-list span { display: inline; }
+      .people-list span + span::before { content: "; "; }
+      .people-list .responsible { font-weight: 700; color: #725600; }
+    </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
+    popup.document.close();
+  }
+
   function exportShiftBoardReport(kind) {
     const { columns, rows } = shiftBoardExportData();
     if (!columns.length) {
@@ -959,7 +1026,7 @@
     if (kind === 'excel') {
       exportExcel('report-volontari-vista-turni.xls', 'Vista turni', columns, rows);
     } else {
-      exportPdf('Report volontari - vista per turni', columns, rows, { pageSize: 'A3 landscape', fontSize: '6px' });
+      exportShiftBoardPdfByDay();
     }
   }
 
