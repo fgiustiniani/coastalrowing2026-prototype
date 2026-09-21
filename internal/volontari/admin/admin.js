@@ -823,30 +823,38 @@
 
   function boardActivityDefinitions() {
     const definitions = new Map();
-    const activityNamesWithVariants = new Set();
 
     for (const row of snapshot?.assignments || []) {
       const activity = String(row.activity || '').trim();
       if (!activity) continue;
-      const role = String(row.role || '').trim();
-      const label = displayActivity(row);
-      const key = `${activity}|||${role}`;
-      definitions.set(key, { key, activity, role, label });
-      activityNamesWithVariants.add(activity.toLocaleLowerCase('it-IT'));
+      const key = activity.toLocaleLowerCase('it-IT');
+      if (!definitions.has(key)) {
+        definitions.set(key, { key, activity, role: '', label: prettifyActivityName(activity) });
+      }
     }
 
     for (const activity of snapshot?.activities || []) {
       const name = String(activity.name || '').trim();
-      if (!name || activityNamesWithVariants.has(name.toLocaleLowerCase('it-IT'))) continue;
-      const key = `${name}|||`;
-      definitions.set(key, { key, activity: name, role: '', label: prettifyActivityName(name) });
+      if (!name) continue;
+      const key = name.toLocaleLowerCase('it-IT');
+      if (!definitions.has(key)) {
+        definitions.set(key, { key, activity: name, role: '', label: prettifyActivityName(name) });
+      }
     }
 
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     return [...definitions.values()]
-      .filter((item) => !selectedActivities.length || selectedActivities.includes(item.label))
+      .filter((item) => {
+        if (!selectedActivities.length) return true;
+        if (selectedActivities.includes(item.label)) return true;
+        return (snapshot?.assignments || []).some((row) =>
+          String(row.activity || '').trim() === item.activity
+          && selectedActivities.includes(displayActivity(row))
+        );
+      })
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
   }
+
 
   function filteredBoardRows() {
     const types = selectedFilterValues(assignmentTypeFilter);
@@ -929,6 +937,11 @@
             data-board-edit-id="${escapeHtml(dragId)}"
             aria-label="Modifica ${escapeHtml(row.personName)}"
             title="Modifica assegnazione">✎</button>
+          ${assignmentId ? `<button type="button"
+            class="assignment-board__delete"
+            data-board-delete-assignment="${escapeHtml(assignmentId)}"
+            aria-label="Elimina ${escapeHtml(row.personName)} dall’attività"
+            title="Elimina assegnazione">×</button>` : ''}
         </div>
       </div>`;
   }
@@ -962,20 +975,18 @@
         ? activityDefinitions
         : activityDefinitions.filter((definition) => assigned.some((row) =>
             String(row.activity || '').trim() === definition.activity
-            && String(row.role || '').trim() === definition.role
           ));
 
       const activitiesHtml = visibleDefinitions.map((definition) => {
         const people = assigned.filter((row) =>
           String(row.activity || '').trim() === definition.activity
-          && String(row.role || '').trim() === definition.role
         );
         return `
           <section class="assignment-board__activity"
             data-board-drop
             data-board-shift-id="${escapeHtml(shift.id)}"
             data-board-activity="${escapeHtml(definition.activity)}"
-            data-board-role="${escapeHtml(definition.role)}">
+            data-board-role="">
             <header class="assignment-board__activity-head">
               <strong>${escapeHtml(definition.label)}</strong>
               <span class="assignment-board__activity-actions">
@@ -985,7 +996,7 @@
                   data-board-add-person
                   data-board-shift-id="${escapeHtml(shift.id)}"
                   data-board-activity="${escapeHtml(definition.activity)}"
-                  data-board-role="${escapeHtml(definition.role)}"
+                  data-board-role=""
                   aria-label="Aggiungi persona a ${escapeHtml(definition.label)}"
                   title="Aggiungi persona">＋</button>
               </span>
@@ -1073,8 +1084,7 @@
       assignmentId = current.id;
       sourceName = current.personName;
       const sameDestination = current.shiftId === targetShiftId
-        && String(current.activity || '').trim() === targetActivity
-        && String(current.role || '').trim() === String(targetRole || '').trim();
+        && String(current.activity || '').trim() === targetActivity;
       if (sameDestination) {
         setStatus(assignmentBoardStatus, 'Il nominativo è già in questa attività e turno.');
         return;
@@ -1107,7 +1117,9 @@
           rawDay: null,
           rawShift: null,
           activity: targetActivity,
-          role: targetRole || null,
+          role: current && String(current.activity || '').trim() === targetActivity
+            ? (current.role || null)
+            : (targetRole || null),
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -1318,6 +1330,27 @@
         setStatus(assignmentBoardStatus, `${personName}: assegnazione salvata.`, 'success');
       } catch (error) {
         setStatus(boardEditStatus, error.message, 'error');
+      }
+    });
+  }
+
+  async function deleteBoardAssignment(assignmentId, button) {
+    const assignment = (snapshot?.assignments || []).find((row) => row.id === assignmentId);
+    if (!assignment) return;
+    if (!confirm(`Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
+
+    await withButtonBusy(button, '…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: assignment.id })
+        });
+        const personName = assignment.personName;
+        await loadSnapshot();
+        setStatus(assignmentBoardStatus, `${personName}: assegnazione eliminata.`, 'success');
+      } catch (error) {
+        setStatus(assignmentBoardStatus, error.message, 'error');
       }
     });
   }
@@ -2736,6 +2769,13 @@
         addPerson.dataset.boardActivity || '',
         addPerson.dataset.boardRole || ''
       );
+      return;
+    }
+
+    const remove = event.target.closest('[data-board-delete-assignment]');
+    if (remove) {
+      event.stopPropagation();
+      deleteBoardAssignment(remove.dataset.boardDeleteAssignment || '', remove);
       return;
     }
 

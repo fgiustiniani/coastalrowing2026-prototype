@@ -1602,3 +1602,178 @@ tr.is-busy button.is-busy {
   font-size: .78rem;
   text-align: center;
 }
+
+/* Vista schede: eliminazione rapida */
+.assignment-board__delete {
+  display: inline-grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  flex: 0 0 21px;
+  border: 1px solid #efc9b8;
+  border-radius: 7px;
+  padding: 0;
+  background: #fff;
+  color: #923716;
+  font-size: .92rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.assignment-board__delete:hover {
+  border-color: #dc9d82;
+  background: #fff2ed;
+}
+
+/* Ottimizzazione mobile area admin */
+@media (max-width: 700px) {
+  .admin-shell {
+    padding: 10px 8px 42px;
+  }
+  .admin-header {
+    gap: 10px;
+    padding: 6px 2px 16px;
+  }
+  .admin-header img {
+    width: min(260px, 78vw);
+  }
+  .admin-toolbar,
+  .section-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+  .toolbar-actions,
+  .section-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .toolbar-actions .button,
+  .section-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .kpi {
+    padding: 13px;
+  }
+  .filter-grid,
+  .filter-grid--report,
+  .filter-grid--report-three {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .multi-filter__panel {
+    width: 100%;
+    max-width: 100%;
+  }
+  .assignment-board-wrap {
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  .assignment-board__help {
+    position: static;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 8px;
+  }
+  .assignment-board {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-columns: auto;
+    min-width: 0;
+    gap: 10px;
+  }
+  .assignment-board__column {
+    width: 100%;
+    min-width: 0;
+  }
+  .assignment-board__header {
+    position: static;
+  }
+  .assignment-board__activities {
+    padding: 7px;
+  }
+  .assignment-board__person {
+    min-width: 0;
+  }
+  .assignment-board__person-main {
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto auto auto;
+    gap: 4px;
+  }
+  .assignment-board__person-name {
+    min-width: 0;
+    font-size: .74rem;
+  }
+  .assignment-board__response {
+    padding: 2px 4px;
+    font-size: .6rem;
+  }
+  .assignment-board__warning::after {
+    left: auto;
+    right: -42px;
+    transform: none;
+    max-width: min(260px, calc(100vw - 42px));
+  }
+  .audit-dialog,
+  [data-person-activities-dialog],
+  .board-edit-dialog {
+    width: calc(100vw - 12px);
+    max-width: none;
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+  .audit-dialog__content {
+    max-height: 94vh;
+    padding: 14px;
+  }
+  .person-activities-toolbar .button {
+    width: 100%;
+  }
+  .person-activities-table-wrap,
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .person-add-activity__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .person-add-activity__actions .button {
+    width: 100%;
+  }
+  .confirmation-change-card__header {
+    padding: 10px;
+  }
+  .confirmation-change {
+    padding: 9px 10px;
+  }
+}
+@media (max-width: 430px) {
+  .toolbar-actions,
+  .section-actions {
+    grid-template-columns: 1fr;
+  }
+  .assignment-board__person-main {
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  }
+  .assignment-board__responsible-mark,
+  .assignment-board__note {
+    width: 19px;
+    height: 19px;
+  }
+  .assignment-board__warning,
+  .assignment-board__edit,
+  .assignment-board__delete {
+    width: 20px;
+    height: 20px;
+  }
+}
