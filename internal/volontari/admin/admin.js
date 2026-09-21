@@ -964,11 +964,28 @@
   }
 
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
-  kpis?.addEventListener('click', (event) => { if (event.target.closest('[data-show-responded]')) showRespondedPeople(); });
+  kpis?.addEventListener('click', (event) => {
+    if (event.target.closest('[data-show-responded]')) {
+      showRespondedPeople();
+      return;
+    }
+    if (event.target.closest('[data-show-unassigned-availability]')) {
+      availabilityOnly = true;
+      [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
+        .forEach((filter) => { if (filter) filter.value = ''; });
+      renderAssignments();
+      assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+  document.querySelector('[data-clear-availability-filter]')?.addEventListener('click', () => {
+    availabilityOnly = false;
+    renderAssignments();
+  });
   document.querySelector('[data-refresh]')?.addEventListener('click', () => loadSnapshot().catch((error) => alert(error.message)));
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
+    availabilityOnly = false;
     newAssignmentOpen = true;
     renderAssignments();
     assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1014,6 +1031,18 @@
   assignmentTable?.addEventListener('change', (event) => {
     const rowNode = event.target.closest('[data-assignment-row]');
     if (!rowNode) return;
+
+    if (event.target.matches('[data-inline-shift]')) {
+      const select = event.target;
+      const shift = (snapshot?.shifts || []).find((item) => item.id === select.value);
+      const display = rowNode.querySelector('[data-shift-display]');
+      const button = display?.querySelector('[data-show-shift-activities]');
+      if (shift && button) {
+        button.textContent = `${shift.day_label} · ${shift.shift_label}`;
+        button.dataset.showShiftActivities = shift.id;
+      }
+    }
+
     if (event.target.matches('[data-inline-person], [data-inline-shift]')) refreshRowWarnings(rowNode);
   });
 
@@ -1021,14 +1050,27 @@
     const rowNode = event.target.closest('[data-assignment-row]');
     const save = event.target.closest('[data-save-inline-assignment]');
     const cancelEdit = event.target.closest('[data-cancel-inline-assignment]');
+    const editShift = event.target.closest('[data-edit-shift]');
     const editPerson = event.target.closest('[data-edit-person]');
     const editActivity = event.target.closest('[data-edit-activity]');
+    const shiftLink = event.target.closest('[data-show-shift-activities]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     const person = event.target.closest('[data-show-person]');
     const activity = event.target.closest('[data-show-activity]');
 
-    if (editPerson && rowNode) {
+    if (shiftLink && rowNode) {
+      const shiftId = shiftLink.dataset.showShiftActivities;
+      if (shiftId) showShiftActivities(shiftId, rowNode);
+    } else if (editShift && rowNode) {
+      const display = rowNode.querySelector('[data-shift-display]');
+      const select = rowNode.querySelector('[data-inline-shift]');
+      if (display) display.hidden = true;
+      if (select) {
+        select.hidden = false;
+        select.focus();
+      }
+    } else if (editPerson && rowNode) {
       const display = rowNode.querySelector('[data-person-display]');
       const select = rowNode.querySelector('[data-inline-person]');
       if (display) display.hidden = true;
@@ -1047,7 +1089,7 @@
     } else if (save && rowNode) {
       await saveInlineAssignment(rowNode);
     } else if (cancelEdit) {
-      if (!rowNode?.dataset.assignmentId) newAssignmentOpen = false;
+      if (!rowNode?.dataset.assignmentId && !rowNode?.dataset.availabilityKey) newAssignmentOpen = false;
       renderAssignments();
     } else if (person) {
       showPersonDetail(person.dataset.showPerson);
@@ -1181,8 +1223,31 @@
     catch (error) { alert(error.message); }
   });
 
+  detailContent?.addEventListener('click', (event) => {
+    const pick = event.target.closest('[data-pick-shift-activity]');
+    if (!pick || !detailTargetRow) return;
+    const value = pick.dataset.pickShiftActivity || '';
+    const select = detailTargetRow.querySelector('[data-inline-activity]');
+    if (!select || ![...select.options].some((option) => option.value === value)) return;
+
+    select.value = value;
+    const display = detailTargetRow.querySelector('[data-activity-display]');
+    const displayButton = display?.querySelector('[data-show-activity]');
+    if (displayButton) {
+      const label = prettifyActivityName(value);
+      displayButton.textContent = label;
+      displayButton.dataset.showActivity = label;
+    }
+    const status = detailTargetRow.querySelector('[data-row-status]');
+    if (status) {
+      status.textContent = 'Attività selezionata dal turno. Premi Salva.';
+      status.className = 'row-save-status is-ok';
+    }
+    detailDialog.close();
+  });
   document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
   detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
+  detailDialog?.addEventListener('close', () => { detailTargetRow = null; });
   document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
   auditDialog?.addEventListener('click', (event) => { if (event.target === auditDialog) auditDialog.close(); });
 
