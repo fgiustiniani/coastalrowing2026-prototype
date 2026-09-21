@@ -114,16 +114,34 @@
         <div class="success-mark" aria-hidden="true">✓</div>
         <p class="eyebrow">Invio completato</p>
         <h2>Grazie, disponibilità registrata</h2>
-        <div class="success-email">
-          <h3>Vuoi ricevere il riepilogo via email?</h3>
-          <p class="muted">Inserisci il tuo indirizzo email. Verrà usato solo per inviarti il riepilogo di questa compilazione.</p>
-          <form data-summary-email-form>
+        <div class="success-delivery">
+          <h3>Vuoi ricevere il riepilogo?</h3>
+          <p class="muted">Scegli come riceverlo. I recapiti inseriti vengono usati solo per questo invio e non vengono salvati nella mini-app.</p>
+          <div class="delivery-choice" role="group" aria-label="Modalità di invio del riepilogo">
+            <button class="delivery-choice__button" type="button" data-summary-channel="email" aria-pressed="false">Email</button>
+            <button class="delivery-choice__button" type="button" data-summary-channel="whatsapp" aria-pressed="false">WhatsApp</button>
+          </div>
+
+          <form data-summary-email-form hidden>
             <label class="field">
               <span>Email</span>
               <input type="email" data-summary-email autocomplete="email" maxlength="254" placeholder="nome@esempio.it" required>
             </label>
             <p class="status" data-summary-email-status aria-live="polite"></p>
-            <button class="button button--secondary" type="submit" data-summary-email-submit>Invia riepilogo</button>
+            <button class="button button--secondary" type="submit" data-summary-email-submit>Invia riepilogo via email</button>
+          </form>
+
+          <form data-summary-whatsapp-form hidden>
+            <label class="field">
+              <span>Numero di cellulare</span>
+              <input type="tel" data-summary-whatsapp-phone autocomplete="tel" maxlength="24" inputmode="tel" placeholder="+39 331 123 4567" required>
+            </label>
+            <label class="consent-check">
+              <input type="checkbox" data-summary-whatsapp-consent required>
+              <span>Acconsento all’invio tramite WhatsApp del riepilogo di questa compilazione al numero indicato.</span>
+            </label>
+            <p class="status" data-summary-whatsapp-status aria-live="polite"></p>
+            <button class="button button--secondary" type="submit" data-summary-whatsapp-submit>Invia riepilogo su WhatsApp</button>
           </form>
         </div>
       </section>

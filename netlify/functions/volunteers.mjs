@@ -15,6 +15,7 @@ import {
   verifySharedAccessToken
 } from './_lib/volunteers-common.mjs';
 import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
+import { sendVolunteerSummaryWhatsApp } from './_lib/volunteer-whatsapp.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
@@ -255,6 +256,63 @@ export default async (request) => {
           });
         } catch (auditError) {
           console.error('Audit invio riepilogo volontario fallito:', auditError?.message || auditError);
+        }
+
+        return json({ ok: true, sent: true });
+      }
+
+      if (action === 'whatsapp-summary') {
+        const phone = clean(body.phone, 40);
+        const submissionId = clean(body.submissionId, 60);
+        if (!isUuid(submissionId)) throw new ApiError('Invio non valido.', 400, 'INVALID_SUBMISSION_ID');
+        if (body.consent !== true) throw new ApiError('È necessario acconsentire all’invio tramite WhatsApp.', 400, 'WHATSAPP_CONSENT_REQUIRED');
+
+        const submissions = rows(await supabaseRequest('volunteer_submissions', {
+          query: {
+            select: 'id,session_id,actor_name,person_id,person_code,selected_person_name,created_at',
+            id: `eq.${submissionId}`,
+            session_id: `eq.${clean(session.jti, 100)}`,
+            limit: 1
+          }
+        }));
+        const submission = submissions[0];
+        if (!submission) throw new ApiError('Invio non trovato per questa sessione.', 404, 'SUBMISSION_NOT_FOUND');
+
+        const previousWhatsApps = rows(await supabaseRequest('volunteer_audit_log', {
+          query: {
+            select: 'id',
+            submission_id: `eq.${submissionId}`,
+            action_type: 'eq.summary_whatsapp_sent',
+            limit: 3
+          }
+        }));
+        if (previousWhatsApps.length >= 3) {
+          throw new ApiError('Hai già richiesto più volte il riepilogo per questo invio.', 429, 'WHATSAPP_RATE_LIMIT');
+        }
+
+        await sendVolunteerSummaryWhatsApp({
+          phone,
+          personName: submission.selected_person_name,
+          submissionId: submission.id
+        });
+
+        try {
+          await supabaseRequest('volunteer_audit_log', {
+            method: 'POST',
+            body: {
+              submission_id: submission.id,
+              actor_name: submission.actor_name || 'Volontario',
+              person_id: submission.person_id,
+              person_code: submission.person_code || null,
+              action_type: 'summary_whatsapp_sent',
+              entity_type: 'submission',
+              entity_id: submission.id,
+              new_value: { sent: true }
+            },
+            prefer: 'return=minimal'
+          });
+        } catch (auditError) {
+          console.error('Audit invio WhatsApp riepilogo volontario fallito:', auditError?.message || auditError);
         }
 
         return json({ ok: true, sent: true });
