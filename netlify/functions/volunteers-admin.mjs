@@ -34,8 +34,18 @@ async function adminReadOptional(operation, path, options) {
   }
 }
 
+async function adminReadOptionalColumn(operation, path, options) {
+  try {
+    return await adminRead(operation, path, options);
+  } catch (error) {
+    const code = clean(error?.payload?.code || '', 50);
+    if (error instanceof SupabaseError && ['PGRST204', '42703'].includes(code)) return null;
+    throw error;
+  }
+}
+
 async function adminSnapshot() {
-  const [people, shifts, activities, assignments, submissions, responses, availability, raceProgram] = await Promise.all([
+  const [people, shifts, activities, assignments, assignmentResponsibilities, submissions, responses, availability, raceProgram] = await Promise.all([
     adminRead('persone', 'volunteer_people', {
       query: {
         select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
@@ -60,6 +70,12 @@ async function adminSnapshot() {
         order: 'created_at.asc'
       }
     }),
+    adminReadOptionalColumn('responsabili assegnazioni', 'volunteer_assignments', {
+      query: {
+        select: 'id,is_responsible',
+        active: 'eq.true'
+      }
+    }),
     adminRead('invii', 'volunteer_submissions', {
       query: { select: 'id,session_id,actor_name,person_id,selected_person_name,person_code,created_at', order: 'created_at.desc' }
     }),
@@ -82,6 +98,7 @@ async function adminSnapshot() {
   const shiftRows = rows(shifts);
   const activityRows = rows(activities);
   const assignmentRows = rows(assignments);
+  const responsibilityRows = rows(assignmentResponsibilities);
   const submissionRows = rows(submissions);
   const responseRows = rows(responses);
   const availabilityRows = rows(availability);
@@ -91,6 +108,7 @@ async function adminSnapshot() {
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
   const activityById = new Map(activityRows.map((row) => [row.id, row]));
   const submissionById = new Map(submissionRows.map((row) => [row.id, row]));
+  const responsibilityByAssignmentId = new Map(responsibilityRows.map((row) => [row.id, row.is_responsible === true]));
 
   const latestSubmissionByPerson = new Map();
   for (const submission of submissionRows) {
@@ -142,6 +160,7 @@ async function adminSnapshot() {
       note: assignment.note || '',
       sourceType: assignment.source_type,
       sourceRow: assignment.source_row,
+      isResponsible: responsibilityByAssignmentId.get(assignment.id) || false,
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
       currentResponseAt: current?.stamp || null,
@@ -184,6 +203,7 @@ async function adminSnapshot() {
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
     assignments: hydratedAssignments,
+    responsibilityAvailable: assignmentResponsibilities !== null,
     raceProgramAvailable: raceProgram !== null,
     raceProgram: hydratedRaceProgram
   };
@@ -310,6 +330,26 @@ export default async (request) => {
           p_note: clean(body.note, 1000) || null
         });
         return json({ ok: true, assignment: result });
+      }
+
+      if (action === 'set-assignment-responsible') {
+        const assignmentId = clean(body.assignmentId, 60);
+        if (!isUuid(assignmentId)) throw new ApiError('Assegnazione non valida.', 400, 'INVALID_ASSIGNMENT');
+        const isResponsible = body.isResponsible === true;
+        try {
+          const result = await rpc('admin_set_volunteer_assignment_responsible', {
+            p_actor_name: actorName,
+            p_assignment_id: assignmentId,
+            p_is_responsible: isResponsible
+          });
+          return json({ ok: true, assignment: result });
+        } catch (error) {
+          const code = clean(error?.payload?.code || '', 50);
+          if (error instanceof SupabaseError && ['PGRST202', '42883'].includes(code)) {
+            throw new ApiError('La funzione responsabile non è ancora inizializzata nel database.', 503, 'RESPONSIBILITY_NOT_INITIALIZED');
+          }
+          throw error;
+        }
       }
 
       if (action === 'deactivate-assignment') {
