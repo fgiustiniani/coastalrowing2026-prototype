@@ -12,6 +12,7 @@
   const assignmentBoard = document.querySelector('[data-assignment-board]');
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
+  const assignmentBoardExportPdf = document.querySelector('[data-assignment-board-export-pdf]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
@@ -1410,9 +1411,9 @@
     const activity = (snapshot?.activityCatalog || []).find((item) => item.id === activityId);
     if (!activity) {
       setStatus(assignmentBoardStatus, 'Attività non più disponibile. Aggiorna la pagina.', 'error');
-      return;
+      return false;
     }
-    if ((activity.group_id || '') === (groupId || '')) return;
+    if ((activity.group_id || '') === (groupId || '')) return true;
 
     const targetName = groupId ? (activityGroupById(groupId)?.name || 'gruppo') : 'Senza gruppo';
     assignmentBoard?.classList.add('is-saving');
@@ -1429,11 +1430,27 @@
       });
       await loadSnapshot();
       setStatus(assignmentBoardStatus, `${prettifyActivityName(activity.name)} spostata in ${targetName}.`, 'success');
+      return true;
     } catch (error) {
       setStatus(assignmentBoardStatus, error.message, 'error');
+      return false;
     } finally {
       assignmentBoard?.classList.remove('is-saving');
     }
+  }
+
+  async function moveBoardActivity(drag, targetGroupId, targetRequirementId = '', placeAfter = false, canDropAtEnd = false) {
+    if (!drag?.id || !drag.activityId) return;
+    const groupChanged = (targetGroupId || '') !== (drag.sourceGroupId || '');
+
+    if (groupChanged) {
+      const moved = await setBoardActivityGroup(drag.activityId, targetGroupId || '');
+      if (!moved) return;
+    }
+
+    if (targetRequirementId === drag.id) return;
+    if (!targetRequirementId && !canDropAtEnd) return;
+    await reorderBoardRequirement(drag.id, targetRequirementId || '', placeAfter);
   }
 
   function shiftRequirementIds(shiftId) {
@@ -1550,14 +1567,12 @@
     return Boolean(availability && availability.shiftId === requirement.shiftId);
   }
 
-  function renderAssignmentBoard() {
-    if (!assignmentBoard) return;
-    const rows = filteredBoardAssignmentRows();
+  function filteredBoardRequirements() {
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
 
-    const requirementVisible = (requirement) => {
+    return requirements().filter((requirement) => {
       const shiftKey = `${requirement.day || ''}|||${requirement.shift || ''}`;
       if (selectedShifts.length && !selectedShifts.includes(shiftKey)) return false;
       if (selectedActivities.length && !selectedActivities.includes(prettifyActivityName(requirement.activity))) return false;
@@ -1568,9 +1583,13 @@
         )) return false;
       }
       return true;
-    };
+    });
+  }
 
-    const visibleRequirements = requirements().filter(requirementVisible);
+  function renderAssignmentBoard() {
+    if (!assignmentBoard) return;
+    const rows = filteredBoardAssignmentRows();
+    const visibleRequirements = filteredBoardRequirements();
     const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
     const shifts = [...(snapshot?.shifts || [])]
       .filter((shift) => visibleShiftIds.has(shift.id))
@@ -1602,7 +1621,6 @@
           data-board-group-id="${escapeHtml(requirement.activityGroupId || '')}">
           <header class="assignment-board__activity-head">
             <span class="assignment-board__activity-drag-handle"
-              draggable="true"
               data-board-activity-drag-handle
               data-board-requirement-id="${escapeHtml(requirement.id)}"
               title="Trascina per riordinare o spostare l’attività in un altro gruppo"
@@ -2350,6 +2368,7 @@
     if (assignmentTable) assignmentTable.hidden = isBoard;
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
+    if (assignmentBoardExportPdf) assignmentBoardExportPdf.hidden = !isBoard;
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentViewToggle) {
       assignmentViewToggle.textContent = isBoard ? 'Vista elenco' : 'Vista schede';
@@ -2522,6 +2541,44 @@
     activityReport.innerHTML = report.length ? `<table class="admin-table activity-report-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Responsabile</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
       `<tr><td class="report-shift-cell"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td class="report-activity-cell">${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="report-people-cell">${escapeHtml(item.peopleText)}</td><td>${item.responsibleName ? responsibleBadge(item.responsibleName) : '—'}</td><td>${item.pending}</td></tr>`
     ).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività corrisponde ai filtri.</p>';
+  }
+
+  function assignmentBoardPdfGroups() {
+    const rows = filteredBoardAssignmentRows().filter((row) => !row.isAvailability);
+    const visibleRequirements = filteredBoardRequirements();
+    const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
+    const shifts = [...(snapshot?.shifts || [])]
+      .filter((shift) => visibleShiftIds.has(shift.id))
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+
+    return shifts.map((shift) => {
+      const shiftRequirements = visibleRequirements
+        .filter((item) => item.shiftId === shift.id)
+        .sort((a, b) =>
+          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+          || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+        );
+
+      return {
+        shiftId: shift.id,
+        day: shift.day_label,
+        shift: shift.shift_label,
+        activities: shiftRequirements.map((requirement) => ({
+          activity: prettifyActivityName(requirement.activity),
+          groupName: requirement.activityGroupId ? (activityGroupById(requirement.activityGroupId)?.name || '') : '',
+          people: rows
+            .filter((row) => row.shiftId === requirement.shiftId && row.activityId === requirement.activityId)
+            .sort((a, b) =>
+              Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+              || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
+            )
+            .map((row) => ({
+              name: row.personName,
+              isResponsible: row.isResponsible === true
+            }))
+        }))
+      };
+    });
   }
 
   function shiftBoardGroups() {
@@ -2705,8 +2762,9 @@
     return { columns, rows };
   }
 
-  function exportShiftBoardPdfByDay() {
-    const groups = shiftBoardGroups();
+  function exportShiftBoardPdfByDay(groups = shiftBoardGroups(), options = {}) {
+    const title = options.title || 'Report volontari - vista per turni';
+    const showGroups = options.showGroups === true;
     if (!groups.length) {
       alert('Nessun dato da esportare con i filtri correnti.');
       return;
@@ -2728,7 +2786,7 @@
       <section class="day-page">
         <header class="page-header">
           <div>
-            <h1>Report volontari - vista per turni</h1>
+            <h1>${escapeHtml(title)}</h1>
             <h2>${escapeHtml(day)}</h2>
           </div>
           <span>Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</span>
@@ -2739,6 +2797,7 @@
               <h3>${escapeHtml(group.shift)}</h3>
               ${group.activities.map((item) => `
                 <section class="activity-block">
+                  ${showGroups && item.groupName ? `<span class="activity-group-label">${escapeHtml(item.groupName)}</span>` : ''}
                   <strong>${escapeHtml(item.activity)}</strong>
                   <div class="people-list">${item.people.map((person) =>
                     `<span class="${person.isResponsible ? 'responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>`
@@ -2748,7 +2807,7 @@
         </div>
       </section>`).join('');
 
-    popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Report volontari - vista per turni</title><style>
+    popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
       @page { size: A3 landscape; margin: 8mm; }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; }
@@ -2763,6 +2822,7 @@
       .turn-column h3 { margin: 0; padding: 5px 6px; background: #eaf2f4; font-size: 9px; border-bottom: 1px solid #cfdcdf; }
       .activity-block { padding: 5px 6px; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
       .activity-block:last-child { border-bottom: 0; }
+      .activity-group-label { display: block; margin-bottom: 2px; color: #60757d; font-size: 5.8px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
       .activity-block > strong { display: block; margin-bottom: 2px; font-size: 7px; line-height: 1.15; }
       .people-list { font-size: 6.2px; line-height: 1.2; }
       .people-list span { display: inline; }
@@ -3674,6 +3734,13 @@
     setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
   });
 
+  assignmentBoardExportPdf?.addEventListener('click', () => {
+    exportShiftBoardPdfByDay(assignmentBoardPdfGroups(), {
+      title: 'Report volontari - gestione a schede',
+      showGroups: true
+    });
+  });
+
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
     setAssignmentView('list', { render: false });
     setMultiFilterValues(assignmentTypeFilter, ['assigned']);
@@ -3881,7 +3948,7 @@
 
   assignmentBoard?.addEventListener('pointerdown', (event) => {
     const handle = event.target.closest('[data-board-activity-drag-handle]');
-    if (!handle || event.pointerType === 'mouse') return;
+    if (!handle) return;
     const requirementId = handle.dataset.boardRequirementId || '';
     const requirement = requirementById(requirementId);
     const box = handle.closest('.assignment-board__activity');
@@ -3925,15 +3992,9 @@
     boardActivityPointerDrag.hasTargetGroup = true;
     boardActivityPointerDrag.targetGroupId = target.groupId;
 
-    if (target.groupId !== boardActivityPointerDrag.sourceGroupId) {
-      boardActivityPointerDrag.targetRequirementId = '';
-      boardActivityPointerDrag.canDropAtEnd = false;
-      (target.paletteTarget || target.targetGroup || target.targetContainer || target.targetBox)?.classList.add('is-activity-group-drop-target');
-      return;
-    }
-
     const targetBox = target.targetBox;
-    if (targetBox?.dataset.boardRequirementId === boardActivityPointerDrag.id) {
+    const targetRequirementId = targetBox?.dataset.boardRequirementId || '';
+    if (targetRequirementId === boardActivityPointerDrag.id) {
       boardActivityPointerDrag.targetRequirementId = boardActivityPointerDrag.id;
       boardActivityPointerDrag.canDropAtEnd = false;
       return;
@@ -3941,20 +4002,28 @@
 
     if (targetBox) {
       const rect = targetBox.getBoundingClientRect();
-      const placeAfter = event.clientY > rect.top + rect.height / 2;
-      boardActivityPointerDrag.targetRequirementId = targetBox.dataset.boardRequirementId || '';
-      boardActivityPointerDrag.placeAfter = placeAfter;
+      boardActivityPointerDrag.targetRequirementId = targetRequirementId;
+      boardActivityPointerDrag.placeAfter = event.clientY > rect.top + rect.height / 2;
       boardActivityPointerDrag.canDropAtEnd = false;
-      targetBox.classList.add(placeAfter ? 'is-activity-reorder-after' : 'is-activity-reorder-before');
-      return;
-    }
-
-    const activityContainer = target.targetContainer || element.closest('[data-board-activity-container]');
-    if (activityContainer) {
+    } else if (target.targetContainer) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.placeAfter = false;
       boardActivityPointerDrag.canDropAtEnd = true;
-      activityContainer.classList.add('is-activity-reorder-end');
+    } else {
+      boardActivityPointerDrag.targetRequirementId = '';
+      boardActivityPointerDrag.placeAfter = false;
+      boardActivityPointerDrag.canDropAtEnd = false;
+    }
+
+    if (target.groupId !== boardActivityPointerDrag.sourceGroupId) {
+      (target.paletteTarget || target.targetGroup || target.targetContainer || target.targetBox)?.classList.add('is-activity-group-drop-target');
+      return;
+    }
+
+    if (targetBox) {
+      targetBox.classList.add(boardActivityPointerDrag.placeAfter ? 'is-activity-reorder-after' : 'is-activity-reorder-before');
+    } else if (target.targetContainer) {
+      target.targetContainer.classList.add('is-activity-reorder-end');
     }
   });
 
@@ -3969,13 +4038,13 @@
     boardDragEndedAt = Date.now();
 
     if (cancelled || !drag.hasTargetGroup) return;
-    if ((drag.targetGroupId || '') !== (drag.sourceGroupId || '')) {
-      await setBoardActivityGroup(drag.activityId, drag.targetGroupId || '');
-      return;
-    }
-    if (drag.targetRequirementId === drag.id) return;
-    if (!drag.targetRequirementId && !drag.canDropAtEnd) return;
-    await reorderBoardRequirement(drag.id, drag.targetRequirementId || '', drag.placeAfter);
+    await moveBoardActivity(
+      drag,
+      drag.targetGroupId || '',
+      drag.targetRequirementId || '',
+      drag.placeAfter,
+      drag.canDropAtEnd
+    );
   };
 
   assignmentBoard?.addEventListener('pointerup', (event) => { void finishActivityPointerReorder(event, false); });
@@ -4231,13 +4300,6 @@
       if (!target) return;
 
       event.preventDefault();
-      if (target.groupId !== (dragged.sourceGroupId || '')) {
-        clearBoardActivityReorderMarkers();
-        clearBoardGroupReorderMarkers();
-        assignmentBoard.classList.remove('is-activity-drag-mode');
-        await setBoardActivityGroup(dragged.activityId, target.groupId || '');
-        return;
-      }
 
       const targetBox = target.targetBox;
       if (targetBox?.dataset.boardRequirementId === dragged.id) {
@@ -4248,16 +4310,19 @@
 
       let targetRequirementId = '';
       let placeAfter = false;
+      let canDropAtEnd = false;
       if (targetBox) {
         targetRequirementId = targetBox.dataset.boardRequirementId || '';
         const rect = targetBox.getBoundingClientRect();
         placeAfter = event.clientY > rect.top + rect.height / 2;
+      } else if (target.targetContainer) {
+        canDropAtEnd = true;
       }
 
       clearBoardActivityReorderMarkers();
       clearBoardGroupReorderMarkers();
       assignmentBoard.classList.remove('is-activity-drag-mode');
-      await reorderBoardRequirement(dragged.id, targetRequirementId, placeAfter);
+      await moveBoardActivity(dragged, target.groupId || '', targetRequirementId, placeAfter, canDropAtEnd);
       return;
     }
 
