@@ -177,24 +177,24 @@
 
       <section class="card admin-section">
         <div class="section-head">
-          <div><p class="eyebrow">Anagrafica</p><h2>Attività</h2></div>
+          <div><p class="eyebrow">Pianificazione</p><h2>Attività e turni</h2></div>
           <div class="section-actions">
-            <button class="button button--primary" type="button" data-new-activity>Nuova attività</button>
-            <button class="button button--secondary collapse-button" type="button" data-collapse-target="activity-catalog-content" aria-expanded="false">Espandi</button>
+            <button class="button button--primary" type="button" data-new-requirement>Nuovo abbinamento</button>
+            <button class="button button--secondary collapse-button" type="button" data-collapse-target="planning-catalog-content" aria-expanded="false">Espandi</button>
           </div>
         </div>
-        <div id="activity-catalog-content" data-collapsible-content hidden>
-          <p class="intro">L’elenco deriva da <strong>attività.xlsx</strong>. Le attività eliminate restano disponibili nello storico delle assegnazioni già registrate.</p>
-          <div class="table-wrap" data-activity-catalog></div>
+        <div id="planning-catalog-content" data-collapsible-content hidden>
+          <p class="intro">Gestisci in un unico punto <strong>turno, attività e numero di persone previste</strong>. Per ogni abbinamento puoi scegliere un turno e un’attività già esistenti oppure crearli direttamente durante il salvataggio. I nuovi turni creati qui sono interni all’organizzazione e non vengono aggiunti automaticamente alle disponibilità selezionabili dai volontari.</p>
+          <p class="status" data-requirement-status aria-live="polite"></p>
+          <div class="table-wrap" data-requirement-catalog></div>
 
-          <div class="requirements-catalog">
+          <div class="planning-activity-manager">
             <div class="section-head section-head--sub">
-              <div><p class="eyebrow">Pianificazione</p><h3>Abbinamenti attività-turni</h3></div>
-              <button class="button button--primary" type="button" data-new-requirement>Nuovo abbinamento</button>
+              <div><p class="eyebrow">Anagrafica</p><h3>Attività disponibili</h3></div>
+              <button class="button button--secondary" type="button" data-new-activity>Nuova attività</button>
             </div>
-            <p class="intro">Qui definisci la coppia <strong>turno-attività</strong> e quante persone servono. Le assegnazioni possono utilizzare solo le coppie previste qui. Se cambi turno o attività di un abbinamento già usato, le persone assegnate vengono spostate insieme alla coppia.</p>
-            <p class="status" data-requirement-status aria-live="polite"></p>
-            <div class="table-wrap" data-requirement-catalog></div>
+            <p class="intro">Da qui puoi rinominare o disattivare le attività esistenti. Un’attività usata in un abbinamento attivo non può essere eliminata.</p>
+            <div class="table-wrap" data-activity-catalog></div>
           </div>
         </div>
       </section>
