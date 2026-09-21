@@ -2895,6 +2895,8 @@
   function exportShiftBoardPdfByDay(groups = shiftBoardGroups(), options = {}) {
     const title = options.title || 'Report volontari - vista per turni';
     const showGroups = options.showGroups === true;
+    const singleTurnPerPage = options.singleTurnPerPage === true;
+    const pageSize = options.pageSize || 'A3 landscape';
     if (!groups.length) {
       alert('Nessun dato da esportare con i filtri correnti.');
       return;
@@ -2941,7 +2943,7 @@
         </section>`).join('');
     };
 
-    const pages = [...byDay.entries()].map(([day, dayGroups]) => `
+    const renderPdfPage = (day, dayGroups) => `
       <section class="day-page">
         <header class="page-header">
           <div>
@@ -2957,28 +2959,32 @@
               ${renderPdfActivities(group.activities)}
             </article>`).join('')}
         </div>
-      </section>`).join('');
+      </section>`;
+
+    const pages = singleTurnPerPage
+      ? groups.map((group) => renderPdfPage(group.day, [group])).join('')
+      : [...byDay.entries()].map(([day, dayGroups]) => renderPdfPage(day, dayGroups)).join('');
 
     popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-      @page { size: A3 landscape; margin: 8mm; }
+      @page { size: ${pageSize}; margin: 8mm; }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; }
       .day-page { break-after: page; page-break-after: always; width: 100%; }
       .day-page:last-child { break-after: auto; page-break-after: auto; }
       .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 0 10px; }
-      h1 { margin: 0; font-size: ${showGroups ? '18px' : '14px'}; }
-      h2 { margin: 2px 0 0; font-size: ${showGroups ? '22px' : '18px'}; }
-      .page-header span { font-size: ${showGroups ? '8px' : '6.5px'}; color: #60757d; white-space: nowrap; }
+      h1 { margin: 0; font-size: ${showGroups ? '17pt' : '14px'}; }
+      h2 { margin: 2px 0 0; font-size: ${showGroups ? '15pt' : '18px'}; }
+      .page-header span { font-size: ${showGroups ? '11pt' : '6.5px'}; color: #60757d; white-space: nowrap; }
       .turn-grid { display: grid; gap: 8px; align-items: start; width: 100%; }
       .turn-column { border: 1px solid #cfdcdf; border-radius: 7px; overflow: hidden; min-width: 0; }
-      .turn-column h3 { margin: 0; padding: 7px 8px; background: #eaf2f4; font-size: ${showGroups ? '12px' : '9px'}; border-bottom: 1px solid #cfdcdf; }
+      .turn-column h3 { margin: 0; padding: 7px 8px; background: #eaf2f4; font-size: ${showGroups ? '14pt' : '9px'}; border-bottom: 1px solid #cfdcdf; }
       .pdf-activity-group { margin: 0; padding: 0; border-bottom: 2px solid #c3d2d5; break-inside: avoid; page-break-inside: avoid; }
       .pdf-activity-group:last-child { border-bottom: 0; }
-      .pdf-activity-group h4 { margin: 0; padding: 6px 8px; background: #dce7e9; color: #24464e; font-size: 10.5px; line-height: 1.15; text-transform: uppercase; letter-spacing: .025em; }
+      .pdf-activity-group h4 { margin: 0; padding: 6px 8px; background: #dce7e9; color: #24464e; font-size: ${showGroups ? '12pt' : '10.5px'}; line-height: 1.2; text-transform: uppercase; letter-spacing: .025em; }
       .activity-block { padding: ${showGroups ? '7px 8px' : '5px 6px'}; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
       .activity-block:last-child { border-bottom: 0; }
-      .activity-block > strong { display: block; margin-bottom: 4px; font-size: ${showGroups ? '9.5px' : '7px'}; line-height: 1.2; }
-      .people-list { font-size: ${showGroups ? '8.3px' : '6.2px'}; line-height: 1.45; }
+      .activity-block > strong { display: block; margin-bottom: 4px; font-size: ${showGroups ? '12pt' : '7px'}; line-height: 1.25; }
+      .people-list { font-size: ${showGroups ? '11pt' : '6.2px'}; line-height: 1.45; }
       .people-list span { display: inline; }
       .people-list span + span::before { content: "; "; color: #60757d; font-weight: 400; }
       .people-list .responsible { display: inline-block; margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
@@ -3892,7 +3898,9 @@
   assignmentBoardExportPdf?.addEventListener('click', () => {
     exportShiftBoardPdfByDay(assignmentBoardPdfGroups(), {
       title: 'Report volontari - gestione a schede',
-      showGroups: true
+      showGroups: true,
+      singleTurnPerPage: true,
+      pageSize: 'A4 landscape'
     });
   });
 
