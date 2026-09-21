@@ -3860,7 +3860,7 @@
     if (target.groupId !== boardActivityPointerDrag.sourceGroupId) {
       boardActivityPointerDrag.targetRequirementId = '';
       boardActivityPointerDrag.canDropAtEnd = false;
-      (target.paletteTarget || target.targetContainer || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
+      (target.paletteTarget || target.targetGroup || target.targetContainer || target.targetBox)?.classList.add('is-activity-group-drop-target');
       return;
     }
 
@@ -4083,7 +4083,7 @@
       clearBoardGroupReorderMarkers();
 
       if (target.groupId !== (boardActivityDragState.sourceGroupId || '')) {
-        (target.paletteTarget || target.targetContainer || target.targetGroup || target.targetBox)?.classList.add('is-activity-group-drop-target');
+        (target.paletteTarget || target.targetGroup || target.targetContainer || target.targetBox)?.classList.add('is-activity-group-drop-target');
         return;
       }
 
