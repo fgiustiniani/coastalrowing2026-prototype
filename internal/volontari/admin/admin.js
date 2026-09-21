@@ -4130,6 +4130,18 @@
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
 
+    const groupToggle = event.target.closest('[data-board-group-toggle]');
+    if (groupToggle) {
+      event.stopPropagation();
+      const key = groupToggle.dataset.boardGroupToggle || '';
+      if (!key) return;
+      if (boardCollapsedGroups.has(key)) boardCollapsedGroups.delete(key);
+      else boardCollapsedGroups.add(key);
+      persistBoardCollapsedGroups();
+      renderAssignmentBoard();
+      return;
+    }
+
     const copyFrom = event.target.closest('[data-board-copy-from]');
     if (copyFrom) {
       event.stopPropagation();
