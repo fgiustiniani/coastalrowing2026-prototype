@@ -35,6 +35,9 @@
   const shiftBoardShiftFilter = document.querySelector('[data-shift-board-shift-filter]');
   const confirmationChanges = document.querySelector('[data-confirmation-changes]');
   const confirmationLinkStatus = document.querySelector('[data-confirmation-link-status]');
+  const personCatalog = document.querySelector('[data-person-catalog]');
+  const personCatalogSearch = document.querySelector('[data-person-catalog-search]');
+  const personCatalogStatus = document.querySelector('[data-person-catalog-status]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
   const requirementCatalog = document.querySelector('[data-requirement-catalog]');
   const requirementStatus = document.querySelector('[data-requirement-status]');
@@ -69,6 +72,7 @@
   let credentials = null;
   let snapshot = null;
   let newAssignmentOpen = false;
+  let newPersonOpen = false;
   let newActivityOpen = false;
   let newRequirementOpen = false;
   let newRaceEntryOpen = false;
@@ -1185,7 +1189,8 @@
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
-        ${assignmentId ? `data-board-assignment-id="${escapeHtml(assignmentId)}"` : ''}>
+        ${assignmentId ? `data-board-assignment-id="${escapeHtml(assignmentId)}"` : ''}
+        ${assignmentId ? `data-board-source-requirement-id="${escapeHtml(assignmentRequirementId(row))}"` : ''}>
         <div class="assignment-board__person-main">
           <button type="button"
             class="assignment-board__person-name"
@@ -1211,6 +1216,63 @@
             title="Elimina assegnazione">×</button>` : ''}
         </div>
       </div>`;
+  }
+
+  function clearBoardReorderMarkers() {
+    assignmentBoard?.querySelectorAll('.is-reorder-before, .is-reorder-after, .is-reorder-end').forEach((node) => {
+      node.classList.remove('is-reorder-before', 'is-reorder-after', 'is-reorder-end');
+    });
+  }
+
+  function boardPairAssignmentIds(requirementId) {
+    const requirement = requirementById(requirementId);
+    if (!requirement) return [];
+    return (snapshot?.assignments || [])
+      .filter((row) => row.shiftId === requirement.shiftId && row.activityId === requirement.activityId)
+      .sort((a, b) =>
+        Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
+      )
+      .map((row) => row.id);
+  }
+
+  async function reorderBoardAssignment(draggedId, requirementId, targetAssignmentId = '', placeAfter = false) {
+    const requirement = requirementById(requirementId);
+    if (!requirement) return;
+
+    const ids = boardPairAssignmentIds(requirementId);
+    if (!ids.includes(draggedId)) return;
+
+    const next = ids.filter((id) => id !== draggedId);
+    if (targetAssignmentId && next.includes(targetAssignmentId)) {
+      const targetIndex = next.indexOf(targetAssignmentId);
+      next.splice(targetIndex + (placeAfter ? 1 : 0), 0, draggedId);
+    } else {
+      next.push(draggedId);
+    }
+
+    if (next.every((id, index) => id === ids[index])) return;
+
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, 'Salvataggio nuovo ordine…');
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder-assignments',
+          shiftId: requirement.shiftId,
+          activityId: requirement.activityId,
+          assignmentIds: next
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, 'Ordine aggiornato.', 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
   }
 
   function boardCanDrop(dragged, targetRequirementId) {
@@ -1259,6 +1321,9 @@
           !row.isAvailability
           && row.shiftId === requirement.shiftId
           && row.activityId === requirement.activityId
+        ).sort((a, b) =>
+          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+          || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
         );
         const uncovered = requirementIsUncovered(requirement);
         const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
@@ -2325,6 +2390,60 @@
     }
   }
 
+  function personCatalogRows() {
+    const q = normalizeFilterSearch(personCatalogSearch?.value || '');
+    return [...(snapshot?.people || [])]
+      .filter((person) => person.active !== false)
+      .filter((person) => {
+        if (!q) return true;
+        return normalizeFilterSearch(
+          `${person.person_code || ''} ${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''}`
+        ).includes(q);
+      })
+      .sort((a, b) =>
+        String(a.surname || a.display_name || '').localeCompare(String(b.surname || b.display_name || ''), 'it')
+        || String(a.given_name || '').localeCompare(String(b.given_name || ''), 'it')
+        || String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it')
+      );
+  }
+
+  function personCatalogRowHtml(person = null, isNew = false) {
+    return `
+      <tr class="${isNew ? 'is-new-row' : ''}" data-person-catalog-row data-person-id="${escapeHtml(person?.id || '')}">
+        <td><input class="code-input" data-person-code maxlength="40" value="${escapeHtml(person?.person_code || '')}" placeholder="Codice"></td>
+        <td><input class="name-input" data-person-surname maxlength="100" value="${escapeHtml(person?.surname || '')}" placeholder="Cognome"></td>
+        <td><input class="name-input" data-person-given-name maxlength="100" value="${escapeHtml(person?.given_name || '')}" placeholder="Nome"></td>
+        <td><input class="name-input" data-person-display-name maxlength="160" value="${escapeHtml(person?.display_name || '')}" placeholder="Nominativo visualizzato"></td>
+        <td><label class="catalog-check"><input type="checkbox" data-person-selectable ${person?.selectable !== false ? 'checked' : ''}><span>Sì</span></label></td>
+        <td><span class="source-badge">${escapeHtml(person?.source_type || (isNew ? 'manual' : '—'))}</span></td>
+        <td>
+          <div class="row-actions">
+            <button type="button" data-save-person>Salva</button>
+            ${isNew
+              ? '<button type="button" data-cancel-new-person>Annulla</button>'
+              : '<button class="is-danger" type="button" data-delete-person>Elimina</button>'}
+          </div>
+          <small class="row-save-status" data-row-status></small>
+        </td>
+      </tr>`;
+  }
+
+  function renderPersonCatalog() {
+    if (!personCatalog) return;
+    const rows = personCatalogRows();
+    const body = [
+      ...(newPersonOpen ? [personCatalogRowHtml(null, true)] : []),
+      ...rows.map((person) => personCatalogRowHtml(person, false))
+    ].join('');
+
+    personCatalog.innerHTML = body
+      ? `<table class="admin-table person-catalog-table">
+          <thead><tr><th>Codice</th><th>Cognome</th><th>Nome</th><th>Nominativo</th><th>Selezionabile</th><th>Origine</th><th>Azioni</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>`
+      : '<p class="empty-state">Nessuna persona attiva.</p>';
+  }
+
   function renderActivityCatalog() {
     const rows = (snapshot?.activityCatalog || []).filter((item) => item.active);
     const body = [
@@ -2779,6 +2898,7 @@
     renderKpis();
     renderAssignments();
     renderConfirmationChanges();
+    renderPersonCatalog();
     renderActivityCatalog();
     renderRequirementCatalog();
     renderRaceProgram();
@@ -3003,6 +3123,10 @@
     renderAssignments();
     assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
+  document.querySelector('[data-new-person]')?.addEventListener('click', () => {
+    newPersonOpen = true;
+    renderPersonCatalog();
+  });
   document.querySelector('[data-new-activity]')?.addEventListener('click', () => {
     newActivityOpen = true;
     renderActivityCatalog();
@@ -3034,6 +3158,7 @@
     .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
+  personCatalogSearch?.addEventListener('input', renderPersonCatalog);
 
   document.querySelector('[data-person-export-pdf]')?.addEventListener('click', () => exportPersonReport('pdf'));
   document.querySelector('[data-person-export-excel]')?.addEventListener('click', () => exportPersonReport('excel'));
@@ -3135,7 +3260,8 @@
     if (!card) return;
     boardDragState = {
       kind: card.dataset.boardDragKind,
-      id: card.dataset.boardDragId
+      id: card.dataset.boardDragId,
+      sourceRequirementId: card.dataset.boardSourceRequirementId || ''
     };
     card.classList.add('is-dragging');
     event.dataTransfer.effectAllowed = 'move';
@@ -3152,12 +3278,31 @@
       event.dataTransfer.dropEffect = 'none';
       return;
     }
+
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => {
-      if (node !== dropzone) node.classList.remove('is-drop-target');
-    });
-    dropzone.classList.add('is-drop-target');
+    clearBoardReorderMarkers();
+
+    const sameRequirement = boardDragState.kind === 'assignment'
+      && boardDragState.sourceRequirementId
+      && boardDragState.sourceRequirementId === targetRequirementId;
+
+    if (sameRequirement) {
+      const targetCard = event.target.closest('[data-board-assignment-id]');
+      const draggedCard = assignmentBoard.querySelector(`[data-board-assignment-id="${CSS.escape(boardDragState.id)}"]`);
+      if (targetCard && targetCard !== draggedCard) {
+        const rect = targetCard.getBoundingClientRect();
+        const after = event.clientY > rect.top + rect.height / 2;
+        targetCard.classList.add(after ? 'is-reorder-after' : 'is-reorder-before');
+      } else if (!targetCard) {
+        dropzone.querySelector('.assignment-board__people')?.classList.add('is-reorder-end');
+      }
+    } else {
+      assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => {
+        if (node !== dropzone) node.classList.remove('is-drop-target');
+      });
+      dropzone.classList.add('is-drop-target');
+    }
 
     const rect = assignmentBoard.getBoundingClientRect();
     if (event.clientX < rect.left + 70) assignmentBoard.scrollLeft -= 18;
@@ -3169,6 +3314,7 @@
     if (!dropzone) return;
     if (event.relatedTarget && dropzone.contains(event.relatedTarget)) return;
     dropzone.classList.remove('is-drop-target');
+    clearBoardReorderMarkers();
   });
 
   assignmentBoard?.addEventListener('drop', async (event) => {
@@ -3177,14 +3323,35 @@
     const dragged = { ...boardDragState };
     const targetRequirementId = dropzone.dataset.boardRequirementId || '';
     if (!boardCanDrop(dragged, targetRequirementId)) return;
+
     event.preventDefault();
+    const sameRequirement = dragged.kind === 'assignment'
+      && dragged.sourceRequirementId
+      && dragged.sourceRequirementId === targetRequirementId;
+
+    if (sameRequirement) {
+      const targetCard = event.target.closest('[data-board-assignment-id]');
+      let targetAssignmentId = '';
+      let placeAfter = false;
+      if (targetCard && targetCard.dataset.boardAssignmentId !== dragged.id) {
+        targetAssignmentId = targetCard.dataset.boardAssignmentId || '';
+        const rect = targetCard.getBoundingClientRect();
+        placeAfter = event.clientY > rect.top + rect.height / 2;
+      }
+      clearBoardReorderMarkers();
+      await reorderBoardAssignment(dragged.id, targetRequirementId, targetAssignmentId, placeAfter);
+      return;
+    }
+
     dropzone.classList.remove('is-drop-target');
+    clearBoardReorderMarkers();
     await moveBoardItem(dragged, targetRequirementId);
   });
 
   assignmentBoard?.addEventListener('dragend', (event) => {
     event.target.closest('[data-board-drag-kind]')?.classList.remove('is-dragging');
     assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
+    clearBoardReorderMarkers();
     boardDragState = null;
     boardDragEndedAt = Date.now();
   });
@@ -3227,6 +3394,85 @@
         person.dataset.boardPersonOpen,
         person.dataset.boardPersonAssignmentId || ''
       );
+    }
+  });
+
+  personCatalog?.addEventListener('click', async (event) => {
+    const rowNode = event.target.closest('[data-person-catalog-row]');
+    if (!rowNode) return;
+
+    const save = event.target.closest('[data-save-person]');
+    const remove = event.target.closest('[data-delete-person]');
+    const cancel = event.target.closest('[data-cancel-new-person]');
+    const status = rowNode.querySelector('[data-row-status]');
+
+    if (cancel) {
+      newPersonOpen = false;
+      renderPersonCatalog();
+      return;
+    }
+
+    if (save) {
+      const personCode = rowNode.querySelector('[data-person-code]')?.value.trim() || '';
+      const surname = rowNode.querySelector('[data-person-surname]')?.value.trim() || '';
+      const givenName = rowNode.querySelector('[data-person-given-name]')?.value.trim() || '';
+      const displayName = rowNode.querySelector('[data-person-display-name]')?.value.trim()
+        || [surname, givenName].filter(Boolean).join(' ').trim();
+      const selectable = rowNode.querySelector('[data-person-selectable]')?.checked !== false;
+
+      if (!displayName) {
+        status.textContent = 'Indica il nominativo.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+
+      setRowBusy(rowNode, true, save);
+      try {
+        await withButtonBusy(save, 'Salvataggio…', async () => {
+          try {
+            await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save-person',
+                personId: rowNode.dataset.personId || null,
+                personCode,
+                surname,
+                givenName,
+                displayName,
+                selectable
+              })
+            });
+            newPersonOpen = false;
+            await loadSnapshot();
+            setStatus(personCatalogStatus, 'Persona salvata.', 'success');
+          } catch (error) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
+        });
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
+      }
+      return;
+    }
+
+    if (remove) {
+      const personId = rowNode.dataset.personId || '';
+      const name = rowNode.querySelector('[data-person-display-name]')?.value.trim() || 'questa persona';
+      if (!confirm(`Eliminare “${name}” dall’anagrafica attiva? Lo storico resterà conservato.`)) return;
+
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-person', personId })
+        });
+        await loadSnapshot();
+        setStatus(personCatalogStatus, 'Persona eliminata dall’anagrafica attiva.', 'success');
+      } catch (error) {
+        alert(error.message);
+      }
     }
   });
 
