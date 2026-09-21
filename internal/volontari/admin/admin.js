@@ -316,9 +316,10 @@
 
   function populateFilters() {
     const assignments = snapshot?.assignments || [];
-    const people = [...new Map(assignments.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
+    const assignmentRows = allAssignmentRows();
+    const people = [...new Map(assignmentRows.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
-    const shifts = [...new Map(assignments.map((row) => [shiftFilterKey(row), {
+    const shifts = [...new Map(assignmentRows.map((row) => [shiftFilterKey(row), {
       value: shiftFilterKey(row), label: `${row.day} · ${row.shift}`
     }])).values()].sort((a, b) => a.label.localeCompare(b.label, 'it'));
     const activities = [...new Set(assignments.map((row) => displayActivity(row)).filter(Boolean))]
@@ -364,6 +365,7 @@
     const assignments = snapshot?.assignments || [];
     const assignedPeople = new Set(assignments.map((row) => row.personId)).size;
     const respondedPeople = respondedAssignedPeople();
+    const unassignedAvailability = unassignedAvailabilityRows();
     const confirmed = assignments.filter((row) => row.currentResponse === 'confirmed').length;
     const declined = assignments.filter((row) => row.currentResponse === 'declined').length;
     const pending = assignments.length - confirmed - declined;
@@ -371,6 +373,7 @@
       <article class="kpi kpi--summary">
         <div class="kpi__main"><strong>${assignedPeople}</strong><span>persone assegnate</span></div>
         <p class="kpi__detail">di cui <button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</p>
+        <p class="kpi__detail"><button type="button" class="kpi__link" data-show-unassigned-availability>${unassignedAvailability.length}</button> disponibilità da assegnare</p>
       </article>
       <article class="kpi kpi--summary">
         <div class="kpi__main"><strong>${assignments.length}</strong><span>attività assegnate</span></div>
@@ -381,6 +384,7 @@
         </div>
       </article>`;
   }
+
   function filteredAssignments() {
     const personId = assignmentPersonFilter?.value || '';
     const shift = assignmentShiftFilter?.value || '';
@@ -388,7 +392,8 @@
     const response = assignmentResponseFilter?.value || '';
     const warning = assignmentWarningFilter?.value || '';
 
-    return (snapshot?.assignments || []).filter((row) => {
+    return allAssignmentRows().filter((row) => {
+      if (availabilityOnly && !row.isAvailability) return false;
       const rowResponse = row.currentResponse || 'pending';
       const warnings = assignmentWarningDetails(row);
       const warningMatch = !warning
@@ -397,8 +402,8 @@
         || warnings.some((item) => item.type === warning);
       return (!personId || row.personId === personId)
         && (!shift || shiftFilterKey(row) === shift)
-        && (!activity || displayActivity(row) === activity)
-        && (!response || rowResponse === response)
+        && (!activity || (!row.isAvailability && displayActivity(row) === activity))
+        && (!response || (!row.isAvailability && rowResponse === response))
         && warningMatch;
     });
   }
