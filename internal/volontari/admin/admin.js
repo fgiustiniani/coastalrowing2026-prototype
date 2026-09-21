@@ -78,6 +78,8 @@
   let newAssignmentOpen = false;
   let newPersonOpen = false;
   let newActivityOpen = false;
+  let newActivityDraft = { name: '', groupId: '' };
+  const activityDrafts = new Map();
   let newActivityGroupOpen = false;
   let newRequirementOpen = false;
   let newRaceEntryOpen = false;
@@ -2866,12 +2868,39 @@
       : '<p class="empty-state">Nessun gruppo creato. Le attività vengono mostrate in “Senza gruppo”.</p>';
   }
 
+  function activityRowDraft(rowNode) {
+    return {
+      name: rowNode?.querySelector('[data-activity-name]')?.value.trim() || '',
+      groupId: rowNode?.querySelector('[data-activity-group]')?.value || ''
+    };
+  }
+
+  function syncActivityRowDraft(rowNode) {
+    if (!rowNode) return;
+    const draft = activityRowDraft(rowNode);
+    const activityId = rowNode.dataset.activityId || '';
+
+    if (!activityId) {
+      if (newActivityOpen) newActivityDraft = draft;
+      return;
+    }
+
+    const dirty = draft.name !== (rowNode.dataset.initialName || '')
+      || draft.groupId !== (rowNode.dataset.initialGroupId || '');
+    if (dirty) activityDrafts.set(activityId, draft);
+    else activityDrafts.delete(activityId);
+  }
+
+  function captureActivityCatalogDrafts() {
+    if (!activityCatalog) return;
+    activityCatalog.querySelectorAll('[data-activity-row]').forEach(syncActivityRowDraft);
+  }
+
   function activityRowIsDirty(rowNode) {
     if (!rowNode?.dataset.activityId) return false;
-    const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || '';
-    const groupId = rowNode.querySelector('[data-activity-group]')?.value || '';
-    return name !== (rowNode.dataset.initialName || '')
-      || groupId !== (rowNode.dataset.initialGroupId || '');
+    const draft = activityRowDraft(rowNode);
+    return draft.name !== (rowNode.dataset.initialName || '')
+      || draft.groupId !== (rowNode.dataset.initialGroupId || '');
   }
 
   function updateActivityBulkSaveState() {
@@ -2885,7 +2914,9 @@
   }
 
   function refreshActivityRowDirtyState(rowNode) {
-    if (!rowNode?.dataset.activityId) return;
+    if (!rowNode) return;
+    syncActivityRowDraft(rowNode);
+    if (!rowNode.dataset.activityId) return;
     const dirty = activityRowIsDirty(rowNode);
     rowNode.classList.toggle('is-dirty-row', dirty);
     const status = rowNode.querySelector('[data-row-status]');
@@ -2897,6 +2928,7 @@
 
   function renderActivityCatalog() {
     if (!activityCatalog) return;
+    captureActivityCatalogDrafts();
     const rows = (snapshot?.activityCatalog || []).filter((item) => item.active);
     const body = [
       ...(newActivityOpen ? [`<tr class="is-new-row" data-activity-row data-activity-id=""><td><input class="name-input" data-activity-name maxlength="200" placeholder="Nuova attività"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions('')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button type="button" data-cancel-new-activity>Annulla</button></div><small class="row-save-status" data-row-status></small></td></tr>`] : []),
@@ -2905,6 +2937,42 @@
     activityCatalog.innerHTML = body
       ? `<table class="admin-table catalog-table activity-catalog-table"><thead><tr><th>Attività</th><th>Gruppo</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
       : '<p class="empty-state">Nessuna attività attiva.</p>';
+
+    const renderedRows = [...activityCatalog.querySelectorAll('[data-activity-row]')];
+    for (const rowNode of renderedRows) {
+      const activityId = rowNode.dataset.activityId || '';
+      if (!activityId) {
+        if (!newActivityOpen) continue;
+        const nameField = rowNode.querySelector('[data-activity-name]');
+        const groupField = rowNode.querySelector('[data-activity-group]');
+        if (nameField) nameField.value = newActivityDraft.name || '';
+        if (groupField) {
+          groupField.value = newActivityDraft.groupId || '';
+          newActivityDraft.groupId = groupField.value || '';
+        }
+        continue;
+      }
+
+      const draft = activityDrafts.get(activityId);
+      if (!draft) continue;
+      const nameField = rowNode.querySelector('[data-activity-name]');
+      const groupField = rowNode.querySelector('[data-activity-group]');
+      if (nameField) nameField.value = draft.name;
+      if (groupField) {
+        groupField.value = draft.groupId;
+        draft.groupId = groupField.value || '';
+      }
+
+      const dirty = activityRowIsDirty(rowNode);
+      if (!dirty) {
+        activityDrafts.delete(activityId);
+        continue;
+      }
+      rowNode.classList.add('is-dirty-row');
+      const status = rowNode.querySelector('[data-row-status]');
+      if (status) status.textContent = 'Modifica non salvata';
+    }
+
     updateActivityBulkSaveState();
   }
 
@@ -4477,6 +4545,7 @@
 
   activitySaveAll?.addEventListener('click', async () => {
     if (!activityCatalog) return;
+    captureActivityCatalogDrafts();
 
     const rows = [...activityCatalog.querySelectorAll('[data-activity-row]')]
       .filter((row) => row.dataset.activityId && activityRowIsDirty(row));
@@ -4525,6 +4594,7 @@
           });
           item.rowNode.dataset.initialName = item.name;
           item.rowNode.dataset.initialGroupId = item.groupId || '';
+          activityDrafts.delete(item.activityId);
           item.rowNode.classList.remove('is-dirty-row');
           if (status) {
             status.textContent = 'Salvata';
@@ -4567,11 +4637,14 @@
     if (cancel) {
       withBriefButtonBusy(cancel, 'Annullamento…', () => {
         newActivityOpen = false;
+        newActivityDraft = { name: '', groupId: '' };
         renderActivityCatalog();
       });
       return;
     }
     if (save) {
+      syncActivityRowDraft(rowNode);
+      const activityId = rowNode.dataset.activityId || null;
       const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || '';
       const groupId = rowNode.querySelector('[data-activity-group]')?.value || null;
       if (!name) {
@@ -4586,9 +4659,16 @@
             await api(API, {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name, groupId })
+              body: JSON.stringify({ action: 'save-activity', activityId, name, groupId })
             });
-            newActivityOpen = false;
+            if (activityId) {
+              rowNode.dataset.initialName = name;
+              rowNode.dataset.initialGroupId = groupId || '';
+              activityDrafts.delete(activityId);
+            } else {
+              newActivityOpen = false;
+              newActivityDraft = { name: '', groupId: '' };
+            }
             await loadSnapshot();
             setStatus(activityCatalogStatus, 'Attività salvata.', 'success');
           } catch (error) {
@@ -4610,6 +4690,8 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'delete-activity', activityId: rowNode.dataset.activityId })
         });
+        activityDrafts.delete(rowNode.dataset.activityId);
+        rowNode.remove();
         await loadSnapshot();
       } catch (error) { alert(error.message); }
     }

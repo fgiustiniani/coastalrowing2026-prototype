@@ -2901,27 +2901,29 @@ tr.is-busy button.is-busy {
 
 /* Evidenza gruppi e modifiche attività */
 .assignment-board__activity-group {
-  border-color: #8fb8c1;
-  background: #eaf5f7;
-  box-shadow: 0 3px 10px rgba(41, 95, 107, .08);
+  border-color: #91a9af;
+  background: #eef2f3;
+  box-shadow: inset 3px 0 0 #7f9da4, 0 3px 10px rgba(41, 74, 82, .08);
 }
 .assignment-board__activity-group-head {
-  background: #d7ebef;
-  color: #244f59;
-  border-bottom: 1px solid #b9d5db;
+  background: #dbe3e5;
+  color: #24464e;
+  border-bottom: 1px solid #b8c7ca;
+}
+.assignment-board__activity-group .assignment-board__group-toggle strong {
+  font-size: .78rem;
+  letter-spacing: .015em;
 }
 .assignment-board__activity-group.is-collapsed .assignment-board__activity-group-head {
   border-bottom: 0;
 }
 .assignment-board__activity-group .assignment-board__group-body {
-  background: #f2f9fa;
+  background: #f5f7f8;
   border-radius: 0 0 11px 11px;
-}
-.assignment-board__activity-group .assignment-board__activity {
-  background: #fff;
 }
 .assignment-board__activity-group.is-activity-group-drop-target {
   background: #d9f0f3;
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--accent), 0 4px 14px rgba(10,107,125,.12);
 }
 .assignment-board__activity-group.is-activity-group-drop-target .assignment-board__activity-group-head {
   background: #c6e6eb;
