@@ -205,6 +205,16 @@
     return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
   }
 
+  function sortShiftsChronologically(shifts = []) {
+    return [...shifts].sort((a, b) => {
+      const startA = Date.parse(a?.startsAt || '');
+      const startB = Date.parse(b?.startsAt || '');
+      if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
+      if (Number.isFinite(startA) !== Number.isFinite(startB)) return Number.isFinite(startA) ? -1 : 1;
+      return `${a?.day || ''} ${a?.shift || ''}`.localeCompare(`${b?.day || ''} ${b?.shift || ''}`, 'it');
+    });
+  }
+
   function renderAssignments() {
     const assignments = state.personState?.assignments || [];
     if (!assignments.length) {
@@ -232,7 +242,9 @@
   }
 
   function renderAvailability() {
-    const shifts = state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts;
+    const shifts = sortShiftsChronologically(
+      state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts
+    );
     if (!shifts.length) {
       availabilityList.innerHTML = '<p class="muted">Nessun turno disponibile.</p>';
       return;
@@ -276,7 +288,9 @@
     const assignments = state.personState?.assignments || [];
     const confirmed = assignments.filter((a) => state.responses.get(a.id)?.response === 'confirmed');
     const declined = assignments.filter((a) => state.responses.get(a.id)?.response === 'declined');
-    const shifts = state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts;
+    const shifts = sortShiftsChronologically(
+      state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts
+    );
     const extra = shifts.filter((s) => state.availability.get(s.id)?.selected && !s.assigned);
     const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
     const listAssignments = (items) => items.length
