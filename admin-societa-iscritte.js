@@ -13,6 +13,8 @@
   const sourceTitle = document.querySelector('[data-society-source-title]');
   const sourceDetail = document.querySelector('[data-society-source-detail]');
   const sourceLink = document.querySelector('[data-society-source-link]');
+  const mailSyncButton = document.querySelector('[data-society-mail-sync]');
+  const mailSyncStatus = document.querySelector('[data-society-mail-sync-status]');
   const kpis = document.querySelector('[data-society-kpis]');
   const tableContainer = document.querySelector('[data-society-table]');
   const tableScrollTop = document.querySelector('[data-society-table-scroll-top]');
@@ -37,6 +39,7 @@
 
   let credentials = null;
   let data = null;
+  let mailSyncInFlight = false;
 
   function readStoredCredentials() {
     try {
@@ -140,6 +143,25 @@
     if (!response.ok) {
       const error = new Error(body.error || 'Non è stato possibile caricare i dati.');
       error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  async function requestRentalMailSync() {
+    const response = await fetch(api, {
+      method: 'POST',
+      headers: {
+        authorization: authHeader(),
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ action: 'sync-rental-mails' })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.error || 'Non è stato possibile aggiornare le mail di noleggio.');
+      error.status = response.status;
+      error.code = body.code || '';
       throw error;
     }
     return body;
@@ -249,6 +271,21 @@
     } else {
       sourceTitle.textContent = 'Anagrafica disponibile, elenco iscritti non disponibile';
       sourceDetail.textContent = `${data.sourceError || 'Portale FIC non disponibile.'} Carica un file HTML per aggiornare lo stato delle iscrizioni.`;
+    }
+
+    if (mailSyncStatus) {
+      const sync = data.rentalMailSync || {};
+      const total = sync.totalSocietiesWithMail ?? data.summary?.rentalMailReceived ?? 0;
+      if (sync.syncedAt) {
+        const unmatchedCount = Number(sync.unmatchedCount || 0);
+        mailSyncStatus.textContent =
+          `Mail noleggio: ${total} società · aggiornate ${formatTimestamp(sync.syncedAt)}` +
+          (unmatchedCount ? ` · ${unmatchedCount} mail da verificare` : '');
+        mailSyncStatus.classList.toggle('is-warning', unmatchedCount > 0);
+      } else {
+        mailSyncStatus.textContent = `Mail noleggio: ${total} società · base verificata al 21/09/2026. Usa “Aggiorna mail noleggio” per leggere le nuove mail.`;
+        mailSyncStatus.classList.remove('is-warning');
+      }
     }
   }
 
@@ -467,6 +504,53 @@
     }
   }
 
+  async function syncRentalMail() {
+    if (!credentials || mailSyncInFlight) return;
+
+    mailSyncInFlight = true;
+    if (mailSyncButton) {
+      mailSyncButton.disabled = true;
+      mailSyncButton.textContent = 'Aggiornamento mail…';
+    }
+    if (mailSyncStatus) {
+      mailSyncStatus.textContent = 'Lettura Gmail in corso…';
+      mailSyncStatus.classList.remove('is-warning');
+    }
+
+    try {
+      const result = await requestRentalMailSync();
+      data = await requestData();
+      renderAll();
+
+      const sync = result.rentalMailSync || data.rentalMailSync || {};
+      const unmatchedCount = Number(sync.unmatchedCount || 0);
+      setStatus(
+        statusNode,
+        unmatchedCount
+          ? `Mail aggiornate. ${sync.totalSocietiesWithMail ?? data.summary?.rentalMailReceived ?? 0} società riconosciute; ${unmatchedCount} mail da verificare.`
+          : `Mail aggiornate. ${sync.totalSocietiesWithMail ?? data.summary?.rentalMailReceived ?? 0} società riconosciute.`,
+        unmatchedCount ? 'warning' : 'success'
+      );
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        clearStoredCredentials();
+        showLogin('Credenziali non valide.');
+      } else {
+        if (mailSyncStatus) {
+          mailSyncStatus.textContent = `Aggiornamento Gmail non riuscito: ${error.message} La base già verificata resta invariata.`;
+          mailSyncStatus.classList.add('is-warning');
+        }
+        setStatus(statusNode, error.message, 'warning');
+      }
+    } finally {
+      mailSyncInFlight = false;
+      if (mailSyncButton) {
+        mailSyncButton.disabled = false;
+        mailSyncButton.textContent = 'Aggiorna mail noleggio';
+      }
+    }
+  }
+
   if (uploadDate && !uploadDate.value) uploadDate.value = todayRome();
 
   credentials = readStoredCredentials();
@@ -484,6 +568,7 @@
   });
 
   refreshButton?.addEventListener('click', () => load());
+  mailSyncButton?.addEventListener('click', () => syncRentalMail());
 
   uploadForm?.addEventListener('submit', async (event) => {
     event.preventDefault();

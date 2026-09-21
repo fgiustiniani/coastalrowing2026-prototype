@@ -2,6 +2,7 @@ import { getStore } from '@netlify/blobs';
 import { randomUUID } from 'node:crypto';
 import { isAdminAuthorized, isSameOrigin, json } from './_lib/boat-bookings-common.mjs';
 import { FIC_SOCIETIES_2026 } from './_data/fic-societies-2026.mjs';
+import { syncRentalMailFromGmail } from './_lib/rental-mail-gmail.mjs';
 
 const EVENT_PATH = 'elenco_societa_iscritte.php?ope=26CICR/270S35XZ46IJP8WH';
 const EVENT_URLS = [
@@ -35,17 +36,19 @@ const HISTORICAL_2025_PROGRAM_BY_REGION = Object.freeze([
   { region: 'Veneto', athletes: 38, societies: 7 }
 ]);
 
-// Snapshot delle richieste di noleggio ricevute via e-mail e verificate il 18/09/2026.
+// Snapshot delle richieste di noleggio ricevute via e-mail e verificate fino al 21/09/2026.
 // La presenza indica esclusivamente che una mail di noleggio è stata ricevuta, non che la richiesta sia ancora attiva.
 const RENTAL_MAIL_RECEIVED_CODES = new Set([
   "110004","120060","030044","010096","030293","080131","020119","150003","030045","040083",
   "030134","130017","040086","111112","060054","030011","070110","070077","050004","050174",
   "030127","132001","070007","110043","120016","030104","040081","010109","110213","120002",
   "120158","100044","130164","070101","050002","100037","050142","050005","030023","100118",
-  "120021","070128"
+  "120021","070128",
+  "040165","060102","030017"
 ]);
 
 const SNAPSHOT_STORE_KEY = 'uploads';
+const RENTAL_MAIL_SYNC_STORE_KEY = 'rental-mail-sync';
 const MAX_SNAPSHOT_UPLOADS = 30;
 const MAX_HTML_UPLOAD_CHARS = 2500000;
 
@@ -291,15 +294,8 @@ function latestSnapshot(uploads) {
   )[0] || null;
 }
 
-async function saveSnapshotUpload(request, store) {
-  let payload;
-  try {
-    payload = await request.json();
-  } catch {
-    return { error: 'Dati di upload non validi.', status: 400 };
-  }
-
-  if (String(payload.action || '') !== 'upload-html') {
+async function saveSnapshotUpload(payload, store) {
+  if (String(payload?.action || '') !== 'upload-html') {
     return { error: 'Operazione non valida.', status: 400 };
   }
 
@@ -351,6 +347,36 @@ async function saveSnapshotUpload(request, store) {
     unknownCodes,
     uploads: updated.map(snapshotMeta)
   };
+}
+
+async function readRentalMailSync(store) {
+  const state = await store.get(RENTAL_MAIL_SYNC_STORE_KEY, { type: 'json' });
+  return state && typeof state === 'object' ? state : null;
+}
+
+function rentalMailSyncPublic(state, codes) {
+  return {
+    syncedAt: state?.syncedAt || null,
+    messagesFound: Number(state?.messagesFound || 0),
+    messagesConsidered: Number(state?.messagesConsidered || 0),
+    matchedByGmail: Array.isArray(state?.matchedCodes) ? state.matchedCodes.length : 0,
+    totalSocietiesWithMail: codes.size,
+    unmatchedCount: Array.isArray(state?.unmatched) ? state.unmatched.length : 0,
+    unmatched: Array.isArray(state?.unmatched) ? state.unmatched : []
+  };
+}
+
+async function runRentalMailSync(store) {
+  const result = await syncRentalMailFromGmail(FIC_SOCIETIES_2026);
+  const state = {
+    syncedAt: result.syncedAt,
+    messagesFound: result.messagesFound,
+    messagesConsidered: result.messagesConsidered,
+    matchedCodes: Array.isArray(result.matchedCodes) ? result.matchedCodes : [],
+    unmatched: Array.isArray(result.unmatched) ? result.unmatched : []
+  };
+  await store.setJSON(RENTAL_MAIL_SYNC_STORE_KEY, state);
+  return state;
 }
 
 function normalize(value) {
@@ -577,25 +603,65 @@ export default async (request) => {
   const snapshotStore = getStore(resolveSnapshotStoreName(requestUrl), { consistency: 'strong' });
 
   if (request.method === 'POST') {
+    let payload;
     try {
-      const saved = await saveSnapshotUpload(request, snapshotStore);
-      if (saved.error) return json({ error: saved.error }, saved.status || 400);
-      return json(saved);
-    } catch (error) {
-      console.error('Errore salvataggio snapshot iscritti:', error);
-      return json({ error: 'Non è stato possibile salvare il file HTML.' }, 500);
+      payload = await request.json();
+    } catch {
+      return json({ error: 'Richiesta non valida.' }, 400);
     }
+
+    if (String(payload?.action || '') === 'sync-rental-mails') {
+      try {
+        const state = await runRentalMailSync(snapshotStore);
+        const rentalMailCodes = new Set([
+          ...RENTAL_MAIL_RECEIVED_CODES,
+          ...(state.matchedCodes || [])
+        ]);
+        return json({
+          ok: true,
+          rentalMailSync: rentalMailSyncPublic(state, rentalMailCodes)
+        });
+      } catch (error) {
+        console.error('Errore sincronizzazione mail noleggio:', error?.code || error?.name || 'IMAP_ERROR');
+        const status = error?.code === 'IMAP_NOT_CONFIGURED' ? 503 : 502;
+        return json({
+          error: error?.message || 'Non è stato possibile aggiornare le mail di noleggio.',
+          code: error?.code || 'IMAP_ERROR'
+        }, status);
+      }
+    }
+
+    if (String(payload?.action || '') === 'upload-html') {
+      try {
+        const saved = await saveSnapshotUpload(payload, snapshotStore);
+        if (saved.error) return json({ error: saved.error }, saved.status || 400);
+        return json(saved);
+      } catch (error) {
+        console.error('Errore salvataggio snapshot iscritti:', error);
+        return json({ error: 'Non è stato possibile salvare il file HTML.' }, 500);
+      }
+    }
+
+    return json({ error: 'Operazione non valida.' }, 400);
   }
 
   if (request.method !== 'GET') return json({ error: 'Metodo non consentito.' }, 405);
 
   let uploads = [];
+  let rentalMailSync = null;
   try {
-    uploads = await readSnapshotUploads(snapshotStore);
+    [uploads, rentalMailSync] = await Promise.all([
+      readSnapshotUploads(snapshotStore),
+      readRentalMailSync(snapshotStore)
+    ]);
   } catch (error) {
-    console.error('Errore lettura snapshot iscritti:', error);
+    console.error('Errore lettura stato area iscritti:', error);
   }
   const snapshot = latestSnapshot(uploads);
+  const rentalMailCodes = new Set([
+    ...RENTAL_MAIL_RECEIVED_CODES,
+    ...(Array.isArray(rentalMailSync?.matchedCodes) ? rentalMailSync.matchedCodes : [])
+  ]);
   const snapshotByCode = new Map(
     (snapshot?.societies || []).map((society) => [String(society.code || ''), society])
   );
@@ -641,7 +707,7 @@ export default async (request) => {
     return {
       ...society,
       registered2025: REGISTERED_2025_CODES.has(code),
-      rentalMailReceived: RENTAL_MAIL_RECEIVED_CODES.has(code),
+      rentalMailReceived: rentalMailCodes.has(code),
       status,
       matchConfidence: match ? Number(match.confidence.toFixed(3)) : null,
       registration: match?.registration || null,
@@ -659,7 +725,8 @@ export default async (request) => {
     sourceError: sourceError || undefined,
     latestUpload: snapshotMeta(snapshot),
     uploadHistory: uploads.map(snapshotMeta),
-    rentalMailUpdatedAt: '2026-09-18',
+    rentalMailUpdatedAt: rentalMailSync?.syncedAt || '2026-09-21',
+    rentalMailSync: rentalMailSyncPublic(rentalMailSync, rentalMailCodes),
     historical2025Available,
     historical2025ByRegion,
     historical2025SourceUrl,

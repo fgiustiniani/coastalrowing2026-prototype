@@ -1122,3 +1122,46 @@
     justify-self: end;
   }
 }
+
+
+/* Sincronizzazione manuale Gmail per le richieste di noleggio */
+.society-source-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.society-mail-sync-status {
+  display: block;
+  margin-top: 6px;
+  color: #5f7279;
+  font-size: .78rem !important;
+  line-height: 1.35;
+}
+
+.society-mail-sync-status.is-warning {
+  color: #8a5b1e !important;
+}
+
+.society-mail-sync-button {
+  white-space: nowrap;
+}
+
+.society-mail-sync-button:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+
+@media (max-width: 760px) {
+  .society-source-card__actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .society-source-card__actions > * {
+    flex: 1 1 190px;
+    text-align: center;
+  }
+}
