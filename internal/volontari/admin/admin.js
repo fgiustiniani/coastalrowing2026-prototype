@@ -1274,6 +1274,95 @@
     });
   }
 
+  function clearBoardGroupReorderMarkers() {
+    assignmentBoard?.querySelectorAll('.is-group-reorder-before, .is-group-reorder-after, .is-activity-group-drop-target').forEach((node) => {
+      node.classList.remove('is-group-reorder-before', 'is-group-reorder-after', 'is-activity-group-drop-target');
+    });
+  }
+
+  function autoScrollBoardDrag(clientX, clientY) {
+    if (!assignmentBoard) return;
+
+    const boardRect = assignmentBoard.getBoundingClientRect();
+    const horizontalEdge = 80;
+    if (clientX < boardRect.left + horizontalEdge) assignmentBoard.scrollLeft -= 22;
+    else if (clientX > boardRect.right - horizontalEdge) assignmentBoard.scrollLeft += 22;
+
+    const verticalEdge = Math.min(110, Math.max(70, window.innerHeight * 0.12));
+    if (clientY < verticalEdge) {
+      const speed = Math.max(10, Math.round((verticalEdge - clientY) / verticalEdge * 34));
+      window.scrollBy({ top: -speed, left: 0, behavior: 'auto' });
+    } else if (clientY > window.innerHeight - verticalEdge) {
+      const speed = Math.max(10, Math.round((clientY - (window.innerHeight - verticalEdge)) / verticalEdge * 34));
+      window.scrollBy({ top: speed, left: 0, behavior: 'auto' });
+    }
+  }
+
+  function boardActivityGroupIds() {
+    return activityGroups().map((group) => group.id);
+  }
+
+  async function reorderBoardActivityGroup(draggedId, targetGroupId, placeAfter = false) {
+    if (!draggedId || !targetGroupId || draggedId === targetGroupId) return;
+    const ids = boardActivityGroupIds();
+    if (!ids.includes(draggedId) || !ids.includes(targetGroupId)) return;
+
+    const next = ids.filter((id) => id !== draggedId);
+    const targetIndex = next.indexOf(targetGroupId);
+    next.splice(targetIndex + (placeAfter ? 1 : 0), 0, draggedId);
+
+    if (next.every((id, index) => id === ids[index])) return;
+
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, 'Salvataggio ordine gruppi…');
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder-activity-groups',
+          groupIds: next
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, 'Ordine gruppi aggiornato.', 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
+  }
+
+  async function setBoardActivityGroup(activityId, groupId) {
+    const activity = (snapshot?.activityCatalog || []).find((item) => item.id === activityId);
+    if (!activity) {
+      setStatus(assignmentBoardStatus, 'Attività non più disponibile. Aggiorna la pagina.', 'error');
+      return;
+    }
+    if ((activity.group_id || '') === (groupId || '')) return;
+
+    const targetName = groupId ? (activityGroupById(groupId)?.name || 'gruppo') : 'Altre attività';
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, `Spostamento di ${prettifyActivityName(activity.name)} in ${targetName}…`);
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-activity-group',
+          activityId,
+          groupId: groupId || null
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, `${prettifyActivityName(activity.name)} spostata in ${targetName}.`, 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
+  }
+
   function shiftRequirementIds(shiftId) {
     return requirements()
       .filter((row) => row.shiftId === shiftId)
