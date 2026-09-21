@@ -128,7 +128,7 @@
 
         <article class="card admin-section">
           <div class="section-head">
-            <div><p class="eyebrow">Report</p><h2>Per attività</h2></div>
+            <div><p class="eyebrow">Report</p><h2>Per giorno e turno</h2></div>
             <div class="section-actions">
               <button class="button button--secondary" type="button" data-activity-export-pdf>PDF</button>
               <button class="button button--secondary" type="button" data-activity-export-excel>Excel</button>
@@ -136,11 +136,31 @@
             </div>
           </div>
           <div id="activity-report-content" data-collapsible-content>
-            <div class="filter-grid filter-grid--report">
-              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter><option value="">Tutte</option></select></label>
+            <div class="filter-grid filter-grid--report-three">
               <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Turno</span><select data-activity-report-shift-filter><option value="">Tutti</option></select></label>
             </div>
             <div class="table-wrap" data-activity-report></div>
+          </div>
+        </article>
+
+        <article class="card admin-section">
+          <div class="section-head">
+            <div><p class="eyebrow">Report</p><h2>Vista per turni</h2></div>
+            <div class="section-actions">
+              <button class="button button--secondary" type="button" data-shift-board-export-pdf>PDF</button>
+              <button class="button button--secondary" type="button" data-shift-board-export-excel>Excel</button>
+              <button class="button button--secondary collapse-button" type="button" data-collapse-target="shift-board-report-content" aria-expanded="true">Comprimi</button>
+            </div>
+          </div>
+          <div id="shift-board-report-content" data-collapsible-content>
+            <div class="filter-grid filter-grid--report-three">
+              <label class="field compact-field"><span>Persona</span><select data-shift-board-person-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-shift-board-activity-filter><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Turno</span><select data-shift-board-shift-filter><option value="">Tutti</option></select></label>
+            </div>
+            <div class="shift-board-wrap" data-shift-board-report></div>
           </div>
         </article>
       </section>
