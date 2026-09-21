@@ -56,6 +56,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .person-option { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; background: white; color: var(--ink); text-align: left; }
 .person-option strong { display: block; }
 .person-option small { color: var(--muted); }
+.manual-box { margin: 8px 0 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .person-option.is-selected { border-color: var(--accent); background: #eef8fa; box-shadow: inset 0 0 0 1px var(--accent); }
 .assignment-list, .availability-list { display: grid; gap: 12px; margin-top: 18px; }
 .assignment-card, .availability-card { border: 1px solid var(--line); border-radius: 16px; padding: 15px; background: #fff; }
