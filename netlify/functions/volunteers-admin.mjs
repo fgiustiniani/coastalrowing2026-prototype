@@ -212,6 +212,28 @@ async function adminSnapshot() {
 
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
 
+  const declinedAssignmentResponses = [];
+  for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
+    if (response?.response !== 'declined') continue;
+    const submission = submissionById.get(response.submission_id) || null;
+    const assignment = assignmentHistoryById.get(assignmentId) || null;
+    if (!submission?.person_id) continue;
+
+    const shift = assignment?.shift_id ? (shiftById.get(assignment.shift_id) || null) : null;
+    const activity = assignment?.activity_id ? (activityById.get(assignment.activity_id) || null) : null;
+
+    declinedAssignmentResponses.push({
+      assignmentId,
+      personId: submission.person_id,
+      shiftId: assignment?.shift_id || null,
+      day: response.day_snapshot || shift?.day_label || assignment?.raw_day || '',
+      shift: response.shift_snapshot || shift?.shift_label || assignment?.raw_shift || '',
+      activity: response.activity_snapshot || activity?.name || 'Attività',
+      responseAt: response.stamp || response.created_at || null,
+      note: response.note || ''
+    });
+  }
+
   const hydrateComparisonAssignment = (assignment) => {
     if (!assignment) return null;
     const person = personById.get(assignment.person_id) || null;
@@ -410,6 +432,7 @@ async function adminSnapshot() {
     activityCatalog: activityRows,
     activityGroups: activityGroupRows,
     assignments: hydratedAssignments,
+    declinedAssignmentResponses,
     requirementsAvailable: requirements !== null,
     requirements: hydratedRequirements,
     postConfirmationChanges,
