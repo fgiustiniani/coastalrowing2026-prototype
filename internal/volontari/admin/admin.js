@@ -1414,6 +1414,70 @@
       .filter((shift) => visibleShiftIds.has(shift.id))
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
 
+    const groupDefinitions = [
+      ...activityGroups().map((group) => ({
+        id: group.id,
+        name: group.name,
+        isUngrouped: false,
+        displayOrder: Number(group.display_order ?? group.displayOrder ?? 0)
+      })),
+      {
+        id: '',
+        name: 'Altre attività',
+        isUngrouped: true,
+        displayOrder: 999999
+      }
+    ];
+
+    const renderActivityBox = (requirement) => {
+      const people = rows.filter((row) =>
+        !row.isAvailability
+        && row.shiftId === requirement.shiftId
+        && row.activityId === requirement.activityId
+      ).sort((a, b) =>
+        Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
+      );
+      const uncovered = requirementIsUncovered(requirement);
+      const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
+
+      return `
+        <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'}"
+          data-board-drop
+          data-board-requirement-id="${escapeHtml(requirement.id)}"
+          data-board-activity-id="${escapeHtml(requirement.activityId || '')}"
+          data-board-group-id="${escapeHtml(requirement.activityGroupId || '')}">
+          <header class="assignment-board__activity-head">
+            <span class="assignment-board__activity-drag-handle"
+              draggable="true"
+              data-board-activity-drag-handle
+              data-board-requirement-id="${escapeHtml(requirement.id)}"
+              title="Trascina per riordinare o spostare l’attività in un altro gruppo"
+              aria-label="Trascina per riordinare o spostare l’attività in un altro gruppo">⋮⋮</span>
+            <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
+            <span class="assignment-board__activity-actions">
+              <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
+              <button type="button"
+                class="assignment-board__copy-from"
+                data-board-copy-from
+                data-board-requirement-id="${escapeHtml(requirement.id)}"
+                aria-label="Copia persone da un’altra coppia turno-attività"
+                title="Copia persone da un’altra coppia turno-attività">Copia da</button>
+              <button type="button"
+                class="assignment-board__add-person"
+                data-board-add-person
+                data-board-requirement-id="${escapeHtml(requirement.id)}"
+                aria-label="Aggiungi persona a ${escapeHtml(prettifyActivityName(requirement.activity))}"
+                title="Aggiungi persona">＋</button>
+            </span>
+          </header>
+          ${uncovered ? `<div class="assignment-board__coverage-warning">Mancano ${missing} ${missing === 1 ? 'persona' : 'persone'}</div>` : ''}
+          <div class="assignment-board__people">
+            ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Nessuna persona assegnata</span>'}
+          </div>
+        </section>`;
+    };
+
     const columns = shifts.map((shift) => {
       const shiftRequirements = visibleRequirements
         .filter((item) => item.shiftId === shift.id)
@@ -1423,48 +1487,43 @@
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
 
-      const activitiesHtml = shiftRequirements.map((requirement) => {
-        const people = rows.filter((row) =>
-          !row.isAvailability
-          && row.shiftId === requirement.shiftId
-          && row.activityId === requirement.activityId
-        ).sort((a, b) =>
-          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-          || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
-        );
-        const uncovered = requirementIsUncovered(requirement);
-        const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
+      const groupsHtml = groupDefinitions.map((group) => {
+        const groupRequirements = shiftRequirements
+          .filter((item) => (item.activityGroupId || '') === group.id)
+          .sort((a, b) =>
+            Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+            || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+          );
+        const collapsed = boardGroupCollapsed(group.id);
+        const groupKey = boardGroupKey(group.id);
         return `
-          <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'}"
-            data-board-drop
-            data-board-requirement-id="${escapeHtml(requirement.id)}">
-            <header class="assignment-board__activity-head">
-              <span class="assignment-board__activity-drag-handle"
-                draggable="true"
-                data-board-activity-drag-handle
-                data-board-requirement-id="${escapeHtml(requirement.id)}"
-                title="Trascina per spostare il box in alto o in basso"
-                aria-label="Trascina per spostare il box in alto o in basso">⋮⋮</span>
-              <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
-              <span class="assignment-board__activity-actions">
-                <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
-                <button type="button"
-                  class="assignment-board__copy-from"
-                  data-board-copy-from
-                  data-board-requirement-id="${escapeHtml(requirement.id)}"
-                  aria-label="Copia persone da un’altra coppia turno-attività"
-                  title="Copia persone da un’altra coppia turno-attività">Copia da</button>
-                <button type="button"
-                  class="assignment-board__add-person"
-                  data-board-add-person
-                  data-board-requirement-id="${escapeHtml(requirement.id)}"
-                  aria-label="Aggiungi persona a ${escapeHtml(prettifyActivityName(requirement.activity))}"
-                  title="Aggiungi persona">＋</button>
-              </span>
+          <section class="assignment-board__activity-group ${collapsed ? 'is-collapsed' : ''}"
+            data-board-activity-group
+            data-board-group-id="${escapeHtml(group.id)}"
+            data-board-group-key="${escapeHtml(groupKey)}"
+            data-board-shift-id="${escapeHtml(shift.id)}">
+            <header class="assignment-board__activity-group-head">
+              ${group.isUngrouped ? '<span class="assignment-board__group-spacer" aria-hidden="true"></span>' : `
+                <span class="assignment-board__group-drag-handle"
+                  draggable="true"
+                  data-board-group-drag-handle
+                  data-board-group-id="${escapeHtml(group.id)}"
+                  title="Trascina per spostare il gruppo in alto o in basso"
+                  aria-label="Trascina per spostare il gruppo in alto o in basso">⋮⋮</span>`}
+              <button type="button"
+                class="assignment-board__group-toggle"
+                data-board-group-toggle="${escapeHtml(groupKey)}"
+                aria-expanded="${collapsed ? 'false' : 'true'}"
+                title="${collapsed ? 'Espandi gruppo' : 'Comprimi gruppo'}">
+                <span class="assignment-board__group-chevron" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
+                <strong>${escapeHtml(group.name)}</strong>
+              </button>
+              <span class="assignment-board__group-count">${groupRequirements.length}</span>
             </header>
-            ${uncovered ? `<div class="assignment-board__coverage-warning">Mancano ${missing} ${missing === 1 ? 'persona' : 'persone'}</div>` : ''}
-            <div class="assignment-board__people">
-              ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Nessuna persona assegnata</span>'}
+            <div class="assignment-board__group-body" data-board-group-body ${collapsed ? 'hidden' : ''}>
+              ${groupRequirements.length
+                ? groupRequirements.map(renderActivityBox).join('')
+                : '<div class="assignment-board__group-empty">Trascina qui un’attività</div>'}
             </div>
           </section>`;
       }).join('');
@@ -1476,7 +1535,7 @@
             <span>${escapeHtml(shift.shift_label)}</span>
           </header>
           <div class="assignment-board__activities">
-            ${activitiesHtml || '<p class="empty-state">Nessuna attività prevista con i filtri correnti.</p>'}
+            ${groupsHtml}
           </div>
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
@@ -1490,7 +1549,7 @@
     assignmentBoard.innerHTML = `
       <div class="assignment-board__help">
         <strong>Gestione a schede</strong>
-        <span>Sono mostrate tutte le attività previste. I box rossi non hanno ancora raggiunto il numero di persone necessario. Trascina i nominativi per spostarli; usa la maniglia ⋮⋮ del box per riordinare le attività nello stesso turno.</span>
+        <span>Comprimi o espandi i gruppi, trascinali per cambiarne l’ordine e trascina un box attività in un altro gruppo per riclassificare l’attività in tutti i turni. Le maniglie dei nominativi continuano a gestire le singole assegnazioni.</span>
       </div>
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
   }
