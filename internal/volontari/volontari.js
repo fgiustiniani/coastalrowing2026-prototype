@@ -9,6 +9,8 @@
     cachedShifts: [],
     selectedPerson: null,
     manualPersonName: '',
+    manualSurname: '',
+    manualGivenName: '',
     personState: null,
     responses: new Map(),
     availability: new Map(),
@@ -27,7 +29,8 @@
   const manualBox = document.querySelector('[data-manual-box]');
   const manualToggle = document.querySelector('[data-manual-toggle]');
   const manualField = document.querySelector('[data-manual-field]');
-  const manualInput = document.querySelector('[data-manual-person]');
+  const manualSurnameInput = document.querySelector('[data-manual-surname]');
+  const manualGivenNameInput = document.querySelector('[data-manual-given-name]');
   const assignmentList = document.querySelector('[data-assignment-list]');
   const assignmentStatus = document.querySelector('[data-assignment-status]');
   const availabilityList = document.querySelector('[data-availability-list]');
@@ -154,7 +157,10 @@
   async function selectPerson(person) {
     state.selectedPerson = person;
     state.manualPersonName = '';
-    if (manualInput) manualInput.value = '';
+    state.manualSurname = '';
+    state.manualGivenName = '';
+    if (manualSurnameInput) manualSurnameInput.value = '';
+    if (manualGivenNameInput) manualGivenNameInput.value = '';
     if (manualField) manualField.hidden = true;
     if (manualBox) manualBox.hidden = true;
     personSearch.value = sortLabel(person);
@@ -178,24 +184,20 @@
   }
 
   function useManualPerson() {
-    const suggested = String(personSearch?.value || '').trim();
     state.selectedPerson = null;
-    state.manualPersonName = suggested;
+    state.manualPersonName = '';
+    state.manualSurname = '';
+    state.manualGivenName = '';
     state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
     state.responses = new Map();
     state.availability = new Map();
     if (manualBox) manualBox.hidden = true;
     if (manualField) manualField.hidden = false;
-    if (manualInput) {
-      manualInput.value = suggested;
-      manualInput.focus();
-      manualInput.select();
-    }
-    setStatus(personSelection, 'Inserisci nome e cognome e prosegui.', '');
+    if (manualSurnameInput) manualSurnameInput.focus();
+    setStatus(personSelection, 'Inserisci cognome e nome e prosegui.', '');
     renderAssignments();
     renderAvailability();
   }
-
   function displayActivityName(value) {
     return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
   }
@@ -309,10 +311,12 @@
       }
     }
     if (step === 3) {
-      state.manualPersonName = String(manualInput?.value || state.manualPersonName || '').trim();
-      if (!state.selectedPerson && state.manualPersonName.length < 2) {
-        setStatus(personSelection, 'Seleziona il tuo nominativo oppure inseriscilo manualmente.', 'error');
-        personSearch.focus();
+      state.manualSurname = String(manualSurnameInput?.value || state.manualSurname || '').trim();
+      state.manualGivenName = String(manualGivenNameInput?.value || state.manualGivenName || '').trim();
+      state.manualPersonName = [state.manualSurname, state.manualGivenName].filter(Boolean).join(' ');
+      if (!state.selectedPerson && (state.manualSurname.length < 2 || state.manualGivenName.length < 2)) {
+        setStatus(personSelection, 'Inserisci cognome e nome.', 'error');
+        (state.manualSurname.length < 2 ? manualSurnameInput : manualGivenNameInput)?.focus();
         return;
       }
       if (!state.selectedPerson) {
@@ -336,6 +340,8 @@
         actorName: state.actorName,
         personId: state.selectedPerson?.id || null,
         manualPersonName: state.selectedPerson ? null : state.manualPersonName,
+        manualSurname: state.selectedPerson ? null : state.manualSurname,
+        manualGivenName: state.selectedPerson ? null : state.manualGivenName,
         clientSubmissionId: state.clientSubmissionId,
         website: submitWebsite.value || '',
         responses: Array.from(state.responses.entries()).map(([assignmentId, value]) => ({ assignmentId, response: value.response, note: value.note || '' })),
@@ -366,8 +372,11 @@
       setStatus(personSelection, '');
     }
     state.manualPersonName = '';
+    state.manualSurname = '';
+    state.manualGivenName = '';
     if (manualField) manualField.hidden = true;
-    if (manualInput) manualInput.value = '';
+    if (manualSurnameInput) manualSurnameInput.value = '';
+    if (manualGivenNameInput) manualGivenNameInput.value = '';
     clearTimeout(personSearchTimer);
     if (query.length < 2) {
       state.people = [];
@@ -385,10 +394,15 @@
     selectPerson(person).catch((error) => { personSelection.textContent = error.message; });
   });
   manualToggle?.addEventListener('click', useManualPerson);
-  manualInput?.addEventListener('input', () => {
-    state.manualPersonName = String(manualInput.value || '').trim();
-    setStatus(personSelection, state.manualPersonName ? 'Nominativo inserito manualmente.' : '', state.manualPersonName ? 'success' : '');
-  });
+  const syncManualName = () => {
+    state.manualSurname = String(manualSurnameInput?.value || '').trim();
+    state.manualGivenName = String(manualGivenNameInput?.value || '').trim();
+    state.manualPersonName = [state.manualSurname, state.manualGivenName].filter(Boolean).join(' ');
+    const complete = state.manualSurname.length >= 2 && state.manualGivenName.length >= 2;
+    setStatus(personSelection, complete ? 'Nominativo inserito manualmente.' : '', complete ? 'success' : '');
+  };
+  manualSurnameInput?.addEventListener('input', syncManualName);
+  manualGivenNameInput?.addEventListener('input', syncManualName);
 
   assignmentList?.addEventListener('change', (event) => {
     const card = event.target.closest('[data-assignment-id]'); if (!card) return;
