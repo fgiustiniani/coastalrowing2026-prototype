@@ -123,3 +123,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 @media (min-width: 640px) {
   .manual-fields { grid-template-columns: 1fr 1fr; }
 }
+
+.success-email {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.success-email h3 {
+  margin: 0 0 6px;
+}
+.success-email form {
+  margin-top: 14px;
+}
+.success-email .field {
+  max-width: 520px;
+}
