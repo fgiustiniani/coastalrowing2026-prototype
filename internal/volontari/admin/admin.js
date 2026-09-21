@@ -271,18 +271,34 @@
     dashboard.hidden = false;
   }
 
+  function respondedAssignedPeople() {
+    const assignedIds = new Set((snapshot?.assignments || []).map((row) => row.personId));
+    return (snapshot?.people || [])
+      .filter((person) => assignedIds.has(person.id) && person.latestSubmission)
+      .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
+  }
+
   function renderKpis() {
     const assignments = snapshot?.assignments || [];
     const assignedPeople = new Set(assignments.map((row) => row.personId)).size;
+    const respondedPeople = respondedAssignedPeople();
     const confirmed = assignments.filter((row) => row.currentResponse === 'confirmed').length;
     const declined = assignments.filter((row) => row.currentResponse === 'declined').length;
     const pending = assignments.length - confirmed - declined;
-    kpis.innerHTML = [
-      ['Persone assegnate', assignedPeople], ['Assegnazioni', assignments.length],
-      ['Confermate', confirmed], ['Non disponibili', declined], ['Da rispondere', pending]
-    ].map(([label, value]) => `<div class="kpi"><strong>${value}</strong><span>${label}</span></div>`).join('');
+    kpis.innerHTML = `
+      <article class="kpi kpi--summary">
+        <div class="kpi__main"><strong>${assignedPeople}</strong><span>persone assegnate</span></div>
+        <p class="kpi__detail">di cui <button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</p>
+      </article>
+      <article class="kpi kpi--summary">
+        <div class="kpi__main"><strong>${assignments.length}</strong><span>attività assegnate</span></div>
+        <div class="kpi__breakdown">
+          <span><strong>${confirmed}</strong> confermate</span>
+          <span><strong>${declined}</strong> rifiutate</span>
+          <span><strong>${pending}</strong> senza risposta</span>
+        </div>
+      </article>`;
   }
-
   function filteredAssignments() {
     const personId = assignmentPersonFilter?.value || '';
     const shift = assignmentShiftFilter?.value || '';
