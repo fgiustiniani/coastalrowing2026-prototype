@@ -1982,3 +1982,66 @@ tr.is-busy button.is-busy {
     max-width: none;
   }
 }
+
+
+/* Popup assegnazioni: altre attività della persona */
+.board-edit-person-activities {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #f8fbfb;
+}
+.board-edit-person-activities > span:first-child {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.board-edit-person-activities__list {
+  display: grid;
+  gap: 6px;
+}
+.board-edit-person-activities__item {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(0, 1.4fr);
+  gap: 10px 14px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid #d8e4e6;
+  border-radius: 9px;
+  background: #fff;
+}
+.board-edit-person-activities__when,
+.board-edit-person-activities__what {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.board-edit-person-activities__when strong,
+.board-edit-person-activities__what strong {
+  font-size: .78rem;
+  line-height: 1.25;
+}
+.board-edit-person-activities__when span {
+  color: var(--muted);
+  font-size: .72rem;
+}
+.board-edit-person-activities__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.board-edit-person-activities__empty {
+  color: var(--muted);
+  font-size: .78rem;
+}
+@media (max-width: 620px) {
+  .board-edit-person-activities__item {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
