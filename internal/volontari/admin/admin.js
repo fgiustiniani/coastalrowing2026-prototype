@@ -275,6 +275,30 @@
       select.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
+    const personAssignmentsHtml = (personId) => {
+      const currentAssignmentId = boardEditContext?.kind === 'assignment' ? boardEditContext.id : '';
+      const rows = (snapshot?.assignments || [])
+        .filter((row) => row.personId === personId && row.id !== currentAssignmentId)
+        .sort((a, b) => {
+          const reqA = requirementForAssignment(a);
+          const reqB = requirementForAssignment(b);
+          return (reqA?.shiftSortOrder ?? 9999) - (reqB?.shiftSortOrder ?? 9999)
+            || String(a.day || '').localeCompare(String(b.day || ''), 'it')
+            || String(a.shift || '').localeCompare(String(b.shift || ''), 'it')
+            || displayActivity(a).localeCompare(displayActivity(b), 'it');
+        });
+
+      if (!rows.length) {
+        return '<span class="person-search-select__no-assignments">Nessun’altra assegnazione</span>';
+      }
+
+      return `<span class="person-search-select__assignments">${rows.map((row) => `
+        <span class="person-search-select__assignment">
+          <span class="person-search-select__assignment-when">${escapeHtml(row.day || '—')} · ${escapeHtml(row.shift || '—')}</span>
+          <span class="person-search-select__assignment-activity">${escapeHtml(displayActivity(row))}</span>
+        </span>`).join('')}</span>`;
+    };
+
     const render = (query = '') => {
       const normalized = normalizeFilterSearch(query);
       const options = [...select.options]
@@ -288,7 +312,13 @@
 
       activeIndex = options.length ? 0 : -1;
       panel.innerHTML = options.length
-        ? options.map((option, index) => `<button type="button" class="person-search-select__option ${index === activeIndex ? 'is-active' : ''}" data-person-search-value="${escapeHtml(option.value)}">${escapeHtml(option.textContent.trim())}</button>`).join('')
+        ? options.map((option, index) => `
+            <button type="button"
+              class="person-search-select__option ${index === activeIndex ? 'is-active' : ''}"
+              data-person-search-value="${escapeHtml(option.value)}">
+              <span class="person-search-select__name">${escapeHtml(option.textContent.trim())}</span>
+              ${personAssignmentsHtml(option.value)}
+            </button>`).join('')
         : '<p class="person-search-select__empty">Nessun nominativo corrispondente.</p>';
 
       wrapper.classList.add('is-open');
