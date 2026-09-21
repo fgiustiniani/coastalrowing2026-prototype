@@ -674,17 +674,92 @@
     }
   }
 
+  async function saveInlineAssignment(rowNode) {
+    const status = rowNode.querySelector('[data-row-status]');
+    const assignmentId = rowNode.dataset.assignmentId || null;
+    const current = assignmentId ? (snapshot?.assignments || []).find((row) => row.id === assignmentId) : null;
+    const personId = rowNode.querySelector('[data-inline-person]')?.value || '';
+    const shiftValue = rowNode.querySelector('[data-inline-shift]')?.value || '';
+    const activity = rowNode.querySelector('[data-inline-activity]')?.value || '';
+
+    if (!personId || !shiftValue || !activity) {
+      status.textContent = 'Seleziona persona, turno e attività.';
+      status.className = 'row-save-status is-error';
+      return;
+    }
+
+    let shiftId = null;
+    let rawDay = null;
+    let rawShiftValue = null;
+    if (shiftValue === 'raw') {
+      if (!current || current.shiftMatched) {
+        status.textContent = 'Seleziona un turno dall’elenco.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      rawDay = current.day;
+      rawShiftValue = current.shift;
+    } else {
+      shiftId = shiftValue;
+    }
+
+    status.textContent = 'Salvataggio…';
+    status.className = 'row-save-status';
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save-assignment',
+          assignmentId,
+          personId,
+          shiftId,
+          rawDay,
+          rawShift: rawShiftValue,
+          activity,
+          role: null,
+          requestedProfile: current?.requestedProfile || null,
+          note: current?.note || null
+        })
+      });
+      newAssignmentOpen = false;
+      await loadSnapshot();
+    } catch (error) {
+      status.textContent = error.message;
+      status.className = 'row-save-status is-error';
+    }
+  }
+
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
   document.querySelector('[data-refresh]')?.addEventListener('click', () => loadSnapshot().catch((error) => alert(error.message)));
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
-  document.querySelector('[data-new-assignment]')?.addEventListener('click', () => populateEditor());
-  document.querySelectorAll('[data-editor-close],[data-editor-cancel]').forEach((button) => button.addEventListener('click', closeEditor));
+
+  document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
+    newAssignmentOpen = true;
+    renderAssignments();
+    assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  document.querySelector('[data-new-activity]')?.addEventListener('click', () => {
+    newActivityOpen = true;
+    renderActivityCatalog();
+  });
+  document.querySelector('[data-new-race-entry]')?.addEventListener('click', () => {
+    if (!snapshot?.raceProgramAvailable) {
+      alert('Il programma gare non è ancora inizializzato nel database.');
+      return;
+    }
+    newRaceEntryOpen = true;
+    renderRaceProgram();
+  });
+
   [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   [activityReportActivityFilter, activityReportPersonFilter]
     .forEach((filter) => filter?.addEventListener('change', renderActivityReport));
+  racePersonFilter?.addEventListener('change', renderRaceProgram);
+  raceCrewFilter?.addEventListener('input', renderRaceProgram);
 
   document.querySelector('[data-person-export-pdf]')?.addEventListener('click', () => exportPersonReport('pdf'));
   document.querySelector('[data-person-export-excel]')?.addEventListener('click', () => exportPersonReport('excel'));
@@ -701,15 +776,34 @@
       button.textContent = collapsed ? 'Espandi' : 'Comprimi';
     });
   });
-  editorForm.elements.shiftId.addEventListener('change', () => { rawShift.hidden = Boolean(editorForm.elements.shiftId.value); });
+
+  assignmentTable?.addEventListener('change', (event) => {
+    const personSelect = event.target.closest('[data-inline-person]');
+    if (!personSelect) return;
+    const rowNode = personSelect.closest('[data-assignment-row]');
+    const person = (snapshot?.people || []).find((item) => item.id === personSelect.value);
+    const codeNode = rowNode?.querySelector('[data-inline-code]');
+    if (codeNode) codeNode.textContent = person?.person_code || '—';
+  });
 
   assignmentTable?.addEventListener('click', async (event) => {
-    const edit = event.target.closest('[data-edit-assignment]');
+    const rowNode = event.target.closest('[data-assignment-row]');
+    const save = event.target.closest('[data-save-inline-assignment]');
+    const cancelNew = event.target.closest('[data-cancel-new-assignment]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
-    if (edit) {
-      const assignment = snapshot.assignments.find((row) => row.id === edit.dataset.editAssignment);
-      if (assignment) populateEditor(assignment);
+    const person = event.target.closest('[data-show-person]');
+    const activity = event.target.closest('[data-show-activity]');
+
+    if (save && rowNode) {
+      await saveInlineAssignment(rowNode);
+    } else if (cancelNew) {
+      newAssignmentOpen = false;
+      renderAssignments();
+    } else if (person) {
+      showPersonDetail(person.dataset.showPerson);
+    } else if (activity) {
+      showActivityDetail(activity.dataset.showActivity);
     } else if (remove) {
       const assignment = snapshot.assignments.find((row) => row.id === remove.dataset.deleteAssignment);
       if (!assignment || !confirm(`Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
@@ -723,6 +817,114 @@
     }
   });
 
+  activityCatalog?.addEventListener('click', async (event) => {
+    const rowNode = event.target.closest('[data-activity-row]');
+    if (!rowNode) return;
+    const save = event.target.closest('[data-save-activity]');
+    const remove = event.target.closest('[data-delete-activity]');
+    const cancel = event.target.closest('[data-cancel-new-activity]');
+    const status = rowNode.querySelector('[data-row-status]');
+
+    if (cancel) {
+      newActivityOpen = false;
+      renderActivityCatalog();
+      return;
+    }
+    if (save) {
+      const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || '';
+      if (!name) {
+        status.textContent = 'Indica il nome dell’attività.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name })
+        });
+        newActivityOpen = false;
+        await loadSnapshot();
+      } catch (error) {
+        status.textContent = error.message;
+        status.className = 'row-save-status is-error';
+      }
+      return;
+    }
+    if (remove) {
+      const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || 'questa attività';
+      if (!confirm(`Eliminare “${name}” dall’anagrafica selezionabile? Le assegnazioni storiche resteranno leggibili.`)) return;
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-activity', activityId: rowNode.dataset.activityId })
+        });
+        await loadSnapshot();
+      } catch (error) { alert(error.message); }
+    }
+  });
+
+  raceProgram?.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-race-person]');
+    if (!select) return;
+    const rowNode = select.closest('[data-race-row]');
+    const person = (snapshot?.people || []).find((item) => item.id === select.value);
+    const codeNode = rowNode?.querySelector('[data-race-code]');
+    if (codeNode) codeNode.textContent = person?.person_code || '—';
+  });
+
+  raceProgram?.addEventListener('click', async (event) => {
+    const rowNode = event.target.closest('[data-race-row]');
+    if (!rowNode) return;
+    const save = event.target.closest('[data-save-race]');
+    const remove = event.target.closest('[data-delete-race]');
+    const cancel = event.target.closest('[data-cancel-new-race]');
+    const status = rowNode.querySelector('[data-row-status]');
+
+    if (cancel) {
+      newRaceEntryOpen = false;
+      renderRaceProgram();
+      return;
+    }
+    if (save) {
+      const personId = rowNode.querySelector('[data-race-person]')?.value || '';
+      const crewLabel = rowNode.querySelector('[data-race-crew]')?.value.trim() || '';
+      const raceDate = rowNode.querySelector('[data-race-date]')?.value || null;
+      const raceTime = rowNode.querySelector('[data-race-time]')?.value || null;
+      if (!personId || !crewLabel) {
+        status.textContent = 'Seleziona persona e indica equipaggio/categoria.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'save-race-entry', entryId: rowNode.dataset.raceId || null, personId, crewLabel, raceDate, raceTime })
+        });
+        newRaceEntryOpen = false;
+        await loadSnapshot();
+      } catch (error) {
+        status.textContent = error.message;
+        status.className = 'row-save-status is-error';
+      }
+      return;
+    }
+    if (remove) {
+      const crew = rowNode.querySelector('[data-race-crew]')?.value.trim() || 'questa voce';
+      if (!confirm(`Eliminare “${crew}” dal programma gare organizzativo?`)) return;
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-race-entry', entryId: rowNode.dataset.raceId })
+        });
+        await loadSnapshot();
+      } catch (error) { alert(error.message); }
+    }
+  });
+
   personReport?.addEventListener('click', async (event) => {
     const audit = event.target.closest('[data-audit-person]');
     if (!audit) return;
@@ -730,29 +932,8 @@
     catch (error) { alert(error.message); }
   });
 
-  editorForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const shiftId = editorForm.elements.shiftId.value || null;
-    const rawDay = editorForm.elements.rawDay.value.trim();
-    const rawShiftValue = editorForm.elements.rawShift.value.trim();
-    if (!shiftId && (!rawDay || !rawShiftValue)) {
-      setStatus(editorStatus, 'Per un turno non standard indica sia giorno sia fascia oraria.', 'error');
-      return;
-    }
-    const payload = {
-      action: 'save-assignment', assignmentId: editorForm.elements.assignmentId.value || null,
-      personId: editorForm.elements.personId.value, shiftId,
-      rawDay: shiftId ? null : rawDay, rawShift: shiftId ? null : rawShiftValue,
-      activity: editorForm.elements.activity.value.trim(), role: editorForm.elements.role.value.trim(),
-      requestedProfile: editorForm.elements.requestedProfile.value.trim(), note: editorForm.elements.note.value.trim()
-    };
-    setStatus(editorStatus, 'Salvataggio…');
-    try {
-      await api(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      await loadSnapshot(); closeEditor();
-    } catch (error) { setStatus(editorStatus, error.message, 'error'); }
-  });
-
+  document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
+  detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
   document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
   auditDialog?.addEventListener('click', (event) => { if (event.target === auditDialog) auditDialog.close(); });
 
