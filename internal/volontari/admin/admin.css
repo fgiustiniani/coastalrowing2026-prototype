@@ -44,7 +44,7 @@
 .audit-event strong { display: block; }
 .audit-event small { color: var(--muted); }
 .audit-values { margin-top: 7px; padding: 8px 10px; background: var(--soft); border-radius: 9px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (min-width: 900px) { .admin-shell { padding: 30px 24px 80px; } .kpi-grid { grid-template-columns: repeat(5, minmax(0,1fr)); } }
+@media (min-width: 900px) { .admin-shell { padding: 30px 24px 80px; } .kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 700px) { .admin-header { display: grid; } .admin-header img { width: min(300px, 80vw); } .login-grid, .editor-grid, .raw-shift-grid { grid-template-columns: 1fr; } .login-grid button { width: 100%; } .field--wide, .raw-shift-grid { grid-column: auto; } .admin-toolbar, .section-head { align-items: flex-start; } .admin-toolbar { display: grid; } }
 
 .section-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
@@ -160,3 +160,28 @@
   padding: 0;
 }
 .inline-edit-button:hover { border-color: #a9cdd3; background: #eef8fa; }
+
+.kpi--summary { min-height: 126px; display: grid; align-content: center; gap: 10px; }
+.kpi__main { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.kpi__main strong { font-size: 2rem; }
+.kpi__main span { margin: 0; color: var(--ink); font-size: 1rem; font-weight: 800; }
+.kpi__detail { margin: 0; color: var(--muted); font-size: .9rem; }
+.kpi__link {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  padding: 0 2px;
+  font: inherit;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.kpi__breakdown { display: flex; gap: 8px 16px; flex-wrap: wrap; color: var(--muted); font-size: .88rem; }
+.kpi__breakdown span { margin: 0; }
+.kpi__breakdown strong { display: inline; font-size: .95rem; color: var(--ink); }
+.availability-report-cell { min-width: 230px; }
+.availability-report-list { display: grid; gap: 6px; }
+.availability-report-line { display: grid; gap: 2px; padding-bottom: 6px; border-bottom: 1px solid #edf1f2; }
+.availability-report-line:last-child { padding-bottom: 0; border-bottom: 0; }
+.availability-report-line strong { font-size: .8rem; }
+.availability-report-line small { color: var(--muted); }
