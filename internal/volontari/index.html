@@ -55,6 +55,13 @@
           <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
         </label>
         <div id="person-results" class="person-results" data-person-results role="listbox" aria-label="Risultati ricerca nominativo"></div>
+        <div class="manual-box" data-manual-box hidden>
+          <button class="link-button" type="button" data-manual-toggle>Non trovi il tuo nominativo? Inseriscilo manualmente</button>
+          <label class="field" data-manual-field hidden>
+            <span>Nome e cognome</span>
+            <input data-manual-person maxlength="160" autocomplete="name" placeholder="Es. Mario Rossi">
+          </label>
+        </div>
         <p class="status" data-person-selection aria-live="polite"></p>
         <div class="actions">
           <button class="button button--secondary" type="button" data-back="1">Indietro</button>
