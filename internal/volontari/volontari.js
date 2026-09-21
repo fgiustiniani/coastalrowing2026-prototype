@@ -14,7 +14,8 @@
     personState: null,
     responses: new Map(),
     availability: new Map(),
-    clientSubmissionId: crypto.randomUUID()
+    clientSubmissionId: crypto.randomUUID(),
+    latestSubmissionId: null
   };
 
   const accessCard = document.querySelector('[data-access-card]');
@@ -39,8 +40,10 @@
   const submitButton = document.querySelector('[data-submit]');
   const submitWebsite = document.querySelector('[data-submit-website]');
   const success = document.querySelector('[data-success]');
-  const successCopy = document.querySelector('[data-success-copy]');
-  const submissionCode = document.querySelector('[data-submission-code]');
+  const summaryEmailForm = document.querySelector('[data-summary-email-form]');
+  const summaryEmailInput = document.querySelector('[data-summary-email]');
+  const summaryEmailStatus = document.querySelector('[data-summary-email-status]');
+  const summaryEmailSubmit = document.querySelector('[data-summary-email-submit]');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -349,16 +352,59 @@
       };
       const body = await apiRequest(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       document.querySelectorAll('[data-step], .stepper').forEach((node) => { node.hidden = true; });
+      state.latestSubmissionId = body.submission?.id || null;
       success.hidden = false;
-      successCopy.textContent = `Le risposte per ${body.submission?.personName || (state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName)} sono state registrate.`;
-      const personalCode = String(body.submission?.personCode || '');
-      submissionCode.textContent = `${personalCode.startsWith('SB') ? `Codice personale: ${personalCode} · ` : ''}${body.submission?.id ? `Riferimento: ${body.submission.id}` : ''}`;
+      if (summaryEmailForm) summaryEmailForm.hidden = !state.latestSubmissionId;
+      setStatus(summaryEmailStatus, '');
       setStatus(submitStatus, '');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); return; }
       setStatus(submitStatus, error.message, 'error');
     } finally { submitButton.disabled = false; }
+  }
+
+  async function sendSummaryEmail(event) {
+    event.preventDefault();
+    if (!state.latestSubmissionId || !summaryEmailInput) return;
+    const email = String(summaryEmailInput.value || '').trim();
+    if (!summaryEmailInput.checkValidity()) {
+      summaryEmailInput.reportValidity();
+      return;
+    }
+
+    const originalText = summaryEmailSubmit?.textContent || 'Invia riepilogo';
+    if (summaryEmailSubmit) {
+      summaryEmailSubmit.disabled = true;
+      summaryEmailSubmit.textContent = 'Invio in corso…';
+    }
+    setStatus(summaryEmailStatus, 'Invio del riepilogo…');
+
+    try {
+      await apiRequest(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'email-summary',
+          submissionId: state.latestSubmissionId,
+          email
+        })
+      });
+      setStatus(summaryEmailStatus, 'Riepilogo inviato all’indirizzo indicato.', 'success');
+      if (summaryEmailSubmit) summaryEmailSubmit.textContent = 'Riepilogo inviato';
+      if (summaryEmailInput) summaryEmailInput.disabled = true;
+    } catch (error) {
+      if (error.status === 401) {
+        clearSession();
+        showAccess('La sessione è scaduta. Riapri il link ricevuto.');
+        return;
+      }
+      setStatus(summaryEmailStatus, error.message, 'error');
+      if (summaryEmailSubmit) {
+        summaryEmailSubmit.disabled = false;
+        summaryEmailSubmit.textContent = originalText;
+      }
+    }
   }
 
   let personSearchTimer = null;
@@ -435,6 +481,7 @@
   document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => next(Number(button.dataset.next))));
   document.querySelectorAll('[data-back]').forEach((button) => button.addEventListener('click', () => showStep(Number(button.dataset.back))));
   submitButton?.addEventListener('click', submit);
+  summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
 
   accessForm?.addEventListener('submit', async (event) => {
     event.preventDefault(); setStatus(accessStatus, 'Verifica accesso…');
