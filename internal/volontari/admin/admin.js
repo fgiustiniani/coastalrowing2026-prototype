@@ -783,6 +783,58 @@
     detailDialog.showModal();
   }
 
+  function showShiftActivities(shiftId, rowNode) {
+    const shift = (snapshot?.shifts || []).find((item) => item.id === shiftId);
+    if (!shift) {
+      alert('Turno non disponibile.');
+      return;
+    }
+
+    detailTargetRow = rowNode || null;
+    const assignedRows = (snapshot?.assignments || []).filter((row) => row.shiftId === shiftId);
+    const groups = new Map();
+    for (const row of assignedRows) {
+      const label = displayActivity(row);
+      const catalogValue = assignmentCatalogValue(row)
+        || (snapshot?.activities || []).find((activity) => activity.name === row.activity)?.name
+        || '';
+      if (!groups.has(label)) groups.set(label, { label, catalogValue, people: [] });
+      groups.get(label).people.push(row.personName);
+      if (!groups.get(label).catalogValue && catalogValue) groups.get(label).catalogValue = catalogValue;
+    }
+
+    const grouped = [...groups.values()]
+      .map((item) => ({ ...item, people: [...new Set(item.people)].sort((a, b) => a.localeCompare(b, 'it')) }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+
+    const usedCatalogValues = new Set(grouped.map((item) => item.catalogValue).filter(Boolean));
+    const otherActivities = (snapshot?.activities || [])
+      .filter((activity) => activity.active !== false && !usedCatalogValues.has(activity.name))
+      .sort((a, b) => a.name.localeCompare(b.name, 'it'));
+
+    detailTitle.textContent = `${shift.day_label} · ${shift.shift_label}`;
+    const currentHtml = grouped.length
+      ? `<table class="detail-table shift-activity-table"><thead><tr><th>Attività nel turno</th><th>Persone già assegnate</th><th></th></tr></thead><tbody>${grouped.map((item) => `
+          <tr>
+            <td><strong>${escapeHtml(item.label)}</strong></td>
+            <td>${escapeHtml(item.people.join('; '))}</td>
+            <td>${detailTargetRow && item.catalogValue ? `<button class="table-link" type="button" data-pick-shift-activity="${escapeHtml(item.catalogValue)}">Seleziona</button>` : ''}</td>
+          </tr>`).join('')}</tbody></table>`
+      : '<p class="empty-state">In questo turno non risultano ancora attività assegnate.</p>';
+
+    const otherHtml = detailTargetRow && otherActivities.length
+      ? `<details class="other-activities"><summary>Altre attività dell’anagrafica</summary><div class="other-activities__list">${otherActivities.map((activity) =>
+          `<button class="table-link" type="button" data-pick-shift-activity="${escapeHtml(activity.name)}">${escapeHtml(prettifyActivityName(activity.name))}</button>`
+        ).join('')}</div></details>`
+      : '';
+
+    detailContent.innerHTML = `
+      <p class="intro detail-intro">Qui vedi come è già organizzato il turno. Puoi scegliere direttamente un’attività per la riga che stai compilando.</p>
+      ${currentHtml}
+      ${otherHtml}`;
+    detailDialog.showModal();
+  }
+
   function showRespondedPeople() {
     const people = respondedAssignedPeople();
     detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
