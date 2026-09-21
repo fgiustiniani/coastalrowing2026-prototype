@@ -2552,3 +2552,78 @@ tr.is-busy button.is-busy {
     grid-column: 1 / -1;
   }
 }
+
+
+/* Riordino box attività nella vista schede */
+.assignment-board__activity {
+  position: relative;
+}
+.assignment-board__activity-head {
+  justify-content: flex-start;
+}
+.assignment-board__activity-head > strong {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.assignment-board__activity-head > .assignment-board__activity-drag-handle {
+  flex: 0 0 auto;
+  min-width: 22px;
+  width: 22px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #587983;
+  font-size: .9rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.assignment-board__activity-head > .assignment-board__activity-drag-handle:hover {
+  background: #c9e5e9;
+  color: var(--accent-dark);
+}
+.assignment-board__activity.is-activity-dragging {
+  opacity: .48;
+}
+.assignment-board__activity.is-activity-reorder-before::before,
+.assignment-board__activity.is-activity-reorder-after::after {
+  content: "";
+  position: absolute;
+  z-index: 8;
+  left: 3px;
+  right: 3px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px #fff;
+}
+.assignment-board__activity.is-activity-reorder-before::before {
+  top: -6px;
+}
+.assignment-board__activity.is-activity-reorder-after::after {
+  bottom: -6px;
+}
+.assignment-board__activities.is-activity-reorder-end::after {
+  content: "Rilascia qui per spostare il box in fondo";
+  display: block;
+  padding: 7px 9px;
+  border: 2px dashed var(--accent);
+  border-radius: 9px;
+  background: #eef8fa;
+  color: var(--accent-dark);
+  font-size: .69rem;
+  font-weight: 850;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .assignment-board__activity-head > .assignment-board__activity-drag-handle {
+    width: 26px;
+    height: 28px;
+    background: #cfe7ea;
+  }
+}
