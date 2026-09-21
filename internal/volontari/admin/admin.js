@@ -4395,7 +4395,9 @@
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'delete-activity-group', groupId })
         });
-        boardCollapsedGroups.delete(boardGroupKey(groupId));
+        boardCollapsedGroups = new Set(
+          [...boardCollapsedGroups].filter((key) => !key.endsWith(`|${groupId}`))
+        );
         persistBoardCollapsedGroups();
         await loadSnapshot();
         setStatus(activityGroupStatus, `Gruppo eliminato. ${result?.group?.activitiesUngrouped || 0} attività spostate in “Senza gruppo”.`, 'success');
