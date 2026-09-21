@@ -181,6 +181,19 @@
         </div>
       </dialog>
 
+      <dialog class="audit-dialog responsible-dialog" data-responsible-dialog>
+        <div class="audit-dialog__content">
+          <div class="section-head">
+            <div><p class="eyebrow">Responsabile attività</p><h2 data-responsible-title>Responsabile</h2></div>
+            <button class="audit-close" type="button" data-responsible-close aria-label="Chiudi">×</button>
+          </div>
+          <p class="intro" data-responsible-summary></p>
+          <div data-responsible-content></div>
+          <p class="status" data-responsible-status aria-live="polite"></p>
+          <div class="actions actions--end"><button class="button button--secondary" type="button" data-responsible-close>Chiudi</button></div>
+        </div>
+      </dialog>
+
       <dialog class="audit-dialog" data-audit-dialog>
         <div class="audit-dialog__content">
           <div class="section-head"><div><p class="eyebrow">Storico</p><h2 data-audit-title>Audit</h2></div><button class="audit-close" type="button" data-audit-close aria-label="Chiudi">×</button></div>
