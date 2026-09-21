@@ -1396,10 +1396,11 @@
       || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
     );
     const grouped = new Map();
+    const positionsByGroup = new Map();
 
-    for (const requirement of ordered) {
+    ordered.forEach((requirement, index) => {
       const groupId = requirement.activityGroupId || '';
-      if (!groupId) continue;
+      if (!groupId) return;
       if (!grouped.has(groupId)) {
         grouped.set(groupId, {
           type: 'group',
@@ -1407,23 +1408,46 @@
           group: activityGroupById(groupId) || { id: groupId, name: 'Gruppo' },
           requirements: []
         });
+        positionsByGroup.set(groupId, []);
       }
       grouped.get(groupId).requirements.push(requirement);
-    }
+      positionsByGroup.get(groupId).push(index);
+    });
 
     const seenGroups = new Set();
-    const blocks = [];
+    const rawBlocks = [];
+    const rawGroupOrder = [];
     for (const requirement of ordered) {
       const groupId = requirement.activityGroupId || '';
       if (!groupId) {
-        blocks.push({ type: 'activity', requirement });
+        rawBlocks.push({ type: 'activity', requirement });
         continue;
       }
       if (seenGroups.has(groupId)) continue;
       seenGroups.add(groupId);
-      blocks.push(grouped.get(groupId));
+      rawGroupOrder.push(groupId);
+      rawBlocks.push(grouped.get(groupId));
     }
-    return blocks;
+
+    const expectedGroupOrder = activityGroups()
+      .map((group) => group.id)
+      .filter((groupId) => grouped.has(groupId));
+    const groupsAreContiguous = [...positionsByGroup.values()].every((positions) =>
+      positions.every((position, index) => index === 0 || position === positions[index - 1] + 1)
+    );
+    const groupOrderMatches = rawGroupOrder.length === expectedGroupOrder.length
+      && rawGroupOrder.every((groupId, index) => groupId === expectedGroupOrder[index]);
+
+    if (groupsAreContiguous && groupOrderMatches) return rawBlocks;
+
+    // Compatibilità con l'ordine precedente: finché il turno non è stato
+    // riordinato nel nuovo flusso misto, manteniamo gruppi e attività singole
+    // nella stessa disposizione che l'utente vedeva già.
+    const legacyBlocks = expectedGroupOrder.map((groupId) => grouped.get(groupId));
+    legacyBlocks.push(...ordered
+      .filter((requirement) => !requirement.activityGroupId)
+      .map((requirement) => ({ type: 'activity', requirement })));
+    return legacyBlocks;
   }
 
   function boardBlockRequirementIds(block) {
