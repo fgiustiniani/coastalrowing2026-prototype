@@ -45,7 +45,7 @@ async function adminReadOptionalColumn(operation, path, options) {
 }
 
 async function adminSnapshot() {
-  const [people, shifts, activities, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
+  const [people, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
     adminRead('persone', 'volunteer_people', {
       query: {
         select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
@@ -61,7 +61,14 @@ async function adminSnapshot() {
       }
     }),
     adminRead('attività', 'volunteer_activities', {
-      query: { select: 'id,name,active,created_at,updated_at', order: 'name.asc' }
+      query: { select: 'id,name,group_id,active,created_at,updated_at', order: 'name.asc' }
+    }),
+    adminRead('gruppi attività', 'volunteer_activity_groups', {
+      query: {
+        select: 'id,name,display_order,active,created_at,updated_at',
+        active: 'eq.true',
+        order: 'display_order.asc,name.asc'
+      }
     }),
     adminRead('assegnazioni', 'volunteer_assignments', {
       query: {
@@ -113,6 +120,7 @@ async function adminSnapshot() {
   const peopleRows = rows(people);
   const shiftRows = rows(shifts);
   const activityRows = rows(activities);
+  const activityGroupRows = rows(activityGroups);
   const assignmentRows = rows(assignments);
   const assignmentHistoryRows = rows(assignmentHistory);
   const responsibilityRows = rows(assignmentResponsibilities);
@@ -125,6 +133,7 @@ async function adminSnapshot() {
   const personById = new Map(peopleRows.map((row) => [row.id, row]));
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
   const activityById = new Map(activityRows.map((row) => [row.id, row]));
+  const activityGroupById = new Map(activityGroupRows.map((row) => [row.id, row]));
   const submissionById = new Map(submissionRows.map((row) => [row.id, row]));
   const responsibilityByAssignmentId = new Map(responsibilityRows.map((row) => [row.id, row.is_responsible === true]));
 
@@ -173,6 +182,7 @@ async function adminSnapshot() {
       activityId: assignment.activity_id,
       activity: activity?.name || 'Attività',
       activityActive: activity?.active !== false,
+      activityGroupId: activity?.group_id || null,
       role: assignment.role || '',
       requestedProfile: assignment.requested_profile || '',
       note: assignment.note || '',
@@ -358,6 +368,9 @@ async function adminSnapshot() {
       shiftSortOrder: shift?.sort_order ?? 9999,
       activityId: requirement.activity_id,
       activity: activity?.name || 'Attività non disponibile',
+      activityGroupId: activity?.group_id || null,
+      activityGroupName: activity?.group_id ? (activityGroupById.get(activity.group_id)?.name || '') : '',
+      activityGroupOrder: activity?.group_id ? Number(activityGroupById.get(activity.group_id)?.display_order || 0) : 999999,
       requiredCount: Number(requirement.required_count || 0),
       displayOrder: Number(requirement.display_order || 0),
       assignedCount: assigned.length,
@@ -395,6 +408,7 @@ async function adminSnapshot() {
     shifts: shiftRows,
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
+    activityGroups: activityGroupRows,
     assignments: hydratedAssignments,
     requirementsAvailable: requirements !== null,
     requirements: hydratedRequirements,
@@ -488,7 +502,7 @@ async function resolveRequirement(requirementId) {
   if (!requirement) throw new ApiError('Esigenza non trovata o non attiva.', 404, 'REQUIREMENT_NOT_FOUND');
 
   const activityRows = await adminRead('attività esigenza', 'volunteer_activities', {
-    query: { select: 'id,name,active', id: `eq.${requirement.activity_id}`, limit: 1 }
+    query: { select: 'id,name,group_id,active', id: `eq.${requirement.activity_id}`, limit: 1 }
   });
   const activity = rows(activityRows)[0] || null;
   if (!activity?.active) throw new ApiError('L’attività prevista non è attiva.', 400, 'REQUIREMENT_ACTIVITY_INACTIVE');
@@ -798,44 +812,115 @@ export default async (request) => {
         return json({ ok: true, assignment: result });
       }
 
+      if (action === 'save-activity-group') {
+        const groupId = clean(body.groupId, 60) || null;
+        const name = clean(body.name, 120);
+        if (groupId && !isUuid(groupId)) throw new ApiError('Gruppo non valido.', 400, 'INVALID_ACTIVITY_GROUP');
+        if (!name) throw new ApiError('Indica il nome del gruppo.', 400, 'ACTIVITY_GROUP_NAME_REQUIRED');
+
+        try {
+          const result = await rpc('admin_save_volunteer_activity_group', {
+            p_actor_name: actorName,
+            p_group_id: groupId,
+            p_name: name
+          });
+          return json({ ok: true, group: result });
+        } catch (error) {
+          const message = clean(error?.payload?.message || error?.message || '', 200);
+          if (message.includes('VOLUNTEER_ACTIVITY_GROUP_DUPLICATE')) {
+            throw new ApiError('Esiste già un gruppo con questo nome.', 409, 'ACTIVITY_GROUP_DUPLICATE');
+          }
+          throw error;
+        }
+      }
+
+      if (action === 'delete-activity-group') {
+        const groupId = clean(body.groupId, 60);
+        if (!isUuid(groupId)) throw new ApiError('Gruppo non valido.', 400, 'INVALID_ACTIVITY_GROUP');
+
+        const result = await rpc('admin_deactivate_volunteer_activity_group', {
+          p_actor_name: actorName,
+          p_group_id: groupId
+        });
+        return json({ ok: true, group: result });
+      }
+
+      if (action === 'reorder-activity-groups') {
+        const groupIds = Array.isArray(body.groupIds)
+          ? body.groupIds.map((value) => clean(value, 60))
+          : [];
+        if (groupIds.some((id) => !isUuid(id))) {
+          throw new ApiError('Ordine gruppi non valido.', 400, 'INVALID_ACTIVITY_GROUP_ORDER');
+        }
+
+        const result = await rpc('admin_reorder_volunteer_activity_groups', {
+          p_actor_name: actorName,
+          p_group_ids: groupIds
+        });
+        return json({ ok: true, order: result });
+      }
+
+      if (action === 'set-activity-group') {
+        const activityId = clean(body.activityId, 60);
+        const groupId = clean(body.groupId, 60) || null;
+        if (!isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+        if (groupId && !isUuid(groupId)) throw new ApiError('Gruppo non valido.', 400, 'INVALID_ACTIVITY_GROUP');
+
+        const result = await rpc('admin_set_volunteer_activity_group', {
+          p_actor_name: actorName,
+          p_activity_id: activityId,
+          p_group_id: groupId
+        });
+        return json({ ok: true, activity: result });
+      }
+
       if (action === 'save-activity') {
         const activityId = clean(body.activityId, 60) || null;
         const name = clean(body.name, 200);
+        const groupId = clean(body.groupId, 60) || null;
         if (!name) throw new ApiError('Indica il nome dell’attività.', 400, 'ACTIVITY_REQUIRED');
         if (activityId && !isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+        if (groupId && !isUuid(groupId)) throw new ApiError('Gruppo non valido.', 400, 'INVALID_ACTIVITY_GROUP');
+
+        if (groupId) {
+          const groupRows = await supabaseRequest('volunteer_activity_groups', {
+            query: { select: 'id', id: `eq.${groupId}`, active: 'eq.true', limit: 1 }
+          });
+          if (!rows(groupRows).length) throw new ApiError('Gruppo non disponibile.', 400, 'INVALID_ACTIVITY_GROUP');
+        }
 
         let current = null;
         let saved = null;
         if (activityId) {
           const currentRows = await supabaseRequest('volunteer_activities', {
-            query: { select: 'id,name,active', id: `eq.${activityId}`, limit: 1 }
+            query: { select: 'id,name,group_id,active', id: `eq.${activityId}`, limit: 1 }
           });
           current = rows(currentRows)[0] || null;
           if (!current) throw new ApiError('Attività non trovata.', 404, 'ACTIVITY_NOT_FOUND');
           const result = await supabaseRequest('volunteer_activities', {
             method: 'PATCH',
             query: { id: `eq.${activityId}` },
-            body: { name, active: true, updated_at: new Date().toISOString() },
+            body: { name, group_id: groupId, active: true, updated_at: new Date().toISOString() },
             prefer: 'return=representation'
           });
           saved = rows(result)[0] || null;
         } else {
           const existingRows = await supabaseRequest('volunteer_activities', {
-            query: { select: 'id,name,active', name: `eq.${name}`, limit: 1 }
+            query: { select: 'id,name,group_id,active', name: `eq.${name}`, limit: 1 }
           });
           current = rows(existingRows)[0] || null;
           if (current) {
             const result = await supabaseRequest('volunteer_activities', {
               method: 'PATCH',
               query: { id: `eq.${current.id}` },
-              body: { active: true, updated_at: new Date().toISOString() },
+              body: { group_id: groupId, active: true, updated_at: new Date().toISOString() },
               prefer: 'return=representation'
             });
             saved = rows(result)[0] || null;
           } else {
             const result = await supabaseRequest('volunteer_activities', {
               method: 'POST',
-              body: { name, active: true },
+              body: { name, group_id: groupId, active: true },
               prefer: 'return=representation'
             });
             saved = rows(result)[0] || null;
@@ -848,7 +933,7 @@ export default async (request) => {
           entityType: 'activity',
           entityId: saved.id,
           previousValue: current,
-          newValue: { id: saved.id, name: saved.name, active: saved.active }
+          newValue: { id: saved.id, name: saved.name, groupId: saved.group_id || null, active: saved.active }
         });
         return json({ ok: true, activity: saved });
       }
@@ -865,7 +950,7 @@ export default async (request) => {
         }
 
         const currentRows = await supabaseRequest('volunteer_activities', {
-          query: { select: 'id,name,active', id: `eq.${activityId}`, limit: 1 }
+          query: { select: 'id,name,group_id,active', id: `eq.${activityId}`, limit: 1 }
         });
         const current = rows(currentRows)[0] || null;
         if (!current) throw new ApiError('Attività non trovata.', 404, 'ACTIVITY_NOT_FOUND');
