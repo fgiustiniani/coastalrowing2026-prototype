@@ -39,6 +39,8 @@
   const personCatalogSearch = document.querySelector('[data-person-catalog-search]');
   const personCatalogStatus = document.querySelector('[data-person-catalog-status]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
+  const activityCatalogStatus = document.querySelector('[data-activity-catalog-status]');
+  const activitySaveAll = document.querySelector('[data-save-all-activities]');
   const activityGroupCatalog = document.querySelector('[data-activity-group-catalog]');
   const activityGroupStatus = document.querySelector('[data-activity-group-status]');
   const requirementCatalog = document.querySelector('[data-requirement-catalog]');
@@ -2844,16 +2846,46 @@
       : '<p class="empty-state">Nessun gruppo creato. Le attività vengono mostrate in “Senza gruppo”.</p>';
   }
 
+  function activityRowIsDirty(rowNode) {
+    if (!rowNode?.dataset.activityId) return false;
+    const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || '';
+    const groupId = rowNode.querySelector('[data-activity-group]')?.value || '';
+    return name !== (rowNode.dataset.initialName || '')
+      || groupId !== (rowNode.dataset.initialGroupId || '');
+  }
+
+  function updateActivityBulkSaveState() {
+    if (!activitySaveAll || !activityCatalog) return;
+    const dirtyRows = [...activityCatalog.querySelectorAll('[data-activity-row][data-activity-id]')]
+      .filter((row) => row.dataset.activityId && activityRowIsDirty(row));
+    activitySaveAll.disabled = dirtyRows.length === 0;
+    activitySaveAll.textContent = dirtyRows.length
+      ? `Salva tutte le modifiche (${dirtyRows.length})`
+      : 'Salva tutte le modifiche';
+  }
+
+  function refreshActivityRowDirtyState(rowNode) {
+    if (!rowNode?.dataset.activityId) return;
+    const dirty = activityRowIsDirty(rowNode);
+    rowNode.classList.toggle('is-dirty-row', dirty);
+    const status = rowNode.querySelector('[data-row-status]');
+    if (status && !status.classList.contains('is-error') && !status.classList.contains('is-ok')) {
+      status.textContent = dirty ? 'Modifica non salvata' : '';
+    }
+    updateActivityBulkSaveState();
+  }
+
   function renderActivityCatalog() {
     if (!activityCatalog) return;
     const rows = (snapshot?.activityCatalog || []).filter((item) => item.active);
     const body = [
       ...(newActivityOpen ? [`<tr class="is-new-row" data-activity-row data-activity-id=""><td><input class="name-input" data-activity-name maxlength="200" placeholder="Nuova attività"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions('')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button type="button" data-cancel-new-activity>Annulla</button></div><small class="row-save-status" data-row-status></small></td></tr>`] : []),
-      ...rows.map((item) => `<tr data-activity-row data-activity-id="${escapeHtml(item.id)}"><td><input class="name-input" data-activity-name maxlength="200" value="${escapeHtml(item.name)}"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions(item.group_id || '')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button class="is-danger" type="button" data-delete-activity>Elimina</button></div><small class="row-save-status" data-row-status></small></td></tr>`)
+      ...rows.map((item) => `<tr data-activity-row data-activity-id="${escapeHtml(item.id)}" data-initial-name="${escapeHtml(item.name)}" data-initial-group-id="${escapeHtml(item.group_id || '')}"><td><input class="name-input" data-activity-name maxlength="200" value="${escapeHtml(item.name)}"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions(item.group_id || '')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button class="is-danger" type="button" data-delete-activity>Elimina</button></div><small class="row-save-status" data-row-status></small></td></tr>`)
     ].join('');
     activityCatalog.innerHTML = body
       ? `<table class="admin-table catalog-table activity-catalog-table"><thead><tr><th>Attività</th><th>Gruppo</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
       : '<p class="empty-state">Nessuna attività attiva.</p>';
+    updateActivityBulkSaveState();
   }
 
   function requirementRowHtml(row = null, isNew = false) {
@@ -4407,6 +4439,103 @@
     }
   });
 
+  activityCatalog?.addEventListener('input', (event) => {
+    const rowNode = event.target.closest('[data-activity-row]');
+    if (!rowNode || !event.target.matches('[data-activity-name]')) return;
+    const status = rowNode.querySelector('[data-row-status]');
+    if (status) status.className = 'row-save-status';
+    refreshActivityRowDirtyState(rowNode);
+  });
+
+  activityCatalog?.addEventListener('change', (event) => {
+    const rowNode = event.target.closest('[data-activity-row]');
+    if (!rowNode || !event.target.matches('[data-activity-group]')) return;
+    const status = rowNode.querySelector('[data-row-status]');
+    if (status) status.className = 'row-save-status';
+    refreshActivityRowDirtyState(rowNode);
+  });
+
+  activitySaveAll?.addEventListener('click', async () => {
+    if (!activityCatalog) return;
+
+    const rows = [...activityCatalog.querySelectorAll('[data-activity-row]')]
+      .filter((row) => row.dataset.activityId && activityRowIsDirty(row));
+
+    if (!rows.length) {
+      updateActivityBulkSaveState();
+      return;
+    }
+
+    const payloads = rows.map((rowNode) => ({
+      rowNode,
+      activityId: rowNode.dataset.activityId,
+      name: rowNode.querySelector('[data-activity-name]')?.value.trim() || '',
+      groupId: rowNode.querySelector('[data-activity-group]')?.value || null
+    }));
+
+    const invalid = payloads.find((item) => !item.name);
+    if (invalid) {
+      const status = invalid.rowNode.querySelector('[data-row-status]');
+      if (status) {
+        status.textContent = 'Indica il nome dell’attività.';
+        status.className = 'row-save-status is-error';
+      }
+      invalid.rowNode.querySelector('[data-activity-name]')?.focus();
+      return;
+    }
+
+    setStatus(activityCatalogStatus, `Salvataggio di ${payloads.length} modifiche…`);
+    await withButtonBusy(activitySaveAll, 'Salvataggio…', async () => {
+      let saved = 0;
+      const failures = [];
+
+      for (const item of payloads) {
+        const status = item.rowNode.querySelector('[data-row-status]');
+        setRowBusy(item.rowNode, true);
+        try {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'save-activity',
+              activityId: item.activityId,
+              name: item.name,
+              groupId: item.groupId
+            })
+          });
+          item.rowNode.dataset.initialName = item.name;
+          item.rowNode.dataset.initialGroupId = item.groupId || '';
+          item.rowNode.classList.remove('is-dirty-row');
+          if (status) {
+            status.textContent = 'Salvata';
+            status.className = 'row-save-status is-ok';
+          }
+          saved += 1;
+        } catch (error) {
+          failures.push({ item, error });
+          if (status) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
+        } finally {
+          setRowBusy(item.rowNode, false);
+        }
+      }
+
+      if (!failures.length) {
+        await loadSnapshot();
+        setStatus(activityCatalogStatus, `${saved} ${saved === 1 ? 'modifica salvata' : 'modifiche salvate'}.`, 'success');
+      } else {
+        updateActivityBulkSaveState();
+        setStatus(
+          activityCatalogStatus,
+          `${saved} salvate, ${failures.length} non salvate. Correggi le righe evidenziate e riprova.`,
+          'error'
+        );
+      }
+    });
+  });
+
   activityCatalog?.addEventListener('click', async (event) => {
     const rowNode = event.target.closest('[data-activity-row]');
     if (!rowNode) return;
@@ -4441,6 +4570,7 @@
             });
             newActivityOpen = false;
             await loadSnapshot();
+            setStatus(activityCatalogStatus, 'Attività salvata.', 'success');
           } catch (error) {
             status.textContent = error.message;
             status.className = 'row-save-status is-error';
