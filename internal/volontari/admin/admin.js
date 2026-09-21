@@ -297,6 +297,7 @@
     const personId = row?.personId || '';
     const person = (snapshot?.people || []).find((item) => item.id === personId);
     const personCode = person?.person_code || row?.personCode || '';
+    const activityLabel = row ? displayActivity(row) : '';
     const warningHtml = isNew ? '' : [
       duplicateWarnings.has(row.id) ? '<span class="warning-badge">⚠ Più assegnazioni nello stesso turno</span>' : '',
       ...(raceWarnings.get(row.id) || []).map((message) => `<span class="warning-badge warning-badge--race">⚠ ${escapeHtml(message)}</span>`)
@@ -308,8 +309,13 @@
       <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" class="${isNew ? 'is-new-row' : ''}">
         <td class="inline-person-cell">
           <div class="inline-controls">
-            ${!isNew ? `<button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>` : '<strong>Nuova assegnazione</strong>'}
-            <select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>
+            ${isNew ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>` : `
+              <div class="inline-display-row" data-person-display>
+                <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
+                <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
+              </div>
+              <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>
+            `}
             ${warningHtml ? `<div class="warning-stack">${warningHtml}</div>` : ''}
           </div>
         </td>
@@ -320,8 +326,13 @@
         </td>
         <td class="inline-activity-cell">
           <div class="inline-controls">
-            <select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(row)}</select>
-            ${!isNew ? `<button class="inline-activity-link inline-subaction" type="button" data-show-activity="${escapeHtml(displayActivity(row))}">Vedi persone assegnate a questa attività</button>` : ''}
+            ${isNew ? `<select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(row)}</select>` : `
+              <div class="inline-display-row" data-activity-display>
+                <button class="inline-activity-link" type="button" data-show-activity="${escapeHtml(activityLabel)}">${escapeHtml(activityLabel)}</button>
+                <button class="inline-edit-button" type="button" data-edit-activity aria-label="Cambia attività" title="Cambia attività">✎</button>
+              </div>
+              <select class="inline-select inline-select--activity" data-inline-activity hidden>${activityOptions(row)}</select>
+            `}
           </div>
         </td>
         <td>${responseHtml}</td>
@@ -374,6 +385,9 @@
         answered: Boolean(latest),
         notes: notes.join('; '),
         availability,
+        activitiesText: item.rows
+          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`)
+          .join('; '),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('; '),
         latest
       };
@@ -391,11 +405,11 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Persona</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       return `<tr>
         <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td>${escapeHtml(item.code || '—')}</td>
+        <td class="people-cell">${item.activitiesText ? escapeHtml(item.activitiesText) : '—'}</td>
         <td>${item.confirmed}</td>
         <td>${item.declined}</td>
         <td><span class="${item.answered ? 'answer-yes' : 'answer-no'}">${item.answered ? 'Sì' : 'No'}</span>${item.latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(item.latest.createdAt))} · ${escapeHtml(item.latest.actorName)}</small>` : ''}</td>
@@ -499,20 +513,29 @@
     const rows = filteredPersonReportRows().map((item) => ({
       persona: item.name,
       codice: item.code || '',
+      attivita: item.activitiesText || '',
       confermate: String(item.confirmed),
       nonPuo: String(item.declined),
       haRisposto: item.answered ? 'Sì' : 'No',
       note: item.notes || '',
       disponibilita: item.availabilityText || ''
     }));
-    const columns = [
-      { key: 'persona', label: 'Persona' }, { key: 'codice', label: 'Codice' },
+    const commonColumns = [
+      { key: 'persona', label: 'Persona' },
+      { key: 'attivita', label: 'Attività' },
       { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
       { key: 'haRisposto', label: 'Ha risposto' }, { key: 'note', label: 'Note' },
       { key: 'disponibilita', label: 'Disponibilità aggiuntive' }
     ];
-    if (kind === 'excel') exportExcel('report-volontari-per-persona.xls', 'Per persona', columns, rows);
-    else exportPdf('Report volontari per persona', columns, rows);
+    if (kind === 'excel') {
+      exportExcel('report-volontari-per-persona.xls', 'Per persona', [
+        { key: 'persona', label: 'Persona' },
+        { key: 'codice', label: 'Codice' },
+        ...commonColumns.slice(1)
+      ], rows);
+    } else {
+      exportPdf('Report volontari per persona', commonColumns, rows);
+    }
   }
 
   function exportActivityReport(kind) {
