@@ -887,30 +887,69 @@ export default async (request) => {
       if (action === 'save-requirement') {
         await requireRequirementsTable();
         const requirementId = clean(body.requirementId, 60) || null;
-        const shiftId = clean(body.shiftId, 60);
-        const activityId = clean(body.activityId, 60);
+        const shiftId = clean(body.shiftId, 60) || null;
+        const activityId = clean(body.activityId, 60) || null;
+        const newShiftDate = clean(body.newShiftDate, 10) || null;
+        const newShiftStart = clean(body.newShiftStart, 5) || null;
+        const newShiftEnd = clean(body.newShiftEnd, 5) || null;
+        const newActivityName = clean(body.newActivityName, 200) || null;
         const requiredCount = Number(body.requiredCount);
 
-        if (requirementId && !isUuid(requirementId)) throw new ApiError('Esigenza non valida.', 400, 'INVALID_REQUIREMENT');
-        if (!isUuid(shiftId)) throw new ApiError('Turno non valido.', 400, 'INVALID_SHIFT');
-        if (!isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+        if (requirementId && !isUuid(requirementId)) throw new ApiError('Abbinamento non valido.', 400, 'INVALID_REQUIREMENT');
+        if (shiftId && !isUuid(shiftId)) throw new ApiError('Turno non valido.', 400, 'INVALID_SHIFT');
+        if (activityId && !isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+        if (!shiftId) {
+          if (!newShiftDate || !/^\d{4}-\d{2}-\d{2}$/.test(newShiftDate)) {
+            throw new ApiError('Indica la data del nuovo turno.', 400, 'NEW_SHIFT_DATE_REQUIRED');
+          }
+          if (!newShiftStart || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(newShiftStart)) {
+            throw new ApiError('Indica l’ora di inizio del nuovo turno.', 400, 'NEW_SHIFT_START_REQUIRED');
+          }
+          if (!newShiftEnd || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(newShiftEnd)) {
+            throw new ApiError('Indica l’ora di fine del nuovo turno.', 400, 'NEW_SHIFT_END_REQUIRED');
+          }
+          if (newShiftEnd <= newShiftStart) {
+            throw new ApiError('L’ora di fine deve essere successiva all’ora di inizio.', 400, 'INVALID_SHIFT_TIME');
+          }
+        }
+        if (!activityId && !newActivityName) {
+          throw new ApiError('Seleziona un’attività oppure creane una nuova.', 400, 'NEW_ACTIVITY_REQUIRED');
+        }
         if (!Number.isInteger(requiredCount) || requiredCount < 1 || requiredCount > 999) {
           throw new ApiError('Il numero di persone necessarie deve essere compreso tra 1 e 999.', 400, 'INVALID_REQUIRED_COUNT');
         }
 
         try {
-          const result = await rpc('admin_save_volunteer_activity_requirement', {
+          const result = await rpc('admin_save_volunteer_planning', {
             p_actor_name: actorName,
             p_requirement_id: requirementId,
             p_shift_id: shiftId,
+            p_new_shift_date: shiftId ? null : newShiftDate,
+            p_new_shift_start: shiftId ? null : newShiftStart,
+            p_new_shift_end: shiftId ? null : newShiftEnd,
             p_activity_id: activityId,
+            p_new_activity_name: activityId ? null : newActivityName,
             p_required_count: requiredCount
           });
-          return json({ ok: true, requirement: result });
+          return json({
+            ok: true,
+            requirement: result?.requirement || result,
+            planning: {
+              shiftId: result?.shiftId || null,
+              shiftCreated: Boolean(result?.shiftCreated),
+              activityId: result?.activityId || null,
+              activityName: result?.activityName || null,
+              activityCreated: Boolean(result?.activityCreated),
+              activityReactivated: Boolean(result?.activityReactivated)
+            }
+          });
         } catch (error) {
-          const message = clean(error?.payload?.message || error?.message || '', 200);
+          const message = clean(error?.payload?.message || error?.message || '', 240);
           if (message.includes('VOLUNTEER_REQUIREMENT_DUPLICATE')) {
-            throw new ApiError('Esiste già un’esigenza per questa attività e questo turno.', 409, 'REQUIREMENT_DUPLICATE');
+            throw new ApiError('Esiste già un abbinamento per questa attività e questo turno.', 409, 'REQUIREMENT_DUPLICATE');
+          }
+          if (message.includes('VOLUNTEER_INVALID_SHIFT_TIME')) {
+            throw new ApiError('L’ora di fine deve essere successiva all’ora di inizio.', 400, 'INVALID_SHIFT_TIME');
           }
           throw error;
         }
