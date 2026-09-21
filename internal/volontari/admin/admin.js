@@ -293,21 +293,62 @@
     });
   }
 
+  function assignmentRowHtml(row, duplicateWarnings, raceWarnings, isNew = false) {
+    const personId = row?.personId || '';
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    const personCode = person?.person_code || row?.personCode || '';
+    const warningHtml = isNew ? '' : [
+      duplicateWarnings.has(row.id) ? '<span class="warning-badge">⚠ Più assegnazioni nello stesso turno</span>' : '',
+      ...(raceWarnings.get(row.id) || []).map((message) => `<span class="warning-badge warning-badge--race">⚠ ${escapeHtml(message)}</span>`)
+    ].filter(Boolean).join('');
+    const responseHtml = isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`;
+    const assignmentId = row?.id || '';
+
+    return `
+      <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" class="${isNew ? 'is-new-row' : ''}">
+        <td class="inline-person-cell">
+          <div class="inline-controls">
+            ${!isNew ? `<button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>` : '<strong>Nuova assegnazione</strong>'}
+            <select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>
+            ${warningHtml ? `<div class="warning-stack">${warningHtml}</div>` : ''}
+          </div>
+        </td>
+        <td><span class="inline-code" data-inline-code>${escapeHtml(personCode || '—')}</span></td>
+        <td>
+          <select class="inline-select" data-inline-shift>${shiftOptions(row)}</select>
+          ${row && !row.shiftMatched ? '<small class="warning-text">Turno non standard: seleziona un turno dall’anagrafica se vuoi modificarlo.</small>' : ''}
+        </td>
+        <td class="inline-activity-cell">
+          <div class="inline-controls">
+            <select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(row)}</select>
+            ${!isNew ? `<button class="inline-activity-link inline-subaction" type="button" data-show-activity="${escapeHtml(displayActivity(row))}">Vedi persone assegnate a questa attività</button>` : ''}
+          </div>
+        </td>
+        <td>${responseHtml}</td>
+        <td>
+          <div class="row-actions">
+            <button type="button" data-save-inline-assignment>Salva</button>
+            ${isNew ? '<button type="button" data-cancel-new-assignment>Annulla</button>' : `<button class="is-danger" type="button" data-delete-assignment="${escapeHtml(row.id)}">Elimina</button><button type="button" data-audit-person="${escapeHtml(row.personId)}" data-person-name="${escapeHtml(row.personName)}">Storico</button>`}
+          </div>
+          <small class="row-save-status" data-row-status></small>
+        </td>
+      </tr>`;
+  }
+
   function renderAssignments() {
     const rows = filteredAssignments();
-    if (!rows.length) {
+    const duplicateWarnings = duplicateAssignmentWarnings();
+    const raceWarnings = raceWarningMap();
+    const body = [
+      ...(newAssignmentOpen ? [assignmentRowHtml(null, duplicateWarnings, raceWarnings, true)] : []),
+      ...rows.map((row) => assignmentRowHtml(row, duplicateWarnings, raceWarnings, false))
+    ].join('');
+
+    if (!body) {
       assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
-    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Turno</th><th>Attività</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${rows.map((row) => `
-      <tr>
-        <td><strong>${escapeHtml(row.personName)}</strong></td>
-        <td>${escapeHtml(row.personCode || '—')}</td>
-        <td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}${row.shiftMatched ? '' : '<small class="warning-text">Turno non standard</small>'}</td>
-        <td><strong>${escapeHtml(displayActivity(row))}</strong></td>
-        <td>${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}</td>
-        <td><div class="row-actions"><button type="button" data-edit-assignment="${row.id}">Modifica</button><button class="is-danger" type="button" data-delete-assignment="${row.id}">Elimina</button><button type="button" data-audit-person="${row.personId}" data-person-name="${escapeHtml(row.personName)}">Storico</button></div></td>
-      </tr>`).join('')}</tbody></table>`;
+    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Turno</th><th>Attività</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function personReportRows() {
