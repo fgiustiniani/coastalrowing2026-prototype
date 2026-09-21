@@ -255,7 +255,7 @@
     wrapper.appendChild(panel);
 
     const selectedOption = () => [...select.options].find((option) => option.value === select.value) || null;
-    const selectedLabel = () => selectedOption()?.textContent?.trim() || '';
+    const selectedLabel = () => select.value ? (selectedOption()?.textContent?.trim() || '') : '';
     let activeIndex = -1;
 
     const close = ({ restore = false } = {}) => {
