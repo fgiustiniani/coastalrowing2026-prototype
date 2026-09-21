@@ -802,23 +802,43 @@
 
   assignmentTable?.addEventListener('change', (event) => {
     const personSelect = event.target.closest('[data-inline-person]');
-    if (!personSelect) return;
-    const rowNode = personSelect.closest('[data-assignment-row]');
-    const person = (snapshot?.people || []).find((item) => item.id === personSelect.value);
-    const codeNode = rowNode?.querySelector('[data-inline-code]');
-    if (codeNode) codeNode.textContent = person?.person_code || '—';
+    if (personSelect) {
+      const rowNode = personSelect.closest('[data-assignment-row]');
+      const person = (snapshot?.people || []).find((item) => item.id === personSelect.value);
+      const codeNode = rowNode?.querySelector('[data-inline-code]');
+      if (codeNode) codeNode.textContent = person?.person_code || '—';
+      return;
+    }
   });
 
   assignmentTable?.addEventListener('click', async (event) => {
     const rowNode = event.target.closest('[data-assignment-row]');
     const save = event.target.closest('[data-save-inline-assignment]');
     const cancelNew = event.target.closest('[data-cancel-new-assignment]');
+    const editPerson = event.target.closest('[data-edit-person]');
+    const editActivity = event.target.closest('[data-edit-activity]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     const person = event.target.closest('[data-show-person]');
     const activity = event.target.closest('[data-show-activity]');
 
-    if (save && rowNode) {
+    if (editPerson && rowNode) {
+      const display = rowNode.querySelector('[data-person-display]');
+      const select = rowNode.querySelector('[data-inline-person]');
+      if (display) display.hidden = true;
+      if (select) {
+        select.hidden = false;
+        select.focus();
+      }
+    } else if (editActivity && rowNode) {
+      const display = rowNode.querySelector('[data-activity-display]');
+      const select = rowNode.querySelector('[data-inline-activity]');
+      if (display) display.hidden = true;
+      if (select) {
+        select.hidden = false;
+        select.focus();
+      }
+    } else if (save && rowNode) {
       await saveInlineAssignment(rowNode);
     } else if (cancelNew) {
       newAssignmentOpen = false;
