@@ -238,7 +238,7 @@
     const shifts = [...new Map(assignments.map((row) => [shiftFilterKey(row), {
       value: shiftFilterKey(row), label: `${row.day} · ${row.shift}`
     }])).values()].sort((a, b) => a.label.localeCompare(b.label, 'it'));
-    const activities = [...new Set(assignments.map((row) => row.activity).filter(Boolean))]
+    const activities = [...new Set(assignments.map((row) => displayActivity(row)).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'it'))
       .map((value) => ({ value, label: value }));
 
@@ -248,6 +248,10 @@
     setSelectOptions(personReportPersonFilter, people, 'Tutte');
     setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
     setSelectOptions(activityReportPersonFilter, people, 'Tutte');
+
+    const racePeople = [...new Map((snapshot?.raceProgram || []).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    setSelectOptions(racePersonFilter, racePeople, 'Tutte');
   }
 
   function showLogin(message = '') {
@@ -284,7 +288,7 @@
       const rowResponse = row.currentResponse || 'pending';
       return (!personId || row.personId === personId)
         && (!shift || shiftFilterKey(row) === shift)
-        && (!activity || row.activity === activity)
+        && (!activity || displayActivity(row) === activity)
         && (!response || rowResponse === response);
     });
   }
