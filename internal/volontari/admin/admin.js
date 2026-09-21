@@ -79,6 +79,7 @@
   let detailTargetRow = null;
   let assignmentView = 'list';
   let boardDragState = null;
+  let boardPointerDrag = null;
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
@@ -1192,6 +1193,7 @@
         ${assignmentId ? `data-board-assignment-id="${escapeHtml(assignmentId)}"` : ''}
         ${assignmentId ? `data-board-source-requirement-id="${escapeHtml(assignmentRequirementId(row))}"` : ''}>
         <div class="assignment-board__person-main">
+          ${assignmentId ? `<span class="assignment-board__drag-handle" data-board-reorder-handle title="Trascina per cambiare posizione" aria-label="Trascina per cambiare posizione">⋮⋮</span>` : ''}
           <button type="button"
             class="assignment-board__person-name"
             data-board-person-open="${escapeHtml(row.personId)}"
@@ -3255,6 +3257,84 @@
     }
   });
 
+  assignmentBoard?.addEventListener('pointerdown', (event) => {
+    const handle = event.target.closest('[data-board-reorder-handle]');
+    if (!handle || event.pointerType === 'mouse') return;
+    const card = handle.closest('[data-board-assignment-id]');
+    if (!card) return;
+    const requirementId = card.dataset.boardSourceRequirementId || '';
+    if (!requirementId) return;
+
+    boardPointerDrag = {
+      pointerId: event.pointerId,
+      id: card.dataset.boardAssignmentId || '',
+      requirementId,
+      targetAssignmentId: '',
+      placeAfter: false,
+      canDropAtEnd: false
+    };
+    card.classList.add('is-dragging');
+    try { handle.setPointerCapture(event.pointerId); } catch {}
+    event.preventDefault();
+  });
+
+  assignmentBoard?.addEventListener('pointermove', (event) => {
+    if (!boardPointerDrag || boardPointerDrag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    clearBoardReorderMarkers();
+
+    const element = document.elementFromPoint(event.clientX, event.clientY);
+    const dropzone = element?.closest?.('[data-board-drop]');
+    if (!dropzone || dropzone.dataset.boardRequirementId !== boardPointerDrag.requirementId) {
+      boardPointerDrag.targetAssignmentId = '';
+      boardPointerDrag.canDropAtEnd = false;
+      return;
+    }
+
+    const targetCard = element.closest('[data-board-assignment-id]');
+    if (targetCard?.dataset.boardAssignmentId === boardPointerDrag.id) {
+      boardPointerDrag.targetAssignmentId = boardPointerDrag.id;
+      boardPointerDrag.canDropAtEnd = false;
+      return;
+    }
+
+    if (targetCard) {
+      const rect = targetCard.getBoundingClientRect();
+      const placeAfter = event.clientY > rect.top + rect.height / 2;
+      boardPointerDrag.targetAssignmentId = targetCard.dataset.boardAssignmentId || '';
+      boardPointerDrag.placeAfter = placeAfter;
+      boardPointerDrag.canDropAtEnd = false;
+      targetCard.classList.add(placeAfter ? 'is-reorder-after' : 'is-reorder-before');
+      return;
+    }
+
+    boardPointerDrag.targetAssignmentId = '';
+    boardPointerDrag.placeAfter = false;
+    boardPointerDrag.canDropAtEnd = true;
+    dropzone.querySelector('.assignment-board__people')?.classList.add('is-reorder-end');
+  });
+
+  const finishPointerReorder = async (event, cancelled = false) => {
+    if (!boardPointerDrag || boardPointerDrag.pointerId !== event.pointerId) return;
+    const drag = { ...boardPointerDrag };
+    boardPointerDrag = null;
+    assignmentBoard?.querySelector(`[data-board-assignment-id="${CSS.escape(drag.id)}"]`)?.classList.remove('is-dragging');
+    clearBoardReorderMarkers();
+    boardDragEndedAt = Date.now();
+
+    if (cancelled || drag.targetAssignmentId === drag.id) return;
+    if (!drag.targetAssignmentId && !drag.canDropAtEnd) return;
+    await reorderBoardAssignment(
+      drag.id,
+      drag.requirementId,
+      drag.targetAssignmentId || '',
+      drag.placeAfter
+    );
+  };
+
+  assignmentBoard?.addEventListener('pointerup', (event) => { void finishPointerReorder(event, false); });
+  assignmentBoard?.addEventListener('pointercancel', (event) => { void finishPointerReorder(event, true); });
+
   assignmentBoard?.addEventListener('dragstart', (event) => {
     const card = event.target.closest('[data-board-drag-kind]');
     if (!card) return;
@@ -3333,7 +3413,11 @@
       const targetCard = event.target.closest('[data-board-assignment-id]');
       let targetAssignmentId = '';
       let placeAfter = false;
-      if (targetCard && targetCard.dataset.boardAssignmentId !== dragged.id) {
+      if (targetCard?.dataset.boardAssignmentId === dragged.id) {
+        clearBoardReorderMarkers();
+        return;
+      }
+      if (targetCard) {
         targetAssignmentId = targetCard.dataset.boardAssignmentId || '';
         const rect = targetCard.getBoundingClientRect();
         placeAfter = event.clientY > rect.top + rect.height / 2;
