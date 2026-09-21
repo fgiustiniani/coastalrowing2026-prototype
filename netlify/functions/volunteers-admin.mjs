@@ -103,9 +103,9 @@ async function adminSnapshot() {
     }),
     adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
       query: {
-        select: 'id,shift_id,activity_id,required_count,active,created_at,updated_at',
+        select: 'id,shift_id,activity_id,required_count,display_order,active,created_at,updated_at',
         active: 'eq.true',
-        order: 'created_at.asc'
+        order: 'shift_id.asc,display_order.asc,created_at.asc'
       }
     })
   ]);
@@ -359,6 +359,7 @@ async function adminSnapshot() {
       activityId: requirement.activity_id,
       activity: activity?.name || 'Attività non disponibile',
       requiredCount: Number(requirement.required_count || 0),
+      displayOrder: Number(requirement.display_order || 0),
       assignedCount: assigned.length,
       confirmedCount,
       declinedCount,
@@ -369,6 +370,7 @@ async function adminSnapshot() {
     };
   }).sort((a, b) =>
     (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999)
+    || Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
     || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
   );
 
@@ -882,6 +884,25 @@ export default async (request) => {
           newValue: { ...current, active: false }
         });
         return json({ ok: true });
+      }
+
+      if (action === 'reorder-requirements') {
+        await requireRequirementsTable();
+        const shiftId = clean(body.shiftId, 60);
+        const requirementIds = Array.isArray(body.requirementIds)
+          ? body.requirementIds.map((value) => clean(value, 60))
+          : [];
+
+        if (!isUuid(shiftId) || requirementIds.some((id) => !isUuid(id))) {
+          throw new ApiError('Ordine attività non valido.', 400, 'INVALID_REQUIREMENT_ORDER');
+        }
+
+        const result = await rpc('admin_reorder_volunteer_activity_requirements', {
+          p_actor_name: actorName,
+          p_shift_id: shiftId,
+          p_requirement_ids: requirementIds
+        });
+        return json({ ok: true, order: result });
       }
 
       if (action === 'save-requirement') {
