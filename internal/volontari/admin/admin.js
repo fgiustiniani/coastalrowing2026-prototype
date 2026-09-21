@@ -809,7 +809,7 @@
  xmlns:x="urn:schemas-microsoft-com:office:excel"
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
  <Styles>
-  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Top"/><Font ss:FontName="Arial" ss:Size="10"/></Style>
+  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Top" ss:WrapText="1"/><Font ss:FontName="Arial" ss:Size="10"/></Style>
   <Style ss:ID="Header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/><Interior ss:Color="#EAF2F4" ss:Pattern="Solid"/></Style>
  </Styles>
  <Worksheet ss:Name="${xmlEscape(sheetName.slice(0, 31))}"><Table><Row>${header}</Row>${body}</Table></Worksheet>
@@ -817,17 +817,19 @@
     downloadBlob(filename, new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' }));
   }
 
-  function exportPdf(title, columns, rows) {
+  function exportPdf(title, columns, rows, options = {}) {
     const popup = window.open('', '_blank');
     if (!popup) {
       alert('Il browser ha bloccato la finestra di esportazione PDF. Consenti i popup e riprova.');
       return;
     }
+    const pageSize = options.pageSize || 'A4 landscape';
+    const fontSize = options.fontSize || '8px';
     const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('');
     const tableBody = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key] ?? '')}</td>`).join('')}</tr>`).join('');
     popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-      @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#173e4b;margin:0}h1{font-size:18px;margin:0 0 4px}.meta{font-size:9px;color:#60757d;margin:0 0 12px}
-      table{width:100%;border-collapse:collapse;font-size:8px}th,td{border:1px solid #cfdcdf;padding:5px;text-align:left;vertical-align:top}th{background:#eaf2f4}tr:nth-child(even){background:#fafcfc}
+      @page{size:${pageSize};margin:10mm}body{font-family:Arial,sans-serif;color:#173e4b;margin:0}h1{font-size:18px;margin:0 0 4px}.meta{font-size:9px;color:#60757d;margin:0 0 12px}
+      table{width:100%;border-collapse:collapse;font-size:${fontSize};table-layout:fixed}th,td{border:1px solid #cfdcdf;padding:5px;text-align:left;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere}th{background:#eaf2f4}tr:nth-child(even){background:#fafcfc}
     </style></head><body><h1>${escapeHtml(title)}</h1><p class="meta">Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</p><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
   }
@@ -863,19 +865,54 @@
 
   function exportActivityReport(kind) {
     const rows = filteredActivityReportRows().map((item) => ({
-      attivita: item.activity,
       turno: `${item.day} · ${item.shift}`,
+      attivita: item.activity,
       numeroPersone: String(item.peopleCount),
       persone: item.peopleText,
       daRispondere: String(item.pending)
     }));
     const columns = [
-      { key: 'attivita', label: 'Attività' }, { key: 'turno', label: 'Turno' },
-      { key: 'numeroPersone', label: 'N. persone' }, { key: 'persone', label: 'Persone' },
+      { key: 'turno', label: 'Giorno e turno' },
+      { key: 'attivita', label: 'Attività' },
+      { key: 'numeroPersone', label: 'N. persone' },
+      { key: 'persone', label: 'Persone' },
       { key: 'daRispondere', label: 'Da rispondere' }
     ];
-    if (kind === 'excel') exportExcel('report-volontari-per-attivita.xls', 'Per attività', columns, rows);
-    else exportPdf('Report volontari per attività', columns, rows);
+    if (kind === 'excel') exportExcel('report-volontari-per-giorno-turno.xls', 'Giorno e turno', columns, rows);
+    else exportPdf('Report volontari per giorno e turno', columns, rows);
+  }
+
+  function shiftBoardExportData() {
+    const groups = shiftBoardGroups();
+    const columns = groups.map((group, index) => ({
+      key: `shift${index}`,
+      label: `${group.day} · ${group.shift}`
+    }));
+    const maxRows = Math.max(0, ...groups.map((group) => group.activities.length));
+    const rows = Array.from({ length: maxRows }, (_, rowIndex) => {
+      const row = {};
+      groups.forEach((group, index) => {
+        const item = group.activities[rowIndex];
+        row[`shift${index}`] = item
+          ? `${item.activity}\n${item.people.join('; ')}`
+          : '';
+      });
+      return row;
+    });
+    return { columns, rows };
+  }
+
+  function exportShiftBoardReport(kind) {
+    const { columns, rows } = shiftBoardExportData();
+    if (!columns.length) {
+      alert('Nessun dato da esportare con i filtri correnti.');
+      return;
+    }
+    if (kind === 'excel') {
+      exportExcel('report-volontari-vista-turni.xls', 'Vista turni', columns, rows);
+    } else {
+      exportPdf('Report volontari - vista per turni', columns, rows, { pageSize: 'A3 landscape', fontSize: '6px' });
+    }
   }
 
   function renderActivityCatalog() {
@@ -1073,6 +1110,7 @@
     renderRaceProgram();
     renderPersonReport();
     renderActivityReport();
+    renderShiftBoardReport();
   }
 
   async function loadSnapshot() {
@@ -1235,8 +1273,10 @@
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
-  [activityReportActivityFilter, activityReportPersonFilter]
+  [activityReportPersonFilter, activityReportActivityFilter, activityReportShiftFilter]
     .forEach((filter) => filter?.addEventListener('change', renderActivityReport));
+  [shiftBoardPersonFilter, shiftBoardActivityFilter, shiftBoardShiftFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
 
@@ -1244,6 +1284,8 @@
   document.querySelector('[data-person-export-excel]')?.addEventListener('click', () => exportPersonReport('excel'));
   document.querySelector('[data-activity-export-pdf]')?.addEventListener('click', () => exportActivityReport('pdf'));
   document.querySelector('[data-activity-export-excel]')?.addEventListener('click', () => exportActivityReport('excel'));
+  document.querySelector('[data-shift-board-export-pdf]')?.addEventListener('click', () => exportShiftBoardReport('pdf'));
+  document.querySelector('[data-shift-board-export-excel]')?.addEventListener('click', () => exportShiftBoardReport('excel'));
 
   document.querySelectorAll('[data-collapse-target]').forEach((button) => {
     button.addEventListener('click', () => {
