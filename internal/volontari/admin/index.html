@@ -61,27 +61,42 @@
             <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter><option value="">Tutte</option></select></label>
             <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
           </div>
+          <p class="intro inline-help">Modifica direttamente persona, turno e attività nella riga e poi premi <strong>Salva</strong>. Il codice socio è aggiornato automaticamente.</p>
           <div class="table-wrap" data-assignment-table></div>
         </div>
       </section>
 
-      <section class="card admin-section" data-assignment-editor hidden>
-        <div class="section-head"><div><p class="eyebrow">Modifica</p><h2 data-editor-title>Nuova assegnazione</h2></div><button class="link-button" type="button" data-editor-close>Chiudi</button></div>
-        <form data-assignment-form class="editor-grid">
-          <input type="hidden" name="assignmentId">
-          <label class="field"><span>Persona</span><select name="personId" required></select></label>
-          <label class="field"><span>Turno</span><select name="shiftId"></select></label>
-          <div class="raw-shift-grid" data-raw-shift hidden>
-            <label class="field"><span>Giorno non standard</span><input name="rawDay" maxlength="80"></label>
-            <label class="field"><span>Turno non standard</span><input name="rawShift" maxlength="80"></label>
+      <section class="card admin-section">
+        <div class="section-head">
+          <div><p class="eyebrow">Anagrafica</p><h2>Attività</h2></div>
+          <div class="section-actions">
+            <button class="button button--primary" type="button" data-new-activity>Nuova attività</button>
+            <button class="button button--secondary collapse-button" type="button" data-collapse-target="activity-catalog-content" aria-expanded="false">Espandi</button>
           </div>
-          <label class="field"><span>Attività</span><input name="activity" maxlength="200" required></label>
-          <label class="field"><span>Ruolo</span><input name="role" maxlength="200"></label>
-          <label class="field"><span>Profilo richiesto</span><input name="requestedProfile" maxlength="200"></label>
-          <label class="field field--wide"><span>Nota</span><textarea name="note" maxlength="1000"></textarea></label>
-          <div class="actions field--wide"><button class="button button--secondary" type="button" data-editor-cancel>Annulla</button><button class="button button--primary" type="submit">Salva assegnazione</button></div>
-          <p class="status field--wide" data-editor-status aria-live="polite"></p>
-        </form>
+        </div>
+        <div id="activity-catalog-content" data-collapsible-content hidden>
+          <p class="intro">L’elenco deriva da <strong>attività.xlsx</strong>. Le attività eliminate restano disponibili nello storico delle assegnazioni già registrate.</p>
+          <div class="table-wrap" data-activity-catalog></div>
+        </div>
+      </section>
+
+      <section class="card admin-section">
+        <div class="section-head">
+          <div><p class="eyebrow">Anagrafica</p><h2>Programma gare</h2></div>
+          <div class="section-actions">
+            <button class="button button--primary" type="button" data-new-race-entry>Nuova voce</button>
+            <button class="button button--secondary collapse-button" type="button" data-collapse-target="race-program-content" aria-expanded="false">Espandi</button>
+          </div>
+        </div>
+        <div id="race-program-content" data-collapsible-content hidden>
+          <p class="intro">L’elenco deriva da <strong>Programma gare per org.xlsx</strong>. Il file allegato non contiene giorno e orario: vanno completati qui per attivare i warning sulle assegnazioni.</p>
+          <div class="filter-grid filter-grid--report">
+            <label class="field compact-field"><span>Persona</span><select data-race-person-filter><option value="">Tutte</option></select></label>
+            <label class="field compact-field"><span>Equipaggio / categoria</span><input type="search" data-race-crew-filter placeholder="Cerca..."></label>
+          </div>
+          <p class="status" data-race-program-status aria-live="polite"></p>
+          <div class="table-wrap" data-race-program></div>
+        </div>
       </section>
 
       <section class="report-grid">
@@ -121,6 +136,14 @@
           </div>
         </article>
       </section>
+
+      <dialog class="audit-dialog" data-detail-dialog>
+        <div class="audit-dialog__content">
+          <div class="section-head"><div><p class="eyebrow">Dettaglio</p><h2 data-detail-title>Dettaglio</h2></div><button class="audit-close" type="button" data-detail-close aria-label="Chiudi">×</button></div>
+          <div data-detail-content></div>
+          <div class="actions actions--end"><button class="button button--secondary" type="button" data-detail-close>Chiudi</button></div>
+        </div>
+      </dialog>
 
       <dialog class="audit-dialog" data-audit-dialog>
         <div class="audit-dialog__content">
