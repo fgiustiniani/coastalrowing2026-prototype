@@ -22,6 +22,11 @@
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
   const activityReportPersonFilter = document.querySelector('[data-activity-report-person-filter]');
+  const activityReportShiftFilter = document.querySelector('[data-activity-report-shift-filter]');
+  const shiftBoardReport = document.querySelector('[data-shift-board-report]');
+  const shiftBoardPersonFilter = document.querySelector('[data-shift-board-person-filter]');
+  const shiftBoardActivityFilter = document.querySelector('[data-shift-board-activity-filter]');
+  const shiftBoardShiftFilter = document.querySelector('[data-shift-board-shift-filter]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
   const raceProgram = document.querySelector('[data-race-program]');
   const raceProgramStatus = document.querySelector('[data-race-program-status]');
@@ -408,9 +413,18 @@
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
     setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
+    setSelectOptions(shiftBoardActivityFilter, activities, 'Tutte');
+
     const assignedPeople = [...new Map(assignments.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(activityReportPersonFilter, assignedPeople, 'Tutte');
+    setSelectOptions(shiftBoardPersonFilter, assignedPeople, 'Tutte');
+
+    const reportShifts = [...(snapshot?.shifts || [])]
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
+    setSelectOptions(activityReportShiftFilter, reportShifts, 'Tutti');
+    setSelectOptions(shiftBoardShiftFilter, reportShifts, 'Tutti');
 
     const racePeople = [...new Map((snapshot?.raceProgram || []).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
@@ -655,14 +669,31 @@
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
 
-  function activityReportRows() {
+  function reportAssignmentRows({ personId = '', activity = '', shiftId = '' } = {}) {
+    return (snapshot?.assignments || []).filter((row) =>
+      (!personId || row.personId === personId)
+      && (!activity || displayActivity(row) === activity)
+      && (!shiftId || row.shiftId === shiftId)
+    );
+  }
+
+  function groupedReportRows(rows) {
     const groups = new Map();
-    for (const row of snapshot?.assignments || []) {
+    for (const row of rows) {
       const activityLabel = displayActivity(row);
-      const key = `${activityLabel}|${row.day}|${row.shift}`;
-      if (!groups.has(key)) groups.set(key, { activity: activityLabel, day: row.day, shift: row.shift, rows: [] });
+      const key = `${row.shiftId || shiftFilterKey(row)}|${activityLabel}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          activity: activityLabel,
+          day: row.day,
+          shift: row.shift,
+          shiftId: row.shiftId || '',
+          rows: []
+        });
+      }
       groups.get(key).rows.push(row);
     }
+
     return [...groups.values()].map((item) => {
       const peopleMap = new Map(item.rows.map((row) => [row.personId, row.personName]));
       const people = [...peopleMap.entries()]
@@ -675,23 +706,80 @@
         peopleText: people.map((person) => person.name).join('; '),
         pending: item.rows.filter((row) => !row.currentResponse).length
       };
-    }).sort((a, b) => `${a.day} ${a.shift} ${a.activity}`.localeCompare(`${b.day} ${b.shift} ${b.activity}`, 'it'));
+    }).sort((a, b) =>
+      assignmentShiftOrder(a) - assignmentShiftOrder(b)
+      || a.activity.localeCompare(b.activity, 'it')
+    );
   }
 
   function filteredActivityReportRows() {
-    const activity = activityReportActivityFilter?.value || '';
     const personId = activityReportPersonFilter?.value || '';
-    return activityReportRows().filter((item) =>
-      (!activity || item.activity === activity)
-      && (!personId || item.people.some((person) => person.id === personId))
-    );
+    const activity = activityReportActivityFilter?.value || '';
+    const shiftId = activityReportShiftFilter?.value || '';
+    return groupedReportRows(reportAssignmentRows({ personId, activity, shiftId }));
   }
 
   function renderActivityReport() {
     const report = filteredActivityReportRows();
-    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Attività</th><th>Turno</th><th>N. persone</th><th>Persone</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
-      `<tr><td><strong>${escapeHtml(item.activity)}</strong></td><td>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.pending}</td></tr>`
+    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
+      `<tr><td><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td>${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.pending}</td></tr>`
     ).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività corrisponde ai filtri.</p>';
+  }
+
+  function shiftBoardGroups() {
+    const personId = shiftBoardPersonFilter?.value || '';
+    const activity = shiftBoardActivityFilter?.value || '';
+    const shiftId = shiftBoardShiftFilter?.value || '';
+    const rows = reportAssignmentRows({ personId, activity, shiftId });
+    const byShift = new Map();
+
+    for (const row of rows) {
+      const key = row.shiftId || shiftFilterKey(row);
+      if (!byShift.has(key)) {
+        byShift.set(key, {
+          shiftId: row.shiftId || '',
+          day: row.day,
+          shift: row.shift,
+          activities: new Map()
+        });
+      }
+      const group = byShift.get(key);
+      const label = displayActivity(row);
+      if (!group.activities.has(label)) group.activities.set(label, new Map());
+      group.activities.get(label).set(row.personId, row.personName);
+    }
+
+    return [...byShift.values()]
+      .map((group) => ({
+        ...group,
+        activities: [...group.activities.entries()]
+          .map(([activityName, peopleMap]) => ({
+            activity: activityName,
+            people: [...peopleMap.values()].sort((a, b) => a.localeCompare(b, 'it'))
+          }))
+          .sort((a, b) => a.activity.localeCompare(b.activity, 'it'))
+      }))
+      .sort((a, b) => assignmentShiftOrder(a) - assignmentShiftOrder(b));
+  }
+
+  function renderShiftBoardReport() {
+    const groups = shiftBoardGroups();
+    shiftBoardReport.innerHTML = groups.length
+      ? `<div class="shift-board">${groups.map((group) => `
+          <article class="shift-board__column">
+            <header class="shift-board__header">
+              <strong>${escapeHtml(group.day)}</strong>
+              <span>${escapeHtml(group.shift)}</span>
+            </header>
+            <div class="shift-board__activities">
+              ${group.activities.map((item) => `
+                <section class="shift-board__activity">
+                  <strong>${escapeHtml(item.activity)}</strong>
+                  <div class="shift-board__people">${item.people.map((person) => `<span>${escapeHtml(person)}</span>`).join('')}</div>
+                </section>`).join('')}
+            </div>
+          </article>`).join('')}</div>`
+      : '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>';
   }
 
   function xmlEscape(value) {
