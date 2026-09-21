@@ -275,7 +275,11 @@
     setSelectOptions(assignmentPersonFilter, people, 'Tutte');
     setSelectOptions(assignmentShiftFilter, shifts, 'Tutti');
     setSelectOptions(assignmentActivityFilter, activities, 'Tutte');
-    setSelectOptions(personReportPersonFilter, people, 'Tutte');
+    const reportPeople = [...new Map((snapshot?.people || [])
+      .filter((person) => person.latestSubmission || assignments.some((row) => row.personId === person.id))
+      .map((person) => [person.id, { value: person.id, label: person.display_name }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
     setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
     setSelectOptions(activityReportPersonFilter, people, 'Tutte');
 
@@ -410,12 +414,33 @@
 
   function personReportRows() {
     const assignments = snapshot?.assignments || [];
+    const peopleRows = snapshot?.people || [];
     const byPerson = new Map();
+
+    for (const person of peopleRows) {
+      if (person.latestSubmission) {
+        byPerson.set(person.id, {
+          id: person.id,
+          name: person.display_name,
+          code: person.person_code || '',
+          rows: []
+        });
+      }
+    }
+
     for (const row of assignments) {
-      if (!byPerson.has(row.personId)) byPerson.set(row.personId, { id: row.personId, name: row.personName, code: row.personCode, rows: [] });
+      if (!byPerson.has(row.personId)) {
+        byPerson.set(row.personId, {
+          id: row.personId,
+          name: row.personName,
+          code: row.personCode,
+          rows: []
+        });
+      }
       byPerson.get(row.personId).rows.push(row);
     }
-    const personById = new Map((snapshot?.people || []).map((row) => [row.id, row]));
+
+    const personById = new Map(peopleRows.map((row) => [row.id, row]));
     return [...byPerson.values()].map((item) => {
       const confirmed = item.rows.filter((row) => row.currentResponse === 'confirmed').length;
       const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
@@ -424,6 +449,11 @@
       const notes = item.rows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
+      const sortedRows = [...item.rows].sort((a, b) => {
+        const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
+        const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
+        return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
+      });
       return {
         ...item,
         confirmed,
@@ -431,20 +461,8 @@
         answered: Boolean(latest),
         notes: notes.join('; '),
         availability,
-        activities: [...item.rows]
-          .sort((a, b) => {
-            const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
-            const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
-            return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
-          })
-          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`),
-        activitiesText: [...item.rows]
-          .sort((a, b) => {
-            const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
-            const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
-            return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
-          })
-          .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`).join('\n'),
+        activities: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`),
+        activitiesText: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`).join('\n'),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
