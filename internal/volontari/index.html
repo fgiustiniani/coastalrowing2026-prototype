@@ -114,8 +114,18 @@
         <div class="success-mark" aria-hidden="true">✓</div>
         <p class="eyebrow">Invio completato</p>
         <h2>Grazie, disponibilità registrata</h2>
-        <p data-success-copy></p>
-        <p class="submission-code" data-submission-code></p>
+        <div class="success-email">
+          <h3>Vuoi ricevere il riepilogo via email?</h3>
+          <p class="muted">Inserisci il tuo indirizzo email. Verrà usato solo per inviarti il riepilogo di questa compilazione.</p>
+          <form data-summary-email-form>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" data-summary-email autocomplete="email" maxlength="254" placeholder="nome@esempio.it" required>
+            </label>
+            <p class="status" data-summary-email-status aria-live="polite"></p>
+            <button class="button button--secondary" type="submit" data-summary-email-submit>Invia riepilogo</button>
+          </form>
+        </div>
       </section>
     </section>
   </main>
