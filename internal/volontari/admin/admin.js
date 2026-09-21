@@ -414,7 +414,7 @@
           })
           .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`)
           .join('; '),
-        availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('; '),
+        availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
     }).sort((a, b) => a.name.localeCompare(b.name, 'it'));
@@ -440,7 +440,7 @@
         <td>${item.declined}</td>
         <td><span class="${item.answered ? 'answer-yes' : 'answer-no'}">${item.answered ? 'Sì' : 'No'}</span>${item.latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(item.latest.createdAt))} · ${escapeHtml(item.latest.actorName)}</small>` : ''}</td>
         <td class="notes-cell">${item.notes ? escapeHtml(item.notes) : '—'}</td>
-        <td>${availability.length ? availability.map((a) => `<span class="availability-pill">${escapeHtml(a.day)} ${escapeHtml(a.shift)}${a.note ? ` · ${escapeHtml(a.note)}` : ''}</span>`).join('') : '—'}</td>
+        <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
         <td><button class="table-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}">Storico</button></td>
       </tr>`;
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
