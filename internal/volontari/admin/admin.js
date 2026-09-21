@@ -12,6 +12,7 @@
   const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
+  const assignmentWarningFilter = document.querySelector('[data-assignment-warning-filter]');
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
@@ -170,58 +171,82 @@
     } catch { return ''; }
   }
 
-  function duplicateAssignmentWarnings() {
-    const groups = new Map();
-    for (const row of snapshot?.assignments || []) {
-      const key = `${row.personId}|${row.shiftId || shiftFilterKey(row)}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(row.id);
-    }
-    const warned = new Set();
-    for (const ids of groups.values()) if (ids.length > 1) ids.forEach((id) => warned.add(id));
-    return warned;
-  }
+  function assignmentWarningDetails(candidate) {
+    const warnings = [];
+    const assignments = snapshot?.assignments || [];
+    if (!candidate?.personId) return warnings;
 
-  function raceWarningMap() {
-    const warnings = new Map();
-    if (!snapshot?.raceProgramAvailable) return warnings;
-    const shifts = (snapshot?.shifts || []).map((shift) => ({
-      ...shift,
-      startMs: Date.parse(shift.starts_at),
-      endMs: Date.parse(shift.ends_at),
-      dateKey: localDateKey(shift.starts_at)
-    }));
-    const raceByPerson = new Map();
-    for (const race of snapshot?.raceProgram || []) {
-      if (!race.raceDate) continue;
-      if (!raceByPerson.has(race.personId)) raceByPerson.set(race.personId, []);
-      raceByPerson.get(race.personId).push(race);
-    }
+    const sameShift = assignments.filter((row) => {
+      if (row.id === candidate.id || row.personId !== candidate.personId) return false;
+      if (candidate.shiftId) return row.shiftId === candidate.shiftId;
+      return !row.shiftId && shiftFilterKey(row) === shiftFilterKey(candidate);
+    });
+    if (sameShift.length) warnings.push({ type: 'duplicate', text: 'Più assegnazioni nello stesso turno' });
 
-    for (const assignment of snapshot?.assignments || []) {
-      if (!assignment.shiftId) continue;
-      const assignedShift = shifts.find((shift) => shift.id === assignment.shiftId);
-      if (!assignedShift) continue;
-      for (const race of raceByPerson.get(assignment.personId) || []) {
-        if (assignedShift.dateKey !== race.raceDate) continue;
-        if (!race.raceTime) {
-          if (!warnings.has(assignment.id)) warnings.set(assignment.id, []);
-          warnings.get(assignment.id).push(`Gara: ${race.crewLabel} · orario individuale da completare`);
-          continue;
-        }
-        const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
-        if (!Number.isFinite(raceMs)) continue;
-        const dayShifts = shifts.filter((shift) => shift.dateKey === race.raceDate).sort((a, b) => a.startMs - b.startMs);
-        const coinciding = dayShifts.find((shift) => shift.startMs <= raceMs && raceMs < shift.endMs) || null;
-        const preceding = [...dayShifts].filter((shift) => shift.endMs <= raceMs).sort((a, b) => b.endMs - a.endMs)[0] || null;
-        if (assignedShift.id === coinciding?.id || assignedShift.id === preceding?.id) {
-          if (!warnings.has(assignment.id)) warnings.set(assignment.id, []);
-          warnings.get(assignment.id).push(`Gara: ${race.crewLabel} · ${race.raceTime}`);
+    if (candidate.shiftId && snapshot?.raceProgramAvailable) {
+      const shifts = (snapshot?.shifts || []).map((shift) => ({
+        ...shift,
+        startMs: Date.parse(shift.starts_at),
+        endMs: Date.parse(shift.ends_at),
+        dateKey: localDateKey(shift.starts_at)
+      }));
+      const assignedShift = shifts.find((shift) => shift.id === candidate.shiftId);
+      if (assignedShift) {
+        for (const race of (snapshot?.raceProgram || []).filter((item) => item.personId === candidate.personId && item.raceDate === assignedShift.dateKey)) {
+          if (!race.raceTime) {
+            warnings.push({ type: 'race', text: `Gara: ${race.crewLabel} · orario individuale da completare` });
+            continue;
+          }
+          const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
+          if (!Number.isFinite(raceMs)) continue;
+          const dayShifts = shifts.filter((shift) => shift.dateKey === race.raceDate).sort((a, b) => a.startMs - b.startMs);
+          const coinciding = dayShifts.find((shift) => shift.startMs <= raceMs && raceMs < shift.endMs) || null;
+          const preceding = [...dayShifts].filter((shift) => shift.endMs <= raceMs).sort((a, b) => b.endMs - a.endMs)[0] || null;
+          if (assignedShift.id === coinciding?.id || assignedShift.id === preceding?.id) {
+            warnings.push({ type: 'race', text: `Gara: ${race.crewLabel} · ${race.raceTime}` });
+          }
         }
       }
     }
-    for (const [id, values] of warnings) warnings.set(id, [...new Set(values)]);
-    return warnings;
+
+    const seen = new Set();
+    return warnings.filter((warning) => {
+      const key = `${warning.type}|${warning.text}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function warningHtml(warnings) {
+    if (!warnings?.length) return '<span class="warning-none">—</span>';
+    return `<div class="warning-stack">${warnings.map((warning) =>
+      `<span class="warning-badge${warning.type === 'race' ? ' warning-badge--race' : ''}">⚠ ${escapeHtml(warning.text)}</span>`
+    ).join('')}</div>`;
+  }
+
+  function candidateFromRowNode(rowNode) {
+    const assignmentId = rowNode?.dataset.assignmentId || '';
+    const current = assignmentId ? (snapshot?.assignments || []).find((row) => row.id === assignmentId) : null;
+    const personId = rowNode?.querySelector('[data-inline-person]')?.value || current?.personId || '';
+    const shiftValue = rowNode?.querySelector('[data-inline-shift]')?.value || '';
+    if (shiftValue === 'raw') {
+      return { id: assignmentId || null, personId, shiftId: null, day: current?.day || '', shift: current?.shift || '' };
+    }
+    const selectedShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftValue);
+    return {
+      id: assignmentId || null,
+      personId,
+      shiftId: shiftValue || null,
+      day: selectedShift?.day_label || '',
+      shift: selectedShift?.shift_label || ''
+    };
+  }
+
+  function refreshRowWarnings(rowNode) {
+    const cell = rowNode?.querySelector('[data-warning-cell]');
+    if (!cell) return;
+    cell.innerHTML = warningHtml(assignmentWarningDetails(candidateFromRowNode(rowNode)));
   }
 
   function shiftFilterKey(row) {
@@ -304,43 +329,32 @@
     const shift = assignmentShiftFilter?.value || '';
     const activity = assignmentActivityFilter?.value || '';
     const response = assignmentResponseFilter?.value || '';
+    const warning = assignmentWarningFilter?.value || '';
 
     return (snapshot?.assignments || []).filter((row) => {
       const rowResponse = row.currentResponse || 'pending';
+      const warnings = assignmentWarningDetails(row);
+      const warningMatch = !warning
+        || (warning === 'any' && warnings.length > 0)
+        || (warning === 'none' && warnings.length === 0)
+        || warnings.some((item) => item.type === warning);
       return (!personId || row.personId === personId)
         && (!shift || shiftFilterKey(row) === shift)
         && (!activity || displayActivity(row) === activity)
-        && (!response || rowResponse === response);
+        && (!response || rowResponse === response)
+        && warningMatch;
     });
   }
 
-  function assignmentRowHtml(row, duplicateWarnings, raceWarnings, isNew = false) {
+  function assignmentRowHtml(row, isNew = false) {
     const personId = row?.personId || '';
-    const person = (snapshot?.people || []).find((item) => item.id === personId);
-    const personCode = person?.person_code || row?.personCode || '';
     const activityLabel = row ? displayActivity(row) : '';
-    const warningHtml = isNew ? '' : [
-      duplicateWarnings.has(row.id) ? '<span class="warning-badge">⚠ Più assegnazioni nello stesso turno</span>' : '',
-      ...(raceWarnings.get(row.id) || []).map((message) => `<span class="warning-badge warning-badge--race">⚠ ${escapeHtml(message)}</span>`)
-    ].filter(Boolean).join('');
     const responseHtml = isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`;
     const assignmentId = row?.id || '';
+    const warnings = row ? assignmentWarningDetails(row) : [];
 
     return `
       <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" class="${isNew ? 'is-new-row' : ''}">
-        <td class="inline-person-cell">
-          <div class="inline-controls">
-            ${isNew ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>` : `
-              <div class="inline-display-row" data-person-display>
-                <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
-                <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
-              </div>
-              <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>
-            `}
-            ${warningHtml ? `<div class="warning-stack">${warningHtml}</div>` : ''}
-          </div>
-        </td>
-        <td><span class="inline-code" data-inline-code>${escapeHtml(personCode || '—')}</span></td>
         <td>
           <select class="inline-select" data-inline-shift>${shiftOptions(row)}</select>
           ${row && !row.shiftMatched ? '<small class="warning-text">Turno non standard: seleziona un turno dall’anagrafica se vuoi modificarlo.</small>' : ''}
@@ -356,11 +370,24 @@
             `}
           </div>
         </td>
+        <td class="inline-person-cell">
+          <div class="inline-controls">
+            ${isNew ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>` : `
+              <div class="inline-display-row" data-person-display>
+                <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
+                <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
+              </div>
+              <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>
+            `}
+          </div>
+        </td>
+        <td class="warning-cell" data-warning-cell>${warningHtml(warnings)}</td>
         <td>${responseHtml}</td>
         <td>
           <div class="row-actions">
             <button type="button" data-save-inline-assignment>Salva</button>
-            ${isNew ? '<button type="button" data-cancel-new-assignment>Annulla</button>' : `<button class="is-danger" type="button" data-delete-assignment="${escapeHtml(row.id)}">Elimina</button><button type="button" data-audit-person="${escapeHtml(row.personId)}" data-person-name="${escapeHtml(row.personName)}">Storico</button>`}
+            <button type="button" data-cancel-inline-assignment>Annulla</button>
+            ${isNew ? '' : `<button class="is-danger" type="button" data-delete-assignment="${escapeHtml(row.id)}">Elimina</button><button type="button" data-audit-person="${escapeHtml(row.personId)}" data-person-name="${escapeHtml(row.personName)}">Storico</button>`}
           </div>
           <small class="row-save-status" data-row-status></small>
         </td>
@@ -369,18 +396,16 @@
 
   function renderAssignments() {
     const rows = filteredAssignments();
-    const duplicateWarnings = duplicateAssignmentWarnings();
-    const raceWarnings = raceWarningMap();
     const body = [
-      ...(newAssignmentOpen ? [assignmentRowHtml(null, duplicateWarnings, raceWarnings, true)] : []),
-      ...rows.map((row) => assignmentRowHtml(row, duplicateWarnings, raceWarnings, false))
+      ...(newAssignmentOpen ? [assignmentRowHtml(null, true)] : []),
+      ...rows.map((row) => assignmentRowHtml(row, false))
     ].join('');
 
     if (!body) {
       assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
-    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Persona</th><th>Codice</th><th>Turno</th><th>Attività</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
+    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function personReportRows() {
@@ -810,7 +835,7 @@
     renderRaceProgram();
   });
 
-  [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter]
+  [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
@@ -836,20 +861,15 @@
   });
 
   assignmentTable?.addEventListener('change', (event) => {
-    const personSelect = event.target.closest('[data-inline-person]');
-    if (personSelect) {
-      const rowNode = personSelect.closest('[data-assignment-row]');
-      const person = (snapshot?.people || []).find((item) => item.id === personSelect.value);
-      const codeNode = rowNode?.querySelector('[data-inline-code]');
-      if (codeNode) codeNode.textContent = person?.person_code || '—';
-      return;
-    }
+    const rowNode = event.target.closest('[data-assignment-row]');
+    if (!rowNode) return;
+    if (event.target.matches('[data-inline-person], [data-inline-shift]')) refreshRowWarnings(rowNode);
   });
 
   assignmentTable?.addEventListener('click', async (event) => {
     const rowNode = event.target.closest('[data-assignment-row]');
     const save = event.target.closest('[data-save-inline-assignment]');
-    const cancelNew = event.target.closest('[data-cancel-new-assignment]');
+    const cancelEdit = event.target.closest('[data-cancel-inline-assignment]');
     const editPerson = event.target.closest('[data-edit-person]');
     const editActivity = event.target.closest('[data-edit-activity]');
     const remove = event.target.closest('[data-delete-assignment]');
@@ -875,8 +895,8 @@
       }
     } else if (save && rowNode) {
       await saveInlineAssignment(rowNode);
-    } else if (cancelNew) {
-      newAssignmentOpen = false;
+    } else if (cancelEdit) {
+      if (!rowNode?.dataset.assignmentId) newAssignmentOpen = false;
       renderAssignments();
     } else if (person) {
       showPersonDetail(person.dataset.showPerson);
