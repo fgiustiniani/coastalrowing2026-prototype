@@ -11,7 +11,6 @@
   const assignmentBoard = document.querySelector('[data-assignment-board]');
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
-  const boardActivityToggle = document.querySelector('[data-board-activity-toggle]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
@@ -20,6 +19,7 @@
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
   const assignmentWarningFilter = document.querySelector('[data-assignment-warning-filter]');
+  const assignmentCoverageFilter = document.querySelector('[data-assignment-coverage-filter]');
   const availabilityFilterStatus = document.querySelector('[data-availability-filter-status]');
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
@@ -35,6 +35,8 @@
   const confirmationChanges = document.querySelector('[data-confirmation-changes]');
   const confirmationLinkStatus = document.querySelector('[data-confirmation-link-status]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
+  const requirementCatalog = document.querySelector('[data-requirement-catalog]');
+  const requirementStatus = document.querySelector('[data-requirement-status]');
   const raceProgram = document.querySelector('[data-race-program]');
   const raceProgramStatus = document.querySelector('[data-race-program-status]');
   const racePersonFilter = document.querySelector('[data-race-person-filter]');
@@ -67,16 +69,15 @@
   let snapshot = null;
   let newAssignmentOpen = false;
   let newActivityOpen = false;
+  let newRequirementOpen = false;
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
   let assignmentView = 'list';
-  let boardActivityVisibility = 'assigned';
   let boardDragState = null;
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
-    boardActivityVisibility = sessionStorage.getItem('coastal2026-admin-board-activities') === 'all' ? 'all' : 'assigned';
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -254,6 +255,85 @@
     return options.join('');
   }
 
+  function requirements() {
+    return snapshot?.requirements || [];
+  }
+
+  function requirementById(id) {
+    return requirements().find((item) => item.id === id) || null;
+  }
+
+  function requirementForPair(shiftId, activityId) {
+    return requirements().find((item) => item.shiftId === shiftId && item.activityId === activityId) || null;
+  }
+
+  function requirementForAssignment(row) {
+    if (!row?.shiftId || !row?.activityId) return null;
+    return requirementForPair(row.shiftId, row.activityId);
+  }
+
+  function requirementLabel(requirement) {
+    if (!requirement) return '—';
+    return `${requirement.day || ''} · ${requirement.shift || ''} — ${prettifyActivityName(requirement.activity || '')}`;
+  }
+
+  function requirementOptions(selectedId = '', shiftId = '') {
+    const rows = requirements()
+      .filter((item) => !shiftId || item.shiftId === shiftId)
+      .sort((a, b) =>
+        (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999)
+        || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+      );
+    return '<option value="">Seleziona turno e attività…</option>' + rows.map((item) =>
+      `<option value="${escapeHtml(item.id)}" ${item.id === selectedId ? 'selected' : ''}>${escapeHtml(requirementLabel(item))} · ${item.assignedCount}/${item.requiredCount}</option>`
+    ).join('');
+  }
+
+  function assignmentRequirementId(row) {
+    return requirementForAssignment(row)?.id || '';
+  }
+
+  function requirementIsUncovered(requirement) {
+    return Boolean(requirement) && Number(requirement.assignedCount || 0) < Number(requirement.requiredCount || 0);
+  }
+
+  function requirementGapRows() {
+    return requirements()
+      .filter(requirementIsUncovered)
+      .map((requirement) => ({
+        id: `requirement:${requirement.id}`,
+        isRequirementGap: true,
+        requirementId: requirement.id,
+        shiftId: requirement.shiftId,
+        day: requirement.day,
+        shift: requirement.shift,
+        shiftMatched: true,
+        activityId: requirement.activityId,
+        activity: requirement.activity,
+        role: '',
+        personId: '',
+        personName: '',
+        missingCount: Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0)),
+        assignedCount: Number(requirement.assignedCount || 0),
+        requiredCount: Number(requirement.requiredCount || 0),
+        currentResponse: null
+      }));
+  }
+
+  function activityIdOptions(selectedId = '') {
+    return '<option value="">Seleziona…</option>' + [...(snapshot?.activities || [])]
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'it'))
+      .map((activity) => `<option value="${escapeHtml(activity.id)}" ${activity.id === selectedId ? 'selected' : ''}>${escapeHtml(prettifyActivityName(activity.name))}</option>`)
+      .join('');
+  }
+
+  function shiftIdOptions(selectedId = '') {
+    return '<option value="">Seleziona…</option>' + [...(snapshot?.shifts || [])]
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      .map((shift) => `<option value="${escapeHtml(shift.id)}" ${shift.id === selectedId ? 'selected' : ''}>${escapeHtml(shift.day_label)} · ${escapeHtml(shift.shift_label)}</option>`)
+      .join('');
+  }
+
   function localDateKey(value) {
     if (!value) return '';
     try {
@@ -323,17 +403,14 @@
     const assignmentId = rowNode?.dataset.assignmentId || '';
     const current = assignmentId ? (snapshot?.assignments || []).find((row) => row.id === assignmentId) : null;
     const personId = rowNode?.querySelector('[data-inline-person]')?.value || current?.personId || '';
-    const shiftValue = rowNode?.querySelector('[data-inline-shift]')?.value || '';
-    if (shiftValue === 'raw') {
-      return { id: assignmentId || null, personId, shiftId: null, day: current?.day || '', shift: current?.shift || '' };
-    }
-    const selectedShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftValue);
+    const requirementId = rowNode?.querySelector('[data-inline-requirement]')?.value || assignmentRequirementId(current);
+    const requirement = requirementById(requirementId);
     return {
       id: assignmentId || null,
       personId,
-      shiftId: shiftValue || null,
-      day: selectedShift?.day_label || '',
-      shift: selectedShift?.shift_label || ''
+      shiftId: requirement?.shiftId || current?.shiftId || null,
+      day: requirement?.day || current?.day || '',
+      shift: requirement?.shift || current?.shift || ''
     };
   }
 
@@ -622,26 +699,30 @@
 
   function populateFilters() {
     const assignments = snapshot?.assignments || [];
-    const assignmentRows = allAssignmentRows();
-    const people = [...new Map(assignmentRows.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
+    const assignmentRows = [...unassignedAvailabilityRows(), ...assignments];
+    const people = [...new Map(assignmentRows.filter((row) => row.personId).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
-    const shifts = [...new Map(assignmentRows.map((row) => [shiftFilterKey(row), {
-      value: shiftFilterKey(row), label: `${row.day} · ${row.shift}`
+    const shifts = [...new Map(requirements().map((row) => [`${row.day}|||${row.shift}`, {
+      value: `${row.day}|||${row.shift}`, label: `${row.day} · ${row.shift}`
     }])).values()].sort((a, b) => a.label.localeCompare(b.label, 'it'));
-    const activities = [...new Set(assignments.map((row) => displayActivity(row)).filter(Boolean))]
+    const activities = [...new Set(requirements().map((row) => prettifyActivityName(row.activity)).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'it'))
       .map((value) => ({ value, label: value }));
 
     setSelectOptions(assignmentPersonFilter, people, 'Tutte');
     setSelectOptions(assignmentShiftFilter, shifts, 'Tutti');
     setSelectOptions(assignmentActivityFilter, activities, 'Tutte');
+
+    const reportActivities = [...new Set(assignments.map((row) => displayActivity(row)).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'it'))
+      .map((value) => ({ value, label: value }));
     const reportPeople = [...new Map((snapshot?.people || [])
       .filter((person) => person.latestSubmission || assignments.some((row) => row.personId === person.id))
       .map((person) => [person.id, { value: person.id, label: person.display_name }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
-    setSelectOptions(activityReportActivityFilter, activities, 'Tutte');
-    setSelectOptions(shiftBoardActivityFilter, activities, 'Tutte');
+    setSelectOptions(activityReportActivityFilter, reportActivities, 'Tutte');
+    setSelectOptions(shiftBoardActivityFilter, reportActivities, 'Tutte');
 
     const assignedPeople = [...new Map(assignments.map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
@@ -686,19 +767,23 @@
     const confirmed = assignments.filter((row) => row.currentResponse === 'confirmed').length;
     const declined = assignments.filter((row) => row.currentResponse === 'declined').length;
     const pending = assignments.length - confirmed - declined;
+    const planned = requirements().reduce((sum, row) => sum + Number(row.requiredCount || 0), 0);
+    const uncovered = requirements().filter(requirementIsUncovered).length;
     kpis.innerHTML = `
       <article class="kpi kpi--summary">
         <div class="kpi__main"><strong>${assignedPeople}</strong><span>persone assegnate</span></div>
         <p class="kpi__detail">di cui <button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</p>
         <p class="kpi__detail"><button type="button" class="kpi__link" data-show-unassigned-availability>${new Set(unassignedAvailability.map((row) => row.personId)).size}</button> persone con ${unassignedAvailability.length} disponibilità da assegnare</p>
       </article>
-      <article class="kpi kpi--summary">
-        <div class="kpi__main"><strong>${assignments.length}</strong><span>attività assegnate</span></div>
+      <article class="kpi kpi--summary kpi--requirements">
+        <div class="kpi__main"><strong>${planned}</strong><span>attività previste</span></div>
+        <p class="kpi__detail">di cui <strong>${assignments.length}</strong> assegnate</p>
         <div class="kpi__breakdown">
-          <span><strong>${confirmed}</strong> confermate</span>
+          <span>di cui <strong>${confirmed}</strong> confermate</span>
           <span><strong>${declined}</strong> rifiutate</span>
           <span><strong>${pending}</strong> senza risposta</span>
         </div>
+        <p class="kpi__detail kpi__detail--alert"><strong>${uncovered}</strong> coppie turno-attività ancora scoperte</p>
       </article>`;
   }
 
@@ -709,10 +794,24 @@
     const activities = selectedFilterValues(assignmentActivityFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
+    const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
 
-    const rows = allAssignmentRows().filter((row) => {
+    const coverageMatches = (requirement) => {
+      if (!coverageFilters.length) return true;
+      if (!requirement) return false;
+      const uncovered = requirementIsUncovered(requirement);
+      return coverageFilters.some((value) =>
+        (value === 'uncovered' && uncovered) || (value === 'covered' && !uncovered)
+      );
+    };
+
+    const baseRows = [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
       const rowType = row.isAvailability ? 'availability' : 'assigned';
       if (!filterMatches(types, rowType)) return false;
+
+      const requirement = row.isAvailability ? null : requirementForAssignment(row);
+      if (!row.isAvailability && !coverageMatches(requirement)) return false;
+      if (row.isAvailability && coverageFilters.length) return false;
 
       const rowResponse = row.currentResponse || 'pending';
       const warnings = assignmentWarningDetails(row);
@@ -724,13 +823,23 @@
 
       return filterMatches(personIds, row.personId)
         && filterMatches(shifts, shiftFilterKey(row))
-        && (!activities.length || (!row.isAvailability && activities.includes(displayActivity(row))))
+        && (!activities.length || (!row.isAvailability && activities.includes(prettifyActivityName(row.activity))))
         && (!responses.length || (!row.isAvailability && responses.includes(rowResponse)))
         && warningMatch;
     });
 
-    return sortAssignmentRows(rows);
+    const gapRows = requirementGapRows().filter((row) => {
+      if (types.length && !types.includes('assigned')) return false;
+      if (personIds.length || responses.length || warningFilters.length) return false;
+      const requirement = requirementById(row.requirementId);
+      if (!coverageMatches(requirement)) return false;
+      return filterMatches(shifts, shiftFilterKey(row))
+        && (!activities.length || activities.includes(prettifyActivityName(row.activity)));
+    });
+
+    return sortAssignmentRows([...baseRows, ...gapRows]);
   }
+
 
   function responsibilityGroupRows(row) {
     if (!row || !row.shiftId) return [];
@@ -750,13 +859,25 @@
   }
 
   function assignmentRowHtml(row, isNew = false) {
+    if (row?.isRequirementGap) {
+      return `
+        <tr data-assignment-row data-requirement-gap="${escapeHtml(row.requirementId)}" class="is-requirement-gap-row">
+          <td><strong>${escapeHtml(row.day)}</strong><small>${escapeHtml(row.shift)}</small></td>
+          <td><strong>${escapeHtml(prettifyActivityName(row.activity))}</strong></td>
+          <td><span class="coverage-gap"><strong>Mancano ${row.missingCount}</strong><small>${row.assignedCount}/${row.requiredCount} assegnati</small></span></td>
+          <td>—</td><td>—</td><td><span class="status-badge is-declined">Scoperta</span></td>
+          <td><div class="row-actions"><button type="button" data-add-person-requirement="${escapeHtml(row.requirementId)}">Aggiungi persona</button></div></td>
+        </tr>`;
+    }
+
     const isAvailability = Boolean(row?.isAvailability);
     const personId = row?.personId || '';
-    const activityLabel = row && !isAvailability ? displayActivity(row) : '';
+    const assignmentId = row && !isAvailability ? row.id : '';
+    const selectedRequirementId = row && !isAvailability ? assignmentRequirementId(row) : '';
+    const selectedRequirement = requirementById(selectedRequirementId);
     const responseHtml = isAvailability
       ? '<span class="status-badge is-availability">Disponibilità</span>'
       : (isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
-    const assignmentId = row && !isAvailability ? row.id : '';
     const warnings = row ? assignmentWarningDetails(row) : [];
     const rowClass = [
       isNew ? 'is-new-row' : '',
@@ -764,26 +885,22 @@
       row?.isResponsible ? 'is-responsible-row' : ''
     ].filter(Boolean).join(' ');
 
+    const requirementSelect = `<select class="inline-select inline-select--requirement" data-inline-requirement ${isAvailability ? '' : ''}>${requirementOptions(selectedRequirementId, isAvailability ? row.shiftId : '')}</select>`;
+
     const shiftCell = isAvailability
-      ? `<input type="hidden" data-inline-shift value="${escapeHtml(row.shiftId)}">
-         <button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button>
-         <small class="availability-source-label">Disponibilità indicata dal volontario</small>`
+      ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">Disponibilità indicata dal volontario</small>`
       : (isNew
-        ? `<select class="inline-select" data-inline-shift>${shiftOptions(row)}</select>`
-        : `<div class="inline-display-row" data-shift-display>
-             <button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId || '')}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button>
-             <button class="inline-edit-button" type="button" data-edit-shift aria-label="Cambia turno" title="Cambia turno">✎</button>
-           </div>
-           <select class="inline-select" data-inline-shift hidden>${shiftOptions(row)}</select>
-           ${!row.shiftMatched ? '<small class="warning-text">Turno non standard: seleziona un turno dall’anagrafica se vuoi modificarlo.</small>' : ''}`);
+        ? '<span class="muted-text">Seleziona la coppia →</span>'
+        : `<div class="inline-display-row" data-requirement-display><button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId || '')}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button></div>`);
 
     const activityCell = (isAvailability || isNew)
-      ? `<select class="inline-select inline-select--activity" data-inline-activity>${activityOptions(null)}</select>`
+      ? requirementSelect
       : `<div class="inline-display-row" data-activity-display>
-           <button class="inline-activity-link" type="button" data-show-activity="${escapeHtml(activityLabel)}">${escapeHtml(activityLabel)}</button>
-           <button class="inline-edit-button" type="button" data-edit-activity aria-label="Cambia attività" title="Cambia attività">✎</button>
+           <button class="inline-activity-link" type="button" data-show-activity="${escapeHtml(prettifyActivityName(row.activity))}">${escapeHtml(prettifyActivityName(row.activity))}</button>
+           <button class="inline-edit-button" type="button" data-edit-requirement aria-label="Cambia turno e attività" title="Cambia turno e attività">✎</button>
          </div>
-         <select class="inline-select inline-select--activity" data-inline-activity hidden>${activityOptions(row)}</select>`;
+         <div data-requirement-edit hidden>${requirementSelect}</div>
+         ${selectedRequirement ? `<small class="coverage-inline">${selectedRequirement.assignedCount}/${selectedRequirement.requiredCount} assegnati</small>` : '<small class="warning-text">Coppia turno-attività non prevista</small>'}`;
 
     const personCell = isAvailability
       ? `<input type="hidden" data-inline-person value="${escapeHtml(row.personId)}">
@@ -821,71 +938,30 @@
       </tr>`;
   }
 
-  function boardActivityDefinitions() {
-    const definitions = new Map();
 
-    for (const row of snapshot?.assignments || []) {
-      const activity = String(row.activity || '').trim();
-      if (!activity) continue;
-      const key = activity.toLocaleLowerCase('it-IT');
-      if (!definitions.has(key)) {
-        definitions.set(key, { key, activity, role: '', label: prettifyActivityName(activity) });
-      }
-    }
-
-    for (const activity of snapshot?.activities || []) {
-      const name = String(activity.name || '').trim();
-      if (!name) continue;
-      const key = name.toLocaleLowerCase('it-IT');
-      if (!definitions.has(key)) {
-        definitions.set(key, { key, activity: name, role: '', label: prettifyActivityName(name) });
-      }
-    }
-
-    const selectedActivities = selectedFilterValues(assignmentActivityFilter);
-    return [...definitions.values()]
-      .filter((item) => {
-        if (!selectedActivities.length) return true;
-        if (selectedActivities.includes(item.label)) return true;
-        return (snapshot?.assignments || []).some((row) =>
-          String(row.activity || '').trim() === item.activity
-          && selectedActivities.includes(displayActivity(row))
-        );
-      })
-      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
-  }
-
-
-  function filteredBoardRows() {
+  function filteredBoardAssignmentRows() {
     const types = selectedFilterValues(assignmentTypeFilter);
     const personIds = selectedFilterValues(assignmentPersonFilter);
-    const shifts = selectedFilterValues(assignmentShiftFilter);
-    const activities = selectedFilterValues(assignmentActivityFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
 
-    return allAssignmentRows().filter((row) => {
+    return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
       const rowType = row.isAvailability ? 'availability' : 'assigned';
       if (!filterMatches(types, rowType)) return false;
       if (!filterMatches(personIds, row.personId)) return false;
-      if (!filterMatches(shifts, shiftFilterKey(row))) return false;
 
       if (row.isAvailability) {
-        if (responses.length || warningFilters.length) return false;
-        return true;
+        return !responses.length && !warningFilters.length;
       }
 
-      if (activities.length && !activities.includes(displayActivity(row))) return false;
       const rowResponse = row.currentResponse || 'pending';
       if (responses.length && !responses.includes(rowResponse)) return false;
-
       const warnings = assignmentWarningDetails(row);
       if (warningFilters.length && !warningFilters.some((warning) =>
         (warning === 'any' && warnings.length > 0)
         || (warning === 'none' && warnings.length === 0)
         || warnings.some((item) => item.type === warning)
       )) return false;
-
       return true;
     });
   }
@@ -946,63 +1022,74 @@
       </div>`;
   }
 
-
-  function boardCanDrop(dragged, targetShiftId) {
+  function boardCanDrop(dragged, targetRequirementId) {
     if (!dragged) return false;
+    const requirement = requirementById(targetRequirementId);
+    if (!requirement) return false;
     if (dragged.kind !== 'availability') return true;
     const availability = unassignedAvailabilityRows().find((row) => row.id === dragged.id);
-    return Boolean(availability && availability.shiftId === targetShiftId);
+    return Boolean(availability && availability.shiftId === requirement.shiftId);
   }
 
   function renderAssignmentBoard() {
     if (!assignmentBoard) return;
-    const rows = filteredBoardRows();
-    const activityDefinitions = boardActivityDefinitions();
+    const rows = filteredBoardAssignmentRows();
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
+    const selectedActivities = selectedFilterValues(assignmentActivityFilter);
+    const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
+
+    const requirementVisible = (requirement) => {
+      const shiftKey = `${requirement.day || ''}|||${requirement.shift || ''}`;
+      if (selectedShifts.length && !selectedShifts.includes(shiftKey)) return false;
+      if (selectedActivities.length && !selectedActivities.includes(prettifyActivityName(requirement.activity))) return false;
+      if (coverageFilters.length) {
+        const uncovered = requirementIsUncovered(requirement);
+        if (!coverageFilters.some((value) =>
+          (value === 'uncovered' && uncovered) || (value === 'covered' && !uncovered)
+        )) return false;
+      }
+      return true;
+    };
+
+    const visibleRequirements = requirements().filter(requirementVisible);
+    const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
     const shifts = [...(snapshot?.shifts || [])]
-      .filter((shift) => {
-        const key = `${shift.day_label || ''}|||${shift.shift_label || ''}`;
-        return !selectedShifts.length || selectedShifts.includes(key);
-      })
+      .filter((shift) => visibleShiftIds.has(shift.id))
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
 
-    const nonStandardCount = rows.filter((row) => !row.isAvailability && !row.shiftId).length;
     const columns = shifts.map((shift) => {
-      const shiftRows = rows.filter((row) => row.shiftId === shift.id);
-      const assigned = shiftRows.filter((row) => !row.isAvailability);
-      const availability = shiftRows.filter((row) => row.isAvailability);
-      const visibleDefinitions = boardActivityVisibility === 'all'
-        ? activityDefinitions
-        : activityDefinitions.filter((definition) => assigned.some((row) =>
-            String(row.activity || '').trim() === definition.activity
-          ));
+      const shiftRequirements = visibleRequirements
+        .filter((item) => item.shiftId === shift.id)
+        .sort((a, b) => String(a.activity || '').localeCompare(String(b.activity || ''), 'it'));
+      const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
 
-      const activitiesHtml = visibleDefinitions.map((definition) => {
-        const people = assigned.filter((row) =>
-          String(row.activity || '').trim() === definition.activity
+      const activitiesHtml = shiftRequirements.map((requirement) => {
+        const people = rows.filter((row) =>
+          !row.isAvailability
+          && row.shiftId === requirement.shiftId
+          && row.activityId === requirement.activityId
         );
+        const uncovered = requirementIsUncovered(requirement);
+        const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
         return `
-          <section class="assignment-board__activity"
+          <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'}"
             data-board-drop
-            data-board-shift-id="${escapeHtml(shift.id)}"
-            data-board-activity="${escapeHtml(definition.activity)}"
-            data-board-role="">
+            data-board-requirement-id="${escapeHtml(requirement.id)}">
             <header class="assignment-board__activity-head">
-              <strong>${escapeHtml(definition.label)}</strong>
+              <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
               <span class="assignment-board__activity-actions">
-                <span class="assignment-board__activity-count">${people.length}</span>
+                <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
                 <button type="button"
                   class="assignment-board__add-person"
                   data-board-add-person
-                  data-board-shift-id="${escapeHtml(shift.id)}"
-                  data-board-activity="${escapeHtml(definition.activity)}"
-                  data-board-role=""
-                  aria-label="Aggiungi persona a ${escapeHtml(definition.label)}"
+                  data-board-requirement-id="${escapeHtml(requirement.id)}"
+                  aria-label="Aggiungi persona a ${escapeHtml(prettifyActivityName(requirement.activity))}"
                   title="Aggiungi persona">＋</button>
               </span>
             </header>
+            ${uncovered ? `<div class="assignment-board__coverage-warning">Mancano ${missing} ${missing === 1 ? 'persona' : 'persone'}</div>` : ''}
             <div class="assignment-board__people">
-              ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Trascina qui</span>'}
+              ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Nessuna persona assegnata</span>'}
             </div>
           </section>`;
       }).join('');
@@ -1014,7 +1101,7 @@
             <span>${escapeHtml(shift.shift_label)}</span>
           </header>
           <div class="assignment-board__activities">
-            ${activitiesHtml || `<p class="empty-state">${boardActivityVisibility === 'assigned' ? 'Nessuna attività con assegnazioni.' : 'Nessuna attività disponibile con i filtri correnti.'}</p>`}
+            ${activitiesHtml || '<p class="empty-state">Nessuna attività prevista con i filtri correnti.</p>'}
           </div>
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
@@ -1028,23 +1115,9 @@
     assignmentBoard.innerHTML = `
       <div class="assignment-board__help">
         <strong>Gestione a schede</strong>
-        <span>Trascina un nominativo per spostarlo. Clicca sul nome per vedere tutte le sue attività; usa ✎ per modificarlo con gli stessi controlli della vista elenco.</span>
-        ${boardActivityVisibility === 'assigned' ? '<span>Per spostare una persona su un’attività vuota, usa “Mostra tutte le attività”.</span>' : ''}
-        ${nonStandardCount ? `<span class="assignment-board__notice">⚠ ${nonStandardCount} assegnazion${nonStandardCount === 1 ? 'e' : 'i'} con turno non standard restano gestibili nella vista Elenco.</span>` : ''}
+        <span>Sono mostrate tutte le attività previste. I box rossi non hanno ancora raggiunto il numero di persone necessario. Trascina un nominativo su una coppia turno-attività per spostarlo.</span>
       </div>
-      <div class="assignment-board">${columns || '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>'}</div>`;
-  }
-
-
-  function syncBoardActivityToggle() {
-    if (!boardActivityToggle) return;
-    const isBoard = assignmentView === 'board';
-    boardActivityToggle.hidden = !isBoard;
-    boardActivityToggle.textContent = boardActivityVisibility === 'all'
-      ? 'Mostra solo attività con assegnazioni'
-      : 'Mostra tutte le attività';
-    boardActivityToggle.setAttribute('aria-pressed', boardActivityVisibility === 'all' ? 'true' : 'false');
-    boardActivityToggle.classList.toggle('is-active', boardActivityVisibility === 'all');
+      <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
   }
 
   function setAssignmentView(nextView, { render = true } = {}) {
@@ -1057,7 +1130,6 @@
       assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
       assignmentViewToggle.classList.toggle('is-active', isBoard);
     }
-    syncBoardActivityToggle();
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentTable) assignmentTable.hidden = isBoard;
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
@@ -1065,9 +1137,9 @@
     if (render) renderAssignments();
   }
 
-
-  async function moveBoardItem(dragged, targetShiftId, targetActivity, targetRole = '') {
-    if (!dragged || !targetShiftId || !targetActivity) return;
+  async function moveBoardItem(dragged, targetRequirementId) {
+    const requirement = requirementById(targetRequirementId);
+    if (!dragged || !requirement) return;
 
     let current = null;
     let personId = '';
@@ -1083,9 +1155,7 @@
       personId = current.personId;
       assignmentId = current.id;
       sourceName = current.personName;
-      const sameDestination = current.shiftId === targetShiftId
-        && String(current.activity || '').trim() === targetActivity;
-      if (sameDestination) {
+      if (assignmentRequirementId(current) === requirement.id) {
         setStatus(assignmentBoardStatus, 'Il nominativo è già in questa attività e turno.');
         return;
       }
@@ -1095,7 +1165,7 @@
         setStatus(assignmentBoardStatus, 'Disponibilità non più presente. Aggiorna la pagina.', 'error');
         return;
       }
-      if (availability.shiftId !== targetShiftId) {
+      if (availability.shiftId !== requirement.shiftId) {
         setStatus(assignmentBoardStatus, 'La disponibilità può essere assegnata solo nel turno indicato dal volontario.', 'error');
         return;
       }
@@ -1113,13 +1183,7 @@
           action: 'save-assignment',
           assignmentId,
           personId,
-          shiftId: targetShiftId,
-          rawDay: null,
-          rawShift: null,
-          activity: targetActivity,
-          role: current && String(current.activity || '').trim() === targetActivity
-            ? (current.role || null)
-            : (targetRole || null),
+          requirementId: requirement.id,
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -1177,22 +1241,24 @@
       return unassignedAvailabilityRows().find((row) => row.id === boardEditContext.id) || null;
     }
     if (boardEditContext.kind === 'new') {
-      const shift = (snapshot?.shifts || []).find((row) => row.id === boardEditContext.shiftId);
-      if (!shift) return null;
+      const requirement = requirementById(boardEditContext.requirementId);
+      if (!requirement) return null;
       return {
         id: null,
         personId: '',
         personName: '',
-        shiftId: shift.id,
-        day: shift.day_label || '',
-        shift: shift.shift_label || '',
+        shiftId: requirement.shiftId,
+        day: requirement.day,
+        shift: requirement.shift,
         shiftMatched: true,
-        activity: boardEditContext.activity || '',
-        role: boardEditContext.role || '',
+        activityId: requirement.activityId,
+        activity: requirement.activity,
+        role: '',
         requestedProfile: '',
         note: '',
         currentResponse: null,
-        isResponsible: false
+        isResponsible: false,
+        requirementId: requirement.id
       };
     }
     return null;
@@ -1202,11 +1268,14 @@
     const source = boardEditSource();
     if (!source || !boardEditContent) return null;
     const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || source.personId || '';
-    const shiftId = boardEditContent.querySelector('[data-board-edit-shift]')?.value || source.shiftId || '';
+    const requirementId = boardEditContent.querySelector('[data-board-edit-requirement]')?.value || assignmentRequirementId(source) || source.requirementId || '';
+    const requirement = requirementById(requirementId);
     return {
       id: boardEditContext?.kind === 'assignment' ? source.id : null,
       personId,
-      shiftId
+      shiftId: requirement?.shiftId || source.shiftId || null,
+      day: requirement?.day || source.day || '',
+      shift: requirement?.shift || source.shift || ''
     };
   }
 
@@ -1217,12 +1286,13 @@
     node.innerHTML = candidate ? warningHtml(assignmentWarningDetails(candidate)) : '<span class="warning-none">—</span>';
   }
 
-  function openBoardAddPerson(shiftId, activity, role = '') {
-    boardEditContext = { kind: 'new', shiftId, activity, role };
+  function openBoardAddPerson(requirementId) {
+    boardEditContext = { kind: 'new', requirementId };
     const source = boardEditSource();
-    if (!source || !boardEditDialog) return;
+    const requirement = requirementById(requirementId);
+    if (!source || !requirement || !boardEditDialog) return;
 
-    boardEditTitle.textContent = `Aggiungi persona · ${displayActivity(source)}`;
+    boardEditTitle.textContent = `Aggiungi persona · ${prettifyActivityName(requirement.activity)}`;
     setStatus(boardEditStatus, '');
 
     boardEditContent.innerHTML = `
@@ -1230,14 +1300,11 @@
         <label class="field"><span>Persona</span>
           <select data-board-edit-person>${personOptions('')}</select>
         </label>
-        <label class="field"><span>Turno</span>
-          <select data-board-edit-shift>${shiftOptions(source)}</select>
-        </label>
-        <label class="field field--wide"><span>Attività</span>
-          <select data-board-edit-activity>${activityOptions(source)}</select>
+        <label class="field field--wide"><span>Turno + attività</span>
+          <select data-board-edit-requirement>${requirementOptions(requirement.id)}</select>
         </label>
         <div class="board-edit-info field--wide">
-          <div><span>Risposta</span>—</div>
+          <div><span>Copertura</span><strong>${requirement.assignedCount}/${requirement.requiredCount}</strong></div>
           <div><span>Responsabile</span>—</div>
         </div>
         <div class="board-edit-warning field--wide">
@@ -1259,6 +1326,7 @@
     if (!source || !boardEditDialog) return;
 
     const isAvailability = kind === 'availability';
+    const selectedRequirementId = isAvailability ? '' : assignmentRequirementId(source);
     const response = isAvailability ? '<span class="status-badge is-availability">Disponibilità</span>' : responseBadge(source.currentResponse);
     boardEditTitle.textContent = isAvailability ? `Assegna ${source.personName}` : `Modifica ${source.personName}`;
     setStatus(boardEditStatus, '');
@@ -1268,11 +1336,8 @@
         <label class="field"><span>Persona</span>
           <select data-board-edit-person ${isAvailability ? 'disabled' : ''}>${personOptions(source.personId)}</select>
         </label>
-        <label class="field"><span>Turno</span>
-          <select data-board-edit-shift ${isAvailability ? 'disabled' : ''}>${shiftOptions(source)}</select>
-        </label>
-        <label class="field field--wide"><span>Attività</span>
-          <select data-board-edit-activity>${activityOptions(isAvailability ? null : source)}</select>
+        <label class="field field--wide"><span>Turno + attività</span>
+          <select data-board-edit-requirement>${requirementOptions(selectedRequirementId, isAvailability ? source.shiftId : '')}</select>
         </label>
         <div class="board-edit-info field--wide">
           <div><span>Risposta</span>${response}</div>
@@ -1296,11 +1361,10 @@
     const isAvailability = boardEditContext?.kind === 'availability';
     const isNew = boardEditContext?.kind === 'new';
     const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || '';
-    const shiftId = boardEditContent.querySelector('[data-board-edit-shift]')?.value || '';
-    const activity = boardEditContent.querySelector('[data-board-edit-activity]')?.value || '';
+    const requirementId = boardEditContent.querySelector('[data-board-edit-requirement]')?.value || '';
 
-    if (!personId || !shiftId || !activity) {
-      setStatus(boardEditStatus, 'Seleziona persona, turno e attività.', 'error');
+    if (!personId || !requirementId) {
+      setStatus(boardEditStatus, 'Seleziona persona e coppia turno-attività.', 'error');
       return;
     }
 
@@ -1313,11 +1377,7 @@
             action: 'save-assignment',
             assignmentId: (isAvailability || isNew) ? null : source.id,
             personId,
-            shiftId,
-            rawDay: null,
-            rawShift: null,
-            activity: isNew && activity === assignmentCatalogValue(source) ? source.activity : activity,
-            role: isNew && activity === assignmentCatalogValue(source) ? (source.role || null) : null,
+            requirementId,
             requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
             note: source.note || null
           })
@@ -1396,7 +1456,6 @@
       assignmentViewToggle.setAttribute('aria-pressed', isBoard ? 'true' : 'false');
       assignmentViewToggle.classList.toggle('is-active', isBoard);
     }
-    syncBoardActivityToggle();
 
     if (isBoard) {
       renderAssignmentBoard();
@@ -1837,6 +1896,41 @@
       : '<p class="empty-state">Nessuna attività attiva.</p>';
   }
 
+  function requirementRowHtml(row = null, isNew = false) {
+    const requirementId = row?.id || '';
+    const coverage = row ? `${row.assignedCount}/${row.requiredCount}` : '—';
+    const uncovered = row ? requirementIsUncovered(row) : false;
+    return `
+      <tr class="${isNew ? 'is-new-row' : ''} ${uncovered ? 'is-requirement-uncovered' : ''}" data-requirement-row data-requirement-id="${escapeHtml(requirementId)}">
+        <td><select class="inline-select" data-requirement-shift>${shiftIdOptions(row?.shiftId || '')}</select></td>
+        <td><select class="inline-select" data-requirement-activity>${activityIdOptions(row?.activityId || '')}</select></td>
+        <td><input class="count-input" data-requirement-count type="number" min="1" max="999" step="1" value="${escapeHtml(row?.requiredCount || 1)}"></td>
+        <td><span class="coverage-count ${uncovered ? 'is-uncovered' : 'is-covered'}">${escapeHtml(coverage)}</span></td>
+        <td><div class="row-actions">
+          <button type="button" data-save-requirement>Salva</button>
+          ${isNew ? '<button type="button" data-cancel-new-requirement>Annulla</button>' : '<button class="is-danger" type="button" data-delete-requirement>Elimina</button>'}
+        </div><small class="row-save-status" data-row-status></small></td>
+      </tr>`;
+  }
+
+  function renderRequirementCatalog() {
+    if (!requirementCatalog) return;
+    if (!snapshot?.requirementsAvailable) {
+      setStatus(requirementStatus, 'Anagrafica esigenze non disponibile nel database.', 'error');
+      requirementCatalog.innerHTML = '<p class="empty-state">Le esigenze non sono ancora inizializzate.</p>';
+      return;
+    }
+    setStatus(requirementStatus, '');
+    const rows = requirements();
+    const body = [
+      ...(newRequirementOpen ? [requirementRowHtml(null, true)] : []),
+      ...rows.map((row) => requirementRowHtml(row, false))
+    ].join('');
+    requirementCatalog.innerHTML = body
+      ? `<table class="admin-table requirements-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      : '<p class="empty-state">Nessuna esigenza attiva.</p>';
+  }
+
   function filteredRaceProgram() {
     const personIds = selectedFilterValues(racePersonFilter);
     const q = String(raceCrewFilter?.value || '').trim().toLocaleLowerCase('it-IT');
@@ -1912,49 +2006,26 @@
     }
 
     detailTargetRow = rowNode || null;
-    const assignedRows = (snapshot?.assignments || []).filter((row) => row.shiftId === shiftId);
-    const groups = new Map();
-    for (const row of assignedRows) {
-      const label = displayActivity(row);
-      const catalogValue = assignmentCatalogValue(row)
-        || (snapshot?.activities || []).find((activity) => activity.name === row.activity)?.name
-        || '';
-      if (!groups.has(label)) groups.set(label, { label, catalogValue, people: [] });
-      groups.get(label).people.push(row.personName);
-      if (!groups.get(label).catalogValue && catalogValue) groups.get(label).catalogValue = catalogValue;
-    }
-
-    const grouped = [...groups.values()]
-      .map((item) => ({ ...item, people: [...new Set(item.people)].sort((a, b) => a.localeCompare(b, 'it')) }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
-
-    const usedCatalogValues = new Set(grouped.map((item) => item.catalogValue).filter(Boolean));
-    const otherActivities = (snapshot?.activities || [])
-      .filter((activity) => activity.active !== false && !usedCatalogValues.has(activity.name))
-      .sort((a, b) => a.name.localeCompare(b.name, 'it'));
+    const rows = requirements()
+      .filter((item) => item.shiftId === shiftId)
+      .sort((a, b) => String(a.activity || '').localeCompare(String(b.activity || ''), 'it'));
 
     detailTitle.textContent = `${shift.day_label} · ${shift.shift_label}`;
-    const currentHtml = grouped.length
-      ? `<table class="detail-table shift-activity-table"><thead><tr><th>Attività nel turno</th><th>Persone già assegnate</th><th></th></tr></thead><tbody>${grouped.map((item) => `
-          <tr>
-            <td><strong>${escapeHtml(item.label)}</strong></td>
-            <td>${escapeHtml(item.people.join('; '))}</td>
-            <td>${detailTargetRow && item.catalogValue ? `<button class="table-link" type="button" data-pick-shift-activity="${escapeHtml(item.catalogValue)}">Seleziona</button>` : ''}</td>
+    const currentHtml = rows.length
+      ? `<table class="detail-table shift-activity-table"><thead><tr><th>Attività prevista</th><th>Copertura</th><th></th></tr></thead><tbody>${rows.map((item) => `
+          <tr class="${requirementIsUncovered(item) ? 'is-requirement-uncovered' : ''}">
+            <td><strong>${escapeHtml(prettifyActivityName(item.activity))}</strong></td>
+            <td>${item.assignedCount}/${item.requiredCount}${requirementIsUncovered(item) ? ` · mancano ${item.requiredCount - item.assignedCount}` : ''}</td>
+            <td>${detailTargetRow ? `<button class="table-link" type="button" data-pick-shift-requirement="${escapeHtml(item.id)}">Seleziona</button>` : ''}</td>
           </tr>`).join('')}</tbody></table>`
-      : '<p class="empty-state">In questo turno non risultano ancora attività assegnate.</p>';
-
-    const otherHtml = detailTargetRow && otherActivities.length
-      ? `<details class="other-activities"><summary>Altre attività dell’anagrafica</summary><div class="other-activities__list">${otherActivities.map((activity) =>
-          `<button class="table-link" type="button" data-pick-shift-activity="${escapeHtml(activity.name)}">${escapeHtml(prettifyActivityName(activity.name))}</button>`
-        ).join('')}</div></details>`
-      : '';
+      : '<p class="empty-state">In questo turno non risultano attività previste.</p>';
 
     detailContent.innerHTML = `
-      <p class="intro detail-intro">Qui vedi come è già organizzato il turno. Puoi scegliere direttamente un’attività per la riga che stai compilando.</p>
-      ${currentHtml}
-      ${otherHtml}`;
+      <p class="intro detail-intro">Qui vedi le coppie turno-attività previste e la relativa copertura.</p>
+      ${currentHtml}`;
     detailDialog.showModal();
   }
+
 
   function personActivityWarningHtml(row) {
     const warnings = assignmentWarningDetails(row);
@@ -1962,23 +2033,14 @@
   }
 
   function personMoveCandidate(rowNode, row) {
-    const shiftValue = rowNode?.querySelector('[data-person-move-shift]')?.value || '';
-    if (shiftValue === 'raw') {
-      return {
-        id: row.id,
-        personId: row.personId,
-        shiftId: null,
-        day: row.day || '',
-        shift: row.shift || ''
-      };
-    }
-    const shift = (snapshot?.shifts || []).find((item) => item.id === shiftValue);
+    const requirementId = rowNode?.querySelector('[data-person-move-requirement]')?.value || assignmentRequirementId(row);
+    const requirement = requirementById(requirementId);
     return {
       id: row.id,
       personId: row.personId,
-      shiftId: shiftValue || null,
-      day: shift?.day_label || '',
-      shift: shift?.shift_label || ''
+      shiftId: requirement?.shiftId || row.shiftId || null,
+      day: requirement?.day || row.day || '',
+      shift: requirement?.shift || row.shift || ''
     };
   }
 
@@ -1992,24 +2054,20 @@
     const rows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
-        const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
-        const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
-        return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
+        const reqA = requirementForAssignment(a);
+        const reqB = requirementForAssignment(b);
+        return (reqA?.shiftSortOrder ?? 9999) - (reqB?.shiftSortOrder ?? 9999)
+          || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
 
     return rows.length
       ? `<div class="person-activities-table-wrap"><table class="detail-table person-activities-table">
-          <thead><tr><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th><th>Warning</th><th></th></tr></thead>
+          <thead><tr><th>Turno + attività</th><th>Ruolo</th><th>Risposta</th><th>Warning</th><th></th></tr></thead>
           <tbody>${rows.map((row) => `
             <tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}" data-person-assignment-row="${escapeHtml(row.id)}">
               <td>
-                <select class="person-activity-move-select person-activity-move-select--shift" data-person-move-shift>
-                  ${shiftOptions(row)}
-                </select>
-              </td>
-              <td>
-                <select class="person-activity-move-select" data-person-move-activity>
-                  ${activityOptions(row)}
+                <select class="person-activity-move-select" data-person-move-requirement>
+                  ${requirementOptions(assignmentRequirementId(row))}
                 </select>
               </td>
               <td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td>
@@ -2021,19 +2079,14 @@
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
   }
 
-  function personAddActivityForm(personId, defaultShiftId = '') {
-    const source = defaultShiftId
-      ? { shiftId: defaultShiftId, shiftMatched: true }
-      : null;
-    const candidate = defaultShiftId ? { id: null, personId, shiftId: defaultShiftId } : null;
+  function personAddActivityForm(personId, defaultRequirementId = '') {
+    const requirement = requirementById(defaultRequirementId);
+    const candidate = requirement ? { id: null, personId, shiftId: requirement.shiftId } : null;
     return `
       <div class="person-add-activity" data-person-add-activity-form hidden>
-        <div class="person-add-activity__grid">
-          <label class="field"><span>Turno</span>
-            <select data-person-add-shift>${shiftOptions(source)}</select>
-          </label>
-          <label class="field"><span>Attività</span>
-            <select data-person-add-activity>${activityOptions(null)}</select>
+        <div class="person-add-activity__grid person-add-activity__grid--pair">
+          <label class="field"><span>Turno + attività</span>
+            <select data-person-add-requirement>${requirementOptions(defaultRequirementId)}</select>
           </label>
           <div class="person-add-activity__warning">
             <span>Warning</span>
@@ -2079,6 +2132,7 @@
       ? `<p class="intro detail-intro"><strong>${assignments.length}</strong> attività già assegnate su <strong>${days.size}</strong> ${days.size === 1 ? 'giorno' : 'giorni'}.</p>`
       : '<p class="empty-state">Non risultano attività già assegnate a questa persona.</p>';
 
+    const selectedRequirementId = selected ? assignmentRequirementId(selected) : '';
     personActivitiesContent.dataset.personId = personId;
     personActivitiesContent.dataset.selectedAssignmentId = selectedAssignmentId || '';
     personActivitiesContent.innerHTML = `
@@ -2086,7 +2140,7 @@
       <div class="person-activities-toolbar">
         <button class="button button--primary" type="button" data-person-add-activity-open>＋ Aggiungi un'altra attività</button>
       </div>
-      ${personAddActivityForm(personId, selected?.shiftId || '')}
+      ${personAddActivityForm(personId, selectedRequirementId)}
       ${intro}
       ${personActivitiesHtml(personId, selectedAssignmentId)}`;
     personActivitiesDialog.showModal();
@@ -2095,29 +2149,15 @@
   async function movePersonAssignmentFromPopup(assignmentId, button) {
     const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
     const rowNode = button?.closest('[data-person-assignment-row]');
-    const shiftValue = rowNode?.querySelector('[data-person-move-shift]')?.value || '';
-    const activity = rowNode?.querySelector('[data-person-move-activity]')?.value || '';
+    const requirementId = rowNode?.querySelector('[data-person-move-requirement]')?.value || '';
     const statusNode = personActivitiesContent?.querySelector('[data-person-activities-status]');
-    if (!row || !shiftValue || !activity) return;
+    if (!row || !requirementId) return;
 
-    const currentActivity = assignmentCatalogValue(row);
-    const sameShift = shiftValue === 'raw' ? !row.shiftId : shiftValue === row.shiftId;
-    if (sameShift && activity === currentActivity) {
+    if (requirementId === assignmentRequirementId(row)) {
       setStatus(statusNode, 'Turno e attività sono già quelli attuali.');
       return;
     }
 
-    let shiftId = null;
-    let rawDay = null;
-    let rawShift = null;
-    if (shiftValue === 'raw') {
-      rawDay = row.day || null;
-      rawShift = row.shift || null;
-    } else {
-      shiftId = shiftValue;
-    }
-
-    const preserveCurrentActivity = activity === currentActivity;
     await withButtonBusy(button, 'Spostamento…', async () => {
       try {
         const result = await api(API, {
@@ -2127,11 +2167,7 @@
             action: 'save-assignment',
             assignmentId: row.id,
             personId: row.personId,
-            shiftId,
-            rawDay,
-            rawShift,
-            activity: preserveCurrentActivity ? row.activity : activity,
-            role: preserveCurrentActivity ? (row.role || null) : null,
+            requirementId,
             requestedProfile: row.requestedProfile || null,
             note: row.note || null
           })
@@ -2148,23 +2184,23 @@
 
   function refreshPersonAddWarning() {
     const personId = personActivitiesContent?.dataset.personId || '';
-    const shiftId = personActivitiesContent?.querySelector('[data-person-add-shift]')?.value || '';
+    const requirementId = personActivitiesContent?.querySelector('[data-person-add-requirement]')?.value || '';
+    const requirement = requirementById(requirementId);
     const warningNode = personActivitiesContent?.querySelector('[data-person-add-warning]');
     if (!warningNode) return;
-    if (!personId || !shiftId) {
+    if (!personId || !requirement) {
       warningNode.innerHTML = '<span class="warning-none">—</span>';
       return;
     }
-    warningNode.innerHTML = personActivityWarningHtml({ id: null, personId, shiftId });
+    warningNode.innerHTML = personActivityWarningHtml({ id: null, personId, shiftId: requirement.shiftId });
   }
 
   async function addPersonActivityFromPopup(button) {
     const personId = personActivitiesContent?.dataset.personId || '';
-    const shiftId = personActivitiesContent?.querySelector('[data-person-add-shift]')?.value || '';
-    const activity = personActivitiesContent?.querySelector('[data-person-add-activity]')?.value || '';
+    const requirementId = personActivitiesContent?.querySelector('[data-person-add-requirement]')?.value || '';
     const statusNode = personActivitiesContent?.querySelector('[data-person-add-status]');
-    if (!personId || !shiftId || !activity) {
-      setStatus(statusNode, 'Seleziona turno e attività.', 'error');
+    if (!personId || !requirementId) {
+      setStatus(statusNode, 'Seleziona una coppia turno-attività.', 'error');
       return;
     }
 
@@ -2177,11 +2213,7 @@
             action: 'save-assignment',
             assignmentId: null,
             personId,
-            shiftId,
-            rawDay: null,
-            rawShift: null,
-            activity,
-            role: null,
+            requirementId,
             requestedProfile: null,
             note: null
           })
@@ -2308,6 +2340,7 @@
     renderAssignments();
     renderConfirmationChanges();
     renderActivityCatalog();
+    renderRequirementCatalog();
     renderRaceProgram();
     renderPersonReport();
     renderActivityReport();
@@ -2461,28 +2494,12 @@
     const assignmentId = rowNode.dataset.assignmentId || null;
     const current = assignmentId ? (snapshot?.assignments || []).find((row) => row.id === assignmentId) : null;
     const personId = rowNode.querySelector('[data-inline-person]')?.value || '';
-    const shiftValue = rowNode.querySelector('[data-inline-shift]')?.value || '';
-    const activity = rowNode.querySelector('[data-inline-activity]')?.value || '';
+    const requirementId = rowNode.querySelector('[data-inline-requirement]')?.value || '';
 
-    if (!personId || !shiftValue || !activity) {
-      status.textContent = 'Seleziona persona, turno e attività.';
+    if (!personId || !requirementId) {
+      status.textContent = 'Seleziona persona e coppia turno-attività.';
       status.className = 'row-save-status is-error';
       return;
-    }
-
-    let shiftId = null;
-    let rawDay = null;
-    let rawShiftValue = null;
-    if (shiftValue === 'raw') {
-      if (!current || current.shiftMatched) {
-        status.textContent = 'Seleziona un turno dall’elenco.';
-        status.className = 'row-save-status is-error';
-        return;
-      }
-      rawDay = current.day;
-      rawShiftValue = current.shift;
-    } else {
-      shiftId = shiftValue;
     }
 
     status.textContent = 'Salvataggio…';
@@ -2495,11 +2512,7 @@
           action: 'save-assignment',
           assignmentId,
           personId,
-          shiftId,
-          rawDay,
-          rawShift: rawShiftValue,
-          activity,
-          role: null,
+          requirementId,
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -2511,6 +2524,7 @@
       status.className = 'row-save-status is-error';
     }
   }
+
 
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
   kpis?.addEventListener('click', (event) => {
@@ -2542,13 +2556,6 @@
     setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
   });
 
-  boardActivityToggle?.addEventListener('click', () => {
-    boardActivityVisibility = boardActivityVisibility === 'all' ? 'assigned' : 'all';
-    try { sessionStorage.setItem('coastal2026-admin-board-activities', boardActivityVisibility); } catch {}
-    syncBoardActivityToggle();
-    renderAssignmentBoard();
-  });
-
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
     setAssignmentView('list', { render: false });
     setMultiFilterValues(assignmentTypeFilter, ['assigned']);
@@ -2560,6 +2567,14 @@
     newActivityOpen = true;
     renderActivityCatalog();
   });
+  document.querySelector('[data-new-requirement]')?.addEventListener('click', () => {
+    if (!snapshot?.requirementsAvailable) {
+      alert('L’anagrafica esigenze non è disponibile nel database.');
+      return;
+    }
+    newRequirementOpen = true;
+    renderRequirementCatalog();
+  });
   document.querySelector('[data-new-race-entry]')?.addEventListener('click', () => {
     if (!snapshot?.raceProgramAvailable) {
       alert('Il programma gare non è ancora inizializzato nel database.');
@@ -2569,7 +2584,7 @@
     renderRaceProgram();
   });
 
-  [assignmentTypeFilter, assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
+  [assignmentTypeFilter, assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
@@ -2601,20 +2616,7 @@
   assignmentTable?.addEventListener('change', (event) => {
     const rowNode = event.target.closest('[data-assignment-row]');
     if (!rowNode) return;
-
-    if (event.target.matches('[data-inline-shift]')) {
-      const select = event.target;
-      const shift = (snapshot?.shifts || []).find((item) => item.id === select.value);
-      const display = rowNode.querySelector('[data-shift-display]');
-      const button = display?.querySelector('[data-show-shift-activities]');
-      if (shift && button) {
-        button.textContent = `${shift.day_label} · ${shift.shift_label}`;
-        button.dataset.showShiftActivities = shift.id;
-      }
-    }
-
-    if (event.target.matches('[data-inline-person], [data-inline-shift]')) refreshRowWarnings(rowNode);
-
+    if (event.target.matches('[data-inline-person], [data-inline-requirement]')) refreshRowWarnings(rowNode);
     if (event.target.matches('select[data-inline-person]') && event.target.value) {
       showPersonActivitiesPopup(event.target.value);
     }
@@ -2624,40 +2626,34 @@
     const rowNode = event.target.closest('[data-assignment-row]');
     const save = event.target.closest('[data-save-inline-assignment]');
     const cancelEdit = event.target.closest('[data-cancel-inline-assignment]');
-    const editShift = event.target.closest('[data-edit-shift]');
+    const editRequirement = event.target.closest('[data-edit-requirement]');
     const editPerson = event.target.closest('[data-edit-person]');
-    const editActivity = event.target.closest('[data-edit-activity]');
     const shiftLink = event.target.closest('[data-show-shift-activities]');
     const responsible = event.target.closest('[data-open-responsible]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     const person = event.target.closest('[data-show-person]');
     const activity = event.target.closest('[data-show-activity]');
+    const addGap = event.target.closest('[data-add-person-requirement]');
 
-    if (responsible && rowNode?.dataset.assignmentId) {
+    if (addGap) {
+      openBoardAddPerson(addGap.dataset.addPersonRequirement || '');
+    } else if (responsible && rowNode?.dataset.assignmentId) {
       showResponsiblePopup(responsible.dataset.openResponsible || rowNode.dataset.assignmentId);
     } else if (shiftLink && rowNode) {
       const shiftId = shiftLink.dataset.showShiftActivities;
       if (shiftId) showShiftActivities(shiftId, rowNode);
-    } else if (editShift && rowNode) {
-      const display = rowNode.querySelector('[data-shift-display]');
-      const select = rowNode.querySelector('[data-inline-shift]');
+    } else if (editRequirement && rowNode) {
+      const display = rowNode.querySelector('[data-activity-display]');
+      const edit = rowNode.querySelector('[data-requirement-edit]');
       if (display) display.hidden = true;
-      if (select) {
-        select.hidden = false;
-        select.focus();
+      if (edit) {
+        edit.hidden = false;
+        edit.querySelector('[data-inline-requirement]')?.focus();
       }
     } else if (editPerson && rowNode) {
       const display = rowNode.querySelector('[data-person-display]');
       const select = rowNode.querySelector('[data-inline-person]');
-      if (display) display.hidden = true;
-      if (select) {
-        select.hidden = false;
-        select.focus();
-      }
-    } else if (editActivity && rowNode) {
-      const display = rowNode.querySelector('[data-activity-display]');
-      const select = rowNode.querySelector('[data-inline-activity]');
       if (display) display.hidden = true;
       if (select) {
         select.hidden = false;
@@ -2710,8 +2706,8 @@
   assignmentBoard?.addEventListener('dragover', (event) => {
     const dropzone = event.target.closest('[data-board-drop]');
     if (!dropzone || !boardDragState) return;
-    const targetShiftId = dropzone.dataset.boardShiftId || '';
-    const allowed = boardCanDrop(boardDragState, targetShiftId);
+    const targetRequirementId = dropzone.dataset.boardRequirementId || '';
+    const allowed = boardCanDrop(boardDragState, targetRequirementId);
     if (!allowed) {
       event.dataTransfer.dropEffect = 'none';
       return;
@@ -2739,16 +2735,11 @@
     const dropzone = event.target.closest('[data-board-drop]');
     if (!dropzone || !boardDragState) return;
     const dragged = { ...boardDragState };
-    const targetShiftId = dropzone.dataset.boardShiftId || '';
-    if (!boardCanDrop(dragged, targetShiftId)) return;
+    const targetRequirementId = dropzone.dataset.boardRequirementId || '';
+    if (!boardCanDrop(dragged, targetRequirementId)) return;
     event.preventDefault();
     dropzone.classList.remove('is-drop-target');
-    await moveBoardItem(
-      dragged,
-      targetShiftId,
-      dropzone.dataset.boardActivity || '',
-      dropzone.dataset.boardRole || ''
-    );
+    await moveBoardItem(dragged, targetRequirementId);
   });
 
   assignmentBoard?.addEventListener('dragend', (event) => {
@@ -2764,11 +2755,7 @@
     const addPerson = event.target.closest('[data-board-add-person]');
     if (addPerson) {
       event.stopPropagation();
-      openBoardAddPerson(
-        addPerson.dataset.boardShiftId || '',
-        addPerson.dataset.boardActivity || '',
-        addPerson.dataset.boardRole || ''
-      );
+      openBoardAddPerson(addPerson.dataset.boardRequirementId || '');
       return;
     }
 
@@ -2847,6 +2834,75 @@
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'delete-activity', activityId: rowNode.dataset.activityId })
+        });
+        await loadSnapshot();
+      } catch (error) { alert(error.message); }
+    }
+  });
+
+  requirementCatalog?.addEventListener('click', async (event) => {
+    const rowNode = event.target.closest('[data-requirement-row]');
+    if (!rowNode) return;
+    const save = event.target.closest('[data-save-requirement]');
+    const remove = event.target.closest('[data-delete-requirement]');
+    const cancel = event.target.closest('[data-cancel-new-requirement]');
+    const status = rowNode.querySelector('[data-row-status]');
+
+    if (cancel) {
+      newRequirementOpen = false;
+      renderRequirementCatalog();
+      return;
+    }
+
+    if (save) {
+      const shiftId = rowNode.querySelector('[data-requirement-shift]')?.value || '';
+      const activityId = rowNode.querySelector('[data-requirement-activity]')?.value || '';
+      const requiredCount = Number(rowNode.querySelector('[data-requirement-count]')?.value || 0);
+      if (!shiftId || !activityId || !Number.isInteger(requiredCount) || requiredCount < 1) {
+        status.textContent = 'Seleziona turno, attività e un numero di persone valido.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      setRowBusy(rowNode, true, save);
+      try {
+        await withButtonBusy(save, 'Salvataggio…', async () => {
+          try {
+            const result = await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save-requirement',
+                requirementId: rowNode.dataset.requirementId || null,
+                shiftId,
+                activityId,
+                requiredCount
+              })
+            });
+            newRequirementOpen = false;
+            await loadSnapshot();
+            if (result?.requirement?.movedAssignments) {
+              setStatus(requirementStatus, `Esigenza salvata. Spostate automaticamente ${result.requirement.movedAssignments} assegnazioni.`, 'success');
+            }
+          } catch (error) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
+        });
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
+      }
+      return;
+    }
+
+    if (remove) {
+      const requirement = requirementById(rowNode.dataset.requirementId || '');
+      if (!requirement) return;
+      if (!confirm(`Eliminare l’esigenza “${requirementLabel(requirement)}”? È possibile solo se non ci sono persone assegnate.`)) return;
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-requirement', requirementId: requirement.id })
         });
         await loadSnapshot();
       } catch (error) { alert(error.message); }
@@ -2983,23 +3039,17 @@
       return;
     }
 
-    const pick = event.target.closest('[data-pick-shift-activity]');
+    const pick = event.target.closest('[data-pick-shift-requirement]');
     if (!pick || !detailTargetRow) return;
-    const value = pick.dataset.pickShiftActivity || '';
-    const select = detailTargetRow.querySelector('[data-inline-activity]');
+    const value = pick.dataset.pickShiftRequirement || '';
+    const select = detailTargetRow.querySelector('[data-inline-requirement]');
     if (!select || ![...select.options].some((option) => option.value === value)) return;
 
     select.value = value;
-    const display = detailTargetRow.querySelector('[data-activity-display]');
-    const displayButton = display?.querySelector('[data-show-activity]');
-    if (displayButton) {
-      const label = prettifyActivityName(value);
-      displayButton.textContent = label;
-      displayButton.dataset.showActivity = label;
-    }
+    refreshRowWarnings(detailTargetRow);
     const status = detailTargetRow.querySelector('[data-row-status]');
     if (status) {
-      status.textContent = 'Attività selezionata dal turno. Premi Salva.';
+      status.textContent = 'Coppia turno-attività selezionata. Premi Salva.';
       status.className = 'row-save-status is-ok';
     }
     detailDialog.close();
@@ -3033,7 +3083,7 @@
         form.hidden = false;
         openAdd.hidden = true;
         refreshPersonAddWarning();
-        form.querySelector('[data-person-add-activity]')?.focus();
+        form.querySelector('[data-person-add-requirement]')?.focus();
       }
       return;
     }
@@ -3055,13 +3105,13 @@
   });
 
   personActivitiesContent?.addEventListener('change', (event) => {
-    if (event.target.matches('[data-person-add-shift]')) {
+    if (event.target.matches('[data-person-add-requirement]')) {
       refreshPersonAddWarning();
       return;
     }
 
     const rowNode = event.target.closest('[data-person-assignment-row]');
-    if (rowNode && event.target.matches('[data-person-move-shift], [data-person-move-activity]')) {
+    if (rowNode && event.target.matches('[data-person-move-requirement]')) {
       const assignmentId = rowNode.dataset.personAssignmentRow || '';
       const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
       if (row) refreshPersonMoveWarning(rowNode, row);
@@ -3072,7 +3122,7 @@
   personActivitiesDialog?.addEventListener('click', (event) => { if (event.target === personActivitiesDialog) personActivitiesDialog.close(); });
 
   boardEditContent?.addEventListener('change', (event) => {
-    if (event.target.matches('[data-board-edit-person], [data-board-edit-shift]')) refreshBoardEditWarnings();
+    if (event.target.matches('[data-board-edit-person], [data-board-edit-requirement]')) refreshBoardEditWarnings();
   });
   boardEditSave?.addEventListener('click', saveBoardEdit);
   boardEditDelete?.addEventListener('click', deleteBoardEdit);

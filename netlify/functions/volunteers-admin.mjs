@@ -45,7 +45,7 @@ async function adminReadOptionalColumn(operation, path, options) {
 }
 
 async function adminSnapshot() {
-  const [people, shifts, activities, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram] = await Promise.all([
+  const [people, shifts, activities, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
     adminRead('persone', 'volunteer_people', {
       query: {
         select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
@@ -100,6 +100,13 @@ async function adminSnapshot() {
         active: 'eq.true',
         order: 'person_name.asc,crew_label.asc'
       }
+    }),
+    adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
+      query: {
+        select: 'id,shift_id,activity_id,required_count,active,created_at,updated_at',
+        active: 'eq.true',
+        order: 'created_at.asc'
+      }
     })
   ]);
 
@@ -113,6 +120,7 @@ async function adminSnapshot() {
   const responseRows = rows(responses);
   const availabilityRows = rows(availability);
   const raceRows = rows(raceProgram);
+  const requirementRows = rows(requirements);
 
   const personById = new Map(peopleRows.map((row) => [row.id, row]));
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
@@ -326,6 +334,43 @@ async function adminSnapshot() {
 
   postConfirmationChanges.sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'));
 
+  const assignmentsByRequirementKey = new Map();
+  for (const assignment of hydratedAssignments) {
+    if (!assignment.shiftId || !assignment.activityId) continue;
+    const key = `${assignment.shiftId}|${assignment.activityId}`;
+    if (!assignmentsByRequirementKey.has(key)) assignmentsByRequirementKey.set(key, []);
+    assignmentsByRequirementKey.get(key).push(assignment);
+  }
+
+  const hydratedRequirements = requirementRows.map((requirement) => {
+    const shift = shiftById.get(requirement.shift_id) || null;
+    const activity = activityById.get(requirement.activity_id) || null;
+    const assigned = assignmentsByRequirementKey.get(`${requirement.shift_id}|${requirement.activity_id}`) || [];
+    const confirmedCount = assigned.filter((row) => row.currentResponse === 'confirmed').length;
+    const declinedCount = assigned.filter((row) => row.currentResponse === 'declined').length;
+    const pendingCount = assigned.length - confirmedCount - declinedCount;
+    return {
+      id: requirement.id,
+      shiftId: requirement.shift_id,
+      day: shift?.day_label || '',
+      shift: shift?.shift_label || '',
+      shiftSortOrder: shift?.sort_order ?? 9999,
+      activityId: requirement.activity_id,
+      activity: activity?.name || 'Attività non disponibile',
+      requiredCount: Number(requirement.required_count || 0),
+      assignedCount: assigned.length,
+      confirmedCount,
+      declinedCount,
+      pendingCount,
+      active: requirement.active !== false,
+      createdAt: requirement.created_at || null,
+      updatedAt: requirement.updated_at || null
+    };
+  }).sort((a, b) =>
+    (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999)
+    || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+  );
+
   const hydratedRaceProgram = raceRows.map((entry) => {
     const person = personById.get(entry.person_id) || null;
     return {
@@ -348,6 +393,8 @@ async function adminSnapshot() {
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
     assignments: hydratedAssignments,
+    requirementsAvailable: requirements !== null,
+    requirements: hydratedRequirements,
     postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
     raceProgramAvailable: raceProgram !== null,
@@ -415,6 +462,37 @@ function normalizeRaceTime(value) {
   return normalized;
 }
 
+async function requireRequirementsTable() {
+  const probe = await adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
+    query: { select: 'id', limit: 1 }
+  });
+  if (probe === null) {
+    throw new ApiError('L’anagrafica delle esigenze non è ancora inizializzata nel database.', 503, 'REQUIREMENTS_NOT_INITIALIZED');
+  }
+}
+
+async function resolveRequirement(requirementId) {
+  if (!isUuid(requirementId)) throw new ApiError('Esigenza non valida.', 400, 'INVALID_REQUIREMENT');
+  const requirementRows = await adminRead('esigenza attività', 'volunteer_activity_requirements', {
+    query: {
+      select: 'id,shift_id,activity_id,required_count,active',
+      id: `eq.${requirementId}`,
+      active: 'eq.true',
+      limit: 1
+    }
+  });
+  const requirement = rows(requirementRows)[0] || null;
+  if (!requirement) throw new ApiError('Esigenza non trovata o non attiva.', 404, 'REQUIREMENT_NOT_FOUND');
+
+  const activityRows = await adminRead('attività esigenza', 'volunteer_activities', {
+    query: { select: 'id,name,active', id: `eq.${requirement.activity_id}`, limit: 1 }
+  });
+  const activity = rows(activityRows)[0] || null;
+  if (!activity?.active) throw new ApiError('L’attività prevista non è attiva.', 400, 'REQUIREMENT_ACTIVITY_INACTIVE');
+
+  return { requirement, activity };
+}
+
 async function requireRaceProgramTable() {
   const probe = await adminReadOptional('programma gare', 'volunteer_race_program', {
     query: { select: 'id', limit: 1 }
@@ -456,22 +534,50 @@ export default async (request) => {
       if (action === 'save-assignment') {
         const personId = clean(body.personId, 60);
         const assignmentId = clean(body.assignmentId, 60) || null;
-        const shiftId = clean(body.shiftId, 60) || null;
-        const activity = clean(body.activity, 200);
+        const requirementId = clean(body.requirementId, 60) || null;
+        let shiftId = clean(body.shiftId, 60) || null;
+        let activity = clean(body.activity, 200);
+        let role = clean(body.role, 200) || null;
+
         if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
         if (assignmentId && !isUuid(assignmentId)) throw new ApiError('Assegnazione non valida.', 400, 'INVALID_ASSIGNMENT');
-        if (shiftId && !isUuid(shiftId)) throw new ApiError('Turno non valido.', 400, 'INVALID_SHIFT');
-        if (!activity) throw new ApiError('Indica l’attività.', 400, 'ACTIVITY_REQUIRED');
+
+        const requirementsProbe = await adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
+          query: { select: 'id', limit: 1 }
+        });
+
+        if (requirementsProbe !== null) {
+          if (!requirementId) throw new ApiError('Seleziona una coppia turno-attività prevista.', 400, 'REQUIREMENT_REQUIRED');
+          const resolved = await resolveRequirement(requirementId);
+          shiftId = resolved.requirement.shift_id;
+          activity = resolved.activity.name;
+
+          if (assignmentId) {
+            const currentRows = await adminRead('assegnazione corrente', 'volunteer_assignments', {
+              query: { select: 'id,shift_id,activity_id,role', id: `eq.${assignmentId}`, active: 'eq.true', limit: 1 }
+            });
+            const current = rows(currentRows)[0] || null;
+            role = current
+              && current.activity_id === resolved.requirement.activity_id
+              ? (current.role || null)
+              : null;
+          } else {
+            role = null;
+          }
+        } else {
+          if (shiftId && !isUuid(shiftId)) throw new ApiError('Turno non valido.', 400, 'INVALID_SHIFT');
+          if (!activity) throw new ApiError('Indica l’attività.', 400, 'ACTIVITY_REQUIRED');
+        }
 
         const result = await rpc('admin_save_volunteer_assignment', {
           p_actor_name: actorName,
           p_assignment_id: assignmentId,
           p_person_id: personId,
           p_shift_id: shiftId,
-          p_raw_day: clean(body.rawDay, 80) || null,
-          p_raw_shift: clean(body.rawShift, 80) || null,
+          p_raw_day: requirementsProbe !== null ? null : (clean(body.rawDay, 80) || null),
+          p_raw_shift: requirementsProbe !== null ? null : (clean(body.rawShift, 80) || null),
           p_activity: activity,
-          p_role: clean(body.role, 200) || null,
+          p_role: role,
           p_requested_profile: clean(body.requestedProfile, 200) || null,
           p_note: clean(body.note, 1000) || null
         });
@@ -567,6 +673,14 @@ export default async (request) => {
       if (action === 'delete-activity') {
         const activityId = clean(body.activityId, 60);
         if (!isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+
+        const requirementRows = await adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
+          query: { select: 'id', activity_id: `eq.${activityId}`, active: 'eq.true', limit: 1 }
+        });
+        if (requirementRows !== null && rows(requirementRows).length) {
+          throw new ApiError('Non puoi eliminare un’attività finché è usata nelle esigenze per turno.', 409, 'ACTIVITY_HAS_REQUIREMENTS');
+        }
+
         const currentRows = await supabaseRequest('volunteer_activities', {
           query: { select: 'id,name,active', id: `eq.${activityId}`, limit: 1 }
         });
@@ -587,6 +701,58 @@ export default async (request) => {
           newValue: { ...current, active: false }
         });
         return json({ ok: true });
+      }
+
+      if (action === 'save-requirement') {
+        await requireRequirementsTable();
+        const requirementId = clean(body.requirementId, 60) || null;
+        const shiftId = clean(body.shiftId, 60);
+        const activityId = clean(body.activityId, 60);
+        const requiredCount = Number(body.requiredCount);
+
+        if (requirementId && !isUuid(requirementId)) throw new ApiError('Esigenza non valida.', 400, 'INVALID_REQUIREMENT');
+        if (!isUuid(shiftId)) throw new ApiError('Turno non valido.', 400, 'INVALID_SHIFT');
+        if (!isUuid(activityId)) throw new ApiError('Attività non valida.', 400, 'INVALID_ACTIVITY');
+        if (!Number.isInteger(requiredCount) || requiredCount < 1 || requiredCount > 999) {
+          throw new ApiError('Il numero di persone necessarie deve essere compreso tra 1 e 999.', 400, 'INVALID_REQUIRED_COUNT');
+        }
+
+        try {
+          const result = await rpc('admin_save_volunteer_activity_requirement', {
+            p_actor_name: actorName,
+            p_requirement_id: requirementId,
+            p_shift_id: shiftId,
+            p_activity_id: activityId,
+            p_required_count: requiredCount
+          });
+          return json({ ok: true, requirement: result });
+        } catch (error) {
+          const message = clean(error?.payload?.message || error?.message || '', 200);
+          if (message.includes('VOLUNTEER_REQUIREMENT_DUPLICATE')) {
+            throw new ApiError('Esiste già un’esigenza per questa attività e questo turno.', 409, 'REQUIREMENT_DUPLICATE');
+          }
+          throw error;
+        }
+      }
+
+      if (action === 'delete-requirement') {
+        await requireRequirementsTable();
+        const requirementId = clean(body.requirementId, 60);
+        if (!isUuid(requirementId)) throw new ApiError('Esigenza non valida.', 400, 'INVALID_REQUIREMENT');
+
+        try {
+          const result = await rpc('admin_deactivate_volunteer_activity_requirement', {
+            p_actor_name: actorName,
+            p_requirement_id: requirementId
+          });
+          return json({ ok: true, requirement: result });
+        } catch (error) {
+          const message = clean(error?.payload?.message || error?.message || '', 200);
+          if (message.includes('VOLUNTEER_REQUIREMENT_HAS_ASSIGNMENTS')) {
+            throw new ApiError('Non puoi eliminare questa esigenza finché contiene persone assegnate.', 409, 'REQUIREMENT_HAS_ASSIGNMENTS');
+          }
+          throw error;
+        }
       }
 
       if (action === 'save-race-entry') {
