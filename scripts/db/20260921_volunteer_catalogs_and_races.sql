@@ -1,4 +1,4 @@
--- PREPARATA PER feature/volontari. NON ESEGUIRE SENZA AUTORIZZAZIONE ESPLICITA.
+-- APPLICATA al progetto Supabase coastalrowing2026 il 21/09/2026 su autorizzazione esplicita.
 -- Anagrafiche attività e programma gare organizzativo.
 -- Sorgenti:
 -- attività.xlsx sha256 d9a158cd4dd9f16c8e3c91be2eaeee8faa1201c68cbba1812c26dc32c62883eb
