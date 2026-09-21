@@ -220,6 +220,135 @@
       .join('');
   }
 
+  function closePersonSearchSelects(except = null) {
+    document.querySelectorAll('.person-search-select.is-open').forEach((wrapper) => {
+      if (wrapper === except) return;
+      wrapper.classList.remove('is-open');
+      const panel = wrapper.querySelector('.person-search-select__panel');
+      if (panel) panel.hidden = true;
+    });
+  }
+
+  function initSearchablePersonSelect(select) {
+    if (!select || select.disabled || select.dataset.searchablePerson === 'true') return;
+    select.dataset.searchablePerson = 'true';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'person-search-select';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.classList.add('person-search-select__source');
+    select.tabIndex = -1;
+
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'person-search-select__input';
+    input.placeholder = 'Digita il nominativo…';
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', 'Cerca persona');
+
+    const panel = document.createElement('div');
+    panel.className = 'person-search-select__panel';
+    panel.hidden = true;
+
+    wrapper.prepend(input);
+    wrapper.appendChild(panel);
+
+    const selectedOption = () => [...select.options].find((option) => option.value === select.value) || null;
+    const selectedLabel = () => selectedOption()?.textContent?.trim() || '';
+    let activeIndex = -1;
+
+    const close = ({ restore = false } = {}) => {
+      wrapper.classList.remove('is-open');
+      panel.hidden = true;
+      activeIndex = -1;
+      if (restore) input.value = selectedLabel();
+    };
+
+    const choose = (value) => {
+      const option = [...select.options].find((item) => item.value === value);
+      if (!option) return;
+      select.value = option.value;
+      input.value = option.textContent.trim();
+      close();
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const render = (query = '') => {
+      const normalized = normalizeFilterSearch(query);
+      const options = [...select.options]
+        .filter((option) => option.value)
+        .filter((option) => {
+          if (!normalized) return true;
+          const haystack = normalizeFilterSearch(option.textContent);
+          return normalized.split(/\s+/).filter(Boolean).every((token) => haystack.includes(token));
+        })
+        .slice(0, 80);
+
+      activeIndex = options.length ? 0 : -1;
+      panel.innerHTML = options.length
+        ? options.map((option, index) => `<button type="button" class="person-search-select__option ${index === activeIndex ? 'is-active' : ''}" data-person-search-value="${escapeHtml(option.value)}">${escapeHtml(option.textContent.trim())}</button>`).join('')
+        : '<p class="person-search-select__empty">Nessun nominativo corrispondente.</p>';
+
+      wrapper.classList.add('is-open');
+      panel.hidden = false;
+    };
+
+    const syncActive = () => {
+      const options = [...panel.querySelectorAll('[data-person-search-value]')];
+      options.forEach((option, index) => option.classList.toggle('is-active', index === activeIndex));
+      options[activeIndex]?.scrollIntoView({ block: 'nearest' });
+    };
+
+    input.value = selectedLabel();
+
+    input.addEventListener('focus', () => {
+      input.select();
+      closePersonSearchSelects(wrapper);
+      render('');
+    });
+
+    input.addEventListener('input', () => {
+      const selected = selectedOption();
+      if (!selected || normalizeFilterSearch(input.value) !== normalizeFilterSearch(selected.textContent)) {
+        if (select.value) {
+          select.value = '';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      closePersonSearchSelects(wrapper);
+      render(input.value);
+    });
+
+    input.addEventListener('keydown', (event) => {
+      const options = [...panel.querySelectorAll('[data-person-search-value]')];
+      if (event.key === 'ArrowDown' && options.length) {
+        event.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, options.length - 1);
+        syncActive();
+      } else if (event.key === 'ArrowUp' && options.length) {
+        event.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        syncActive();
+      } else if (event.key === 'Enter' && options.length && activeIndex >= 0) {
+        event.preventDefault();
+        choose(options[activeIndex].dataset.personSearchValue || '');
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close({ restore: true });
+      }
+    });
+
+    panel.addEventListener('mousedown', (event) => event.preventDefault());
+    panel.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-person-search-value]');
+      if (!option) return;
+      choose(option.dataset.personSearchValue || '');
+      input.focus();
+      input.select();
+    });
+  }
+
   function assignmentCatalogValue(row) {
     const activities = snapshot?.activities || [];
     const exact = (value) => activities.find((activity) => String(activity.name).toLocaleLowerCase('it-IT') === String(value).toLocaleLowerCase('it-IT'))?.name || '';
@@ -1316,9 +1445,10 @@
 
     if (boardEditDelete) boardEditDelete.hidden = true;
     if (boardEditHistory) boardEditHistory.hidden = true;
+    initSearchablePersonSelect(boardEditContent?.querySelector('[data-board-edit-person]'));
     refreshBoardEditWarnings();
     boardEditDialog.showModal();
-    window.setTimeout(() => boardEditContent?.querySelector('[data-board-edit-person]')?.focus(), 0);
+    window.setTimeout(() => boardEditContent?.querySelector('.person-search-select__input, [data-board-edit-person]')?.focus(), 0);
   }
 
   function openBoardEdit(kind, id) {
@@ -1352,6 +1482,7 @@
 
     if (boardEditDelete) boardEditDelete.hidden = isAvailability;
     if (boardEditHistory) boardEditHistory.hidden = isAvailability;
+    initSearchablePersonSelect(boardEditContent?.querySelector('[data-board-edit-person]'));
     refreshBoardEditWarnings();
     boardEditDialog.showModal();
   }
@@ -3149,9 +3280,13 @@
   initMultiFilters();
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.multi-filter')) closeMultiFilters();
+    if (!event.target.closest('.person-search-select')) closePersonSearchSelects();
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMultiFilters();
+    if (event.key === 'Escape') {
+      closeMultiFilters();
+      closePersonSearchSelects();
+    }
   });
 
   credentials = storedCredentials();
