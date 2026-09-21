@@ -598,6 +598,12 @@ export default async (request) => {
             query: { select: 'id', limit: 1 }
           });
           if (raceProgramProbe !== null) {
+            const raceRowsForPerson = await supabaseRequest('volunteer_race_program', {
+              query: { select: 'id', person_id: `eq.${personId}`, active: 'eq.true', limit: 1 }
+            });
+            if (rows(raceRowsForPerson).length && !personCode) {
+              throw new ApiError('La persona è presente nel programma gare: il codice non può essere vuoto.', 409, 'PERSON_CODE_REQUIRED');
+            }
             await supabaseRequest('volunteer_race_program', {
               method: 'PATCH',
               query: { person_id: `eq.${personId}`, active: 'eq.true' },
