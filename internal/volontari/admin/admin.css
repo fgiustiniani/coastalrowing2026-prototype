@@ -2627,3 +2627,32 @@ tr.is-busy button.is-busy {
     background: #cfe7ea;
   }
 }
+
+
+/* Selezione sorgente per copia turno-attività */
+.copy-from-source-field {
+  display: grid;
+  gap: 5px;
+  margin: 2px 0 4px;
+}
+.copy-from-source-field > span {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 850;
+}
+.copy-from-source-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #b9ced2;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: .82rem;
+}
+.copy-from-source-field select:focus {
+  outline: 2px solid rgba(10,107,125,.16);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
