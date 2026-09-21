@@ -8,6 +8,7 @@
     people: [],
     cachedShifts: [],
     selectedPerson: null,
+    manualPersonName: '',
     personState: null,
     responses: new Map(),
     availability: new Map(),
@@ -23,6 +24,10 @@
   const personSearch = document.querySelector('[data-person-search]');
   const personResults = document.querySelector('[data-person-results]');
   const personSelection = document.querySelector('[data-person-selection]');
+  const manualBox = document.querySelector('[data-manual-box]');
+  const manualToggle = document.querySelector('[data-manual-toggle]');
+  const manualField = document.querySelector('[data-manual-field]');
+  const manualInput = document.querySelector('[data-manual-person]');
   const assignmentList = document.querySelector('[data-assignment-list]');
   const assignmentStatus = document.querySelector('[data-assignment-status]');
   const availabilityList = document.querySelector('[data-availability-list]');
@@ -125,6 +130,7 @@
 
   function renderPeople() {
     const query = String(personSearch?.value || '').trim();
+    if (manualBox) manualBox.hidden = query.length < 2 || Boolean(state.selectedPerson);
     if (state.selectedPerson && query === sortLabel(state.selectedPerson)) {
       personResults.innerHTML = '';
       return;
@@ -147,6 +153,10 @@
 
   async function selectPerson(person) {
     state.selectedPerson = person;
+    state.manualPersonName = '';
+    if (manualInput) manualInput.value = '';
+    if (manualField) manualField.hidden = true;
+    if (manualBox) manualBox.hidden = true;
     personSearch.value = sortLabel(person);
     setStatus(personSelection, 'Nominativo selezionato.', 'success');
     state.people = [];
@@ -165,6 +175,24 @@
     renderAssignments();
     renderAvailability();
     setStatus(assignmentStatus, '');
+  }
+
+  function useManualPerson() {
+    const suggested = String(personSearch?.value || '').trim();
+    state.selectedPerson = null;
+    state.manualPersonName = suggested;
+    state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
+    state.responses = new Map();
+    state.availability = new Map();
+    if (manualField) manualField.hidden = false;
+    if (manualInput) {
+      manualInput.value = suggested;
+      manualInput.focus();
+      manualInput.select();
+    }
+    setStatus(personSelection, 'Inserisci nome e cognome e prosegui.', '');
+    renderAssignments();
+    renderAvailability();
   }
 
   function displayActivityName(value) {
@@ -244,7 +272,7 @@
     const declined = assignments.filter((a) => state.responses.get(a.id)?.response === 'declined');
     const shifts = state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts;
     const extra = shifts.filter((s) => state.availability.get(s.id)?.selected && !s.assigned);
-    const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : '';
+    const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
     const listAssignments = (items) => items.length
       ? `<ul class="summary-list">${items.map((a) => {
           const response = state.responses.get(a.id) || {};
@@ -280,10 +308,16 @@
       }
     }
     if (step === 3) {
-      if (!state.selectedPerson) {
-        setStatus(personSelection, 'Seleziona il tuo nominativo dai risultati della ricerca.', 'error');
+      state.manualPersonName = String(manualInput?.value || state.manualPersonName || '').trim();
+      if (!state.selectedPerson && state.manualPersonName.length < 2) {
+        setStatus(personSelection, 'Seleziona il tuo nominativo oppure inseriscilo manualmente.', 'error');
         personSearch.focus();
         return;
+      }
+      if (!state.selectedPerson) {
+        state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
+        renderAssignments();
+        renderAvailability();
       }
       setStatus(personSelection, '');
     }
@@ -300,7 +334,7 @@
         action: 'submit',
         actorName: state.actorName,
         personId: state.selectedPerson?.id || null,
-        manualPersonName: null,
+        manualPersonName: state.selectedPerson ? null : state.manualPersonName,
         clientSubmissionId: state.clientSubmissionId,
         website: submitWebsite.value || '',
         responses: Array.from(state.responses.entries()).map(([assignmentId, value]) => ({ assignmentId, response: value.response, note: value.note || '' })),
@@ -309,8 +343,9 @@
       const body = await apiRequest(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       document.querySelectorAll('[data-step], .stepper').forEach((node) => { node.hidden = true; });
       success.hidden = false;
-      successCopy.textContent = `Le risposte per ${body.submission?.personName || sortLabel(state.selectedPerson)} sono state registrate.`;
-      submissionCode.textContent = body.submission?.id ? `Riferimento: ${body.submission.id}` : '';
+      successCopy.textContent = `Le risposte per ${body.submission?.personName || (state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName)} sono state registrate.`;
+      const personalCode = String(body.submission?.personCode || '');
+      submissionCode.textContent = `${personalCode.startsWith('SB') ? `Codice personale: ${personalCode} · ` : ''}${body.submission?.id ? `Riferimento: ${body.submission.id}` : ''}`;
       setStatus(submitStatus, '');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
@@ -329,6 +364,9 @@
       state.availability = new Map();
       setStatus(personSelection, '');
     }
+    state.manualPersonName = '';
+    if (manualField) manualField.hidden = true;
+    if (manualInput) manualInput.value = '';
     clearTimeout(personSearchTimer);
     if (query.length < 2) {
       state.people = [];
@@ -344,6 +382,11 @@
     const button = event.target.closest('[data-person-id]'); if (!button) return;
     const person = state.people.find((row) => row.id === button.dataset.personId); if (!person) return;
     selectPerson(person).catch((error) => { personSelection.textContent = error.message; });
+  });
+  manualToggle?.addEventListener('click', useManualPerson);
+  manualInput?.addEventListener('input', () => {
+    state.manualPersonName = String(manualInput.value || '').trim();
+    setStatus(personSelection, state.manualPersonName ? 'Nominativo inserito manualmente.' : '', state.manualPersonName ? 'success' : '');
   });
 
   assignmentList?.addEventListener('change', (event) => {
