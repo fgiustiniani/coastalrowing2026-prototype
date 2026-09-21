@@ -88,9 +88,13 @@ function decodeQuotedPrintablePreview(value) {
 
 function rentalCandidate(subject, sourcePreview = '') {
   const s = normalize(subject);
-  if (s.startsWith('FIC BONIFICO') || s.startsWith('FIC VERIFICATO')) return false;
+  if (/^FIC\s*-?\s*(?:BONIFICO|VERIFICATO)/.test(s)) return false;
   if (s.includes('MODERATOR S SPAM REPORT')) return false;
-  if (s.includes('NUOVA PRENOTAZIONE PROVA BARCA')) return false;
+  if (
+    s.includes('NUOVA PRENOTAZIONE PROVA BARCA') ||
+    s.includes('MODIFICA PRENOTAZIONE PROVA BARCA') ||
+    s.includes('ELIMINAZIONE PRENOTAZIONE PROVA BARCA')
+  ) return false;
 
   const text = normalize(`${subject} ${sourcePreview}`);
   return (
