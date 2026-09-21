@@ -68,6 +68,9 @@ function sessionKey() {
 function inviteKey() {
   return createHash('sha256').update(`coastal-volunteers-invite|${accessSecret()}`).digest();
 }
+function summaryPdfKey() {
+  return createHash('sha256').update(`coastal-volunteers-summary-pdf|${accessSecret()}`).digest();
+}
 
 export function issueVolunteerInvite() {
   const payload = {
@@ -100,6 +103,36 @@ export function verifySharedAccessToken(value) {
   const explicit = env('VOLUNTEER_ACCESS_TOKEN');
   if (explicit && safeEqual(supplied, explicit)) return true;
   return verifyInviteToken(supplied);
+}
+
+export function issueVolunteerSummaryPdfToken(submissionIdValue, ttlSeconds = 3600) {
+  const submissionId = clean(submissionIdValue, 60);
+  if (!isUuid(submissionId)) throw new ApiError('Invio non valido.', 400, 'INVALID_SUBMISSION_ID');
+  const now = Math.floor(Date.now() / 1000);
+  const requestedTtl = Number(ttlSeconds);
+  const ttl = Number.isFinite(requestedTtl) ? Math.min(Math.max(Math.trunc(requestedTtl), 60), 21600) : 3600;
+  const payload = { v: 1, scope: 'volunteer-summary-pdf', submissionId, exp: now + ttl };
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const signature = createHmac('sha256', summaryPdfKey()).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
+
+export function verifyVolunteerSummaryPdfToken(value) {
+  const supplied = clean(value, 4000);
+  const [encoded, signature, extra] = supplied.split('.');
+  if (!encoded || !signature || extra) throw new ApiError('Link al riepilogo non valido o scaduto.', 401, 'INVALID_PDF_TOKEN');
+  const expected = createHmac('sha256', summaryPdfKey()).update(encoded).digest('base64url');
+  if (!safeEqual(signature, expected)) throw new ApiError('Link al riepilogo non valido o scaduto.', 401, 'INVALID_PDF_TOKEN');
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    const now = Math.floor(Date.now() / 1000);
+    if (payload?.v !== 1 || payload?.scope !== 'volunteer-summary-pdf' || !isUuid(payload?.submissionId) || !Number.isFinite(payload?.exp) || payload.exp <= now) {
+      throw new Error('invalid');
+    }
+    return payload;
+  } catch {
+    throw new ApiError('Link al riepilogo non valido o scaduto.', 401, 'INVALID_PDF_TOKEN');
+  }
 }
 
 export function issueVolunteerSession() {
