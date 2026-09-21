@@ -39,6 +39,8 @@
   const personCatalogSearch = document.querySelector('[data-person-catalog-search]');
   const personCatalogStatus = document.querySelector('[data-person-catalog-status]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
+  const activityGroupCatalog = document.querySelector('[data-activity-group-catalog]');
+  const activityGroupStatus = document.querySelector('[data-activity-group-status]');
   const requirementCatalog = document.querySelector('[data-requirement-catalog]');
   const requirementStatus = document.querySelector('[data-requirement-status]');
   const raceProgram = document.querySelector('[data-race-program]');
@@ -74,6 +76,7 @@
   let newAssignmentOpen = false;
   let newPersonOpen = false;
   let newActivityOpen = false;
+  let newActivityGroupOpen = false;
   let newRequirementOpen = false;
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
@@ -82,11 +85,18 @@
   let boardPointerDrag = null;
   let boardActivityDragState = null;
   let boardActivityPointerDrag = null;
+  let boardGroupDragState = null;
+  let boardGroupPointerDrag = null;
+  let boardCollapsedGroups = new Set();
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
+  } catch {}
+  try {
+    const storedCollapsed = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-groups') || '[]');
+    boardCollapsedGroups = new Set(Array.isArray(storedCollapsed) ? storedCollapsed : []);
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -516,6 +526,40 @@
         requiredCount: Number(requirement.requiredCount || 0),
         currentResponse: null
       }));
+  }
+
+  function activityGroups() {
+    return [...(snapshot?.activityGroups || [])]
+      .filter((group) => group.active !== false)
+      .sort((a, b) =>
+        Number(a.display_order ?? a.displayOrder ?? 0) - Number(b.display_order ?? b.displayOrder ?? 0)
+        || String(a.name || '').localeCompare(String(b.name || ''), 'it')
+      );
+  }
+
+  function activityGroupOptions(selectedId = '', { includeUngrouped = true } = {}) {
+    return (includeUngrouped ? '<option value="">Senza gruppo</option>' : '<option value="">Seleziona gruppo…</option>')
+      + activityGroups().map((group) =>
+        `<option value="${escapeHtml(group.id)}" ${group.id === selectedId ? 'selected' : ''}>${escapeHtml(group.name)}</option>`
+      ).join('');
+  }
+
+  function activityGroupById(id) {
+    return activityGroups().find((group) => group.id === id) || null;
+  }
+
+  function boardGroupKey(groupId) {
+    return groupId || '__ungrouped__';
+  }
+
+  function boardGroupCollapsed(groupId) {
+    return boardCollapsedGroups.has(boardGroupKey(groupId));
+  }
+
+  function persistBoardCollapsedGroups() {
+    try {
+      localStorage.setItem('coastal2026-admin-board-collapsed-groups', JSON.stringify([...boardCollapsedGroups]));
+    } catch {}
   }
 
   function activityIdOptions(selectedId = '', { allowNew = false } = {}) {
@@ -2548,14 +2592,44 @@
       : '<p class="empty-state">Nessuna persona attiva.</p>';
   }
 
+  function renderActivityGroupCatalog() {
+    if (!activityGroupCatalog) return;
+    const groups = activityGroups();
+    const activityCountByGroup = new Map();
+    for (const activity of (snapshot?.activityCatalog || []).filter((item) => item.active)) {
+      if (!activity.group_id) continue;
+      activityCountByGroup.set(activity.group_id, (activityCountByGroup.get(activity.group_id) || 0) + 1);
+    }
+
+    const body = [
+      ...(newActivityGroupOpen ? [`
+        <tr class="is-new-row" data-activity-group-row data-activity-group-id="">
+          <td><input class="name-input" data-activity-group-name maxlength="120" placeholder="Nome gruppo"></td>
+          <td>—</td>
+          <td><div class="row-actions"><button type="button" data-save-activity-group>Salva</button><button type="button" data-cancel-new-activity-group>Annulla</button></div><small class="row-save-status" data-row-status></small></td>
+        </tr>`] : []),
+      ...groups.map((group) => `
+        <tr data-activity-group-row data-activity-group-id="${escapeHtml(group.id)}">
+          <td><input class="name-input" data-activity-group-name maxlength="120" value="${escapeHtml(group.name)}"></td>
+          <td><span class="coverage-count">${activityCountByGroup.get(group.id) || 0}</span></td>
+          <td><div class="row-actions"><button type="button" data-save-activity-group>Salva</button><button class="is-danger" type="button" data-delete-activity-group>Elimina</button></div><small class="row-save-status" data-row-status></small></td>
+        </tr>`)
+    ].join('');
+
+    activityGroupCatalog.innerHTML = body
+      ? `<table class="admin-table catalog-table activity-group-table"><thead><tr><th>Gruppo</th><th>Attività</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      : '<p class="empty-state">Nessun gruppo creato. Le attività vengono mostrate in “Altre attività”.</p>';
+  }
+
   function renderActivityCatalog() {
+    if (!activityCatalog) return;
     const rows = (snapshot?.activityCatalog || []).filter((item) => item.active);
     const body = [
-      ...(newActivityOpen ? [`<tr class="is-new-row" data-activity-row data-activity-id=""><td><input class="name-input" data-activity-name maxlength="200" placeholder="Nuova attività"></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button type="button" data-cancel-new-activity>Annulla</button></div><small class="row-save-status" data-row-status></small></td></tr>`] : []),
-      ...rows.map((item) => `<tr data-activity-row data-activity-id="${escapeHtml(item.id)}"><td><input class="name-input" data-activity-name maxlength="200" value="${escapeHtml(item.name)}"></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button class="is-danger" type="button" data-delete-activity>Elimina</button></div><small class="row-save-status" data-row-status></small></td></tr>`)
+      ...(newActivityOpen ? [`<tr class="is-new-row" data-activity-row data-activity-id=""><td><input class="name-input" data-activity-name maxlength="200" placeholder="Nuova attività"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions('')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button type="button" data-cancel-new-activity>Annulla</button></div><small class="row-save-status" data-row-status></small></td></tr>`] : []),
+      ...rows.map((item) => `<tr data-activity-row data-activity-id="${escapeHtml(item.id)}"><td><input class="name-input" data-activity-name maxlength="200" value="${escapeHtml(item.name)}"></td><td><select class="inline-select" data-activity-group>${activityGroupOptions(item.group_id || '')}</select></td><td><div class="row-actions"><button type="button" data-save-activity>Salva</button><button class="is-danger" type="button" data-delete-activity>Elimina</button></div><small class="row-save-status" data-row-status></small></td></tr>`)
     ].join('');
     activityCatalog.innerHTML = body
-      ? `<table class="admin-table catalog-table"><thead><tr><th>Attività</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      ? `<table class="admin-table catalog-table activity-catalog-table"><thead><tr><th>Attività</th><th>Gruppo</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
       : '<p class="empty-state">Nessuna attività attiva.</p>';
   }
 
@@ -3039,6 +3113,7 @@
     renderAssignments();
     renderConfirmationChanges();
     renderPersonCatalog();
+    renderActivityGroupCatalog();
     renderActivityCatalog();
     renderRequirementCatalog();
     renderRaceProgram();
@@ -3266,6 +3341,10 @@
   document.querySelector('[data-new-person]')?.addEventListener('click', () => {
     newPersonOpen = true;
     renderPersonCatalog();
+  });
+  document.querySelector('[data-new-activity-group]')?.addEventListener('click', () => {
+    newActivityGroupOpen = true;
+    renderActivityGroupCatalog();
   });
   document.querySelector('[data-new-activity]')?.addEventListener('click', () => {
     newActivityOpen = true;
@@ -3842,6 +3921,79 @@
     }
   });
 
+  activityGroupCatalog?.addEventListener('click', async (event) => {
+    const rowNode = event.target.closest('[data-activity-group-row]');
+    if (!rowNode) return;
+    const save = event.target.closest('[data-save-activity-group]');
+    const remove = event.target.closest('[data-delete-activity-group]');
+    const cancel = event.target.closest('[data-cancel-new-activity-group]');
+    const status = rowNode.querySelector('[data-row-status]');
+
+    if (cancel) {
+      newActivityGroupOpen = false;
+      renderActivityGroupCatalog();
+      return;
+    }
+
+    if (save) {
+      const name = rowNode.querySelector('[data-activity-group-name]')?.value.trim() || '';
+      if (!name) {
+        status.textContent = 'Indica il nome del gruppo.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      setRowBusy(rowNode, true, save);
+      try {
+        await withButtonBusy(save, 'Salvataggio…', async () => {
+          try {
+            const result = await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save-activity-group',
+                groupId: rowNode.dataset.activityGroupId || null,
+                name
+              })
+            });
+            newActivityGroupOpen = false;
+            await loadSnapshot();
+            setStatus(
+              activityGroupStatus,
+              result?.group?.existing ? 'Il gruppo esisteva già.' : 'Gruppo salvato.',
+              'success'
+            );
+          } catch (error) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
+        });
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
+      }
+      return;
+    }
+
+    if (remove) {
+      const groupId = rowNode.dataset.activityGroupId || '';
+      const group = activityGroupById(groupId);
+      if (!group) return;
+      if (!confirm(`Eliminare il gruppo “${group.name}”? Le attività non verranno eliminate e passeranno in “Altre attività”.`)) return;
+      try {
+        const result = await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete-activity-group', groupId })
+        });
+        boardCollapsedGroups.delete(boardGroupKey(groupId));
+        persistBoardCollapsedGroups();
+        await loadSnapshot();
+        setStatus(activityGroupStatus, `Gruppo eliminato. ${result?.group?.activitiesUngrouped || 0} attività spostate in “Altre attività”.`, 'success');
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  });
+
   activityCatalog?.addEventListener('click', async (event) => {
     const rowNode = event.target.closest('[data-activity-row]');
     if (!rowNode) return;
@@ -3859,6 +4011,7 @@
     }
     if (save) {
       const name = rowNode.querySelector('[data-activity-name]')?.value.trim() || '';
+      const groupId = rowNode.querySelector('[data-activity-group]')?.value || null;
       if (!name) {
         status.textContent = 'Indica il nome dell’attività.';
         status.className = 'row-save-status is-error';
@@ -3871,7 +4024,7 @@
             await api(API, {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name })
+              body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name, groupId })
             });
             newActivityOpen = false;
             await loadSnapshot();
