@@ -48,7 +48,7 @@
 @media (max-width: 700px) { .admin-header { display: grid; } .admin-header img { width: min(300px, 80vw); } .login-grid, .editor-grid, .raw-shift-grid { grid-template-columns: 1fr; } .login-grid button { width: 100%; } .field--wide, .raw-shift-grid { grid-column: auto; } .admin-toolbar, .section-head { align-items: flex-start; } .admin-toolbar { display: grid; } }
 
 .section-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 14px 0 12px; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 10px; margin: 14px 0 12px; }
 .filter-grid--report { grid-template-columns: repeat(2, minmax(0, 260px)); }
 .filter-grid .field { margin: 0; }
 .compact-field { max-width: none; }
@@ -185,3 +185,9 @@
 .availability-report-line:last-child { padding-bottom: 0; border-bottom: 0; }
 .availability-report-line strong { font-size: .8rem; }
 .availability-report-line small { color: var(--muted); }
+
+.warning-cell { min-width: 230px; max-width: 340px; }
+.warning-none { color: var(--muted); }
+.activity-report-list { display: grid; gap: 6px; }
+.activity-report-line { padding-bottom: 6px; border-bottom: 1px solid #edf1f2; }
+.activity-report-line:last-child { padding-bottom: 0; border-bottom: 0; }
