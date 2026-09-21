@@ -15,13 +15,21 @@ import {
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
-async function listPeople() {
+async function listPeople(searchText = '') {
+  const query = clean(searchText, 120).trim().toLocaleLowerCase('it-IT');
+  if (query.length < 2) return [];
   const [people, assignments] = await Promise.all([
     supabaseRequest('volunteer_people', { query: { select: 'id,person_code,display_name,surname,given_name', active: 'eq.true', selectable: 'eq.true', order: 'surname.asc,given_name.asc,display_name.asc' } }),
     supabaseRequest('volunteer_assignments', { query: { select: 'person_id', active: 'eq.true' } })
   ]);
   const assigned = new Set(rows(assignments).map((row) => row.person_id));
-  return rows(people).filter((person) => assigned.has(person.id));
+  return rows(people)
+    .filter((person) => assigned.has(person.id))
+    .filter((person) => {
+      const haystack = `${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_code || ''}`.toLocaleLowerCase('it-IT');
+      return haystack.includes(query);
+    })
+    .slice(0, 12);
 }
 
 async function listSelectableShifts() {
@@ -170,7 +178,8 @@ export default async (request) => {
       const url = new URL(request.url);
       const view = clean(url.searchParams.get('view') || 'people', 30);
       if (view === 'people') {
-        const [people, shifts] = await Promise.all([listPeople(), listSelectableShifts()]);
+        const query = clean(url.searchParams.get('q'), 120);
+        const [people, shifts] = await Promise.all([listPeople(query), listSelectableShifts()]);
         return json({ people, shifts });
       }
       if (view === 'person') {
