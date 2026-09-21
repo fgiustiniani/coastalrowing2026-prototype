@@ -49,20 +49,13 @@
 
       <section class="card step" data-step="2" hidden>
         <p class="eyebrow">Passaggio 2 di 5</p>
-        <h2>Per chi stai rispondendo?</h2>
+        <h2>Seleziona il tuo nominativo</h2>
         <label class="field">
           <span>Cerca per cognome o nome</span>
-          <input data-person-search type="search" autocomplete="off" placeholder="Scrivi almeno una parte del nome">
+          <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
         </label>
-        <div class="person-results" data-person-results role="listbox" aria-label="Persone con attività assegnate"></div>
-        <div class="manual-box">
-          <button class="link-button" type="button" data-manual-toggle>La persona non è nell’elenco? Inseriscila manualmente</button>
-          <label class="field" data-manual-field hidden>
-            <span>Nome e cognome della persona</span>
-            <input data-manual-person maxlength="160" autocomplete="off" placeholder="Es. Luigi Bianchi">
-          </label>
-        </div>
-        <p class="selection" data-person-selection></p>
+        <div id="person-results" class="person-results" data-person-results role="listbox" aria-label="Risultati ricerca nominativo"></div>
+        <p class="status" data-person-selection aria-live="polite"></p>
         <div class="actions">
           <button class="button button--secondary" type="button" data-back="1">Indietro</button>
           <button class="button button--primary" type="button" data-next="3">Avanti</button>
@@ -110,7 +103,6 @@
         <h2>Grazie, disponibilità registrata</h2>
         <p data-success-copy></p>
         <p class="submission-code" data-submission-code></p>
-        <button class="button button--secondary" type="button" data-restart>Compila per un’altra persona</button>
       </section>
     </section>
   </main>
