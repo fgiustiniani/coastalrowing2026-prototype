@@ -153,6 +153,10 @@
     return '<span class="status-badge is-pending">Da rispondere</span>';
   }
 
+  function responsibleBadge(label = 'Responsabile') {
+    return `<span class="responsible-badge" title="Responsabile dell’attività in questo turno">★ ${escapeHtml(label)}</span>`;
+  }
+
   function prettifyActivityName(value) {
     return String(value || '').trim()
       .replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
@@ -512,7 +516,11 @@
       : (isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
     const assignmentId = row && !isAvailability ? row.id : '';
     const warnings = row ? assignmentWarningDetails(row) : [];
-    const rowClass = [isNew ? 'is-new-row' : '', isAvailability ? 'is-availability-row' : ''].filter(Boolean).join(' ');
+    const rowClass = [
+      isNew ? 'is-new-row' : '',
+      isAvailability ? 'is-availability-row' : '',
+      row?.isResponsible ? 'is-responsible-row' : ''
+    ].filter(Boolean).join(' ');
 
     const shiftCell = isAvailability
       ? `<input type="hidden" data-inline-shift value="${escapeHtml(row.shiftId)}">
@@ -547,11 +555,18 @@
            </div>
            <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>`);
 
+    const responsibleCell = (!isNew && !isAvailability)
+      ? (snapshot?.responsibilityAvailable
+        ? `<button type="button" class="responsible-toggle ${row.isResponsible ? 'is-active' : ''}" data-set-responsible="${row.isResponsible ? 'false' : 'true'}" title="${row.isResponsible ? 'Rimuovi responsabile' : 'Imposta come responsabile'}">${row.isResponsible ? '★ Responsabile' : '☆ Imposta'}</button>`
+        : '<span class="responsibility-unavailable">—</span>')
+      : '<span class="responsibility-unavailable">—</span>';
+
     return `
       <tr data-assignment-row data-assignment-id="${escapeHtml(assignmentId)}" ${isAvailability ? `data-availability-key="${escapeHtml(row.id)}"` : ''} class="${rowClass}">
         <td>${shiftCell}</td>
         <td class="inline-activity-cell"><div class="inline-controls">${activityCell}</div></td>
         <td class="inline-person-cell"><div class="inline-controls">${personCell}</div></td>
+        <td class="responsible-cell">${responsibleCell}</td>
         <td class="warning-cell" data-warning-cell>${warningHtml(warnings)}</td>
         <td>${responseHtml}</td>
         <td>
@@ -583,7 +598,7 @@
       return;
     }
 
-    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
+    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Responsabile</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function personReportRows() {
@@ -635,8 +650,8 @@
         answered: Boolean(latest),
         notes: notes.join('; '),
         availability,
-        activities: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`),
-        activitiesText: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`).join('\n'),
+        activities: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · ★ Responsabile' : ''}`),
+        activitiesText: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · ★ Responsabile' : ''}`).join('\n'),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
@@ -695,15 +710,22 @@
     }
 
     return [...groups.values()].map((item) => {
-      const peopleMap = new Map(item.rows.map((row) => [row.personId, row.personName]));
-      const people = [...peopleMap.entries()]
-        .map(([id, name]) => ({ id, name }))
+      const peopleMap = new Map();
+      for (const row of item.rows) {
+        const current = peopleMap.get(row.personId) || { id: row.personId, name: row.personName, isResponsible: false };
+        current.isResponsible = current.isResponsible || row.isResponsible === true;
+        peopleMap.set(row.personId, current);
+      }
+      const people = [...peopleMap.values()]
         .sort((a, b) => a.name.localeCompare(b.name, 'it'));
+      const responsible = people.find((person) => person.isResponsible) || null;
       return {
         ...item,
         people,
+        responsible,
+        responsibleName: responsible?.name || '',
         peopleCount: people.length,
-        peopleText: people.map((person) => person.name).join('; '),
+        peopleText: people.map((person) => `${person.isResponsible ? '★ ' : ''}${person.name}`).join('; '),
         pending: item.rows.filter((row) => !row.currentResponse).length
       };
     }).sort((a, b) =>
@@ -721,8 +743,8 @@
 
   function renderActivityReport() {
     const report = filteredActivityReportRows();
-    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
-      `<tr><td><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td>${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.pending}</td></tr>`
+    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Responsabile</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
+      `<tr><td><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td>${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.responsibleName ? responsibleBadge(item.responsibleName) : '—'}</td><td>${item.pending}</td></tr>`
     ).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività corrisponde ai filtri.</p>';
   }
 
@@ -746,7 +768,10 @@
       const group = byShift.get(key);
       const label = displayActivity(row);
       if (!group.activities.has(label)) group.activities.set(label, new Map());
-      group.activities.get(label).set(row.personId, row.personName);
+      const peopleMap = group.activities.get(label);
+      const current = peopleMap.get(row.personId) || { name: row.personName, isResponsible: false };
+      current.isResponsible = current.isResponsible || row.isResponsible === true;
+      peopleMap.set(row.personId, current);
     }
 
     return [...byShift.values()]
@@ -755,7 +780,7 @@
         activities: [...group.activities.entries()]
           .map(([activityName, peopleMap]) => ({
             activity: activityName,
-            people: [...peopleMap.values()].sort((a, b) => a.localeCompare(b, 'it'))
+            people: [...peopleMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'))
           }))
           .sort((a, b) => a.activity.localeCompare(b.activity, 'it'))
       }))
@@ -775,7 +800,7 @@
               ${group.activities.map((item) => `
                 <section class="shift-board__activity">
                   <strong>${escapeHtml(item.activity)}</strong>
-                  <div class="shift-board__people">${item.people.map((person) => `<span>${escapeHtml(person)}</span>`).join('')}</div>
+                  <div class="shift-board__people">${item.people.map((person) => `<span class="${person.isResponsible ? 'is-responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>`).join('')}</div>
                 </section>`).join('')}
             </div>
           </article>`).join('')}</div>`
@@ -869,6 +894,7 @@
       attivita: item.activity,
       numeroPersone: String(item.peopleCount),
       persone: item.peopleText,
+      responsabile: item.responsibleName || '',
       daRispondere: String(item.pending)
     }));
     const columns = [
@@ -876,6 +902,7 @@
       { key: 'attivita', label: 'Attività' },
       { key: 'numeroPersone', label: 'N. persone' },
       { key: 'persone', label: 'Persone' },
+      { key: 'responsabile', label: 'Responsabile' },
       { key: 'daRispondere', label: 'Da rispondere' }
     ];
     if (kind === 'excel') exportExcel('report-volontari-per-giorno-turno.xls', 'Giorno e turno', columns, rows);
@@ -894,7 +921,7 @@
       groups.forEach((group, index) => {
         const item = group.activities[rowIndex];
         row[`shift${index}`] = item
-          ? `${item.activity}\n${item.people.join('; ')}`
+          ? `${item.activity}\n${item.people.map((person) => `${person.isResponsible ? '★ ' : ''}${person.name}`).join('; ')}`
           : '';
       });
       return row;
@@ -1168,6 +1195,29 @@
     }
   }
 
+  async function setAssignmentResponsible(assignmentId, isResponsible, button) {
+    if (!snapshot?.responsibilityAvailable) {
+      alert('La funzione responsabile non è ancora inizializzata nel database.');
+      return;
+    }
+    await withButtonBusy(button, isResponsible ? 'Impostazione…' : 'Rimozione…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'set-assignment-responsible',
+            assignmentId,
+            isResponsible
+          })
+        });
+        await loadSnapshot();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  }
+
   async function saveInlineAssignment(rowNode) {
     const status = rowNode.querySelector('[data-row-status]');
     const assignmentId = rowNode.dataset.assignmentId || null;
@@ -1328,12 +1378,19 @@
     const editPerson = event.target.closest('[data-edit-person]');
     const editActivity = event.target.closest('[data-edit-activity]');
     const shiftLink = event.target.closest('[data-show-shift-activities]');
+    const responsible = event.target.closest('[data-set-responsible]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     const person = event.target.closest('[data-show-person]');
     const activity = event.target.closest('[data-show-activity]');
 
-    if (shiftLink && rowNode) {
+    if (responsible && rowNode?.dataset.assignmentId) {
+      await setAssignmentResponsible(
+        rowNode.dataset.assignmentId,
+        responsible.dataset.setResponsible === 'true',
+        responsible
+      );
+    } else if (shiftLink && rowNode) {
       const shiftId = shiftLink.dataset.showShiftActivities;
       if (shiftId) showShiftActivities(shiftId, rowNode);
     } else if (editShift && rowNode) {
