@@ -1408,3 +1408,155 @@ tr.is-busy button.is-busy {
     grid-column: auto;
   }
 }
+
+/* Fix visibilità pulsante + nelle intestazioni attività */
+.assignment-board__activity-head > .assignment-board__activity-actions {
+  min-width: 0;
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  place-items: unset;
+  align-items: center;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Popup persona: modifica anche del turno */
+.person-activity-move-select--shift {
+  min-width: 185px;
+}
+.person-activities-table td:first-child {
+  min-width: 205px;
+}
+
+/* Vista modifiche dopo conferma */
+.confirmation-changes-section {
+  margin-top: 18px;
+}
+.confirmation-change-list {
+  display: grid;
+  gap: 12px;
+}
+.confirmation-change-card {
+  border: 1px solid #cbdadd;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.confirmation-change-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  background: #edf5f6;
+  border-bottom: 1px solid #d7e4e6;
+}
+.confirmation-change-card__header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.confirmation-change-card__header strong {
+  color: var(--ink);
+  font-size: .93rem;
+}
+.confirmation-change-card__header span {
+  color: var(--muted);
+  font-size: .76rem;
+}
+.confirmation-change-card__changes {
+  display: grid;
+}
+.confirmation-change {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f2;
+}
+.confirmation-change:last-child {
+  border-bottom: 0;
+}
+.confirmation-change__badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: .72rem;
+  font-weight: 900;
+  background: #edf3f4;
+  color: #4d6269;
+}
+.confirmation-change.is-added .confirmation-change__badge {
+  background: #e4f5e9;
+  color: #26613a;
+}
+.confirmation-change.is-removed .confirmation-change__badge {
+  background: #fdebe5;
+  color: #8d3a20;
+}
+.confirmation-change.is-modified .confirmation-change__badge {
+  background: #fff2c9;
+  color: #745a00;
+}
+.confirmation-change.is-responsibility .confirmation-change__badge {
+  background: #fff0af;
+  color: #725600;
+}
+.confirmation-change__detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.confirmation-change__before,
+.confirmation-change__after {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.confirmation-change__before > span,
+.confirmation-change__after > span {
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.confirmation-change__before strong,
+.confirmation-change__after strong {
+  font-size: .78rem;
+  line-height: 1.3;
+}
+.confirmation-change__arrow {
+  color: var(--muted);
+  font-weight: 900;
+}
+.confirmation-change time {
+  color: var(--muted);
+  font-size: .7rem;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .confirmation-change-card__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .confirmation-change-card__header .button {
+    width: 100%;
+  }
+  .confirmation-change {
+    grid-template-columns: 1fr;
+  }
+  .confirmation-change__detail {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .confirmation-change__arrow {
+    transform: rotate(90deg);
+  }
+}

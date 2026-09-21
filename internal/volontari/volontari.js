@@ -571,6 +571,7 @@
   async function bootstrap() {
     const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
     const access = hash.get('access');
+    const requestedPersonId = new URLSearchParams(location.search).get('person') || '';
     if (access) {
       try { await createSession(access); history.replaceState(null, '', `${location.pathname}${location.search}`); }
       catch (error) { clearSession(); showAccess(error.message); return; }
@@ -578,8 +579,18 @@
       const saved = storedSession(); if (saved?.token) state.session = saved;
     }
     if (!state.session?.token) { showAccess(); return; }
-    try { await loadPeople(); showApp(); }
-    catch (error) {
+    try {
+      await loadPeople();
+      if (requestedPersonId) {
+        try {
+          const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(requestedPersonId)}`);
+          if (detail?.person) await selectPerson(detail.person);
+        } catch {
+          setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo manualmente.', 'error');
+        }
+      }
+      showApp();
+    } catch (error) {
       if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); }
       else showAccess(error.message);
     }

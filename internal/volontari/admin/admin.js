@@ -32,6 +32,8 @@
   const shiftBoardPersonFilter = document.querySelector('[data-shift-board-person-filter]');
   const shiftBoardActivityFilter = document.querySelector('[data-shift-board-activity-filter]');
   const shiftBoardShiftFilter = document.querySelector('[data-shift-board-shift-filter]');
+  const confirmationChanges = document.querySelector('[data-confirmation-changes]');
+  const confirmationLinkStatus = document.querySelector('[data-confirmation-link-status]');
   const activityCatalog = document.querySelector('[data-activity-catalog]');
   const raceProgram = document.querySelector('[data-race-program]');
   const raceProgramStatus = document.querySelector('[data-race-program-status]');
@@ -1843,6 +1845,33 @@
     return warnings.length ? warningHtml(warnings) : '<span class="warning-none">—</span>';
   }
 
+  function personMoveCandidate(rowNode, row) {
+    const shiftValue = rowNode?.querySelector('[data-person-move-shift]')?.value || '';
+    if (shiftValue === 'raw') {
+      return {
+        id: row.id,
+        personId: row.personId,
+        shiftId: null,
+        day: row.day || '',
+        shift: row.shift || ''
+      };
+    }
+    const shift = (snapshot?.shifts || []).find((item) => item.id === shiftValue);
+    return {
+      id: row.id,
+      personId: row.personId,
+      shiftId: shiftValue || null,
+      day: shift?.day_label || '',
+      shift: shift?.shift_label || ''
+    };
+  }
+
+  function refreshPersonMoveWarning(rowNode, row) {
+    const warningNode = rowNode?.querySelector('[data-person-row-warning]');
+    if (!warningNode || !row) return;
+    warningNode.innerHTML = personActivityWarningHtml(personMoveCandidate(rowNode, row));
+  }
+
   function personActivitiesHtml(personId, selectedAssignmentId = '') {
     const rows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
@@ -1857,7 +1886,11 @@
           <thead><tr><th>Turno</th><th>Attività</th><th>Ruolo</th><th>Risposta</th><th>Warning</th><th></th></tr></thead>
           <tbody>${rows.map((row) => `
             <tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}" data-person-assignment-row="${escapeHtml(row.id)}">
-              <td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td>
+              <td>
+                <select class="person-activity-move-select person-activity-move-select--shift" data-person-move-shift>
+                  ${shiftOptions(row)}
+                </select>
+              </td>
               <td>
                 <select class="person-activity-move-select" data-person-move-activity>
                   ${activityOptions(row)}
@@ -1946,41 +1979,51 @@
   async function movePersonAssignmentFromPopup(assignmentId, button) {
     const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
     const rowNode = button?.closest('[data-person-assignment-row]');
+    const shiftValue = rowNode?.querySelector('[data-person-move-shift]')?.value || '';
     const activity = rowNode?.querySelector('[data-person-move-activity]')?.value || '';
     const statusNode = personActivitiesContent?.querySelector('[data-person-activities-status]');
-    if (!row || !activity) return;
+    if (!row || !shiftValue || !activity) return;
 
     const currentActivity = assignmentCatalogValue(row);
-    if (activity === currentActivity) {
-      setStatus(statusNode, 'Seleziona un’attività diversa da quella attuale.');
+    const sameShift = shiftValue === 'raw' ? !row.shiftId : shiftValue === row.shiftId;
+    if (sameShift && activity === currentActivity) {
+      setStatus(statusNode, 'Turno e attività sono già quelli attuali.');
       return;
     }
 
+    let shiftId = null;
+    let rawDay = null;
+    let rawShift = null;
+    if (shiftValue === 'raw') {
+      rawDay = row.day || null;
+      rawShift = row.shift || null;
+    } else {
+      shiftId = shiftValue;
+    }
+
+    const preserveCurrentActivity = activity === currentActivity;
     await withButtonBusy(button, 'Spostamento…', async () => {
       try {
-        await api(API, {
+        const result = await api(API, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             action: 'save-assignment',
             assignmentId: row.id,
             personId: row.personId,
-            shiftId: row.shiftId || null,
-            rawDay: row.shiftId ? null : row.day,
-            rawShift: row.shiftId ? null : row.shift,
-            activity,
-            role: null,
+            shiftId,
+            rawDay,
+            rawShift,
+            activity: preserveCurrentActivity ? row.activity : activity,
+            role: preserveCurrentActivity ? (row.role || null) : null,
             requestedProfile: row.requestedProfile || null,
             note: row.note || null
           })
         });
         const personId = row.personId;
         await loadSnapshot();
-        const replacement = (snapshot?.assignments || [])
-          .filter((item) => item.personId === personId && item.shiftId === row.shiftId)
-          .sort((a, b) => String(b.id).localeCompare(String(a.id)))[0] || null;
-        showPersonActivitiesPopup(personId, replacement?.id || '');
-        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), 'Attività spostata e salvata.', 'success');
+        showPersonActivitiesPopup(personId, result?.assignment?.id || '');
+        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), 'Turno/attività aggiornati e salvati.', 'success');
       } catch (error) {
         setStatus(statusNode, error.message, 'error');
       }
@@ -2068,9 +2111,86 @@
     detailDialog.showModal();
   }
 
+  function formatChangeActivity(value) {
+    if (!value) return '—';
+    const activity = prettifyActivityName(value.activity || '');
+    const role = String(value.role || '').trim();
+    const activityKey = activity.toLocaleLowerCase('it-IT');
+    const roleKey = role.toLocaleLowerCase('it-IT');
+    const roleAlreadyIncluded = role && activityKey.includes(roleKey);
+    return role && !roleAlreadyIncluded ? `${activity} · ${role}` : activity;
+  }
+
+  function formatChangeAssignment(value) {
+    if (!value) return '—';
+    return `${value.day || '—'} · ${value.shift || '—'} — ${formatChangeActivity(value)}`;
+  }
+
+  function confirmationChangeLabel(change) {
+    if (change.type === 'added') return 'Aggiunta';
+    if (change.type === 'removed') return 'Rimossa';
+    if (change.type === 'reassigned') return 'Riassegnata';
+    if (change.type === 'responsibility') return change.label || 'Responsabile modificato';
+    return 'Modificata';
+  }
+
+  function confirmationChangeClass(change) {
+    if (change.type === 'added') return 'is-added';
+    if (change.type === 'removed') return 'is-removed';
+    if (change.type === 'responsibility') return 'is-responsibility';
+    return 'is-modified';
+  }
+
+  function confirmationChangeDetail(change) {
+    if (change.type === 'added') {
+      return `<div class="confirmation-change__after"><span>Ora</span><strong>${escapeHtml(formatChangeAssignment(change.after))}</strong></div>`;
+    }
+    if (change.type === 'removed') {
+      return `<div class="confirmation-change__before"><span>Confermato</span><strong>${escapeHtml(formatChangeAssignment(change.before))}</strong></div>
+        <div class="confirmation-change__arrow">→</div>
+        <div class="confirmation-change__after"><span>Ora</span><strong>Rimossa</strong></div>`;
+    }
+    if (change.type === 'responsibility') {
+      return `<div class="confirmation-change__after"><span>Attività</span><strong>${escapeHtml(formatChangeAssignment(change.after))}</strong></div>`;
+    }
+    return `<div class="confirmation-change__before"><span>Confermato</span><strong>${escapeHtml(formatChangeAssignment(change.before))}</strong></div>
+      <div class="confirmation-change__arrow">→</div>
+      <div class="confirmation-change__after"><span>Ora</span><strong>${escapeHtml(formatChangeAssignment(change.after))}</strong></div>`;
+  }
+
+  function renderConfirmationChanges() {
+    if (!confirmationChanges) return;
+    const groups = snapshot?.postConfirmationChanges || [];
+    if (!groups.length) {
+      confirmationChanges.innerHTML = '<p class="empty-state">Nessuna modifica successiva all’ultima conferma dei volontari.</p>';
+      return;
+    }
+
+    confirmationChanges.innerHTML = `<div class="confirmation-change-list">${groups.map((group) => `
+      <article class="confirmation-change-card">
+        <header class="confirmation-change-card__header">
+          <div>
+            <strong>${escapeHtml(group.personName)}</strong>
+            <span>Ultima conferma: ${escapeHtml(formatDateTime(group.submittedAt))} · ${group.changes.length} modific${group.changes.length === 1 ? 'a' : 'he'}</span>
+          </div>
+          <button class="button button--secondary" type="button"
+            data-copy-review-link="${escapeHtml(group.personId)}">Copia link per revisione</button>
+        </header>
+        <div class="confirmation-change-card__changes">
+          ${group.changes.map((change) => `
+            <div class="confirmation-change ${confirmationChangeClass(change)}">
+              <span class="confirmation-change__badge">${escapeHtml(confirmationChangeLabel(change))}</span>
+              <div class="confirmation-change__detail">${confirmationChangeDetail(change)}</div>
+              ${change.changedAt ? `<time>${escapeHtml(formatDateTime(change.changedAt))}</time>` : ''}
+            </div>`).join('')}
+        </div>
+      </article>`).join('')}</div>`;
+  }
+
   function renderAll() {
     renderKpis();
     renderAssignments();
+    renderConfirmationChanges();
     renderActivityCatalog();
     renderRaceProgram();
     renderPersonReport();
@@ -2104,6 +2224,39 @@
     }
   });
 
+  async function writeClipboard(textValue) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(textValue);
+      return;
+    }
+    const area = document.createElement('textarea');
+    area.value = textValue;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const copied = document.execCommand('copy');
+    area.remove();
+    if (!copied) throw new Error('Copia automatica non disponibile.');
+  }
+
+  async function copyReviewLink(personId, button) {
+    await withButtonBusy(button, 'Copiando…', async () => {
+      setStatus(confirmationLinkStatus, 'Generazione link…');
+      try {
+        const body = await api(`${API}?view=invite`);
+        if (!body.accessUrl) throw new Error('Link non disponibile.');
+        const reviewUrl = new URL(body.accessUrl, location.origin);
+        reviewUrl.searchParams.set('person', personId);
+        await writeClipboard(reviewUrl.toString());
+        setStatus(confirmationLinkStatus, 'Link copiato. Puoi incollarlo nel messaggio WhatsApp.', 'success');
+      } catch (error) {
+        setStatus(confirmationLinkStatus, error.message, 'error');
+      }
+    });
+  }
+
   async function copyVolunteerLink() {
     const button = document.querySelector('[data-copy-volunteer-link]');
     if (button) button.disabled = true;
@@ -2111,20 +2264,7 @@
     try {
       const body = await api(`${API}?view=invite`);
       if (!body.accessUrl) throw new Error('Link non disponibile.');
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(body.accessUrl);
-      } else {
-        const area = document.createElement('textarea');
-        area.value = body.accessUrl;
-        area.setAttribute('readonly', '');
-        area.style.position = 'fixed';
-        area.style.opacity = '0';
-        document.body.appendChild(area);
-        area.select();
-        const copied = document.execCommand('copy');
-        area.remove();
-        if (!copied) throw new Error('Copia automatica non disponibile.');
-      }
+      await writeClipboard(body.accessUrl);
       setStatus(inviteStatus, 'Link volontari copiato negli appunti.', 'success');
     } catch (error) {
       setStatus(inviteStatus, error.message, 'error');
@@ -2659,6 +2799,12 @@
     }
   });
 
+  confirmationChanges?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-copy-review-link]');
+    if (!button) return;
+    await copyReviewLink(button.dataset.copyReviewLink || '', button);
+  });
+
   personReport?.addEventListener('click', async (event) => {
     const audit = event.target.closest('[data-audit-person]');
     if (!audit) return;
@@ -2792,11 +2938,10 @@
     }
 
     const rowNode = event.target.closest('[data-person-assignment-row]');
-    if (rowNode && event.target.matches('[data-person-move-activity]')) {
+    if (rowNode && event.target.matches('[data-person-move-shift], [data-person-move-activity]')) {
       const assignmentId = rowNode.dataset.personAssignmentRow || '';
       const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
-      const warningNode = rowNode.querySelector('[data-person-row-warning]');
-      if (row && warningNode) warningNode.innerHTML = personActivityWarningHtml(row);
+      if (row) refreshPersonMoveWarning(rowNode, row);
     }
   });
 

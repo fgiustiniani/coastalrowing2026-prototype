@@ -45,7 +45,7 @@ async function adminReadOptionalColumn(operation, path, options) {
 }
 
 async function adminSnapshot() {
-  const [people, shifts, activities, assignments, assignmentResponsibilities, submissions, responses, availability, raceProgram] = await Promise.all([
+  const [people, shifts, activities, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram] = await Promise.all([
     adminRead('persone', 'volunteer_people', {
       query: {
         select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
@@ -70,6 +70,12 @@ async function adminSnapshot() {
         order: 'created_at.asc'
       }
     }),
+    adminRead('storico assegnazioni', 'volunteer_assignments', {
+      query: {
+        select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,created_at,updated_at',
+        order: 'created_at.asc'
+      }
+    }),
     adminReadOptionalColumn('responsabili assegnazioni', 'volunteer_assignments', {
       query: {
         select: 'id,is_responsible',
@@ -80,7 +86,10 @@ async function adminSnapshot() {
       query: { select: 'id,session_id,actor_name,person_id,selected_person_name,person_code,created_at', order: 'created_at.desc' }
     }),
     adminRead('risposte', 'volunteer_assignment_responses', {
-      query: { select: 'id,submission_id,assignment_id,response,note,created_at', order: 'created_at.desc' }
+      query: {
+        select: 'id,submission_id,assignment_id,response,note,day_snapshot,shift_snapshot,activity_snapshot,role_snapshot,created_at',
+        order: 'created_at.desc'
+      }
     }),
     adminRead('disponibilità', 'volunteer_availability', {
       query: { select: 'id,submission_id,shift_id,note,created_at', order: 'created_at.desc' }
@@ -98,6 +107,7 @@ async function adminSnapshot() {
   const shiftRows = rows(shifts);
   const activityRows = rows(activities);
   const assignmentRows = rows(assignments);
+  const assignmentHistoryRows = rows(assignmentHistory);
   const responsibilityRows = rows(assignmentResponsibilities);
   const submissionRows = rows(submissions);
   const responseRows = rows(responses);
@@ -181,6 +191,141 @@ async function adminSnapshot() {
     };
   });
 
+  const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+
+  const hydrateComparisonAssignment = (assignment) => {
+    if (!assignment) return null;
+    const person = personById.get(assignment.person_id) || null;
+    const shift = shiftById.get(assignment.shift_id) || null;
+    const activity = activityById.get(assignment.activity_id) || null;
+    return {
+      assignmentId: assignment.id,
+      personId: assignment.person_id,
+      personName: person?.display_name || 'Persona non disponibile',
+      day: shift?.day_label || assignment.raw_day || '',
+      shift: shift?.shift_label || assignment.raw_shift || '',
+      activity: activity?.name || 'Attività',
+      role: assignment.role || '',
+      createdAt: assignment.created_at || null,
+      updatedAt: assignment.updated_at || null
+    };
+  };
+
+  const lineageIds = (assignment) => {
+    const ids = [];
+    const seen = new Set();
+    let current = assignment || null;
+    while (current?.id && !seen.has(current.id)) {
+      ids.push(current.id);
+      seen.add(current.id);
+      current = current.supersedes_assignment_id
+        ? assignmentHistoryById.get(current.supersedes_assignment_id) || null
+        : null;
+    }
+    return ids;
+  };
+
+  const activeDescendantByAncestor = new Map();
+  for (const active of assignmentRows) {
+    for (const ancestorId of lineageIds(active)) {
+      const existing = activeDescendantByAncestor.get(ancestorId);
+      if (!existing || String(active.created_at || '').localeCompare(String(existing.created_at || '')) > 0) {
+        activeDescendantByAncestor.set(ancestorId, active);
+      }
+    }
+  }
+
+  const latestBaselineResponsesByPerson = new Map();
+  for (const response of responseRows) {
+    const submission = submissionById.get(response.submission_id);
+    if (!submission) continue;
+    const latest = latestSubmissionByPerson.get(submission.person_id);
+    if (!latest || latest.id !== submission.id) continue;
+    if (!latestBaselineResponsesByPerson.has(submission.person_id)) latestBaselineResponsesByPerson.set(submission.person_id, []);
+    latestBaselineResponsesByPerson.get(submission.person_id).push(response);
+  }
+
+  const postConfirmationChanges = [];
+  for (const [personId, latestSubmission] of latestSubmissionByPerson.entries()) {
+    const person = personById.get(personId);
+    if (!person) continue;
+    const baselineResponses = latestBaselineResponsesByPerson.get(personId) || [];
+    const baselineIds = new Set(baselineResponses.map((row) => row.assignment_id));
+    const changes = [];
+
+    for (const response of baselineResponses) {
+      const baselineAssignment = assignmentHistoryById.get(response.assignment_id) || null;
+      const currentAssignment = activeDescendantByAncestor.get(response.assignment_id) || null;
+      const before = {
+        assignmentId: response.assignment_id,
+        personId,
+        personName: person.display_name,
+        day: response.day_snapshot || '',
+        shift: response.shift_snapshot || '',
+        activity: response.activity_snapshot || '',
+        role: response.role_snapshot || '',
+        response: response.response || null,
+        note: response.note || ''
+      };
+
+      if (!currentAssignment) {
+        changes.push({
+          type: 'removed',
+          changedAt: baselineAssignment?.updated_at || null,
+          before,
+          after: null,
+          fields: ['assignment']
+        });
+        continue;
+      }
+
+      const after = hydrateComparisonAssignment(currentAssignment);
+      const fields = [];
+      if (after.personId !== personId) fields.push('person');
+      if (String(before.day || '') !== String(after.day || '')) fields.push('day');
+      if (String(before.shift || '') !== String(after.shift || '')) fields.push('shift');
+      if (String(before.activity || '') !== String(after.activity || '')) fields.push('activity');
+      if (String(before.role || '') !== String(after.role || '')) fields.push('role');
+
+      if (fields.length) {
+        changes.push({
+          type: after.personId !== personId ? 'reassigned' : 'modified',
+          changedAt: currentAssignment.created_at || currentAssignment.updated_at || null,
+          before,
+          after,
+          fields
+        });
+      }
+    }
+
+    for (const currentAssignment of assignmentRows.filter((row) => row.person_id === personId)) {
+      const ancestry = lineageIds(currentAssignment);
+      if (ancestry.some((id) => baselineIds.has(id))) continue;
+      if (String(currentAssignment.created_at || '') <= String(latestSubmission.created_at || '')) continue;
+      changes.push({
+        type: 'added',
+        changedAt: currentAssignment.created_at || null,
+        before: null,
+        after: hydrateComparisonAssignment(currentAssignment),
+        fields: ['assignment']
+      });
+    }
+
+    changes.sort((a, b) => String(a.changedAt || '').localeCompare(String(b.changedAt || '')));
+    if (changes.length) {
+      postConfirmationChanges.push({
+        personId,
+        personName: person.display_name,
+        personCode: person.person_code || '',
+        submissionId: latestSubmission.id,
+        submittedAt: latestSubmission.created_at,
+        changes
+      });
+    }
+  }
+
+  postConfirmationChanges.sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'));
+
   const hydratedRaceProgram = raceRows.map((entry) => {
     const person = personById.get(entry.person_id) || null;
     return {
@@ -203,6 +348,7 @@ async function adminSnapshot() {
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
     assignments: hydratedAssignments,
+    postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
     raceProgramAvailable: raceProgram !== null,
     raceProgram: hydratedRaceProgram
