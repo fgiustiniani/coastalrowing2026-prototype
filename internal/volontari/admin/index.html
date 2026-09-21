@@ -1,47 +1,3 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>Gestione volontari | Coastal Rowing Pesaro 2026</title>
-  <link rel="stylesheet" href="../volontari.css">
-  <link rel="stylesheet" href="admin.css">
-</head>
-<body>
-  <main class="admin-shell">
-    <header class="admin-header">
-      <img src="../../../assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 – Pesaro">
-      <div>
-        <p class="eyebrow">Area organizzazione</p>
-        <h1>Gestione volontari</h1>
-        <p class="intro">Assegnazioni, conferme, disponibilità aggiuntive e storico.</p>
-      </div>
-    </header>
-
-    <section class="card admin-login" data-admin-login>
-      <h2>Accesso amministratore</h2>
-      <form data-login-form class="login-grid">
-        <label class="field"><span>Utente</span><input name="username" autocomplete="username" required></label>
-        <label class="field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required></label>
-        <button class="button button--primary" type="submit">Accedi</button>
-        <p class="status" data-login-status aria-live="polite"></p>
-      </form>
-    </section>
-
-    <section data-dashboard hidden>
-      <div class="admin-toolbar">
-        <div><p class="eyebrow">Situazione aggiornata</p><h2>Quadro organizzativo</h2></div>
-        <div class="toolbar-actions"><button class="button button--secondary" type="button" data-refresh>Aggiorna</button><button class="button button--secondary" type="button" data-logout>Esci</button></div>
-      </div>
-
-      <section class="card admin-section">
-        <div class="section-head">
-          <div><p class="eyebrow">Condivisione</p><h2>Link volontari</h2></div>
-          <button class="button button--primary" type="button" data-copy-volunteer-link>Copia link volontari</button>
-        </div>
-        <p class="intro">Il link firmato consente l’accesso diretto al modulo e resta valido fino al 6 ottobre 2026. Il segreto usato per firmarlo non viene mai inviato al browser.</p>
-        <p class="status" data-invite-status aria-live="polite"></p>
       </section>
 
       <section class="kpi-grid" data-kpis></section>
@@ -56,7 +12,7 @@
         </div>
         <div id="assignments-content" data-collapsible-content>
           <div class="filter-grid">
-            <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni</option><option value="availability">Solo disponibilità</option></select></label>
+            <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni già fatte</option><option value="availability">Solo disponibilità</option></select></label>
             <label class="field compact-field"><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
             <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter><option value="">Tutte</option></select></label>
             <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter><option value="">Tutti</option></select></label>
@@ -87,89 +43,3 @@
           <div class="table-wrap" data-activity-catalog></div>
         </div>
       </section>
-
-      <section class="card admin-section">
-        <div class="section-head">
-          <div><p class="eyebrow">Anagrafica</p><h2>Programma gare</h2></div>
-          <div class="section-actions">
-            <button class="button button--primary" type="button" data-new-race-entry>Nuova voce</button>
-            <button class="button button--secondary collapse-button" type="button" data-collapse-target="race-program-content" aria-expanded="false">Espandi</button>
-          </div>
-        </div>
-        <div id="race-program-content" data-collapsible-content hidden>
-          <p class="intro">L’elenco deriva da <strong>Programma gare per org.xlsx</strong> ed è integrato con il programma gare provvisorio. Per i Master sono già riportati giorno e ora quando determinabili univocamente; per U19, U23 e Senior è precompilato il giorno, mentre l’ora individuale va completata qui.</p>
-          <div class="filter-grid filter-grid--report">
-            <label class="field compact-field"><span>Persona</span><select data-race-person-filter><option value="">Tutte</option></select></label>
-            <label class="field compact-field"><span>Equipaggio / categoria</span><input type="search" data-race-crew-filter placeholder="Cerca..."></label>
-          </div>
-          <p class="status" data-race-program-status aria-live="polite"></p>
-          <div class="table-wrap" data-race-program></div>
-        </div>
-      </section>
-
-      <section class="report-grid">
-        <article class="card admin-section">
-          <div class="section-head">
-            <div><p class="eyebrow">Report</p><h2>Per persona</h2></div>
-            <div class="section-actions">
-              <button class="button button--secondary" type="button" data-person-export-pdf>PDF</button>
-              <button class="button button--secondary" type="button" data-person-export-excel>Excel</button>
-              <button class="button button--secondary collapse-button" type="button" data-collapse-target="person-report-content" aria-expanded="true">Comprimi</button>
-            </div>
-          </div>
-          <div id="person-report-content" data-collapsible-content>
-            <div class="filter-grid filter-grid--report">
-              <label class="field compact-field"><span>Persona</span><select data-person-report-person-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Ha risposto</span><select data-person-report-response-filter><option value="">Tutte</option><option value="yes">Sì</option><option value="no">No</option></select></label>
-            </div>
-            <div class="table-wrap" data-person-report></div>
-          </div>
-        </article>
-
-        <article class="card admin-section">
-          <div class="section-head">
-            <div><p class="eyebrow">Report</p><h2>Per attività</h2></div>
-            <div class="section-actions">
-              <button class="button button--secondary" type="button" data-activity-export-pdf>PDF</button>
-              <button class="button button--secondary" type="button" data-activity-export-excel>Excel</button>
-              <button class="button button--secondary collapse-button" type="button" data-collapse-target="activity-report-content" aria-expanded="true">Comprimi</button>
-            </div>
-          </div>
-          <div id="activity-report-content" data-collapsible-content>
-            <div class="filter-grid filter-grid--report">
-              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter><option value="">Tutte</option></select></label>
-            </div>
-            <div class="table-wrap" data-activity-report></div>
-          </div>
-        </article>
-      </section>
-
-      <dialog class="audit-dialog" data-detail-dialog>
-        <div class="audit-dialog__content">
-          <div class="section-head"><div><p class="eyebrow">Dettaglio</p><h2 data-detail-title>Dettaglio</h2></div><button class="audit-close" type="button" data-detail-close aria-label="Chiudi">×</button></div>
-          <div data-detail-content></div>
-          <div class="actions actions--end"><button class="button button--secondary" type="button" data-detail-close>Chiudi</button></div>
-        </div>
-      </dialog>
-
-      <dialog class="audit-dialog" data-person-activities-dialog>
-        <div class="audit-dialog__content">
-          <div class="section-head"><div><p class="eyebrow">Attività della persona</p><h2 data-person-activities-title>Attività</h2></div><button class="audit-close" type="button" data-person-activities-close aria-label="Chiudi">×</button></div>
-          <div data-person-activities-content></div>
-          <div class="actions actions--end"><button class="button button--secondary" type="button" data-person-activities-close>Chiudi</button></div>
-        </div>
-      </dialog>
-
-      <dialog class="audit-dialog" data-audit-dialog>
-        <div class="audit-dialog__content">
-          <div class="section-head"><div><p class="eyebrow">Storico</p><h2 data-audit-title>Audit</h2></div><button class="audit-close" type="button" data-audit-close aria-label="Chiudi">×</button></div>
-          <div data-audit-list></div>
-          <div class="actions actions--end"><button class="button button--secondary" type="button" data-audit-close>Chiudi</button></div>
-        </div>
-      </dialog>
-    </section>
-  </main>
-  <script src="admin.js" defer></script>
-</body>
-</html>
