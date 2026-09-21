@@ -2986,3 +2986,32 @@ tr.is-busy button.is-busy {
   z-index: 14;
   box-shadow: 0 5px 14px rgba(23,62,75,.10);
 }
+
+
+/* Posizionamento attività tra gruppi nella vista schede */
+.assignment-board__position-drop-target {
+  display: none;
+}
+.is-activity-drag-mode .assignment-board__position-drop-target {
+  display: flex;
+  min-height: 24px;
+  margin: 3px 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #c2d2d5;
+  border-radius: 8px;
+  background: #f8fbfb;
+  color: #718388;
+  font-size: .66rem;
+  font-weight: 800;
+  text-align: center;
+}
+.is-activity-drag-mode .assignment-board__position-drop-target span {
+  pointer-events: none;
+}
+.is-activity-drag-mode .assignment-board__position-drop-target.is-activity-position-drop-target {
+  border: 2px solid var(--accent);
+  background: #eaf7f9;
+  color: var(--accent-dark);
+  box-shadow: inset 0 0 0 1px #fff;
+}

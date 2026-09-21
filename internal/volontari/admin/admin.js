@@ -1306,8 +1306,8 @@
   }
 
   function clearBoardActivityReorderMarkers() {
-    assignmentBoard?.querySelectorAll('.is-activity-reorder-before, .is-activity-reorder-after, .is-activity-reorder-end').forEach((node) => {
-      node.classList.remove('is-activity-reorder-before', 'is-activity-reorder-after', 'is-activity-reorder-end');
+    assignmentBoard?.querySelectorAll('.is-activity-reorder-before, .is-activity-reorder-after, .is-activity-reorder-end, .is-activity-position-drop-target').forEach((node) => {
+      node.classList.remove('is-activity-reorder-before', 'is-activity-reorder-after', 'is-activity-reorder-end', 'is-activity-position-drop-target');
     });
   }
 
@@ -1339,6 +1339,22 @@
     const column = element?.closest?.('[data-board-shift-column]');
     if (!column || column.dataset.boardShiftColumn !== shiftId) return null;
 
+    const positionTarget = element.closest('[data-board-position-target]');
+    if (positionTarget) {
+      return {
+        column,
+        groupId: '',
+        targetGroup: null,
+        targetContainer: null,
+        targetBox: null,
+        paletteTarget: null,
+        positionTarget,
+        targetRequirementId: positionTarget.dataset.boardTargetRequirementId || '',
+        placeAfter: positionTarget.dataset.boardPlaceAfter === 'true',
+        canDropAtEnd: positionTarget.dataset.boardDropAtEnd === 'true'
+      };
+    }
+
     const paletteTarget = element.closest('[data-board-group-drop-target]');
     if (paletteTarget) {
       return {
@@ -1347,7 +1363,8 @@
         targetGroup: null,
         targetContainer: null,
         targetBox: null,
-        paletteTarget
+        paletteTarget,
+        positionTarget: null
       };
     }
 
@@ -1368,8 +1385,56 @@
       targetGroup,
       targetContainer,
       targetBox,
-      paletteTarget: null
+      paletteTarget: null,
+      positionTarget: null
     };
+  }
+
+  function boardShiftBlocks(shiftRequirements) {
+    const ordered = [...shiftRequirements].sort((a, b) =>
+      Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+      || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+    );
+    const grouped = new Map();
+
+    for (const requirement of ordered) {
+      const groupId = requirement.activityGroupId || '';
+      if (!groupId) continue;
+      if (!grouped.has(groupId)) {
+        grouped.set(groupId, {
+          type: 'group',
+          groupId,
+          group: activityGroupById(groupId) || { id: groupId, name: 'Gruppo' },
+          requirements: []
+        });
+      }
+      grouped.get(groupId).requirements.push(requirement);
+    }
+
+    const seenGroups = new Set();
+    const blocks = [];
+    for (const requirement of ordered) {
+      const groupId = requirement.activityGroupId || '';
+      if (!groupId) {
+        blocks.push({ type: 'activity', requirement });
+        continue;
+      }
+      if (seenGroups.has(groupId)) continue;
+      seenGroups.add(groupId);
+      blocks.push(grouped.get(groupId));
+    }
+    return blocks;
+  }
+
+  function boardBlockRequirementIds(block) {
+    if (!block) return [];
+    if (block.type === 'group') return block.requirements.map((item) => item.id);
+    return block.requirement?.id ? [block.requirement.id] : [];
+  }
+
+  function boardShiftRequirementIds(shiftId) {
+    return boardShiftBlocks(requirements().filter((row) => row.shiftId === shiftId))
+      .flatMap(boardBlockRequirementIds);
   }
 
   function boardActivityGroupIds() {
@@ -1381,23 +1446,57 @@
     const ids = boardActivityGroupIds();
     if (!ids.includes(draggedId) || !ids.includes(targetGroupId)) return;
 
-    const next = ids.filter((id) => id !== draggedId);
-    const targetIndex = next.indexOf(targetGroupId);
-    next.splice(targetIndex + (placeAfter ? 1 : 0), 0, draggedId);
+    const nextGroups = ids.filter((id) => id !== draggedId);
+    const targetIndex = nextGroups.indexOf(targetGroupId);
+    nextGroups.splice(targetIndex + (placeAfter ? 1 : 0), 0, draggedId);
 
-    if (next.every((id, index) => id === ids[index])) return;
+    const shiftOrders = [];
+    for (const shift of (snapshot?.shifts || [])) {
+      const shiftRequirements = requirements().filter((row) => row.shiftId === shift.id);
+      const blocks = boardShiftBlocks(shiftRequirements);
+      const sourceIndex = blocks.findIndex((block) => block.type === 'group' && block.groupId === draggedId);
+      const destinationIndex = blocks.findIndex((block) => block.type === 'group' && block.groupId === targetGroupId);
+      if (sourceIndex < 0 || destinationIndex < 0) continue;
+
+      const nextBlocks = [...blocks];
+      const [sourceBlock] = nextBlocks.splice(sourceIndex, 1);
+      const currentTargetIndex = nextBlocks.findIndex((block) => block.type === 'group' && block.groupId === targetGroupId);
+      nextBlocks.splice(currentTargetIndex + (placeAfter ? 1 : 0), 0, sourceBlock);
+
+      const requirementIds = nextBlocks.flatMap(boardBlockRequirementIds);
+      const currentIds = shiftRequirementIds(shift.id);
+      if (!requirementIds.every((id, index) => id === currentIds[index])) {
+        shiftOrders.push({ shiftId: shift.id, requirementIds });
+      }
+    }
+
+    const groupOrderChanged = !nextGroups.every((id, index) => id === ids[index]);
+    if (!groupOrderChanged && !shiftOrders.length) return;
 
     assignmentBoard?.classList.add('is-saving');
     setStatus(assignmentBoardStatus, 'Salvataggio ordine gruppi…');
     try {
-      await api(API, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reorder-activity-groups',
-          groupIds: next
-        })
-      });
+      for (const item of shiftOrders) {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'reorder-requirements',
+            shiftId: item.shiftId,
+            requirementIds: item.requirementIds
+          })
+        });
+      }
+      if (groupOrderChanged) {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'reorder-activity-groups',
+            groupIds: nextGroups
+          })
+        });
+      }
       await loadSnapshot();
       setStatus(assignmentBoardStatus, 'Ordine gruppi aggiornato.', 'success');
     } catch (error) {
@@ -1467,7 +1566,7 @@
     const dragged = requirementById(draggedId);
     if (!dragged) return;
 
-    const ids = shiftRequirementIds(dragged.shiftId);
+    const ids = boardShiftRequirementIds(dragged.shiftId);
     if (!ids.includes(draggedId)) return;
 
     const next = ids.filter((id) => id !== draggedId);
@@ -1658,18 +1757,19 @@
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
 
-      const groupedHtml = groups.map((group) => {
-        const groupRequirements = shiftRequirements
-          .filter((item) => (item.activityGroupId || '') === group.id)
-          .sort((a, b) =>
-            Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-            || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
-          );
+      const blocks = boardShiftBlocks(shiftRequirements);
+      const renderPositionTarget = (targetRequirementId = '', placeAfter = false, dropAtEnd = false) => `
+        <div class="assignment-board__position-drop-target"
+          data-board-position-target
+          data-board-target-requirement-id="${escapeHtml(targetRequirementId)}"
+          data-board-place-after="${placeAfter ? 'true' : 'false'}"
+          data-board-drop-at-end="${dropAtEnd ? 'true' : 'false'}">
+          <span>Rilascia qui per posizionare l’attività</span>
+        </div>`;
 
-        // In modalità normale non mostriamo gruppi vuoti: in ogni turno
-        // compaiono solo attività realmente abbinate a quel turno.
-        if (!groupRequirements.length) return '';
-
+      const renderGroupBlock = (block) => {
+        const group = block.group;
+        const groupRequirements = block.requirements;
         const collapsed = boardGroupCollapsed(shift.id, group.id);
         const groupKey = boardGroupKey(shift.id, group.id);
         return `
@@ -1703,21 +1803,20 @@
               ${groupRequirements.map(renderActivityBox).join('')}
             </div>
           </section>`;
-      }).join('');
+      };
 
-      const ungroupedRequirements = shiftRequirements
-        .filter((item) => !item.activityGroupId)
-        .sort((a, b) =>
-          Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-          || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
-        );
-      const ungroupedHtml = `
-        <div class="assignment-board__ungrouped-zone ${ungroupedRequirements.length ? 'has-activities' : ''}"
-          data-board-activity-container
-          data-board-group-id="">
-          ${ungroupedRequirements.map(renderActivityBox).join('')}
-          <div class="assignment-board__ungrouped-drop-hint">Rilascia qui per togliere l’attività dal gruppo</div>
-        </div>`;
+      const mixedHtml = blocks.map((block) => {
+        const ids = boardBlockRequirementIds(block);
+        const beforeTarget = renderPositionTarget(ids[0] || '', false, false);
+        const content = block.type === 'group'
+          ? renderGroupBlock(block)
+          : renderActivityBox(block.requirement);
+        return `${beforeTarget}${content}`;
+      }).join('') + renderPositionTarget(
+        blocks.length ? boardBlockRequirementIds(blocks[blocks.length - 1]).slice(-1)[0] || '' : '',
+        true,
+        true
+      );
 
       const groupDropPalette = `
         <div class="assignment-board__group-drop-palette" data-board-group-drop-palette>
@@ -1740,8 +1839,7 @@
           </header>
           <div class="assignment-board__activities">
             ${groupDropPalette}
-            ${groupedHtml}
-            ${ungroupedHtml}
+            ${mixedHtml}
           </div>
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
@@ -2790,6 +2888,35 @@
       byDay.get(group.day).push(group);
     }
 
+    const renderPdfPeople = (item) => item.people.length
+      ? item.people.map((person) =>
+          `<span class="${person.isResponsible ? 'responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · RESPONSABILE' : ''}</span>`
+        ).join('')
+      : '<span class="empty-people">Nessuno assegnato</span>';
+
+    const renderPdfActivity = (item) => `
+      <section class="activity-block">
+        <strong>${escapeHtml(item.activity)}</strong>
+        <div class="people-list">${renderPdfPeople(item)}</div>
+      </section>`;
+
+    const renderPdfActivities = (activities) => {
+      if (!showGroups) return activities.map(renderPdfActivity).join('');
+
+      const groupedActivities = new Map();
+      for (const item of activities) {
+        const groupName = item.groupName || 'Senza gruppo';
+        if (!groupedActivities.has(groupName)) groupedActivities.set(groupName, []);
+        groupedActivities.get(groupName).push(item);
+      }
+
+      return [...groupedActivities.entries()].map(([groupName, items]) => `
+        <section class="pdf-activity-group">
+          <h4>${escapeHtml(groupName)}</h4>
+          ${items.map(renderPdfActivity).join('')}
+        </section>`).join('');
+    };
+
     const pages = [...byDay.entries()].map(([day, dayGroups]) => `
       <section class="day-page">
         <header class="page-header">
@@ -2803,14 +2930,7 @@
           ${dayGroups.map((group) => `
             <article class="turn-column">
               <h3>${escapeHtml(group.shift)}</h3>
-              ${group.activities.map((item) => `
-                <section class="activity-block">
-                  ${showGroups && item.groupName ? `<span class="activity-group-label">${escapeHtml(item.groupName)}</span>` : ''}
-                  <strong>${escapeHtml(item.activity)}</strong>
-                  <div class="people-list">${item.people.map((person) =>
-                    `<span class="${person.isResponsible ? 'responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>`
-                  ).join('')}</div>
-                </section>`).join('')}
+              ${renderPdfActivities(group.activities)}
             </article>`).join('')}
         </div>
       </section>`).join('');
@@ -2821,21 +2941,24 @@
       html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; }
       .day-page { break-after: page; page-break-after: always; width: 100%; }
       .day-page:last-child { break-after: auto; page-break-after: auto; }
-      .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
-      h1 { margin: 0; font-size: 14px; }
-      h2 { margin: 2px 0 0; font-size: 18px; }
-      .page-header span { font-size: 6.5px; color: #60757d; white-space: nowrap; }
-      .turn-grid { display: grid; gap: 6px; align-items: start; width: 100%; }
-      .turn-column { border: 1px solid #cfdcdf; border-radius: 6px; overflow: hidden; min-width: 0; }
-      .turn-column h3 { margin: 0; padding: 5px 6px; background: #eaf2f4; font-size: 9px; border-bottom: 1px solid #cfdcdf; }
-      .activity-block { padding: 5px 6px; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
+      .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 0 10px; }
+      h1 { margin: 0; font-size: ${showGroups ? '18px' : '14px'}; }
+      h2 { margin: 2px 0 0; font-size: ${showGroups ? '22px' : '18px'}; }
+      .page-header span { font-size: ${showGroups ? '8px' : '6.5px'}; color: #60757d; white-space: nowrap; }
+      .turn-grid { display: grid; gap: 8px; align-items: start; width: 100%; }
+      .turn-column { border: 1px solid #cfdcdf; border-radius: 7px; overflow: hidden; min-width: 0; }
+      .turn-column h3 { margin: 0; padding: 7px 8px; background: #eaf2f4; font-size: ${showGroups ? '12px' : '9px'}; border-bottom: 1px solid #cfdcdf; }
+      .pdf-activity-group { margin: 0; padding: 0; border-bottom: 2px solid #c3d2d5; break-inside: avoid; page-break-inside: avoid; }
+      .pdf-activity-group:last-child { border-bottom: 0; }
+      .pdf-activity-group h4 { margin: 0; padding: 6px 8px; background: #dce7e9; color: #24464e; font-size: 10.5px; line-height: 1.15; text-transform: uppercase; letter-spacing: .025em; }
+      .activity-block { padding: ${showGroups ? '7px 8px' : '5px 6px'}; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
       .activity-block:last-child { border-bottom: 0; }
-      .activity-group-label { display: block; margin-bottom: 2px; color: #60757d; font-size: 5.8px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-      .activity-block > strong { display: block; margin-bottom: 2px; font-size: 7px; line-height: 1.15; }
-      .people-list { font-size: 6.2px; line-height: 1.2; }
+      .activity-block > strong { display: block; margin-bottom: 4px; font-size: ${showGroups ? '9.5px' : '7px'}; line-height: 1.2; }
+      .people-list { font-size: ${showGroups ? '8.3px' : '6.2px'}; line-height: 1.45; }
       .people-list span { display: inline; }
-      .people-list span + span::before { content: "; "; }
-      .people-list .responsible { font-weight: 700; color: #725600; }
+      .people-list span + span::before { content: "; "; color: #60757d; font-weight: 400; }
+      .people-list .responsible { display: inline-block; margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
+      .empty-people { color: #7b8a8e; font-style: italic; }
     </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
   }
@@ -3999,6 +4122,15 @@
 
     boardActivityPointerDrag.hasTargetGroup = true;
     boardActivityPointerDrag.targetGroupId = target.groupId;
+
+    if (target.positionTarget) {
+      boardActivityPointerDrag.targetGroupId = '';
+      boardActivityPointerDrag.targetRequirementId = target.targetRequirementId || '';
+      boardActivityPointerDrag.placeAfter = target.placeAfter === true;
+      boardActivityPointerDrag.canDropAtEnd = target.canDropAtEnd === true;
+      target.positionTarget.classList.add('is-activity-position-drop-target');
+      return;
+    }
 
     const targetBox = target.targetBox;
     const targetRequirementId = targetBox?.dataset.boardRequirementId || '';
