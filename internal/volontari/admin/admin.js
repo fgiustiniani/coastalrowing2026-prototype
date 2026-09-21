@@ -589,6 +589,21 @@
     } catch { return ''; }
   }
 
+  function declinedResponsesForCandidate(candidate) {
+    if (!candidate?.personId) return [];
+    const declined = snapshot?.declinedAssignmentResponses || [];
+    return declined.filter((row) => {
+      if (row.personId !== candidate.personId) return false;
+
+      if (candidate.shiftId && row.shiftId) {
+        return row.shiftId === candidate.shiftId;
+      }
+
+      return String(row.day || '') === String(candidate.day || '')
+        && String(row.shift || '') === String(candidate.shift || '');
+    });
+  }
+
   function assignmentWarningDetails(candidate) {
     const warnings = [];
     const assignments = snapshot?.assignments || [];
@@ -600,6 +615,23 @@
       return !row.shiftId && shiftFilterKey(row) === shiftFilterKey(candidate);
     });
     if (sameShift.length) warnings.push({ type: 'duplicate', text: 'Più assegnazioni nello stesso turno' });
+
+    const declinedInShift = declinedResponsesForCandidate(candidate);
+    if (declinedInShift.length) {
+      const activities = [...new Map(
+        declinedInShift
+          .map((row) => String(row.activity || 'Attività').trim())
+          .filter(Boolean)
+          .map((activity) => [activity.toLocaleLowerCase('it-IT'), activity])
+      ).values()].sort((a, b) => a.localeCompare(b, 'it'));
+
+      const shown = activities.slice(0, 3);
+      const remainder = Math.max(0, activities.length - shown.length);
+      warnings.push({
+        type: 'declined',
+        text: `Ha rifiutato in questo turno: ${shown.join(' · ')}${remainder ? ` · +${remainder} ${remainder === 1 ? 'altra attività' : 'altre attività'}` : ''}`
+      });
+    }
 
     if (candidate.shiftId && snapshot?.raceProgramAvailable) {
       const shifts = (snapshot?.shifts || []).map((shift) => ({
@@ -639,7 +671,7 @@
   function warningHtml(warnings) {
     if (!warnings?.length) return '<span class="warning-none">—</span>';
     return `<div class="warning-stack">${warnings.map((warning) =>
-      `<span class="warning-badge${warning.type === 'race' ? ' warning-badge--race' : ''}">⚠ ${escapeHtml(warning.text)}</span>`
+      `<span class="warning-badge${warning.type === 'race' ? ' warning-badge--race' : ''}${warning.type === 'declined' ? ' warning-badge--declined' : ''}">⚠ ${escapeHtml(warning.text)}</span>`
     ).join('')}</div>`;
   }
 
