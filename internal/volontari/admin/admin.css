@@ -2897,3 +2897,38 @@ tr.is-busy button.is-busy {
 .assignment-board__activity + .assignment-board__activity {
   margin-top: 0;
 }
+
+
+/* Evidenza gruppi e modifiche attività */
+.assignment-board__activity-group {
+  border-color: #8fb8c1;
+  background: #eaf5f7;
+  box-shadow: 0 3px 10px rgba(41, 95, 107, .08);
+}
+.assignment-board__activity-group-head {
+  background: #d7ebef;
+  color: #244f59;
+  border-bottom: 1px solid #b9d5db;
+}
+.assignment-board__activity-group.is-collapsed .assignment-board__activity-group-head {
+  border-bottom: 0;
+}
+.assignment-board__activity-group .assignment-board__group-body {
+  background: #f2f9fa;
+  border-radius: 0 0 11px 11px;
+}
+.assignment-board__activity-group .assignment-board__activity {
+  background: #fff;
+}
+.assignment-board__activity-group.is-activity-group-drop-target {
+  background: #d9f0f3;
+}
+.assignment-board__activity-group.is-activity-group-drop-target .assignment-board__activity-group-head {
+  background: #c6e6eb;
+}
+.activity-catalog-table tr.is-dirty-row td {
+  background: #fff9e8;
+}
+.activity-catalog-table tr.is-dirty-row td:first-child {
+  box-shadow: inset 3px 0 0 #d2a62d;
+}
