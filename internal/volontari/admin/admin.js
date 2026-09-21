@@ -38,6 +38,11 @@
   const personActivitiesDialog = document.querySelector('[data-person-activities-dialog]');
   const personActivitiesTitle = document.querySelector('[data-person-activities-title]');
   const personActivitiesContent = document.querySelector('[data-person-activities-content]');
+  const responsibleDialog = document.querySelector('[data-responsible-dialog]');
+  const responsibleTitle = document.querySelector('[data-responsible-title]');
+  const responsibleSummary = document.querySelector('[data-responsible-summary]');
+  const responsibleContent = document.querySelector('[data-responsible-content]');
+  const responsibleStatus = document.querySelector('[data-responsible-status]');
   const auditDialog = document.querySelector('[data-audit-dialog]');
   const auditTitle = document.querySelector('[data-audit-title]');
   const auditList = document.querySelector('[data-audit-list]');
@@ -507,6 +512,23 @@
     return sortAssignmentRows(rows);
   }
 
+  function responsibilityGroupRows(row) {
+    if (!row || !row.shiftId) return [];
+    return (snapshot?.assignments || [])
+      .filter((item) =>
+        item.shiftId === row.shiftId
+        && (
+          (row.activityId && item.activityId === row.activityId)
+          || (!row.activityId && displayActivity(item) === displayActivity(row))
+        )
+      )
+      .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'));
+  }
+
+  function responsibleForGroup(row) {
+    return responsibilityGroupRows(row).find((item) => item.isResponsible) || null;
+  }
+
   function assignmentRowHtml(row, isNew = false) {
     const isAvailability = Boolean(row?.isAvailability);
     const personId = row?.personId || '';
@@ -555,10 +577,9 @@
            </div>
            <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>`);
 
+    const groupResponsible = (!isNew && !isAvailability) ? responsibleForGroup(row) : null;
     const responsibleCell = (!isNew && !isAvailability)
-      ? (snapshot?.responsibilityAvailable
-        ? `<button type="button" class="responsible-toggle ${row.isResponsible ? 'is-active' : ''}" data-set-responsible="${row.isResponsible ? 'false' : 'true'}" title="${row.isResponsible ? 'Rimuovi responsabile' : 'Imposta come responsabile'}">${row.isResponsible ? '★ Responsabile' : '☆ Imposta'}</button>`
-        : '<span class="responsibility-unavailable">—</span>')
+      ? `<button type="button" class="responsible-field ${groupResponsible ? 'is-active' : ''}" data-open-responsible="${escapeHtml(row.id)}" title="Scegli il responsabile per questa attività e turno">${groupResponsible ? `★ ${escapeHtml(groupResponsible.personName)}` : 'Seleziona responsabile'}</button>`
       : '<span class="responsibility-unavailable">—</span>';
 
     return `
@@ -669,7 +690,7 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Persona</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       return `<tr>
         <td><strong>${escapeHtml(item.name)}</strong></td>
@@ -743,8 +764,8 @@
 
   function renderActivityReport() {
     const report = filteredActivityReportRows();
-    activityReport.innerHTML = report.length ? `<table class="admin-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Responsabile</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
-      `<tr><td><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td>${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="people-cell">${escapeHtml(item.peopleText)}</td><td>${item.responsibleName ? responsibleBadge(item.responsibleName) : '—'}</td><td>${item.pending}</td></tr>`
+    activityReport.innerHTML = report.length ? `<table class="admin-table activity-report-table"><thead><tr><th>Giorno e turno</th><th>Attività</th><th>N. persone</th><th>Persone</th><th>Responsabile</th><th>Da rispondere</th></tr></thead><tbody>${report.map((item) =>
+      `<tr><td class="report-shift-cell"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong></td><td class="report-activity-cell">${escapeHtml(item.activity)}</td><td>${item.peopleCount}</td><td class="report-people-cell">${escapeHtml(item.peopleText)}</td><td>${item.responsibleName ? responsibleBadge(item.responsibleName) : '—'}</td><td>${item.pending}</td></tr>`
     ).join('')}</tbody></table>` : '<p class="empty-state">Nessuna attività corrisponde ai filtri.</p>';
   }
 
@@ -1197,9 +1218,10 @@
 
   async function setAssignmentResponsible(assignmentId, isResponsible, button) {
     if (!snapshot?.responsibilityAvailable) {
-      alert('La funzione responsabile non è ancora inizializzata nel database.');
-      return;
+      setStatus(responsibleStatus, 'La funzione responsabile non è ancora inizializzata nel database.', 'error');
+      return false;
     }
+    let success = false;
     await withButtonBusy(button, isResponsible ? 'Impostazione…' : 'Rimozione…', async () => {
       try {
         await api(API, {
@@ -1212,10 +1234,53 @@
           })
         });
         await loadSnapshot();
+        success = true;
       } catch (error) {
-        alert(error.message);
+        setStatus(responsibleStatus, error.message, 'error');
       }
     });
+    return success;
+  }
+
+  function showResponsiblePopup(assignmentId) {
+    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+    if (!row || !responsibleDialog) return;
+
+    const groupRows = responsibilityGroupRows(row);
+    const current = groupRows.find((item) => item.isResponsible) || null;
+
+    responsibleTitle.textContent = displayActivity(row);
+    responsibleSummary.textContent = `${row.day} · ${row.shift} — scegli una sola persona tra quelle già assegnate a questa attività.`;
+    setStatus(responsibleStatus, snapshot?.responsibilityAvailable
+      ? ''
+      : 'La selezione è pronta, ma il salvataggio sarà disponibile dopo l’attivazione della migrazione responsabili.');
+
+    const noneButton = `
+      <button type="button"
+        class="responsible-choice responsible-choice--none ${current ? '' : 'is-selected'}"
+        data-clear-group-responsible="${escapeHtml(current?.id || '')}"
+        ${snapshot?.responsibilityAvailable ? '' : 'disabled'}>
+        <span class="responsible-choice__mark">${current ? '○' : '✓'}</span>
+        <span><strong>Nessun responsabile</strong><small>Lascia l’attività senza responsabile</small></span>
+      </button>`;
+
+    responsibleContent.innerHTML = `
+      <div class="responsible-choice-list">
+        ${groupRows.map((item) => `
+          <button type="button"
+            class="responsible-choice ${item.isResponsible ? 'is-selected' : ''}"
+            data-pick-group-responsible="${escapeHtml(item.id)}"
+            ${snapshot?.responsibilityAvailable ? '' : 'disabled'}>
+            <span class="responsible-choice__mark">${item.isResponsible ? '★' : '○'}</span>
+            <span>
+              <strong>${escapeHtml(item.personName)}</strong>
+              <small>${item.isResponsible ? 'Responsabile attuale' : 'Assegnato a questa attività e turno'}</small>
+            </span>
+          </button>`).join('')}
+        ${noneButton}
+      </div>`;
+
+    responsibleDialog.showModal();
   }
 
   async function saveInlineAssignment(rowNode) {
@@ -1378,18 +1443,14 @@
     const editPerson = event.target.closest('[data-edit-person]');
     const editActivity = event.target.closest('[data-edit-activity]');
     const shiftLink = event.target.closest('[data-show-shift-activities]');
-    const responsible = event.target.closest('[data-set-responsible]');
+    const responsible = event.target.closest('[data-open-responsible]');
     const remove = event.target.closest('[data-delete-assignment]');
     const audit = event.target.closest('[data-audit-person]');
     const person = event.target.closest('[data-show-person]');
     const activity = event.target.closest('[data-show-activity]');
 
     if (responsible && rowNode?.dataset.assignmentId) {
-      await setAssignmentResponsible(
-        rowNode.dataset.assignmentId,
-        responsible.dataset.setResponsible === 'true',
-        responsible
-      );
+      showResponsiblePopup(responsible.dataset.openResponsible || rowNode.dataset.assignmentId);
     } else if (shiftLink && rowNode) {
       const shiftId = shiftLink.dataset.showShiftActivities;
       if (shiftId) showShiftActivities(shiftId, rowNode);
@@ -1581,6 +1642,34 @@
       try { await showAudit(audit.dataset.auditPerson, audit.dataset.personName || 'Persona'); }
       catch (error) { alert(error.message); }
     });
+  });
+
+  responsibleContent?.addEventListener('click', async (event) => {
+    const pick = event.target.closest('[data-pick-group-responsible]');
+    const clear = event.target.closest('[data-clear-group-responsible]');
+    if (pick) {
+      setStatus(responsibleStatus, '');
+      const ok = await setAssignmentResponsible(pick.dataset.pickGroupResponsible, true, pick);
+      if (ok) responsibleDialog.close();
+      return;
+    }
+    if (clear) {
+      const assignmentId = clear.dataset.clearGroupResponsible || '';
+      if (!assignmentId) {
+        responsibleDialog.close();
+        return;
+      }
+      setStatus(responsibleStatus, '');
+      const ok = await setAssignmentResponsible(assignmentId, false, clear);
+      if (ok) responsibleDialog.close();
+    }
+  });
+
+  document.querySelectorAll('[data-responsible-close]').forEach((button) =>
+    button.addEventListener('click', () => responsibleDialog?.close())
+  );
+  responsibleDialog?.addEventListener('click', (event) => {
+    if (event.target === responsibleDialog) responsibleDialog.close();
   });
 
   detailContent?.addEventListener('click', (event) => {
