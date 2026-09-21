@@ -71,6 +71,52 @@
     node.className = `status${kind ? ` is-${kind}` : ''}`;
   }
 
+  function setButtonBusy(button, label) {
+    if (!button) return () => {};
+    const originalHtml = button.innerHTML;
+    const originalDisabled = button.disabled;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.classList.add('is-busy');
+    button.innerHTML = `<span class="button-spinner" aria-hidden="true"></span><span>${escapeHtml(label)}</span>`;
+    return () => {
+      if (!button.isConnected) return;
+      button.innerHTML = originalHtml;
+      button.disabled = originalDisabled;
+      button.removeAttribute('aria-busy');
+      button.classList.remove('is-busy');
+    };
+  }
+
+  async function withButtonBusy(button, label, operation) {
+    const restore = setButtonBusy(button, label);
+    try {
+      return await operation();
+    } finally {
+      restore();
+    }
+  }
+
+  function withBriefButtonBusy(button, label, operation) {
+    setButtonBusy(button, label);
+    window.setTimeout(operation, 120);
+  }
+
+  function setRowBusy(rowNode, active, exceptButton = null) {
+    if (!rowNode) return;
+    rowNode.classList.toggle('is-busy', active);
+    rowNode.querySelectorAll('button, select, input').forEach((control) => {
+      if (control === exceptButton) return;
+      if (active) {
+        control.dataset.wasDisabled = control.disabled ? '1' : '0';
+        control.disabled = true;
+      } else if (control.dataset.wasDisabled !== undefined) {
+        control.disabled = control.dataset.wasDisabled === '1';
+        delete control.dataset.wasDisabled;
+      }
+    });
+  }
+
   async function api(url = API, options = {}) {
     const headers = { authorization: authorization(), ...(options.headers || {}) };
     const response = await fetch(url, { ...options, headers, cache: 'no-store' });
@@ -983,7 +1029,16 @@
     availabilityOnly = false;
     renderAssignments();
   });
-  document.querySelector('[data-refresh]')?.addEventListener('click', () => loadSnapshot().catch((error) => alert(error.message)));
+  document.querySelector('[data-refresh]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    await withButtonBusy(button, 'Aggiornamento…', async () => {
+      try {
+        await loadSnapshot();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
@@ -1089,10 +1144,17 @@
         select.focus();
       }
     } else if (save && rowNode) {
-      await saveInlineAssignment(rowNode);
+      setRowBusy(rowNode, true, save);
+      try {
+        await withButtonBusy(save, 'Salvataggio…', () => saveInlineAssignment(rowNode));
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
+      }
     } else if (cancelEdit) {
-      if (!rowNode?.dataset.assignmentId && !rowNode?.dataset.availabilityKey) newAssignmentOpen = false;
-      renderAssignments();
+      withBriefButtonBusy(cancelEdit, 'Annullamento…', () => {
+        if (!rowNode?.dataset.assignmentId && !rowNode?.dataset.availabilityKey) newAssignmentOpen = false;
+        renderAssignments();
+      });
     } else if (person) {
       showPersonDetail(person.dataset.showPerson);
     } else if (activity) {
@@ -1105,8 +1167,10 @@
         await loadSnapshot();
       } catch (error) { alert(error.message); }
     } else if (audit) {
-      try { await showAudit(audit.dataset.auditPerson, audit.dataset.personName || 'Persona'); }
-      catch (error) { alert(error.message); }
+      await withButtonBusy(audit, 'Caricamento…', async () => {
+        try { await showAudit(audit.dataset.auditPerson, audit.dataset.personName || 'Persona'); }
+        catch (error) { alert(error.message); }
+      });
     }
   });
 
@@ -1119,8 +1183,10 @@
     const status = rowNode.querySelector('[data-row-status]');
 
     if (cancel) {
-      newActivityOpen = false;
-      renderActivityCatalog();
+      withBriefButtonBusy(cancel, 'Annullamento…', () => {
+        newActivityOpen = false;
+        renderActivityCatalog();
+      });
       return;
     }
     if (save) {
@@ -1130,17 +1196,24 @@
         status.className = 'row-save-status is-error';
         return;
       }
+      setRowBusy(rowNode, true, save);
       try {
-        await api(API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name })
+        await withButtonBusy(save, 'Salvataggio…', async () => {
+          try {
+            await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ action: 'save-activity', activityId: rowNode.dataset.activityId || null, name })
+            });
+            newActivityOpen = false;
+            await loadSnapshot();
+          } catch (error) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
         });
-        newActivityOpen = false;
-        await loadSnapshot();
-      } catch (error) {
-        status.textContent = error.message;
-        status.className = 'row-save-status is-error';
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
       }
       return;
     }
@@ -1176,8 +1249,10 @@
     const status = rowNode.querySelector('[data-row-status]');
 
     if (cancel) {
-      newRaceEntryOpen = false;
-      renderRaceProgram();
+      withBriefButtonBusy(cancel, 'Annullamento…', () => {
+        newRaceEntryOpen = false;
+        renderRaceProgram();
+      });
       return;
     }
     if (save) {
@@ -1190,17 +1265,24 @@
         status.className = 'row-save-status is-error';
         return;
       }
+      setRowBusy(rowNode, true, save);
       try {
-        await api(API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: 'save-race-entry', entryId: rowNode.dataset.raceId || null, personId, crewLabel, raceDate, raceTime })
+        await withButtonBusy(save, 'Salvataggio…', async () => {
+          try {
+            await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ action: 'save-race-entry', entryId: rowNode.dataset.raceId || null, personId, crewLabel, raceDate, raceTime })
+            });
+            newRaceEntryOpen = false;
+            await loadSnapshot();
+          } catch (error) {
+            status.textContent = error.message;
+            status.className = 'row-save-status is-error';
+          }
         });
-        newRaceEntryOpen = false;
-        await loadSnapshot();
-      } catch (error) {
-        status.textContent = error.message;
-        status.className = 'row-save-status is-error';
+      } finally {
+        if (rowNode.isConnected) setRowBusy(rowNode, false);
       }
       return;
     }
@@ -1221,8 +1303,10 @@
   personReport?.addEventListener('click', async (event) => {
     const audit = event.target.closest('[data-audit-person]');
     if (!audit) return;
-    try { await showAudit(audit.dataset.auditPerson, audit.dataset.personName || 'Persona'); }
-    catch (error) { alert(error.message); }
+    await withButtonBusy(audit, 'Caricamento…', async () => {
+      try { await showAudit(audit.dataset.auditPerson, audit.dataset.personName || 'Persona'); }
+      catch (error) { alert(error.message); }
+    });
   });
 
   detailContent?.addEventListener('click', (event) => {
