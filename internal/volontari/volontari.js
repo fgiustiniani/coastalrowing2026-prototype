@@ -249,7 +249,7 @@
             return `
               <article class="availability-card${shift.assigned ? ' is-assigned' : ''}" data-shift-id="${escapeHtml(shift.id)}">
                 <div class="availability-card__head"><div><h4>${escapeHtml(shift.shift)}</h4>${shift.assigned ? '<span class="pill">Già assegnato</span>' : ''}</div></div>
-                <label class="check"><input type="checkbox" data-availability-check ${selected ? 'checked' : ''} ${shift.assigned ? 'disabled' : ''}><span>${shift.assigned ? 'Turno già coperto da una tua attività' : 'Sono disponibile anche in questo turno'}</span></label>
+                <label class="check check--only"><input type="checkbox" data-availability-check aria-label="Seleziona disponibilità per questo turno" ${selected ? 'checked' : ''} ${shift.assigned ? 'disabled' : ''}></label>
                 <label class="field availability-note" ${selected && !shift.assigned ? '' : 'hidden'}><span>Nota facoltativa</span><textarea maxlength="1000" data-availability-note placeholder="Es. disponibile solo per alcune attività">${escapeHtml(note)}</textarea></label>
               </article>`;
           }).join('')}
