@@ -2255,3 +2255,101 @@ tr.is-busy button.is-busy {
     white-space: normal;
   }
 }
+
+
+/* Suggerimenti persona: layout ampio con assegnazioni e gare */
+.person-search-select__panel {
+  width: max(100%, 700px);
+  max-width: min(780px, calc(100vw - 48px));
+  max-height: 380px;
+  overflow-x: hidden;
+}
+.person-search-select__option {
+  gap: 7px;
+  padding: 10px 12px;
+}
+.person-search-select__name {
+  font-size: .88rem;
+}
+.person-search-select__details {
+  display: grid;
+  gap: 7px;
+}
+.person-search-select__assignments {
+  gap: 5px;
+  padding-left: 10px;
+}
+.person-search-select__assignment {
+  grid-template-columns: minmax(210px, .9fr) minmax(260px, 1.35fr);
+  gap: 8px 16px;
+  align-items: start;
+  font-size: .73rem;
+  line-height: 1.35;
+}
+.person-search-select__assignment-when {
+  white-space: normal;
+}
+.person-search-select__assignment-activity {
+  overflow-wrap: anywhere;
+}
+.person-search-select__races {
+  display: grid;
+  gap: 4px;
+  padding: 6px 0 0 10px;
+  border-top: 1px dashed #d9e3e5;
+}
+.person-search-select__race {
+  display: grid;
+  grid-template-columns: auto minmax(110px, .45fr) minmax(220px, 1fr);
+  gap: 7px 12px;
+  align-items: start;
+  color: #5e4c1d;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+.person-search-select__race-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: #fff0bf;
+  color: #775b00;
+  font-size: .61rem;
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+.person-search-select__race-when {
+  font-weight: 800;
+  white-space: normal;
+}
+.person-search-select__race-crew {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+.person-search-select__no-races {
+  display: block;
+  padding-left: 10px;
+  color: var(--muted);
+  font-size: .68rem;
+  font-style: italic;
+}
+
+@media (max-width: 760px) {
+  .person-search-select__panel {
+    width: 100%;
+    max-width: none;
+    max-height: min(58vh, 390px);
+  }
+  .person-search-select__assignment {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .person-search-select__race {
+    grid-template-columns: auto 1fr;
+  }
+  .person-search-select__race-crew {
+    grid-column: 2;
+  }
+}
