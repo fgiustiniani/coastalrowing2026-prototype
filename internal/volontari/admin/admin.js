@@ -275,6 +275,11 @@
       select.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
+    const formatRaceDateShort = (value) => {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return match ? `${match[3]}/${match[2]}` : String(value || '—');
+    };
+
     const personAssignmentsHtml = (personId) => {
       const currentAssignmentId = boardEditContext?.kind === 'assignment' ? boardEditContext.id : '';
       const rows = (snapshot?.assignments || [])
@@ -299,6 +304,29 @@
         </span>`).join('')}</span>`;
     };
 
+    const personRacesHtml = (personId) => {
+      if (!snapshot?.raceProgramAvailable) return '';
+
+      const rows = (snapshot?.raceProgram || [])
+        .filter((race) => race.personId === personId)
+        .sort((a, b) =>
+          String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+          || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+          || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+        );
+
+      if (!rows.length) {
+        return '<span class="person-search-select__no-races">Nessuna gara</span>';
+      }
+
+      return `<span class="person-search-select__races">${rows.map((race) => `
+        <span class="person-search-select__race">
+          <span class="person-search-select__race-label">GARA</span>
+          <span class="person-search-select__race-when">${escapeHtml(formatRaceDateShort(race.raceDate))}${race.raceTime ? ` · ${escapeHtml(race.raceTime)}` : ' · orario da definire'}</span>
+          <span class="person-search-select__race-crew">${escapeHtml(race.crewLabel || 'Equipaggio non indicato')}</span>
+        </span>`).join('')}</span>`;
+    };
+
     const render = (query = '') => {
       const normalized = normalizeFilterSearch(query);
       const options = [...select.options]
@@ -317,7 +345,10 @@
               class="person-search-select__option ${index === activeIndex ? 'is-active' : ''}"
               data-person-search-value="${escapeHtml(option.value)}">
               <span class="person-search-select__name">${escapeHtml(option.textContent.trim())}</span>
-              ${personAssignmentsHtml(option.value)}
+              <span class="person-search-select__details">
+                ${personAssignmentsHtml(option.value)}
+                ${personRacesHtml(option.value)}
+              </span>
             </button>`).join('')
         : '<p class="person-search-select__empty">Nessun nominativo corrispondente.</p>';
 
