@@ -193,7 +193,7 @@
     }));
     const raceByPerson = new Map();
     for (const race of snapshot?.raceProgram || []) {
-      if (!race.raceDate || !race.raceTime) continue;
+      if (!race.raceDate) continue;
       if (!raceByPerson.has(race.personId)) raceByPerson.set(race.personId, []);
       raceByPerson.get(race.personId).push(race);
     }
@@ -204,6 +204,11 @@
       if (!assignedShift) continue;
       for (const race of raceByPerson.get(assignment.personId) || []) {
         if (assignedShift.dateKey !== race.raceDate) continue;
+        if (!race.raceTime) {
+          if (!warnings.has(assignment.id)) warnings.set(assignment.id, []);
+          warnings.get(assignment.id).push(`Gara: ${race.crewLabel} · orario individuale da completare`);
+          continue;
+        }
         const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
         if (!Number.isFinite(raceMs)) continue;
         const dayShifts = shifts.filter((shift) => shift.dateKey === race.raceDate).sort((a, b) => a.startMs - b.startMs);
@@ -385,7 +390,12 @@
         answered: Boolean(latest),
         notes: notes.join('; '),
         availability,
-        activitiesText: item.rows
+        activitiesText: [...item.rows]
+          .sort((a, b) => {
+            const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
+            const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
+            return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
+          })
           .map((row) => `${row.day}-${row.shift} ${displayActivity(row)}`)
           .join('; '),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('; '),
