@@ -28,6 +28,9 @@
   const detailDialog = document.querySelector('[data-detail-dialog]');
   const detailTitle = document.querySelector('[data-detail-title]');
   const detailContent = document.querySelector('[data-detail-content]');
+  const personActivitiesDialog = document.querySelector('[data-person-activities-dialog]');
+  const personActivitiesTitle = document.querySelector('[data-person-activities-title]');
+  const personActivitiesContent = document.querySelector('[data-person-activities-content]');
   const auditDialog = document.querySelector('[data-audit-dialog]');
   const auditTitle = document.querySelector('[data-audit-title]');
   const auditList = document.querySelector('[data-audit-list]');
@@ -421,7 +424,7 @@
       <article class="kpi kpi--summary">
         <div class="kpi__main"><strong>${assignedPeople}</strong><span>persone assegnate</span></div>
         <p class="kpi__detail">di cui <button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</p>
-        <p class="kpi__detail"><button type="button" class="kpi__link" data-show-unassigned-availability>${unassignedAvailability.length}</button> disponibilità da assegnare</p>
+        <p class="kpi__detail"><button type="button" class="kpi__link" data-show-unassigned-availability>${new Set(unassignedAvailability.map((row) => row.personId)).size}</button> persone con ${unassignedAvailability.length} disponibilità da assegnare</p>
       </article>
       <article class="kpi kpi--summary">
         <div class="kpi__main"><strong>${assignments.length}</strong><span>attività assegnate</span></div>
@@ -883,14 +886,60 @@
     detailDialog.showModal();
   }
 
+  function personActivitiesHtml(personId) {
+    const rows = (snapshot?.assignments || [])
+      .filter((item) => item.personId === personId)
+      .sort((a, b) => {
+        const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
+        const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
+        return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
+      });
+    return rows.length
+      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Attività</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) =>
+          `<tr><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${responseBadge(row.currentResponse)}</td></tr>`
+        ).join('')}</tbody></table>`
+      : '<p class="empty-state">Nessuna attività assegnata.</p>';
+  }
+
+  function showPersonActivitiesPopup(personId) {
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    if (!person || !personActivitiesDialog) return;
+    personActivitiesTitle.textContent = person.display_name || 'Attività';
+    personActivitiesContent.innerHTML = personActivitiesHtml(personId);
+    personActivitiesDialog.showModal();
+  }
+
   function showRespondedPeople() {
     const people = respondedAssignedPeople();
+    detailTargetRow = null;
     detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
     detailContent.innerHTML = people.length
-      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th></tr></thead><tbody>${people.map((person) => `<tr><td><strong>${escapeHtml(person.display_name)}</strong></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td></tr>`).join('')}</tbody></table>`
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th></tr></thead><tbody>${people.map((person) =>
+          `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td></tr>`
+        ).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
     detailDialog.showModal();
   }
+
+  function showAvailabilityPeople() {
+    const rows = unassignedAvailabilityRows();
+    const groups = new Map();
+    for (const row of rows) {
+      if (!groups.has(row.personId)) groups.set(row.personId, { personId: row.personId, personName: row.personName, shifts: [] });
+      groups.get(row.personId).shifts.push(`${row.day} · ${row.shift}`);
+    }
+    const people = [...groups.values()].sort((a, b) => a.personName.localeCompare(b.personName, 'it'));
+    detailTargetRow = null;
+    detailTitle.textContent = `Persone con disponibilità da assegnare · ${people.length}`;
+    detailContent.innerHTML = people.length
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Disponibilità da assegnare</th></tr></thead><tbody>${people.map((person) =>
+          `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.personId)}">${escapeHtml(person.personName)}</button></td><td>${person.shifts.map((shift) => `<div class="detail-line">${escapeHtml(shift)}</div>`).join('')}</td></tr>`
+        ).join('')}</tbody></table>
+        <div class="actions actions--end"><button class="button button--secondary" type="button" data-filter-unassigned-availability>Mostra nella tabella Assegnazioni</button></div>`
+      : '<p class="empty-state">Non ci sono disponibilità da assegnare.</p>';
+    detailDialog.showModal();
+  }
+
   function renderAll() {
     renderKpis();
     renderAssignments();
@@ -1018,11 +1067,7 @@
       return;
     }
     if (event.target.closest('[data-show-unassigned-availability]')) {
-      availabilityOnly = true;
-      [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
-        .forEach((filter) => { if (filter) filter.value = ''; });
-      renderAssignments();
-      assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showAvailabilityPeople();
     }
   });
   document.querySelector('[data-clear-availability-filter]')?.addEventListener('click', () => {
@@ -1310,6 +1355,23 @@
   });
 
   detailContent?.addEventListener('click', (event) => {
+    const personLink = event.target.closest('[data-open-person-activities]');
+    if (personLink) {
+      showPersonActivitiesPopup(personLink.dataset.openPersonActivities);
+      return;
+    }
+
+    const filterAvailability = event.target.closest('[data-filter-unassigned-availability]');
+    if (filterAvailability) {
+      availabilityOnly = true;
+      [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
+        .forEach((filter) => { if (filter) filter.value = ''; });
+      detailDialog.close();
+      renderAssignments();
+      assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
     const pick = event.target.closest('[data-pick-shift-activity]');
     if (!pick || !detailTargetRow) return;
     const value = pick.dataset.pickShiftActivity || '';
@@ -1334,7 +1396,9 @@
   document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
   detailDialog?.addEventListener('click', (event) => { if (event.target === detailDialog) detailDialog.close(); });
   detailDialog?.addEventListener('close', () => { detailTargetRow = null; });
-  document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
+  document.querySelectorAll('[data-person-activities-close]').forEach((button) => button.addEventListener('click', () => personActivitiesDialog?.close()));
+  personActivitiesDialog?.addEventListener('click', (event) => { if (event.target === personActivitiesDialog) personActivitiesDialog.close(); });
+    document.querySelectorAll('[data-audit-close]').forEach((button) => button.addEventListener('click', () => auditDialog.close()));
   auditDialog?.addEventListener('click', (event) => { if (event.target === auditDialog) auditDialog.close(); });
 
   credentials = storedCredentials();
