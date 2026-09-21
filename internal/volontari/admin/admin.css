@@ -2353,3 +2353,114 @@ tr.is-busy button.is-busy {
     grid-column: 2;
   }
 }
+
+
+/* Riordino persone e anagrafica persone */
+.assignment-board__drag-handle {
+  flex: 0 0 auto;
+  display: inline-grid;
+  width: 18px;
+  height: 24px;
+  place-items: center;
+  border-radius: 6px;
+  color: #789096;
+  font-size: .88rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.assignment-board__drag-handle:hover {
+  background: #eaf2f3;
+  color: var(--accent-dark);
+}
+.assignment-board__person.is-reorder-before::before,
+.assignment-board__person.is-reorder-after::after {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px #fff;
+}
+.assignment-board__person.is-reorder-before::before {
+  top: -5px;
+}
+.assignment-board__person.is-reorder-after::after {
+  bottom: -5px;
+}
+.assignment-board__people.is-reorder-end::after {
+  content: "Rilascia qui";
+  display: block;
+  margin: 0 3px 3px;
+  padding: 5px 8px;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: #eef8fa;
+  color: var(--accent-dark);
+  font-size: .68rem;
+  font-weight: 850;
+  text-align: center;
+}
+.person-catalog-table {
+  min-width: 1080px;
+}
+.person-catalog-table input[type="text"],
+.person-catalog-table input:not([type]) {
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  font-size: .8rem;
+}
+.person-catalog-table .code-input {
+  width: 90px;
+  min-width: 90px;
+}
+.person-catalog-table .name-input {
+  width: 190px;
+  min-width: 160px;
+}
+.person-catalog-table [data-person-display-name] {
+  width: 250px;
+  min-width: 220px;
+}
+.catalog-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .8rem;
+  font-weight: 750;
+}
+.catalog-check input {
+  width: 17px;
+  height: 17px;
+  min-height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.source-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: #eef2f3;
+  color: #5d6e73;
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .assignment-board__drag-handle {
+    width: 22px;
+    height: 26px;
+    background: #f0f5f6;
+  }
+  .person-catalog-table {
+    min-width: 980px;
+  }
+}
