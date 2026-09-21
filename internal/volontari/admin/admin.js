@@ -516,18 +516,20 @@
       }));
   }
 
-  function activityIdOptions(selectedId = '') {
+  function activityIdOptions(selectedId = '', { allowNew = false } = {}) {
     return '<option value="">Seleziona…</option>' + [...(snapshot?.activities || [])]
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'it'))
       .map((activity) => `<option value="${escapeHtml(activity.id)}" ${activity.id === selectedId ? 'selected' : ''}>${escapeHtml(prettifyActivityName(activity.name))}</option>`)
-      .join('');
+      .join('')
+      + (allowNew ? '<option value="__new__">＋ Crea nuova attività…</option>' : '');
   }
 
-  function shiftIdOptions(selectedId = '') {
+  function shiftIdOptions(selectedId = '', { allowNew = false } = {}) {
     return '<option value="">Seleziona…</option>' + [...(snapshot?.shifts || [])]
-      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
+      .sort((a, b) => Date.parse(a.starts_at || '') - Date.parse(b.starts_at || '') || (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
       .map((shift) => `<option value="${escapeHtml(shift.id)}" ${shift.id === selectedId ? 'selected' : ''}>${escapeHtml(shift.day_label)} · ${escapeHtml(shift.shift_label)}</option>`)
-      .join('');
+      .join('')
+      + (allowNew ? '<option value="__new__">＋ Crea nuovo turno…</option>' : '');
   }
 
   function localDateKey(value) {
@@ -2463,34 +2465,70 @@
     const uncovered = row ? requirementIsUncovered(row) : false;
     return `
       <tr class="${isNew ? 'is-new-row' : ''} ${uncovered ? 'is-requirement-uncovered' : ''}" data-requirement-row data-requirement-id="${escapeHtml(requirementId)}">
-        <td><select class="inline-select" data-requirement-shift>${shiftIdOptions(row?.shiftId || '')}</select></td>
-        <td><select class="inline-select" data-requirement-activity>${activityIdOptions(row?.activityId || '')}</select></td>
+        <td class="planning-choice-cell">
+          <select class="inline-select planning-select" data-requirement-shift>${shiftIdOptions(row?.shiftId || '', { allowNew: true })}</select>
+          <div class="planning-new-fields planning-new-shift" data-new-shift-fields hidden>
+            <label><span>Data</span><input type="date" data-new-shift-date value="2026-10-03"></label>
+            <label><span>Da</span><input type="time" data-new-shift-start></label>
+            <label><span>A</span><input type="time" data-new-shift-end></label>
+            <small>Il nuovo turno sarà interno all’organizzazione e non comparirà automaticamente tra le disponibilità dei volontari.</small>
+          </div>
+        </td>
+        <td class="planning-choice-cell">
+          <select class="inline-select planning-select" data-requirement-activity>${activityIdOptions(row?.activityId || '', { allowNew: true })}</select>
+          <div class="planning-new-fields planning-new-activity" data-new-activity-fields hidden>
+            <label><span>Nuova attività</span><input type="text" maxlength="200" data-new-activity-name placeholder="Nome attività"></label>
+          </div>
+        </td>
         <td><input class="count-input" data-requirement-count type="number" min="1" max="999" step="1" value="${escapeHtml(row?.requiredCount || 1)}"></td>
         <td><span class="coverage-count ${uncovered ? 'is-uncovered' : 'is-covered'}">${escapeHtml(coverage)}</span></td>
         <td><div class="row-actions">
           <button type="button" data-save-requirement>Salva</button>
-          ${isNew ? '<button type="button" data-cancel-new-requirement>Annulla</button>' : '<button class="is-danger" type="button" data-delete-requirement>Elimina</button>'}
+          ${isNew ? '<button type="button" data-cancel-new-requirement>Annulla</button>' : '<button class="is-danger" type="button" data-delete-requirement>Elimina abbinamento</button>'}
         </div><small class="row-save-status" data-row-status></small></td>
       </tr>`;
+  }
+
+  function refreshRequirementNewFields(rowNode) {
+    if (!rowNode) return;
+    const shiftChoice = rowNode.querySelector('[data-requirement-shift]')?.value || '';
+    const activityChoice = rowNode.querySelector('[data-requirement-activity]')?.value || '';
+    const shiftFields = rowNode.querySelector('[data-new-shift-fields]');
+    const activityFields = rowNode.querySelector('[data-new-activity-fields]');
+    if (shiftFields) shiftFields.hidden = shiftChoice !== '__new__';
+    if (activityFields) activityFields.hidden = activityChoice !== '__new__';
+    if (shiftChoice === '__new__') {
+      rowNode.querySelector('[data-new-shift-date]')?.setAttribute('required', '');
+      rowNode.querySelector('[data-new-shift-start]')?.setAttribute('required', '');
+      rowNode.querySelector('[data-new-shift-end]')?.setAttribute('required', '');
+    } else {
+      rowNode.querySelector('[data-new-shift-date]')?.removeAttribute('required');
+      rowNode.querySelector('[data-new-shift-start]')?.removeAttribute('required');
+      rowNode.querySelector('[data-new-shift-end]')?.removeAttribute('required');
+    }
+    if (activityChoice === '__new__') rowNode.querySelector('[data-new-activity-name]')?.setAttribute('required', '');
+    else rowNode.querySelector('[data-new-activity-name]')?.removeAttribute('required');
   }
 
   function renderRequirementCatalog() {
     if (!requirementCatalog) return;
     if (!snapshot?.requirementsAvailable) {
-      setStatus(requirementStatus, 'Anagrafica esigenze non disponibile nel database.', 'error');
-      requirementCatalog.innerHTML = '<p class="empty-state">Le esigenze non sono ancora inizializzate.</p>';
+      setStatus(requirementStatus, 'Anagrafica pianificazione non disponibile nel database.', 'error');
+      requirementCatalog.innerHTML = '<p class="empty-state">La pianificazione non è ancora inizializzata.</p>';
       return;
     }
-    setStatus(requirementStatus, '');
     const rows = requirements();
     const body = [
       ...(newRequirementOpen ? [requirementRowHtml(null, true)] : []),
       ...rows.map((row) => requirementRowHtml(row, false))
     ].join('');
     requirementCatalog.innerHTML = body
-      ? `<table class="admin-table requirements-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
-      : '<p class="empty-state">Nessuna esigenza attiva.</p>';
+      ? `<table class="admin-table requirements-table planning-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      : '<p class="empty-state">Nessun abbinamento attività-turno attivo.</p>';
+
+    requirementCatalog.querySelectorAll('[data-requirement-row]').forEach(refreshRequirementNewFields);
   }
+
 
   function filteredRaceProgram() {
     const personIds = selectedFilterValues(racePersonFilter);
@@ -3617,6 +3655,11 @@
     }
   });
 
+  requirementCatalog?.addEventListener('change', (event) => {
+    if (!event.target.matches('[data-requirement-shift], [data-requirement-activity]')) return;
+    refreshRequirementNewFields(event.target.closest('[data-requirement-row]'));
+  });
+
   requirementCatalog?.addEventListener('click', async (event) => {
     const rowNode = event.target.closest('[data-requirement-row]');
     if (!rowNode) return;
@@ -3632,14 +3675,39 @@
     }
 
     if (save) {
-      const shiftId = rowNode.querySelector('[data-requirement-shift]')?.value || '';
-      const activityId = rowNode.querySelector('[data-requirement-activity]')?.value || '';
+      const shiftChoice = rowNode.querySelector('[data-requirement-shift]')?.value || '';
+      const activityChoice = rowNode.querySelector('[data-requirement-activity]')?.value || '';
       const requiredCount = Number(rowNode.querySelector('[data-requirement-count]')?.value || 0);
-      if (!shiftId || !activityId || !Number.isInteger(requiredCount) || requiredCount < 1) {
+      const createShift = shiftChoice === '__new__';
+      const createActivity = activityChoice === '__new__';
+      const newShiftDate = rowNode.querySelector('[data-new-shift-date]')?.value || '';
+      const newShiftStart = rowNode.querySelector('[data-new-shift-start]')?.value || '';
+      const newShiftEnd = rowNode.querySelector('[data-new-shift-end]')?.value || '';
+      const newActivityName = rowNode.querySelector('[data-new-activity-name]')?.value.trim() || '';
+
+      if ((!shiftChoice || (!createShift && shiftChoice === '__new__'))
+        || (!activityChoice || (!createActivity && activityChoice === '__new__'))
+        || !Number.isInteger(requiredCount) || requiredCount < 1) {
         status.textContent = 'Seleziona turno, attività e un numero di persone valido.';
         status.className = 'row-save-status is-error';
         return;
       }
+      if (createShift && (!newShiftDate || !newShiftStart || !newShiftEnd)) {
+        status.textContent = 'Per il nuovo turno indica data, ora di inizio e ora di fine.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      if (createShift && newShiftEnd <= newShiftStart) {
+        status.textContent = 'L’ora di fine deve essere successiva all’ora di inizio.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+      if (createActivity && !newActivityName) {
+        status.textContent = 'Indica il nome della nuova attività.';
+        status.className = 'row-save-status is-error';
+        return;
+      }
+
       setRowBusy(rowNode, true, save);
       try {
         await withButtonBusy(save, 'Salvataggio…', async () => {
@@ -3650,16 +3718,27 @@
               body: JSON.stringify({
                 action: 'save-requirement',
                 requirementId: rowNode.dataset.requirementId || null,
-                shiftId,
-                activityId,
+                shiftId: createShift ? null : shiftChoice,
+                newShiftDate: createShift ? newShiftDate : null,
+                newShiftStart: createShift ? newShiftStart : null,
+                newShiftEnd: createShift ? newShiftEnd : null,
+                activityId: createActivity ? null : activityChoice,
+                newActivityName: createActivity ? newActivityName : null,
                 requiredCount
               })
             });
+
             newRequirementOpen = false;
             await loadSnapshot();
+
+            const messages = ['Abbinamento salvato'];
+            if (result?.planning?.shiftCreated) messages.push('nuovo turno creato');
+            if (result?.planning?.activityCreated) messages.push('nuova attività creata');
+            else if (result?.planning?.activityReactivated) messages.push('attività riattivata');
             if (result?.requirement?.movedAssignments) {
-              setStatus(requirementStatus, `Esigenza salvata. Spostate automaticamente ${result.requirement.movedAssignments} assegnazioni.`, 'success');
+              messages.push(`${result.requirement.movedAssignments} assegnazioni spostate`);
             }
+            setStatus(requirementStatus, messages.join(' · ') + '.', 'success');
           } catch (error) {
             status.textContent = error.message;
             status.className = 'row-save-status is-error';
@@ -3674,7 +3753,7 @@
     if (remove) {
       const requirement = requirementById(rowNode.dataset.requirementId || '');
       if (!requirement) return;
-      if (!confirm(`Eliminare l’esigenza “${requirementLabel(requirement)}”? È possibile solo se non ci sono persone assegnate.`)) return;
+      if (!confirm(`Eliminare l’abbinamento “${requirementLabel(requirement)}”? È possibile solo se non ci sono persone assegnate.`)) return;
       try {
         await api(API, {
           method: 'POST',
@@ -3682,6 +3761,7 @@
           body: JSON.stringify({ action: 'delete-requirement', requirementId: requirement.id })
         });
         await loadSnapshot();
+        setStatus(requirementStatus, 'Abbinamento eliminato.', 'success');
       } catch (error) { alert(error.message); }
     }
   });
