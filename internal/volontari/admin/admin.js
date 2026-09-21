@@ -8,6 +8,8 @@
   const inviteStatus = document.querySelector('[data-invite-status]');
   const kpis = document.querySelector('[data-kpis]');
   const assignmentTable = document.querySelector('[data-assignment-table]');
+  const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
+  const assignmentSort = document.querySelector('[data-assignment-sort]');
   const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
   const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
@@ -42,7 +44,6 @@
   let newAssignmentOpen = false;
   let newActivityOpen = false;
   let newRaceEntryOpen = false;
-  let availabilityOnly = false;
   let detailTargetRow = null;
 
   const escapeHtml = (value) => String(value ?? '')
@@ -355,6 +356,29 @@
     return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])];
   }
 
+  function assignmentShiftOrder(row) {
+    if (row?.shiftId) {
+      const shift = (snapshot?.shifts || []).find((item) => item.id === row.shiftId);
+      if (shift) return Number.isFinite(Number(shift.sort_order)) ? Number(shift.sort_order) : 9998;
+    }
+    return 9999;
+  }
+
+  function sortAssignmentRows(rows) {
+    const mode = assignmentSort?.value || 'shift';
+    const byShift = (a, b) => {
+      const order = assignmentShiftOrder(a) - assignmentShiftOrder(b);
+      if (order) return order;
+      return `${a.day || ''} ${a.shift || ''}`.localeCompare(`${b.day || ''} ${b.shift || ''}`, 'it');
+    };
+    const byPerson = (a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it');
+
+    return [...rows].sort((a, b) => mode === 'person'
+      ? byPerson(a, b) || byShift(a, b) || displayActivity(a).localeCompare(displayActivity(b), 'it')
+      : byShift(a, b) || byPerson(a, b) || displayActivity(a).localeCompare(displayActivity(b), 'it')
+    );
+  }
+
   function setSelectOptions(select, options, allLabel) {
     if (!select) return;
     const current = select.value;
@@ -437,26 +461,32 @@
   }
 
   function filteredAssignments() {
+    const type = assignmentTypeFilter?.value || 'all';
     const personId = assignmentPersonFilter?.value || '';
     const shift = assignmentShiftFilter?.value || '';
     const activity = assignmentActivityFilter?.value || '';
     const response = assignmentResponseFilter?.value || '';
     const warning = assignmentWarningFilter?.value || '';
 
-    return allAssignmentRows().filter((row) => {
-      if (availabilityOnly && !row.isAvailability) return false;
+    const rows = allAssignmentRows().filter((row) => {
+      if (type === 'assigned' && row.isAvailability) return false;
+      if (type === 'availability' && !row.isAvailability) return false;
+
       const rowResponse = row.currentResponse || 'pending';
       const warnings = assignmentWarningDetails(row);
       const warningMatch = !warning
         || (warning === 'any' && warnings.length > 0)
         || (warning === 'none' && warnings.length === 0)
         || warnings.some((item) => item.type === warning);
+
       return (!personId || row.personId === personId)
         && (!shift || shiftFilterKey(row) === shift)
         && (!activity || (!row.isAvailability && displayActivity(row) === activity))
         && (!response || (!row.isAvailability && rowResponse === response))
         && warningMatch;
     });
+
+    return sortAssignmentRows(rows);
   }
 
   function assignmentRowHtml(row, isNew = false) {
@@ -523,18 +553,22 @@
 
   function renderAssignments() {
     const rows = filteredAssignments();
-    if (availabilityFilterStatus) availabilityFilterStatus.hidden = !availabilityOnly;
+    const type = assignmentTypeFilter?.value || 'all';
+    const onlyAvailability = type === 'availability';
+    if (availabilityFilterStatus) availabilityFilterStatus.hidden = !onlyAvailability;
+
     const body = [
-      ...(newAssignmentOpen && !availabilityOnly ? [assignmentRowHtml(null, true)] : []),
+      ...(newAssignmentOpen && !onlyAvailability ? [assignmentRowHtml(null, true)] : []),
       ...rows.map((row) => assignmentRowHtml(row, false))
     ].join('');
 
     if (!body) {
-      assignmentTable.innerHTML = availabilityOnly
-        ? '<p class="empty-state">Non ci sono disponibilità da assegnare.</p>'
+      assignmentTable.innerHTML = onlyAvailability
+        ? '<p class="empty-state">Non ci sono disponibilità da assegnare che corrispondono ai filtri.</p>'
         : '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
+
     assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
@@ -1075,7 +1109,7 @@
     }
   });
   document.querySelector('[data-clear-availability-filter]')?.addEventListener('click', () => {
-    availabilityOnly = false;
+    if (assignmentTypeFilter) assignmentTypeFilter.value = 'all';
     renderAssignments();
   });
   document.querySelector('[data-refresh]')?.addEventListener('click', async (event) => {
@@ -1091,7 +1125,7 @@
   document.querySelector('[data-logout]')?.addEventListener('click', () => { clearCredentials(); showLogin(); });
 
   document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
-    availabilityOnly = false;
+    if (assignmentTypeFilter) assignmentTypeFilter.value = 'assigned';
     newAssignmentOpen = true;
     renderAssignments();
     assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1109,7 +1143,7 @@
     renderRaceProgram();
   });
 
-  [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
+  [assignmentTypeFilter, assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
@@ -1371,7 +1405,7 @@
 
     const filterAvailability = event.target.closest('[data-filter-unassigned-availability]');
     if (filterAvailability) {
-      availabilityOnly = true;
+      if (assignmentTypeFilter) assignmentTypeFilter.value = 'availability';
       [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
         .forEach((filter) => { if (filter) filter.value = ''; });
       detailDialog.close();
