@@ -1451,8 +1451,39 @@
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
   }
 
-  function copySourceGroups(targetRequirement) {
+  function copySourceRequirements(targetRequirement) {
     if (!targetRequirement) return [];
+
+    const assignmentCountByPair = new Map();
+    for (const row of (snapshot?.assignments || [])) {
+      if (!row.shiftId || !row.activityId) continue;
+      const key = `${row.shiftId}|${row.activityId}`;
+      assignmentCountByPair.set(key, (assignmentCountByPair.get(key) || 0) + 1);
+    }
+
+    return requirements()
+      .filter((item) => item.id !== targetRequirement.id)
+      .map((item) => ({
+        ...item,
+        sourceAssignedCount: assignmentCountByPair.get(`${item.shiftId}|${item.activityId}`) || 0
+      }))
+      .filter((item) => item.sourceAssignedCount > 0)
+      .sort((a, b) =>
+        (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999)
+        || Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+      );
+  }
+
+  function copySourceRequirementOptions(targetRequirement, selectedSourceId = '') {
+    const sources = copySourceRequirements(targetRequirement);
+    return '<option value="">Seleziona turno e attività…</option>' + sources.map((item) =>
+      `<option value="${escapeHtml(item.id)}" ${item.id === selectedSourceId ? 'selected' : ''}>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(prettifyActivityName(item.activity))} · ${item.sourceAssignedCount} ${item.sourceAssignedCount === 1 ? 'persona' : 'persone'}</option>`
+    ).join('');
+  }
+
+  function copySourcePeople(targetRequirement, sourceRequirement) {
+    if (!targetRequirement || !sourceRequirement) return [];
 
     const targetPeople = new Set(
       (snapshot?.assignments || [])
@@ -1460,90 +1491,92 @@
         .map((row) => row.personId)
     );
 
-    const sourceRequirements = requirements()
-      .filter((item) =>
-        item.activityId === targetRequirement.activityId
-        && item.shiftId !== targetRequirement.shiftId
+    return (snapshot?.assignments || [])
+      .filter((row) => row.shiftId === sourceRequirement.shiftId && row.activityId === sourceRequirement.activityId)
+      .sort((a, b) =>
+        Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
       )
-      .sort((a, b) => (a.shiftSortOrder ?? 9999) - (b.shiftSortOrder ?? 9999));
-
-    return sourceRequirements.map((requirement) => {
-      const people = (snapshot?.assignments || [])
-        .filter((row) => row.shiftId === requirement.shiftId && row.activityId === targetRequirement.activityId)
-        .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'))
-        .map((row) => {
-          const warnings = assignmentWarningDetails({
-            id: null,
-            personId: row.personId,
-            shiftId: targetRequirement.shiftId,
-            day: targetRequirement.day,
-            shift: targetRequirement.shift
-          });
-          return {
-            row,
-            alreadyAssigned: targetPeople.has(row.personId),
-            warnings
-          };
+      .map((row) => {
+        const warnings = assignmentWarningDetails({
+          id: null,
+          personId: row.personId,
+          shiftId: targetRequirement.shiftId,
+          day: targetRequirement.day,
+          shift: targetRequirement.shift
         });
-
-      return { requirement, people };
-    }).filter((group) => group.people.length);
+        return {
+          row,
+          alreadyAssigned: targetPeople.has(row.personId),
+          warnings
+        };
+      });
   }
 
-  function renderCopyFromDialog(targetRequirement) {
-    const groups = copySourceGroups(targetRequirement);
-    const availableCount = new Set(
-      groups.flatMap((group) =>
-        group.people.filter((item) => !item.alreadyAssigned).map((item) => item.row.personId)
-      )
-    ).size;
+  function renderCopyFromDialog(targetRequirement, selectedSourceId = '') {
+    const sources = copySourceRequirements(targetRequirement);
 
-    detailTitle.textContent = `Copia da · ${prettifyActivityName(targetRequirement.activity)}`;
+    if (!selectedSourceId) {
+      selectedSourceId = sources.find((item) => item.activityId === targetRequirement.activityId)?.id
+        || sources[0]?.id
+        || '';
+    }
 
-    if (!groups.length) {
+    const sourceRequirement = sources.find((item) => item.id === selectedSourceId) || null;
+    const people = copySourcePeople(targetRequirement, sourceRequirement);
+    const selectable = people.filter((item) => !item.alreadyAssigned);
+    const availableCount = new Set(selectable.map((item) => item.row.personId)).size;
+
+    detailTitle.textContent = `Copia persone · ${prettifyActivityName(targetRequirement.activity)}`;
+
+    if (!sources.length) {
       detailContent.innerHTML = `
-        <p class="intro detail-intro">Turno di destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)}</strong>.</p>
-        <p class="empty-state">Non ci sono persone assegnate a questa attività in altri turni.</p>`;
+        <p class="intro detail-intro">Destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)} — ${escapeHtml(prettifyActivityName(targetRequirement.activity))}</strong>.</p>
+        <p class="empty-state">Non ci sono altre coppie turno-attività con persone assegnate da cui copiare.</p>`;
       return;
     }
 
     detailContent.innerHTML = `
       <div class="copy-from-dialog">
         <p class="intro detail-intro">
-          Destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)}</strong>.
-          Seleziona le persone da copiare dalla stessa attività negli altri turni.
+          Destinazione: <strong>${escapeHtml(targetRequirement.day)} · ${escapeHtml(targetRequirement.shift)} — ${escapeHtml(prettifyActivityName(targetRequirement.activity))}</strong>.
         </p>
-        <div class="copy-from-groups">
-          ${groups.map((group) => {
-            const selectable = group.people.filter((item) => !item.alreadyAssigned);
-            return `
-              <section class="copy-from-group">
-                <header class="copy-from-group__header">
-                  <div>
-                    <strong>${escapeHtml(group.requirement.day)} · ${escapeHtml(group.requirement.shift)}</strong>
-                    <span>${group.people.length} ${group.people.length === 1 ? 'persona' : 'persone'}</span>
-                  </div>
-                  ${selectable.length ? `<label class="copy-from-select-all"><input type="checkbox" data-copy-source-all="${escapeHtml(group.requirement.id)}"> <span>Tutti</span></label>` : ''}
-                </header>
-                <div class="copy-from-people">
-                  ${group.people.map(({ row, alreadyAssigned, warnings }) => {
-                    const warningText = warnings.map((warning) => warning.text).join(' · ');
-                    return `
-                      <label class="copy-from-person ${alreadyAssigned ? 'is-already-assigned' : ''}">
-                        <input type="checkbox"
-                          data-copy-person
-                          data-copy-source-requirement="${escapeHtml(group.requirement.id)}"
-                          value="${escapeHtml(row.personId)}"
-                          ${alreadyAssigned ? 'disabled' : ''}>
-                        <span class="copy-from-person__name">${escapeHtml(row.personName)}</span>
-                        ${warnings.length ? `<span class="copy-from-person__warning" title="${escapeHtml(warningText)}">⚠ ${escapeHtml(warningText)}</span>` : ''}
-                        ${alreadyAssigned ? '<span class="copy-from-person__already">Già assegnato</span>' : ''}
-                      </label>`;
-                  }).join('')}
-                </div>
-              </section>`;
-          }).join('')}
-        </div>
+
+        <label class="field copy-from-source-field">
+          <span>Copia da turno-attività</span>
+          <select data-copy-source-requirement-select>
+            ${copySourceRequirementOptions(targetRequirement, sourceRequirement?.id || '')}
+          </select>
+        </label>
+
+        ${sourceRequirement ? `
+          <section class="copy-from-group">
+            <header class="copy-from-group__header">
+              <div>
+                <strong>${escapeHtml(sourceRequirement.day)} · ${escapeHtml(sourceRequirement.shift)}</strong>
+                <span>${escapeHtml(prettifyActivityName(sourceRequirement.activity))} · ${people.length} ${people.length === 1 ? 'persona' : 'persone'}</span>
+              </div>
+              ${selectable.length ? `<label class="copy-from-select-all"><input type="checkbox" data-copy-source-all="${escapeHtml(sourceRequirement.id)}"> <span>Tutti</span></label>` : ''}
+            </header>
+            <div class="copy-from-people">
+              ${people.map(({ row, alreadyAssigned, warnings }) => {
+                const warningText = warnings.map((warning) => warning.text).join(' · ');
+                return `
+                  <label class="copy-from-person ${alreadyAssigned ? 'is-already-assigned' : ''}">
+                    <input type="checkbox"
+                      data-copy-person
+                      data-copy-source-requirement="${escapeHtml(sourceRequirement.id)}"
+                      value="${escapeHtml(row.personId)}"
+                      ${alreadyAssigned ? 'disabled' : ''}>
+                    <span class="copy-from-person__name">${escapeHtml(row.personName)}</span>
+                    ${warnings.length ? `<span class="copy-from-person__warning" title="${escapeHtml(warningText)}">⚠ ${escapeHtml(warningText)}</span>` : ''}
+                    ${alreadyAssigned ? '<span class="copy-from-person__already">Già assegnato</span>' : ''}
+                  </label>`;
+              }).join('')}
+            </div>
+          </section>
+        ` : '<p class="empty-state">Seleziona una coppia turno-attività da cui copiare.</p>'}
+
         <p class="status" data-copy-from-status aria-live="polite"></p>
         <div class="copy-from-actions">
           <span data-copy-from-count>0 selezionati</span>
@@ -1551,6 +1584,7 @@
         </div>
       </div>`;
   }
+
 
   function refreshCopyFromCount() {
     const selected = new Set(
@@ -1625,8 +1659,9 @@
         return;
       }
 
+      const sourceRequirementId = detailContent?.querySelector('[data-copy-source-requirement-select]')?.value || '';
       copyRequirementContext = targetRequirement.id;
-      renderCopyFromDialog(requirementById(targetRequirement.id) || targetRequirement);
+      renderCopyFromDialog(requirementById(targetRequirement.id) || targetRequirement, sourceRequirementId);
       const refreshedStatus = detailContent?.querySelector('[data-copy-from-status]');
       setStatus(
         refreshedStatus,
@@ -4127,6 +4162,13 @@
     detailDialog.close();
   });
   detailContent?.addEventListener('change', (event) => {
+    const sourceSelect = event.target.closest('[data-copy-source-requirement-select]');
+    if (sourceSelect) {
+      const targetRequirement = requirementById(copyRequirementContext);
+      if (targetRequirement) renderCopyFromDialog(targetRequirement, sourceSelect.value || '');
+      return;
+    }
+
     const selectAll = event.target.closest('[data-copy-source-all]');
     if (selectAll) {
       const sourceRequirementId = selectAll.dataset.copySourceAll || '';
