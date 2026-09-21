@@ -2045,3 +2045,162 @@ tr.is-busy button.is-busy {
     gap: 5px;
   }
 }
+
+
+/* Copia persone dalla stessa attività in altri turni */
+.assignment-board__copy-from {
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid #8fbfc8;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--accent-dark);
+  font: inherit;
+  font-size: .66rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.assignment-board__copy-from:hover {
+  border-color: var(--accent);
+  background: #e9f6f8;
+}
+.copy-from-dialog {
+  display: grid;
+  gap: 13px;
+}
+.copy-from-groups {
+  display: grid;
+  gap: 10px;
+}
+.copy-from-group {
+  overflow: hidden;
+  border: 1px solid #cbdadd;
+  border-radius: 12px;
+  background: #fff;
+}
+.copy-from-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-bottom: 1px solid #dce7e9;
+  background: #edf5f6;
+}
+.copy-from-group__header > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.copy-from-group__header strong {
+  font-size: .83rem;
+}
+.copy-from-group__header span {
+  color: var(--muted);
+  font-size: .7rem;
+}
+.copy-from-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: .75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.copy-from-select-all input,
+.copy-from-person input {
+  width: 17px;
+  height: 17px;
+  min-height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.copy-from-people {
+  display: grid;
+}
+.copy-from-person {
+  display: grid;
+  grid-template-columns: 20px minmax(150px, 1fr) minmax(0, 1.25fr) auto;
+  gap: 7px 9px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf1f2;
+  cursor: pointer;
+}
+.copy-from-person:last-child {
+  border-bottom: 0;
+}
+.copy-from-person:hover {
+  background: #f8fbfb;
+}
+.copy-from-person.is-already-assigned {
+  background: #f6f7f7;
+  color: var(--muted);
+  cursor: default;
+}
+.copy-from-person__name {
+  min-width: 0;
+  font-size: .8rem;
+  font-weight: 800;
+}
+.copy-from-person__warning {
+  min-width: 0;
+  color: #8a6412;
+  font-size: .7rem;
+  line-height: 1.25;
+}
+.copy-from-person__already {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e8eeee;
+  color: #66777c;
+  font-size: .66rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.copy-from-actions {
+  position: sticky;
+  bottom: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 9px 0 1px;
+  background: #fff;
+}
+.copy-from-actions > span {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 750;
+}
+
+@media (max-width: 700px) {
+  .assignment-board__activity-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .assignment-board__copy-from {
+    order: 3;
+  }
+  .copy-from-group__header {
+    align-items: flex-start;
+  }
+  .copy-from-person {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+  }
+  .copy-from-person__warning {
+    grid-column: 2 / -1;
+  }
+  .copy-from-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .copy-from-actions .button {
+    width: 100%;
+  }
+}
