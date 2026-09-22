@@ -13,6 +13,8 @@
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
   const assignmentBoardExportPdf = document.querySelector('[data-assignment-board-export-pdf]');
+  const assignmentFiltersToggle = document.querySelector('[data-assignment-filters-toggle]');
+  const assignmentFiltersPanel = document.querySelector('[data-assignment-filters]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
@@ -1691,14 +1693,21 @@
   }
 
   function filteredBoardRequirements() {
+    const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
+    const matchingAssignments = selectedPeople.length
+      ? filteredBoardAssignmentRows().filter((row) => !row.isAvailability)
+      : [];
 
     return requirements().filter((requirement) => {
       const shiftKey = `${requirement.day || ''}|||${requirement.shift || ''}`;
       if (selectedShifts.length && !selectedShifts.includes(shiftKey)) return false;
       if (selectedActivities.length && !selectedActivities.includes(prettifyActivityName(requirement.activity))) return false;
+      if (selectedPeople.length && !matchingAssignments.some((row) =>
+        row.shiftId === requirement.shiftId && row.activityId === requirement.activityId
+      )) return false;
       if (coverageFilters.length) {
         const uncovered = requirementIsUncovered(requirement);
         if (!coverageFilters.some((value) =>
@@ -2480,6 +2489,23 @@
   }
 
 
+  function activeAssignmentFilterCount() {
+    return [
+      assignmentPersonFilter,
+      assignmentShiftFilter,
+      assignmentActivityFilter,
+      assignmentResponseFilter,
+      assignmentWarningFilter,
+      assignmentCoverageFilter
+    ].reduce((total, filter) => total + selectedFilterValues(filter).length, 0);
+  }
+
+  function updateAssignmentFiltersToggle() {
+    if (!assignmentFiltersToggle) return;
+    const count = activeAssignmentFilterCount();
+    assignmentFiltersToggle.textContent = count ? `Filtri (${count})` : 'Filtri';
+  }
+
   function renderAssignments() {
     const rows = filteredAssignments();
     const types = selectedFilterValues(assignmentTypeFilter);
@@ -2491,6 +2517,7 @@
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
     if (assignmentBoardExportPdf) assignmentBoardExportPdf.hidden = !isBoard;
+    updateAssignmentFiltersToggle();
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentViewToggle) {
       assignmentViewToggle.textContent = isBoard ? 'Vista elenco' : 'Vista schede';
@@ -2696,10 +2723,14 @@
         activities: orderedRequirements.map((requirement) => ({
           activity: prettifyActivityName(requirement.activity),
           groupName: requirement.activityGroupId ? (activityGroupById(requirement.activityGroupId)?.name || '') : '',
+          assignedCount: Number(requirement.assignedCount || 0),
+          requiredCount: Number(requirement.requiredCount || 0),
+          uncovered: requirementIsUncovered(requirement),
           people: rows
             .filter((row) => row.shiftId === requirement.shiftId && row.activityId === requirement.activityId)
             .sort((a, b) =>
-              Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+              Number(b.isResponsible === true) - Number(a.isResponsible === true)
+              || Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
               || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
             )
             .map((row) => ({
@@ -2916,13 +2947,16 @@
 
     const renderPdfPeople = (item) => item.people.length
       ? item.people.map((person) =>
-          `<span class="${person.isResponsible ? 'responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · RESPONSABILE' : ''}</span>`
+          `<span class="${person.isResponsible ? 'responsible' : ''}">${escapeHtml(person.name)}</span>`
         ).join('')
       : '<span class="empty-people">Nessuno assegnato</span>';
 
     const renderPdfActivity = (item) => `
       <section class="activity-block">
-        <strong>${escapeHtml(item.activity)}</strong>
+        <div class="activity-title-row">
+          <strong>${escapeHtml(item.activity)}</strong>
+          <span class="staffing-badge ${item.uncovered ? 'is-understaffed' : 'is-covered'}">${item.assignedCount}/${item.requiredCount} assegnati · ${item.uncovered ? 'SOTTO STAFFATA' : 'COPERTA'}</span>
+        </div>
         <div class="people-list">${renderPdfPeople(item)}</div>
       </section>`;
 
@@ -2952,6 +2986,7 @@
           </div>
           <span>Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</span>
         </header>
+        ${showGroups ? `<div class="pdf-legend"><span class="responsible legend-sample">Nome persona</span><span>= responsabile</span><span class="staffing-badge is-covered">3/3 assegnati · COPERTA</span><span class="staffing-badge is-understaffed">2/3 assegnati · SOTTO STAFFATA</span></div>` : ''}
         <div class="turn-grid" style="grid-template-columns:repeat(${dayGroups.length},minmax(0,1fr))">
           ${dayGroups.map((group) => `
             <article class="turn-column">
@@ -2980,14 +3015,20 @@
       .turn-column h3 { margin: 0; padding: 7px 8px; background: #eaf2f4; font-size: ${showGroups ? '14pt' : '9px'}; border-bottom: 1px solid #cfdcdf; }
       .pdf-activity-group { margin: 0; padding: 0; border-bottom: 2px solid #c3d2d5; break-inside: avoid; page-break-inside: avoid; }
       .pdf-activity-group:last-child { border-bottom: 0; }
+      .pdf-legend { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; margin: 0 0 9px; padding: 6px 8px; border: 1px solid #d6e1e3; border-radius: 6px; background: #f8fbfb; font-size: ${showGroups ? '11pt' : '7px'}; }
+      .legend-sample { white-space: nowrap; }
       .pdf-activity-group h4 { margin: 0; padding: 6px 8px; background: #dce7e9; color: #24464e; font-size: ${showGroups ? '12pt' : '10.5px'}; line-height: 1.2; text-transform: uppercase; letter-spacing: .025em; }
       .activity-block { padding: ${showGroups ? '7px 8px' : '5px 6px'}; border-bottom: 1px solid #e2eaec; break-inside: avoid; page-break-inside: avoid; }
       .activity-block:last-child { border-bottom: 0; }
-      .activity-block > strong { display: block; margin-bottom: 4px; font-size: ${showGroups ? '12pt' : '7px'}; line-height: 1.25; }
+      .activity-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+      .activity-title-row > strong { min-width: 0; font-size: ${showGroups ? '12pt' : '7px'}; line-height: 1.25; }
+      .staffing-badge { display: inline-block; flex: 0 0 auto; padding: 2px 5px; border: 1px solid; border-radius: 4px; font-size: ${showGroups ? '11pt' : '6.2px'}; font-weight: 800; white-space: nowrap; }
+      .staffing-badge.is-covered { border-color: #87b99a; background: #e9f6ed; color: #255f38; }
+      .staffing-badge.is-understaffed { border-color: #df9d96; background: #fdeceb; color: #8d3028; }
       .people-list { font-size: ${showGroups ? '11pt' : '6.2px'}; line-height: 1.45; }
       .people-list span { display: inline; }
       .people-list span + span::before { content: "; "; color: #60757d; font-weight: 400; }
-      .people-list .responsible { display: inline-block; margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
+      .people-list .responsible, .pdf-legend .responsible { display: inline-block; margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
       .empty-people { color: #7b8a8e; font-style: italic; }
     </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
@@ -3590,8 +3631,7 @@
     detailContent.innerHTML = people.length
       ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Disponibilità da assegnare</th></tr></thead><tbody>${people.map((person) =>
           `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.personId)}">${escapeHtml(person.personName)}</button></td><td>${person.shifts.map((shift) => `<div class="detail-line">${escapeHtml(shift)}</div>`).join('')}</td></tr>`
-        ).join('')}</tbody></table>
-        <div class="actions actions--end"><button class="button button--secondary" type="button" data-filter-unassigned-availability>Mostra nella tabella Assegnazioni</button></div>`
+        ).join('')}</tbody></table>`
       : '<p class="empty-state">Non ci sono disponibilità da assegnare.</p>';
     detailDialog.showModal();
   }
@@ -3682,8 +3722,6 @@
     renderRequirementCatalog();
     renderRaceProgram();
     renderPersonReport();
-    renderActivityReport();
-    renderShiftBoardReport();
   }
 
   async function loadSnapshot() {
@@ -3895,6 +3933,26 @@
     setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
   });
 
+  assignmentFiltersToggle?.addEventListener('click', () => {
+    if (!assignmentFiltersPanel) return;
+    const open = !assignmentFiltersPanel.classList.contains('is-open');
+    assignmentFiltersPanel.classList.toggle('is-open', open);
+    assignmentFiltersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  document.querySelector('[data-go-person-report]')?.addEventListener('click', () => {
+    const section = document.querySelector('[data-person-report-section]');
+    const content = document.getElementById('person-report-content');
+    const collapse = document.querySelector('[data-collapse-target="person-report-content"]');
+    if (content) content.hidden = false;
+    if (collapse) {
+      collapse.setAttribute('aria-expanded', 'true');
+      collapse.textContent = 'Comprimi';
+    }
+    renderPersonReport();
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
   assignmentBoardExportPdf?.addEventListener('click', () => {
     exportShiftBoardPdfByDay(assignmentBoardPdfGroups(), {
       title: 'Report volontari - gestione a schede',
@@ -3904,13 +3962,6 @@
     });
   });
 
-  document.querySelector('[data-new-assignment]')?.addEventListener('click', () => {
-    setAssignmentView('list', { render: false });
-    setMultiFilterValues(assignmentTypeFilter, ['assigned']);
-    newAssignmentOpen = true;
-    renderAssignments();
-    assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
   document.querySelector('[data-new-person]')?.addEventListener('click', () => {
     newPersonOpen = true;
     renderPersonCatalog();
@@ -3944,20 +3995,12 @@
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
-  [activityReportPersonFilter, activityReportActivityFilter, activityReportShiftFilter]
-    .forEach((filter) => filter?.addEventListener('change', renderActivityReport));
-  [shiftBoardPersonFilter, shiftBoardActivityFilter, shiftBoardShiftFilter]
-    .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
   personCatalogSearch?.addEventListener('input', renderPersonCatalog);
 
   document.querySelector('[data-person-export-pdf]')?.addEventListener('click', () => exportPersonReport('pdf'));
   document.querySelector('[data-person-export-excel]')?.addEventListener('click', () => exportPersonReport('excel'));
-  document.querySelector('[data-activity-export-pdf]')?.addEventListener('click', () => exportActivityReport('pdf'));
-  document.querySelector('[data-activity-export-excel]')?.addEventListener('click', () => exportActivityReport('excel'));
-  document.querySelector('[data-shift-board-export-pdf]')?.addEventListener('click', () => exportShiftBoardReport('pdf'));
-  document.querySelector('[data-shift-board-export-excel]')?.addEventListener('click', () => exportShiftBoardReport('excel'));
 
   document.querySelectorAll('[data-collapse-target]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -5171,17 +5214,6 @@
     const personLink = event.target.closest('[data-open-person-activities]');
     if (personLink) {
       showPersonActivitiesPopup(personLink.dataset.openPersonActivities);
-      return;
-    }
-
-    const filterAvailability = event.target.closest('[data-filter-unassigned-availability]');
-    if (filterAvailability) {
-      setMultiFilterValues(assignmentTypeFilter, ['availability']);
-      [assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter]
-        .forEach((filter) => setMultiFilterValues(filter, []));
-      detailDialog.close();
-      renderAssignments();
-      assignmentTable?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
 

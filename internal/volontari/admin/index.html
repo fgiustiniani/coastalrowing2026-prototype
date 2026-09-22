@@ -53,29 +53,26 @@
         <div class="section-head">
           <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
           <div class="section-actions">
+            <button class="button button--secondary assignment-filters-toggle" type="button" data-assignment-filters-toggle aria-expanded="false" aria-controls="assignment-filters">Filtri</button>
+            <button class="button button--secondary" type="button" data-go-person-report>Report per persona</button>
             <button class="button button--secondary assignment-view-toggle" type="button" data-assignment-view-toggle aria-pressed="false">Vista schede</button>
             <button class="button button--secondary" type="button" data-assignment-board-export-pdf hidden>PDF vista schede</button>
-            <button class="button button--primary" type="button" data-new-assignment>Nuova assegnazione</button>
             <button class="button button--secondary collapse-button" type="button" data-collapse-target="assignments-content" aria-expanded="true">Comprimi</button>
           </div>
         </div>
         <div id="assignments-content" data-collapsible-content>
-          <div class="filter-grid">
-            <label class="field compact-field"><span>Visualizza</span><select data-assignment-type-filter multiple><option value="all">Assegnazioni e disponibilità</option><option value="assigned">Solo assegnazioni già fatte</option><option value="availability">Solo disponibilità</option></select></label>
-            <label class="field compact-field" data-assignment-list-only><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
-            <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter multiple><option value="">Tutte</option></select></label>
-            <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter multiple><option value="">Tutti</option></select></label>
-            <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter multiple><option value="">Tutte</option></select></label>
-            <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter multiple><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
-            <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter multiple><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
-            <label class="field compact-field"><span>Copertura</span><select data-assignment-coverage-filter multiple><option value="">Tutte</option><option value="uncovered">Attività scoperte</option><option value="covered">Attività coperte</option></select></label>
+          <div class="assignment-filters-panel" id="assignment-filters" data-assignment-filters>
+            <div class="filter-grid">
+              <label class="field compact-field" data-assignment-list-only><span>Ordina per</span><select data-assignment-sort><option value="shift">Turno</option><option value="person">Persona</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-assignment-person-filter multiple><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Turno</span><select data-assignment-shift-filter multiple><option value="">Tutti</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-assignment-activity-filter multiple><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter multiple><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
+              <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter multiple><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
+              <label class="field compact-field"><span>Copertura</span><select data-assignment-coverage-filter multiple><option value="">Tutte</option><option value="uncovered">Attività scoperte</option><option value="covered">Attività coperte</option></select></label>
+            </div>
           </div>
           <p class="intro inline-help">Puoi modificare turno, attività e persona direttamente nella riga. I warning si aggiornano prima del salvataggio.</p>
-          <div class="availability-filter-banner" data-availability-filter-status hidden>
-            <strong>Disponibilità da assegnare</strong>
-            <span>Stai visualizzando solo i turni offerti dai volontari che non hanno ancora un’attività nello stesso turno.</span>
-            <button class="link-button" type="button" data-clear-availability-filter>Mostra tutte le assegnazioni</button>
-          </div>
           <p class="status assignment-board-status" data-assignment-board-status aria-live="polite"></p>
           <div class="assignment-board-wrap" data-assignment-board hidden></div>
           <div class="table-wrap" data-assignment-table></div>
@@ -101,7 +98,7 @@
       </section>
 
       <section class="report-grid">
-        <article class="card admin-section">
+        <article class="card admin-section" data-person-report-section>
           <div class="section-head">
             <div><p class="eyebrow">Report</p><h2>Per persona</h2></div>
             <div class="section-actions">
@@ -119,43 +116,6 @@
           </div>
         </article>
 
-        <article class="card admin-section">
-          <div class="section-head">
-            <div><p class="eyebrow">Report</p><h2>Per giorno e turno</h2></div>
-            <div class="section-actions">
-              <button class="button button--secondary" type="button" data-activity-export-pdf>PDF</button>
-              <button class="button button--secondary" type="button" data-activity-export-excel>Excel</button>
-              <button class="button button--secondary collapse-button" type="button" data-collapse-target="activity-report-content" aria-expanded="false">Espandi</button>
-            </div>
-          </div>
-          <div id="activity-report-content" data-collapsible-content hidden>
-            <div class="filter-grid filter-grid--report-three">
-              <label class="field compact-field"><span>Persona</span><select data-activity-report-person-filter multiple><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Attività</span><select data-activity-report-activity-filter multiple><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Turno</span><select data-activity-report-shift-filter multiple><option value="">Tutti</option></select></label>
-            </div>
-            <div class="table-wrap" data-activity-report></div>
-          </div>
-        </article>
-
-        <article class="card admin-section">
-          <div class="section-head">
-            <div><p class="eyebrow">Report</p><h2>Vista per turni</h2></div>
-            <div class="section-actions">
-              <button class="button button--secondary" type="button" data-shift-board-export-pdf>PDF</button>
-              <button class="button button--secondary" type="button" data-shift-board-export-excel>Excel</button>
-              <button class="button button--secondary collapse-button" type="button" data-collapse-target="shift-board-report-content" aria-expanded="false">Espandi</button>
-            </div>
-          </div>
-          <div id="shift-board-report-content" data-collapsible-content hidden>
-            <div class="filter-grid filter-grid--report-three">
-              <label class="field compact-field"><span>Persona</span><select data-shift-board-person-filter multiple><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Attività</span><select data-shift-board-activity-filter multiple><option value="">Tutte</option></select></label>
-              <label class="field compact-field"><span>Turno</span><select data-shift-board-shift-filter multiple><option value="">Tutti</option></select></label>
-            </div>
-            <div class="shift-board-wrap" data-shift-board-report></div>
-          </div>
-        </article>
       </section>
 
       <section class="card admin-section">
