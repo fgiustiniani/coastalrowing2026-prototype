@@ -157,14 +157,18 @@
       },
       body: JSON.stringify({ action: 'sync-rental-mails' })
     });
-    const body = await response.json().catch(() => ({}));
+    const body = await response.json().catch(() => null);
     if (!response.ok) {
-      const error = new Error(body.error || 'Non è stato possibile aggiornare le mail di noleggio.');
+      const fallback =
+        response.status === 502 || response.status === 504
+          ? `La sincronizzazione Gmail non è stata completata dal server (HTTP ${response.status}).`
+          : `Non è stato possibile aggiornare le mail di noleggio (HTTP ${response.status}).`;
+      const error = new Error(body?.error || fallback);
       error.status = response.status;
-      error.code = body.code || '';
+      error.code = body?.code || '';
       throw error;
     }
-    return body;
+    return body || {};
   }
 
   async function uploadHtmlSnapshot(file, updateDateValue) {
