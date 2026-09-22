@@ -16,7 +16,6 @@
   const assignmentFiltersToggle = document.querySelector('[data-assignment-filters-toggle]');
   const assignmentFiltersPanel = document.querySelector('[data-assignment-filters]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
-  const assignmentTypeFilter = document.querySelector('[data-assignment-type-filter]');
   const assignmentSort = document.querySelector('[data-assignment-sort]');
   const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
   const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
@@ -1071,7 +1070,6 @@
   }
 
   function filteredAssignments() {
-    const types = selectedFilterValues(assignmentTypeFilter);
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const shifts = selectedFilterValues(assignmentShiftFilter);
     const activities = selectedFilterValues(assignmentActivityFilter);
@@ -1089,9 +1087,6 @@
     };
 
     const baseRows = [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
-      const rowType = row.isAvailability ? 'availability' : 'assigned';
-      if (!filterMatches(types, rowType)) return false;
-
       const requirement = row.isAvailability ? null : requirementForAssignment(row);
       if (!row.isAvailability && !coverageMatches(requirement)) return false;
       if (row.isAvailability && coverageFilters.length) return false;
@@ -1112,7 +1107,6 @@
     });
 
     const gapRows = requirementGapRows().filter((row) => {
-      if (types.length && !types.includes('assigned')) return false;
       if (personIds.length || responses.length || warningFilters.length) return false;
       const requirement = requirementById(row.requirementId);
       if (!coverageMatches(requirement)) return false;
@@ -1223,14 +1217,11 @@
 
 
   function filteredBoardAssignmentRows() {
-    const types = selectedFilterValues(assignmentTypeFilter);
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
 
     return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
-      const rowType = row.isAvailability ? 'availability' : 'assigned';
-      if (!filterMatches(types, rowType)) return false;
       if (!filterMatches(personIds, row.personId)) return false;
 
       if (row.isAvailability) {
@@ -2508,11 +2499,9 @@
 
   function renderAssignments() {
     const rows = filteredAssignments();
-    const types = selectedFilterValues(assignmentTypeFilter);
-    const onlyAvailability = types.length === 1 && types[0] === 'availability';
     const isBoard = assignmentView === 'board';
 
-    if (availabilityFilterStatus) availabilityFilterStatus.hidden = isBoard || !onlyAvailability;
+    if (availabilityFilterStatus) availabilityFilterStatus.hidden = true;
     if (assignmentTable) assignmentTable.hidden = isBoard;
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
@@ -2531,14 +2520,12 @@
     }
 
     const body = [
-      ...(newAssignmentOpen && !onlyAvailability ? [assignmentRowHtml(null, true)] : []),
+      ...(newAssignmentOpen ? [assignmentRowHtml(null, true)] : []),
       ...rows.map((row) => assignmentRowHtml(row, false))
     ].join('');
 
     if (!body) {
-      assignmentTable.innerHTML = onlyAvailability
-        ? '<p class="empty-state">Non ci sono disponibilità da assegnare che corrispondono ai filtri.</p>'
-        : '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
+      assignmentTable.innerHTML = '<p class="empty-state">Nessuna assegnazione corrisponde ai filtri.</p>';
       return;
     }
 
@@ -3002,7 +2989,7 @@
 
     popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
       @page { size: ${pageSize}; margin: 8mm; }
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; }
       .day-page { break-after: page; page-break-after: always; width: 100%; }
       .day-page:last-child { break-after: auto; page-break-after: auto; }
@@ -3913,10 +3900,6 @@
       showAvailabilityPeople();
     }
   });
-  document.querySelector('[data-clear-availability-filter]')?.addEventListener('click', () => {
-    setMultiFilterValues(assignmentTypeFilter, []);
-    renderAssignments();
-  });
   document.querySelector('[data-refresh]')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
     await withButtonBusy(button, 'Aggiornamento…', async () => {
@@ -3991,7 +3974,7 @@
     renderRaceProgram();
   });
 
-  [assignmentTypeFilter, assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter]
+  [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
