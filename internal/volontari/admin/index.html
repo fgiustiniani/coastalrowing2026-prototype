@@ -65,6 +65,13 @@
               <label class="field compact-field"><span>Responsabile</span><select data-assignment-responsible-filter multiple><option value="">Tutti</option><option value="responsible">Solo responsabili</option></select></label>
             </div>
           </div>
+          <div class="assignment-active-filters" data-assignment-active-filters hidden>
+            <div class="assignment-active-filters__summary">
+              <strong>Filtri attivi</strong>
+              <div class="assignment-active-filters__chips" data-assignment-active-filter-chips></div>
+            </div>
+            <button class="button button--secondary assignment-clear-filters" type="button" data-assignment-clear-filters>Azzera filtri</button>
+          </div>
           <p class="intro inline-help">Puoi modificare turno, attività e persona direttamente nella riga. I warning si aggiornano prima del salvataggio.</p>
           <p class="status assignment-board-status" data-assignment-board-status aria-live="polite"></p>
           <div class="assignment-board-wrap" data-assignment-board hidden></div>

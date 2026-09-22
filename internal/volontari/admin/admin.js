@@ -15,6 +15,9 @@
   const assignmentBoardExportPdf = document.querySelector('[data-assignment-board-export-pdf]');
   const assignmentFiltersToggle = document.querySelector('[data-assignment-filters-toggle]');
   const assignmentFiltersPanel = document.querySelector('[data-assignment-filters]');
+  const assignmentActiveFilters = document.querySelector('[data-assignment-active-filters]');
+  const assignmentActiveFilterChips = document.querySelector('[data-assignment-active-filter-chips]');
+  const assignmentClearFilters = document.querySelector('[data-assignment-clear-filters]');
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentSort = document.querySelector('[data-assignment-sort]');
   const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
@@ -2689,32 +2692,72 @@
   }
 
 
-  function activeAssignmentFilterCount() {
+  function assignmentFilterDescriptors() {
     return [
-      assignmentPersonFilter,
-      assignmentShiftFilter,
-      assignmentActivityFilter,
-      assignmentResponseFilter,
-      assignmentWarningFilter,
-      assignmentCoverageFilter,
-      assignmentResponsibleFilter
-    ].reduce((total, filter) => total + selectedFilterValues(filter).length, 0);
+      { label: 'Persona', select: assignmentPersonFilter },
+      { label: 'Turno', select: assignmentShiftFilter },
+      { label: 'Attività', select: assignmentActivityFilter },
+      { label: 'Risposta', select: assignmentResponseFilter },
+      { label: 'Warning', select: assignmentWarningFilter },
+      { label: 'Copertura', select: assignmentCoverageFilter },
+      { label: 'Responsabile', select: assignmentResponsibleFilter }
+    ];
+  }
+
+  function activeAssignmentFilterItems() {
+    return assignmentFilterDescriptors().flatMap(({ label, select }) => {
+      const selected = new Set(selectedFilterValues(select));
+      return [...(select?.options || [])]
+        .filter((option) => selected.has(option.value))
+        .map((option) => ({ label, value: option.textContent.trim() }));
+    });
+  }
+
+  function activeAssignmentFilterCount() {
+    return activeAssignmentFilterItems().length;
+  }
+
+  function updateAssignmentActiveFilters() {
+    if (!assignmentActiveFilters || !assignmentActiveFilterChips) return;
+    const items = activeAssignmentFilterItems();
+    assignmentActiveFilters.hidden = items.length === 0;
+    assignmentActiveFilterChips.innerHTML = items.map((item) =>
+      `<span class="assignment-filter-chip"><span>${escapeHtml(item.label)}:</span> <strong>${escapeHtml(item.value)}</strong></span>`
+    ).join('');
   }
 
   function updateAssignmentFiltersToggle() {
-    if (!assignmentFiltersToggle) return;
     const count = activeAssignmentFilterCount();
-    const label = count ? `Filtri (${count})` : 'Filtri';
-    const labelNode = assignmentFiltersToggle.querySelector('[data-button-label]');
-    const badge = assignmentFiltersToggle.querySelector('[data-filter-count-badge]');
-    if (labelNode) labelNode.textContent = label;
-    else assignmentFiltersToggle.textContent = label;
-    if (badge) {
-      badge.textContent = String(count);
-      badge.hidden = count === 0;
+    if (assignmentFiltersToggle) {
+      const label = count ? `Filtri (${count})` : 'Filtri';
+      const labelNode = assignmentFiltersToggle.querySelector('[data-button-label]');
+      const badge = assignmentFiltersToggle.querySelector('[data-filter-count-badge]');
+      if (labelNode) labelNode.textContent = label;
+      else assignmentFiltersToggle.textContent = label;
+      if (badge) {
+        badge.textContent = String(count);
+        badge.hidden = count === 0;
+      }
+      assignmentFiltersToggle.setAttribute('aria-label', label);
+      assignmentFiltersToggle.setAttribute('title', label);
     }
-    assignmentFiltersToggle.setAttribute('aria-label', label);
-    assignmentFiltersToggle.setAttribute('title', label);
+    updateAssignmentActiveFilters();
+  }
+
+  function clearAssignmentFilters() {
+    assignmentFilterDescriptors().forEach(({ select }) => {
+      if (!select) return;
+      [...select.options].forEach((option) => { option.selected = false; });
+      const allOption = filterAllOption(select);
+      if (allOption) allOption.selected = true;
+      syncMultiFilter(select);
+    });
+    closeMultiFilters();
+    if (assignmentFiltersPanel && assignmentMobileQuery.matches) {
+      assignmentFiltersPanel.classList.remove('is-open');
+      assignmentFiltersToggle?.setAttribute('aria-expanded', 'false');
+    }
+    renderAssignments();
   }
 
   function renderAssignments() {
@@ -4200,6 +4243,7 @@
 
   [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
+  assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
