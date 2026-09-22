@@ -43,7 +43,7 @@
 
       <section class="card admin-section">
         <div class="section-head">
-          <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
+          <div><p class="eyebrow">Operatività</p><div class="assignment-title-row"><h2>Assegnazioni</h2><span class="responsible-legend"><span class="responsible-legend__swatch" aria-hidden="true"></span>Responsabile</span></div></div>
           <div class="section-actions">
             <button class="button button--secondary assignment-filters-toggle mobile-icon-button" type="button" data-assignment-filters-toggle aria-expanded="false" aria-controls="assignment-filters" aria-label="Filtri" title="Filtri"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/></svg><span data-button-label>Filtri</span><span class="icon-count" data-filter-count-badge hidden>0</span></button>
             <button class="button button--secondary mobile-icon-button mobile-report-button" type="button" data-go-person-report aria-label="Report per persona" title="Report per persona"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v18H7Z"/><path d="M9.5 8h5M9.5 12h5M9.5 16h3"/></svg><span data-button-label>Report per persona</span></button>
@@ -62,6 +62,7 @@
               <label class="field compact-field"><span>Risposta</span><select data-assignment-response-filter multiple><option value="">Tutte</option><option value="confirmed">Confermata</option><option value="declined">Non può</option><option value="pending">Da rispondere</option></select></label>
               <label class="field compact-field"><span>Warning</span><select data-assignment-warning-filter multiple><option value="">Tutti</option><option value="any">Con warning</option><option value="duplicate">Più assegnazioni nello stesso turno</option><option value="race">Gara</option><option value="none">Senza warning</option></select></label>
               <label class="field compact-field"><span>Copertura</span><select data-assignment-coverage-filter multiple><option value="">Tutte</option><option value="uncovered">Attività scoperte</option><option value="covered">Attività coperte</option></select></label>
+              <label class="field compact-field"><span>Responsabile</span><select data-assignment-responsible-filter multiple><option value="">Tutti</option><option value="responsible">Solo responsabili</option></select></label>
             </div>
           </div>
           <p class="intro inline-help">Puoi modificare turno, attività e persona direttamente nella riga. I warning si aggiornano prima del salvataggio.</p>

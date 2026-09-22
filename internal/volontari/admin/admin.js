@@ -23,6 +23,7 @@
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
   const assignmentWarningFilter = document.querySelector('[data-assignment-warning-filter]');
   const assignmentCoverageFilter = document.querySelector('[data-assignment-coverage-filter]');
+  const assignmentResponsibleFilter = document.querySelector('[data-assignment-responsible-filter]');
   const availabilityFilterStatus = document.querySelector('[data-availability-filter-status]');
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
@@ -1100,6 +1101,7 @@
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
+    const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
 
     const coverageMatches = (requirement) => {
       if (!coverageFilters.length) return true;
@@ -1114,6 +1116,7 @@
       const requirement = row.isAvailability ? null : requirementForAssignment(row);
       if (!row.isAvailability && !coverageMatches(requirement)) return false;
       if (row.isAvailability && coverageFilters.length) return false;
+      if (responsibleFilters.length && (row.isAvailability || row.isResponsible !== true)) return false;
 
       const rowResponse = row.currentResponse || 'pending';
       const warnings = assignmentWarningDetails(row);
@@ -1131,7 +1134,7 @@
     });
 
     const gapRows = requirementGapRows().filter((row) => {
-      if (personIds.length || responses.length || warningFilters.length) return false;
+      if (personIds.length || responses.length || warningFilters.length || responsibleFilters.length) return false;
       const requirement = requirementById(row.requirementId);
       if (!coverageMatches(requirement)) return false;
       return filterMatches(shifts, shiftFilterKey(row))
@@ -1217,7 +1220,7 @@
 
     const groupResponsible = (!isNew && !isAvailability) ? responsibleForGroup(row) : null;
     const responsibleCell = (!isNew && !isAvailability)
-      ? `<button type="button" class="responsible-field ${groupResponsible ? 'is-active' : ''}" data-open-responsible="${escapeHtml(row.id)}" title="Scegli il responsabile per questa attività e turno">${groupResponsible ? `★ ${escapeHtml(groupResponsible.personName)}` : 'Seleziona responsabile'}</button>`
+      ? `<button type="button" class="responsible-field ${groupResponsible ? 'is-active' : ''}" data-open-responsible="${escapeHtml(row.id)}" title="Scegli il responsabile per questa attività e turno">${groupResponsible ? escapeHtml(groupResponsible.personName) : 'Seleziona responsabile'}</button>`
       : '<span class="responsibility-unavailable">—</span>';
 
     return `
@@ -1244,13 +1247,16 @@
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
+    const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
 
     return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
       if (row.isAvailability) {
+        if (responsibleFilters.length) return false;
         if (personIds.length && !personIds.includes(row.personId)) return false;
         return !responses.length && !warningFilters.length;
       }
 
+      if (responsibleFilters.length && row.isResponsible !== true) return false;
       if (selectedPeopleOnly && personIds.length && !personIds.includes(row.personId)) return false;
 
       const rowResponse = row.currentResponse || 'pending';
@@ -1307,7 +1313,6 @@
             ${escapeHtml(row.personName)}
           </button>
           <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>
-          ${row.isResponsible ? '<span class="assignment-board__responsible-mark" title="Responsabile dell’attività in questo turno" aria-label="Responsabile">★</span>' : ''}
           ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">N</span>` : ''}
           ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
           <button type="button"
@@ -1715,15 +1720,17 @@
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
-    const matchingAssignments = selectedPeople.length
-      ? filteredBoardAssignmentRows({ selectedPeopleOnly: true }).filter((row) => !row.isAvailability)
+    const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
+    const shouldMatchAssignments = selectedPeople.length > 0 || responsibleFilters.length > 0;
+    const matchingAssignments = shouldMatchAssignments
+      ? filteredBoardAssignmentRows({ selectedPeopleOnly: selectedPeople.length > 0 }).filter((row) => !row.isAvailability)
       : [];
 
     return requirements().filter((requirement) => {
       const shiftKey = `${requirement.day || ''}|||${requirement.shift || ''}`;
       if (selectedShifts.length && !selectedShifts.includes(shiftKey)) return false;
       if (selectedActivities.length && !selectedActivities.includes(prettifyActivityName(requirement.activity))) return false;
-      if (selectedPeople.length && !matchingAssignments.some((row) =>
+      if (shouldMatchAssignments && !matchingAssignments.some((row) =>
         row.shiftId === requirement.shiftId && row.activityId === requirement.activityId
       )) return false;
       if (coverageFilters.length) {
@@ -2515,7 +2522,8 @@
       assignmentActivityFilter,
       assignmentResponseFilter,
       assignmentWarningFilter,
-      assignmentCoverageFilter
+      assignmentCoverageFilter,
+      assignmentResponsibleFilter
     ].reduce((total, filter) => total + selectedFilterValues(filter).length, 0);
   }
 
@@ -4016,7 +4024,7 @@
     renderRaceProgram();
   });
 
-  [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter]
+  [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', renderAssignments));
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
