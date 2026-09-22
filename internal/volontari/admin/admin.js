@@ -211,7 +211,7 @@
   }
 
   function responsibleBadge(label = 'Responsabile') {
-    return `<span class="responsible-badge" title="Responsabile dell’attività in questo turno">★ ${escapeHtml(label)}</span>`;
+    return `<span class="responsible-badge" title="Responsabile dell’attività in questo turno">${escapeHtml(label)}</span>`;
   }
 
   function prettifyActivityName(value) {
@@ -3887,7 +3887,7 @@
             class="responsible-choice ${item.isResponsible ? 'is-selected' : ''}"
             data-pick-group-responsible="${escapeHtml(item.id)}"
             ${snapshot?.responsibilityAvailable ? '' : 'disabled'}>
-            <span class="responsible-choice__mark">${item.isResponsible ? '★' : '○'}</span>
+            <span class="responsible-choice__mark" aria-hidden="true"></span>
             <span>
               <strong>${escapeHtml(item.personName)}</strong>
               <small>${item.isResponsible ? 'Responsabile attuale' : 'Assegnato a questa attività e turno'}</small>
