@@ -2397,6 +2397,54 @@
       <span>${activities.map((activity) => escapeHtml(activity)).join(' · ')}</span>`;
   }
 
+  function refreshBoardEditResponse() {
+    const rowNode = boardEditContent?.querySelector('[data-board-edit-response-row]');
+    const node = boardEditContent?.querySelector('[data-board-edit-response]');
+    if (!rowNode || !node) return;
+
+    const source = boardEditSource();
+    if (!source) {
+      rowNode.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+
+    if (boardEditContext?.kind === 'availability') {
+      rowNode.hidden = false;
+      node.innerHTML = '<span class="status-badge is-availability">Disponibilità</span>';
+      return;
+    }
+
+    const personId = boardEditContent?.querySelector('[data-board-edit-person]')?.value || '';
+    const requirement = boardEditTargetRequirement();
+    if (!personId || !requirement) {
+      rowNode.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+
+    let response = null;
+    if (personId === source.personId) {
+      response = source.currentResponse || null;
+    } else {
+      const matching = (snapshot?.assignments || []).find((row) =>
+        row.personId === personId
+        && row.id !== source.id
+        && assignmentRequirementId(row) === requirement.id
+      );
+      response = matching?.currentResponse || null;
+    }
+
+    if (response !== 'confirmed' && response !== 'declined') {
+      rowNode.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+
+    rowNode.hidden = false;
+    node.innerHTML = responseBadge(response);
+  }
+
   function refreshBoardEditWarnings() {
     const node = boardEditContent?.querySelector('[data-board-edit-warnings]');
     if (!node) return;
@@ -2507,7 +2555,6 @@
 
     const isAvailability = kind === 'availability';
     const selectedRequirementId = isAvailability ? '' : assignmentRequirementId(source);
-    const response = isAvailability ? '<span class="status-badge is-availability">Disponibilità</span>' : responseBadge(source.currentResponse);
     boardEditTitle.textContent = isAvailability ? `Assegna ${source.personName}` : `Modifica ${source.personName}`;
     setStatus(boardEditStatus, '');
 
@@ -2520,11 +2567,13 @@
         <label class="field"><span>Persona</span>
           <select data-board-edit-person ${isAvailability ? 'disabled' : ''}>${personOptions(source.personId)}</select>
         </label>
-        <label class="field field--wide"><span>Turno + attività</span>
-          <select data-board-edit-requirement>${requirementOptions(selectedRequirementId, isAvailability ? source.shiftId : '')}</select>
-        </label>
+        ${isAvailability
+          ? `<label class="field field--wide"><span>Turno + attività</span>
+              <select data-board-edit-requirement>${requirementOptions(selectedRequirementId, source.shiftId)}</select>
+            </label>`
+          : `<input type="hidden" data-board-edit-requirement value="${escapeHtml(selectedRequirementId)}">`}
         <div class="board-edit-info field--wide">
-          <div><span>Risposta</span>${response}</div>
+          <div data-board-edit-response-row hidden><span>Risposta</span><div data-board-edit-response></div></div>
           <div><span>Responsabile</span>${!isAvailability && source.isResponsible ? responsibleBadge(source.personName) : '—'}</div>
         </div>
         <div class="board-edit-declined-alert field--wide" data-board-edit-declined-alert hidden></div>
@@ -2542,6 +2591,7 @@
     if (boardEditHistory) boardEditHistory.hidden = isAvailability;
     initSearchablePersonSelect(boardEditContent?.querySelector('[data-board-edit-person]'));
     refreshBoardEditOperationContext();
+    refreshBoardEditResponse();
     refreshBoardEditDeclinedAlert();
     refreshBoardEditWarnings();
     refreshBoardEditPersonActivities();
@@ -5490,6 +5540,7 @@
 
   boardEditContent?.addEventListener('change', (event) => {
     if (event.target.matches('[data-board-edit-person]')) {
+      refreshBoardEditResponse();
       refreshBoardEditDeclinedAlert();
       refreshBoardEditWarnings();
       refreshBoardEditPersonActivities();
@@ -5497,6 +5548,7 @@
     }
     if (event.target.matches('[data-board-edit-requirement]')) {
       refreshBoardEditOperationContext();
+      refreshBoardEditResponse();
       refreshBoardEditDeclinedAlert();
       refreshBoardEditWarnings();
     }
