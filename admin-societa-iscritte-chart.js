@@ -32,7 +32,8 @@
         region,
         total: 0,
         registered: 0,
-        registeredWithMail: 0,
+        ficRegistered: 0,
+        rentalMailNotRegistered: 0,
         registered2025: 0,
         athletes2026: 0,
         athletes2026Known: false,
@@ -41,10 +42,9 @@
       };
 
       current.total += 1;
-      if (row.status === 'registered') {
-        current.registered += 1;
-        if (row.rentalMailReceived) current.registeredWithMail += 1;
-      }
+      if (row.status === 'registered') current.registered += 1;
+      if (row.registration) current.ficRegistered += 1;
+      if (row.rentalMailReceived && !row.registration) current.rentalMailNotRegistered += 1;
       if (row.registered2025) current.registered2025 += 1;
 
       const physicalAthletes = Number(row.registrationSnapshot?.physicalAthletes);
@@ -60,7 +60,8 @@
         region,
         total: 0,
         registered: 0,
-        registeredWithMail: 0,
+        ficRegistered: 0,
+        rentalMailNotRegistered: 0,
         registered2025: 0,
         athletes2026: 0,
         athletes2026Known: false,
@@ -92,7 +93,9 @@
   function appendSummaryBoxes(svg, margin, rows, { athleteMode = false } = {}) {
     const data = getData();
     const summary = data.summary || {};
-    const currentSocieties = summary.registered ?? rows.reduce((sum, row) => sum + row.registered, 0);
+    const currentSocieties = athleteMode
+      ? (summary.registered ?? rows.reduce((sum, row) => sum + row.registered, 0))
+      : rows.reduce((sum, row) => sum + row.ficRegistered, 0);
     const historicSocieties = summary.registered2025 ?? rows.reduce((sum, row) => sum + row.registered2025, 0);
     const currentAthletes = summary.athletes2026 ?? '—';
     const historicRegisteredAthletes = summary.athletes2025 ?? 445;
@@ -174,12 +177,20 @@
     const rows = chartRows();
     if (!rows.length) return null;
 
+    const data = getData();
+    const hasFicData = data.financialAvailable === true;
     const width = Math.max(1120, rows.length * 64 + 110);
     const height = 530;
     const margin = { top: 92, right: 24, bottom: 150, left: 48 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
-    const maxValue = Math.max(1, ...rows.flatMap((row) => [row.total, row.registered2025]));
+    const maxValue = Math.max(
+      1,
+      ...rows.flatMap((row) => [
+        hasFicData ? row.ficRegistered + row.rentalMailNotRegistered : 0,
+        row.registered2025
+      ])
+    );
     const yMax = Math.ceil(maxValue / 5) * 5 || 5;
     const groupWidth = plotWidth / rows.length;
     const barWidth = Math.min(22, groupWidth * 0.28);
@@ -187,86 +198,76 @@
     const svg = svgEl('svg', {
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': 'Società iscritte per regione con evidenza delle mail di noleggio'
+      'aria-label': 'Società iscritte dalla pagina FIC e società con mail di noleggio non ancora iscritte, per regione'
     });
     svg.appendChild(svgEl('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
     appendSummaryBoxes(svg, margin, rows);
+
+    if (!hasFicData) {
+      svg.appendChild(svgEl('text', {
+        x: margin.left,
+        y: 91,
+        fill: '#8a5b1e',
+        'font-size': 10.5,
+        'font-weight': 750
+      }, 'Pagina FIC non disponibile: il dato 2026 per regione non può essere aggiornato.'));
+    }
+
     appendGrid(svg, width, margin, plotHeight, yMax);
 
     rows.forEach((row, index) => {
       const center = margin.left + groupWidth * index + groupWidth / 2;
       const currentX = center - barWidth - 3;
       const historicX = center + 3;
-      const withMail = Math.min(row.registered, row.registeredWithMail);
-      const withoutMail = Math.max(0, row.registered - withMail);
-      const withoutMailHeight = (withoutMail / yMax) * plotHeight;
-      const withMailHeight = (withMail / yMax) * plotHeight;
-      const registeredHeight = (row.registered / yMax) * plotHeight;
-      const totalHeight = (row.total / yMax) * plotHeight;
-      const remainingHeight = Math.max(0, totalHeight - registeredHeight);
+      const registeredFic = hasFicData ? row.ficRegistered : 0;
+      const mailNotRegistered = hasFicData ? row.rentalMailNotRegistered : 0;
+      const registeredHeight = (registeredFic / yMax) * plotHeight;
+      const mailNotRegisteredHeight = (mailNotRegistered / yMax) * plotHeight;
+      const stackedHeight = registeredHeight + mailNotRegisteredHeight;
       const historicHeight = (row.registered2025 / yMax) * plotHeight;
       const baseY = margin.top + plotHeight;
 
-      if (withoutMailHeight > 0) {
+      if (registeredHeight > 0) {
         svg.appendChild(svgEl('rect', {
           x: currentX,
-          y: baseY - withoutMailHeight,
+          y: baseY - registeredHeight,
           width: barWidth,
-          height: withoutMailHeight,
+          height: registeredHeight,
+          rx: mailNotRegisteredHeight > 0 ? 0 : 3,
           fill: '#2f8f6b'
         }));
+        svg.appendChild(svgEl('text', {
+          x: currentX + barWidth / 2,
+          y: registeredHeight >= 18
+            ? baseY - registeredHeight / 2 + 3
+            : baseY - registeredHeight - 4,
+          'text-anchor': 'middle',
+          fill: registeredHeight >= 18 ? '#ffffff' : '#245d38',
+          'font-size': 9.5,
+          'font-weight': 850
+        }, String(registeredFic)));
       }
 
-      if (withMailHeight > 0) {
+      if (mailNotRegisteredHeight > 0) {
         svg.appendChild(svgEl('rect', {
           x: currentX,
-          y: baseY - withoutMailHeight - withMailHeight,
+          y: baseY - stackedHeight,
           width: barWidth,
-          height: withMailHeight,
+          height: mailNotRegisteredHeight,
+          rx: 3,
           fill: '#e58b2a'
         }));
         svg.appendChild(svgEl('text', {
           x: currentX + barWidth / 2,
-          y: withMailHeight >= 14
-            ? baseY - withoutMailHeight - withMailHeight / 2 + 3
-            : baseY - registeredHeight - 4,
+          y: mailNotRegisteredHeight >= 18
+            ? baseY - registeredHeight - mailNotRegisteredHeight / 2 + 3
+            : baseY - stackedHeight - 4,
           'text-anchor': 'middle',
-          fill: withMailHeight >= 14 ? '#ffffff' : '#b56610',
-          'font-size': 9,
+          fill: mailNotRegisteredHeight >= 18 ? '#ffffff' : '#b56610',
+          'font-size': 9.5,
           'font-weight': 850
-        }, String(withMail)));
+        }, String(mailNotRegistered)));
       }
-
-      if (remainingHeight > 0) {
-        svg.appendChild(svgEl('rect', {
-          x: currentX,
-          y: baseY - totalHeight,
-          width: barWidth,
-          height: remainingHeight,
-          rx: 3,
-          fill: '#b7c8ce'
-        }));
-      }
-
-      if (row.registered > 0) {
-        svg.appendChild(svgEl('text', {
-          x: currentX + barWidth / 2,
-          y: Math.max(margin.top + 11, baseY - registeredHeight - 7),
-          'text-anchor': 'middle',
-          fill: '#245d38',
-          'font-size': 10,
-          'font-weight': 850
-        }, String(row.registered)));
-      }
-
-      svg.appendChild(svgEl('text', {
-        x: currentX + barWidth / 2,
-        y: Math.max(margin.top + 11, baseY - totalHeight - 7),
-        'text-anchor': 'middle',
-        fill: '#52666c',
-        'font-size': 10,
-        'font-weight': 800
-      }, String(row.total)));
 
       if (row.registered2025 > 0) {
         svg.appendChild(svgEl('rect', {
@@ -460,13 +461,12 @@
     } else {
       if (titleNode) titleNode.textContent = 'Società per regione';
       if (descriptionNode) {
-        descriptionNode.textContent = 'La colonna 2026 distingue le società iscritte che hanno inviato la mail di noleggio; la colonna 2025 mostra le società iscritte nello storico.';
+        descriptionNode.textContent = 'La colonna 2026 mostra le società che risultano iscritte dalla pagina FIC; sopra, in pila, le società che hanno inviato una mail di noleggio ma non risultano ancora iscritte. La colonna 2025 mostra le società iscritte nello storico.';
       }
       if (legendNode) {
         legendNode.innerHTML =
-          '<span><i class="society-chart-legend__swatch is-registered"></i> Iscritte 2026 senza mail</span>' +
-          '<span><i class="society-chart-legend__swatch is-rental-mail"></i> Iscritte 2026 con mail noleggio</span>' +
-          '<span><i class="society-chart-legend__swatch is-total"></i> Restanti fino al totale FIC 2026</span>' +
+          '<span><i class="society-chart-legend__swatch is-registered"></i> Iscritte 2026 dalla pagina FIC</span>' +
+          '<span><i class="society-chart-legend__swatch is-rental-mail"></i> Mail noleggio ricevuta, non ancora iscritta</span>' +
           '<span><i class="society-chart-legend__swatch is-2025"></i> Iscritte 2025</span>';
       }
     }
