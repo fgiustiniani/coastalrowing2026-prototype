@@ -86,6 +86,7 @@
   let newRequirementOpen = false;
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
+  const assignmentMobileQuery = window.matchMedia('(max-width: 700px)');
   let assignmentView = 'list';
   let boardDragState = null;
   let boardPointerDrag = null;
@@ -100,6 +101,7 @@
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
   } catch {}
+  if (assignmentMobileQuery.matches) assignmentView = 'board';
   try {
     const storedCollapsed = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-groups') || '[]');
     boardCollapsedGroups = new Set(Array.isArray(storedCollapsed) ? storedCollapsed : []);
@@ -1053,19 +1055,28 @@
     const uncovered = requirements().filter(requirementIsUncovered).length;
     kpis.innerHTML = `
       <article class="kpi kpi--summary">
-        <div class="kpi__main"><strong>${assignedPeople}</strong><span>persone assegnate</span></div>
-        <p class="kpi__detail">di cui <button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</p>
-        <p class="kpi__detail"><button type="button" class="kpi__link" data-show-unassigned-availability>${new Set(unassignedAvailability.map((row) => row.personId)).size}</button> persone con ${unassignedAvailability.length} disponibilità da assegnare</p>
+        <div class="kpi__line">
+          <span class="kpi__metric"><strong>${assignedPeople}</strong> persone assegnate</span>
+          <span class="kpi__separator">·</span>
+          <span><button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</span>
+          <span class="kpi__separator">·</span>
+          <span><button type="button" class="kpi__link" data-show-unassigned-availability>${new Set(unassignedAvailability.map((row) => row.personId)).size}</button> persone con ${unassignedAvailability.length} disponibilità da assegnare</span>
+        </div>
       </article>
       <article class="kpi kpi--summary kpi--requirements">
-        <div class="kpi__main"><strong>${planned}</strong><span>attività previste</span></div>
-        <p class="kpi__detail">di cui <strong>${assignments.length}</strong> assegnate</p>
-        <div class="kpi__breakdown">
-          <span>di cui <strong>${confirmed}</strong> confermate</span>
+        <div class="kpi__line">
+          <span class="kpi__metric"><strong>${planned}</strong> attività previste</span>
+          <span class="kpi__separator">·</span>
+          <span><strong>${assignments.length}</strong> assegnate</span>
+          <span class="kpi__separator">·</span>
+          <span><strong>${confirmed}</strong> confermate</span>
+          <span class="kpi__separator">·</span>
           <span><strong>${declined}</strong> rifiutate</span>
+          <span class="kpi__separator">·</span>
           <span><strong>${pending}</strong> senza risposta</span>
+          <span class="kpi__separator">·</span>
+          <span class="kpi__alert"><strong>${uncovered}</strong> ancora scoperte</span>
         </div>
-        <p class="kpi__detail kpi__detail--alert"><strong>${uncovered}</strong> coppie turno-attività ancora scoperte</p>
       </article>`;
   }
 
@@ -1216,17 +1227,18 @@
   }
 
 
-  function filteredBoardAssignmentRows() {
+  function filteredBoardAssignmentRows({ selectedPeopleOnly = false } = {}) {
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
 
     return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])].filter((row) => {
-      if (!filterMatches(personIds, row.personId)) return false;
-
       if (row.isAvailability) {
+        if (personIds.length && !personIds.includes(row.personId)) return false;
         return !responses.length && !warningFilters.length;
       }
+
+      if (selectedPeopleOnly && personIds.length && !personIds.includes(row.personId)) return false;
 
       const rowResponse = row.currentResponse || 'pending';
       if (responses.length && !responses.includes(rowResponse)) return false;
@@ -1248,6 +1260,8 @@
   }
 
   function boardPersonCard(row) {
+    const selectedPeople = selectedFilterValues(assignmentPersonFilter);
+    const isFilterMatch = selectedPeople.length > 0 && selectedPeople.includes(row.personId);
     const warnings = row.isAvailability ? [] : assignmentWarningDetails(row);
     const warningText = warnings.map((warning) => warning.text).join(' · ');
     const response = boardResponseMeta(row);
@@ -1264,7 +1278,7 @@
 
     return `
       <div
-        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${warnings.length ? 'has-warning' : ''}"
+        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${warnings.length ? 'has-warning' : ''}"
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
@@ -1689,7 +1703,7 @@
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
     const matchingAssignments = selectedPeople.length
-      ? filteredBoardAssignmentRows().filter((row) => !row.isAvailability)
+      ? filteredBoardAssignmentRows({ selectedPeopleOnly: true }).filter((row) => !row.isAvailability)
       : [];
 
     return requirements().filter((requirement) => {
@@ -1712,8 +1726,12 @@
   function renderAssignmentBoard() {
     if (!assignmentBoard) return;
     const rows = filteredBoardAssignmentRows();
+    const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const visibleRequirements = filteredBoardRequirements();
     const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
+    if (selectedPeople.length) {
+      rows.filter((row) => row.isAvailability).forEach((row) => visibleShiftIds.add(row.shiftId));
+    }
     const shifts = [...(snapshot?.shifts || [])]
       .filter((shift) => visibleShiftIds.has(shift.id))
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
@@ -1865,20 +1883,17 @@
             ${groupDropPalette}
             ${mixedHtml}
           </div>
+          ${(!selectedPeople.length || availability.length) ? `
           <section class="assignment-board__availability">
             <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
             <div class="assignment-board__availability-people">
               ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
             </div>
-          </section>
+          </section>` : ''}
         </article>`;
     }).join('');
 
     assignmentBoard.innerHTML = `
-      <div class="assignment-board__help">
-        <strong>Gestione a schede</strong>
-        <span>Ogni turno mostra solo le attività realmente previste. I gruppi si comprimono indipendentemente per turno; trascina un’attività su un altro gruppo per riclassificarla in tutti i turni.</span>
-      </div>
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
   }
 
@@ -2494,7 +2509,17 @@
   function updateAssignmentFiltersToggle() {
     if (!assignmentFiltersToggle) return;
     const count = activeAssignmentFilterCount();
-    assignmentFiltersToggle.textContent = count ? `Filtri (${count})` : 'Filtri';
+    const label = count ? `Filtri (${count})` : 'Filtri';
+    const labelNode = assignmentFiltersToggle.querySelector('[data-button-label]');
+    const badge = assignmentFiltersToggle.querySelector('[data-filter-count-badge]');
+    if (labelNode) labelNode.textContent = label;
+    else assignmentFiltersToggle.textContent = label;
+    if (badge) {
+      badge.textContent = String(count);
+      badge.hidden = count === 0;
+    }
+    assignmentFiltersToggle.setAttribute('aria-label', label);
+    assignmentFiltersToggle.setAttribute('title', label);
   }
 
   function renderAssignments() {
@@ -3916,6 +3941,10 @@
     setAssignmentView(assignmentView === 'board' ? 'list' : 'board');
   });
 
+  assignmentMobileQuery.addEventListener?.('change', (event) => {
+    if (event.matches && assignmentView !== 'board') setAssignmentView('board');
+  });
+
   assignmentFiltersToggle?.addEventListener('click', () => {
     if (!assignmentFiltersPanel) return;
     const open = !assignmentFiltersPanel.classList.contains('is-open');
@@ -3992,7 +4021,12 @@
       const collapsed = !target.hidden;
       target.hidden = collapsed;
       button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      button.textContent = collapsed ? 'Espandi' : 'Comprimi';
+      const label = collapsed ? 'Espandi' : 'Comprimi';
+      const labelNode = button.querySelector('[data-button-label]');
+      if (labelNode) labelNode.textContent = label;
+      else button.textContent = label;
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
     });
   });
 

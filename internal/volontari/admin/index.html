@@ -30,22 +30,14 @@
     </section>
 
     <section data-dashboard hidden>
-      <div class="admin-toolbar">
-        <div><p class="eyebrow">Situazione aggiornata</p><h2>Quadro organizzativo</h2></div>
-        <div class="toolbar-actions"><button class="button button--secondary" type="button" data-refresh>Aggiorna</button><button class="button button--secondary" type="button" data-logout>Esci</button></div>
+      <div class="admin-toolbar admin-toolbar--compact">
+        <p class="status toolbar-status" data-invite-status aria-live="polite"></p>
+        <div class="toolbar-actions toolbar-actions--icons">
+          <button class="button button--secondary icon-button" type="button" data-copy-volunteer-link aria-label="Copia link volontari" title="Copia link volontari"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l3.4-3.4a3 3 0 1 1 4.2 4.2l-2.1 2.1a3 3 0 0 1-4.2 0 1 1 0 1 1 1.4-1.4 1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0-1.4-1.4L12 13.4a1 1 0 0 1-1.4 0Z"/><path d="M13.4 10.6a1 1 0 0 1 0 1.4L10 15.4a3 3 0 1 1-4.2-4.2l2.1-2.1a3 3 0 0 1 4.2 0 1 1 0 1 1-1.4 1.4 1 1 0 0 0-1.4 0l-2.1 2.1A1 1 0 0 0 8.6 14l3.4-3.4a1 1 0 0 1 1.4 0Z"/></svg></button>
+          <button class="button button--secondary icon-button" type="button" data-refresh aria-label="Aggiorna" title="Aggiorna"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5"/><path d="M19 11a7 7 0 1 0-1.4 5.8"/></svg></button>
+          <button class="button button--secondary icon-button" type="button" data-logout aria-label="Esci" title="Esci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5"/><path d="M14 8l4 4-4 4"/><path d="M18 12H9"/></svg></button>
+        </div>
       </div>
-
-      <section class="card admin-section">
-        <div class="section-head">
-          <div><p class="eyebrow">Condivisione</p><h2>Link volontari</h2></div>
-          <button class="button button--secondary collapse-button" type="button" data-collapse-target="invite-content" aria-expanded="false">Espandi</button>
-        </div>
-        <div id="invite-content" data-collapsible-content hidden>
-          <p class="intro">Il link firmato consente l’accesso diretto al modulo e resta valido fino al 6 ottobre 2026. Il segreto usato per firmarlo non viene mai inviato al browser.</p>
-          <div class="actions"><button class="button button--primary" type="button" data-copy-volunteer-link>Copia link volontari</button></div>
-          <p class="status" data-invite-status aria-live="polite"></p>
-        </div>
-      </section>
 
       <section class="kpi-grid" data-kpis></section>
 
@@ -53,11 +45,11 @@
         <div class="section-head">
           <div><p class="eyebrow">Operatività</p><h2>Assegnazioni</h2></div>
           <div class="section-actions">
-            <button class="button button--secondary assignment-filters-toggle" type="button" data-assignment-filters-toggle aria-expanded="false" aria-controls="assignment-filters">Filtri</button>
+            <button class="button button--secondary assignment-filters-toggle mobile-icon-button" type="button" data-assignment-filters-toggle aria-expanded="false" aria-controls="assignment-filters" aria-label="Filtri" title="Filtri"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/></svg><span data-button-label>Filtri</span><span class="icon-count" data-filter-count-badge hidden>0</span></button>
             <button class="button button--secondary" type="button" data-go-person-report>Report per persona</button>
             <button class="button button--secondary assignment-view-toggle" type="button" data-assignment-view-toggle aria-pressed="false">Vista schede</button>
-            <button class="button button--secondary" type="button" data-assignment-board-export-pdf hidden>PDF vista schede</button>
-            <button class="button button--secondary collapse-button" type="button" data-collapse-target="assignments-content" aria-expanded="true">Comprimi</button>
+            <button class="button button--secondary mobile-icon-button" type="button" data-assignment-board-export-pdf hidden aria-label="PDF vista schede" title="PDF vista schede"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5"/><path d="M8 16h8M8 12h5"/></svg><span data-button-label>PDF vista schede</span></button>
+            <button class="button button--secondary collapse-button mobile-icon-button" type="button" data-collapse-target="assignments-content" aria-expanded="true" aria-label="Comprimi" title="Comprimi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5"/></svg><span data-button-label>Comprimi</span></button>
           </div>
         </div>
         <div id="assignments-content" data-collapsible-content>

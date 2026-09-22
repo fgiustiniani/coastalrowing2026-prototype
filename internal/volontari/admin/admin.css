@@ -3044,3 +3044,133 @@ tr.is-busy button.is-busy {
     background: #f8fbfb;
   }
 }
+
+
+/* Header operativo compatto */
+.admin-toolbar--compact {
+  justify-content: flex-end;
+  min-height: 44px;
+}
+.toolbar-actions--icons {
+  align-items: center;
+}
+.toolbar-status {
+  margin: 0 auto 0 0;
+  min-height: 0;
+  font-size: .78rem;
+}
+.icon-button,
+.mobile-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.icon-button {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 10px;
+}
+.icon-button svg,
+.mobile-icon-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-button[data-copy-volunteer-link] svg path:first-child,
+.icon-button[data-copy-volunteer-link] svg path:last-child {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* KPI compatti: tutte le informazioni del box su una sola riga */
+.kpi--summary {
+  min-height: auto;
+  display: block;
+  padding: 13px 15px;
+  overflow-x: auto;
+}
+.kpi__line {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: max-content;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: .88rem;
+}
+.kpi__line strong {
+  display: inline;
+  font-size: 1rem;
+  color: var(--ink);
+}
+.kpi__line .kpi__metric {
+  color: var(--ink);
+  font-weight: 750;
+}
+.kpi__line .kpi__metric strong {
+  font-size: 1.45rem;
+}
+.kpi__separator {
+  color: #a3b0b4;
+}
+.kpi__alert,
+.kpi__alert strong {
+  color: #963b32;
+}
+
+/* Evidenzia le persone selezionate dal filtro senza nascondere i colleghi */
+.assignment-board__person.is-filter-match {
+  background: #e8f7fa;
+  box-shadow: inset 4px 0 0 var(--accent), 0 0 0 2px rgba(10,107,125,.28);
+}
+.assignment-board__person.is-filter-match .assignment-board__person-name {
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
+/* Comandi compatti su mobile */
+.icon-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.icon-count[hidden] {
+  display: none !important;
+}
+@media (max-width: 700px) {
+  .assignment-view-toggle {
+    display: none !important;
+  }
+  .section-actions .mobile-icon-button {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .section-actions .mobile-icon-button [data-button-label] {
+    display: none;
+  }
+  .admin-toolbar--compact {
+    margin-top: 0;
+  }
+}
