@@ -461,7 +461,7 @@
       if (legendNode) {
         legendNode.innerHTML =
           '<span><i class="society-chart-legend__swatch is-registered"></i> Iscritte 2026</span>' +
-          '<span><i class="society-chart-legend__swatch is-rental-mail"></i> Mail noleggio ricevuta, non iscritta</span>' +
+          '<span><i class="society-chart-legend__swatch is-rental-mail"></i> Mail noleggio ricevuta, ma non ancora iscritta</span>' +
           '<span><i class="society-chart-legend__swatch is-2025"></i> Iscritte 2025</span>';
       }
     }
