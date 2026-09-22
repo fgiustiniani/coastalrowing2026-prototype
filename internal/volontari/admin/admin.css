@@ -3477,3 +3477,70 @@ tr.is-busy button.is-busy {
     font-size: 16px;
   }
 }
+
+
+/* Ricerca persona nel popup: risposta visibile insieme alle assegnazioni */
+.person-search-select__assignment {
+  grid-template-columns: minmax(190px, .85fr) minmax(220px, 1.25fr) auto;
+}
+.person-search-select__response {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: .66rem;
+  font-weight: 850;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.person-search-select__response.is-confirmed {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.person-search-select__response.is-declined {
+  background: #fde8e5;
+  color: #9c3328;
+}
+.person-search-select__response.is-pending {
+  background: #edf1f2;
+  color: #62747a;
+}
+.person-search-select__target-decline {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid #df8d83;
+  border-radius: 8px;
+  background: #fff0ee;
+  color: #8f2f25;
+  font-size: .72rem;
+  line-height: 1.3;
+}
+.person-search-select__target-decline strong {
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+@media (max-width: 620px) {
+  .person-search-select__assignment {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
+  }
+  .person-search-select__assignment-when {
+    grid-column: 1 / -1;
+  }
+  .person-search-select__assignment-activity {
+    grid-column: 1;
+  }
+  .person-search-select__response {
+    grid-column: 2;
+    align-self: center;
+    font-size: .72rem;
+  }
+  .person-search-select__target-decline,
+  .person-search-select__target-decline strong {
+    font-size: .78rem;
+  }
+}

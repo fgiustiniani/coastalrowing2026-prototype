@@ -306,6 +306,42 @@
       return match ? `${match[3]}/${match[2]}` : String(value || '—');
     };
 
+    const personAssignmentResponseHtml = (row) => {
+      const value = row?.currentResponse || 'pending';
+      const label = value === 'confirmed'
+        ? 'Confermata'
+        : value === 'declined'
+          ? 'Non può'
+          : 'Da rispondere';
+      return `<span class="person-search-select__response is-${escapeHtml(value)}">${escapeHtml(label)}</span>`;
+    };
+
+    const personTargetShiftDeclineHtml = (personId) => {
+      const requirement = boardEditTargetRequirement();
+      const source = boardEditSource();
+      const candidate = {
+        personId,
+        shiftId: requirement?.shiftId || source?.shiftId || null,
+        day: requirement?.day || source?.day || '',
+        shift: requirement?.shift || source?.shift || ''
+      };
+      const declined = declinedResponsesForCandidate(candidate);
+      if (!declined.length) return '';
+
+      const activities = [...new Map(
+        declined
+          .map((row) => displayActivity(row) || String(row.activity || 'Attività').trim())
+          .filter(Boolean)
+          .map((activity) => [activity.toLocaleLowerCase('it-IT'), activity])
+      ).values()].sort((a, b) => a.localeCompare(b, 'it'));
+
+      return `
+        <span class="person-search-select__target-decline">
+          <strong>Ha già rifiutato in questo turno</strong>
+          <span>${activities.map((activity) => escapeHtml(activity)).join(' · ')}</span>
+        </span>`;
+    };
+
     const personAssignmentsHtml = (personId) => {
       const currentAssignmentId = boardEditContext?.kind === 'assignment' ? boardEditContext.id : '';
       const rows = (snapshot?.assignments || [])
@@ -327,6 +363,7 @@
         <span class="person-search-select__assignment">
           <span class="person-search-select__assignment-when">${escapeHtml(row.day || '—')} · ${escapeHtml(row.shift || '—')}</span>
           <span class="person-search-select__assignment-activity">${escapeHtml(displayActivity(row))}</span>
+          ${personAssignmentResponseHtml(row)}
         </span>`).join('')}</span>`;
     };
 
@@ -371,6 +408,7 @@
               data-person-search-value="${escapeHtml(option.value)}">
               <span class="person-search-select__name">${escapeHtml(option.textContent.trim())}</span>
               <span class="person-search-select__details">
+                ${personTargetShiftDeclineHtml(option.value)}
                 ${personAssignmentsHtml(option.value)}
                 ${personRacesHtml(option.value)}
               </span>
