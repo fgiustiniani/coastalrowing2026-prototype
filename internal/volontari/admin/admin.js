@@ -337,7 +337,8 @@
 
       return `
         <span class="person-search-select__target-decline">
-          <strong>Ha già rifiutato in questo turno</strong>
+          <span class="person-search-select__target-decline-badge">NON PUÒ · QUESTO TURNO</span>
+          <span class="person-search-select__target-decline-text">Ha già rifiutato ${activities.length === 1 ? 'questa attività' : 'queste attività'}:</span>
           <span>${activities.map((activity) => escapeHtml(activity)).join(' · ')}</span>
         </span>`;
     };

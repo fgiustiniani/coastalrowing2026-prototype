@@ -3544,3 +3544,26 @@ tr.is-busy button.is-busy {
     font-size: .78rem;
   }
 }
+
+
+.person-search-select__target-decline-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #b53a2f;
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 950;
+  line-height: 1.1;
+  letter-spacing: .035em;
+}
+.person-search-select__target-decline-text {
+  font-weight: 800;
+}
+@media (max-width: 620px) {
+  .person-search-select__target-decline-badge {
+    font-size: .74rem;
+  }
+}
