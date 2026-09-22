@@ -3336,3 +3336,18 @@ tr.is-busy button.is-busy {
     min-height: 44px;
   }
 }
+
+
+/* Mobile: responsabile e azioni sempre sulla stessa riga */
+@media (max-width: 700px) {
+  .assignment-board__person-main {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 430px) {
+  .assignment-board__person-main {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto auto auto;
+  }
+}
