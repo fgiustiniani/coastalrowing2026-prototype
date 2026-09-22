@@ -3174,3 +3174,125 @@ tr.is-busy button.is-busy {
     margin-top: 0;
   }
 }
+
+
+/* Correzioni layout mobile: le vecchie regole a griglia non devono allargare i comandi */
+@media (max-width: 700px) {
+  .admin-toolbar.admin-toolbar--compact {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+    margin: 4px 0 10px;
+  }
+
+  .admin-toolbar--compact .toolbar-status {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .admin-toolbar--compact .toolbar-actions.toolbar-actions--icons {
+    flex: 0 0 auto;
+    width: auto;
+    display: flex;
+    grid-template-columns: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+
+  .admin-toolbar--compact .toolbar-actions--icons .button.icon-button {
+    flex: 0 0 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 8px;
+  }
+
+  .kpi--summary {
+    overflow: visible;
+  }
+
+  .kpi__line {
+    min-width: 0;
+    white-space: normal;
+    flex-wrap: wrap;
+    column-gap: 6px;
+    row-gap: 4px;
+    line-height: 1.25;
+    font-size: .78rem;
+  }
+
+  .kpi__line .kpi__metric strong {
+    font-size: 1.35rem;
+  }
+
+  .kpi__line strong {
+    font-size: .92rem;
+  }
+
+  .kpi__separator {
+    display: none;
+  }
+
+  .admin-section > .section-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .admin-section > .section-head > .section-actions {
+    width: 100%;
+    display: flex;
+    grid-template-columns: none;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-section > .section-head > .section-actions .button {
+    width: auto;
+    min-width: 0;
+  }
+
+  .admin-section > .section-head > .section-actions .mobile-icon-button {
+    flex: 0 0 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 8px;
+  }
+
+  .admin-section > .section-head > .section-actions .mobile-icon-button [data-button-label] {
+    display: none;
+  }
+
+  .admin-section > .section-head > .section-actions .assignment-view-toggle {
+    display: none !important;
+  }
+
+  .assignment-filters-toggle {
+    display: inline-flex;
+  }
+
+  .admin-section .inline-help {
+    margin-top: 4px;
+    font-size: .82rem;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-toolbar--compact .toolbar-actions.toolbar-actions--icons,
+  .admin-section > .section-head > .section-actions {
+    display: flex;
+    grid-template-columns: none;
+  }
+
+  .admin-section > .section-head > .section-actions .button {
+    width: auto;
+  }
+}
