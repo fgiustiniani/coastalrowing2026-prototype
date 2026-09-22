@@ -2,12 +2,14 @@ import { ImapFlow } from 'imapflow';
 
 const GMAIL_HOST = 'imap.gmail.com';
 const GMAIL_PORT = 993;
-const MAX_MESSAGES = 120;
-const SOURCE_PREVIEW_BYTES = 160000;
-const MAX_UNMATCHED_PREVIEWS = 30;
+const MAX_MESSAGES = 80;
+const SOURCE_PREVIEW_BYTES = 80000;
+const MAX_UNMATCHED_PREVIEWS = 24;
 
+// La base manuale è verificata fino al 21/09/2026: il sync deve cercare solo
+// messaggi nuovi o a ridosso di quella data, evitando di rileggere settimane di posta.
 const RENTAL_SEARCH_QUERY =
-  'in:anywhere after:2026/08/20 {to:segreteria-gare@canottieripesaro.it cc:segreteria-gare@canottieripesaro.it} {noleggio imbarcazioni "richiesta imbarcazioni" "disponibilita barche" "disponibilità barche"} -subject:"Nuova prenotazione prova barca"';
+  'in:anywhere after:2026/09/20 {to:segreteria-gare@canottieripesaro.it cc:segreteria-gare@canottieripesaro.it} {noleggio imbarcazioni "richiesta imbarcazioni" "disponibilita barche" "disponibilità barche"} -subject:"Nuova prenotazione prova barca"';
 
 const GENERIC_DOMAINS = new Set([
   'gmail.com','googlemail.com','hotmail.com','outlook.com','live.com','icloud.com',
@@ -197,6 +199,9 @@ function safeImapError(error) {
   if (/timeout|ETIMEDOUT|ETIMEOUT/i.test(combined)) {
     return { code: 'IMAP_TIMEOUT', message: 'Gmail non ha risposto entro il tempo previsto.' };
   }
+  if (/ECONNREFUSED|ECONNRESET|ENETUNREACH|EHOSTUNREACH|ENOTFOUND|NoConnection/i.test(combined)) {
+    return { code: 'IMAP_CONNECTION_FAILED', message: 'Connessione IMAP a Gmail non disponibile.' };
+  }
   return { code: 'IMAP_ERROR', message: 'Non è stato possibile leggere Gmail.' };
 }
 
@@ -215,6 +220,9 @@ export async function syncRentalMailFromGmail(societies) {
     port: GMAIL_PORT,
     secure: true,
     auth: { user, pass: password },
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 20000,
     logger: false
   });
 
@@ -278,43 +286,56 @@ export async function syncRentalMailFromGmail(societies) {
     }
 
     const unmatched = [];
-    for (const item of unresolved.slice(0, MAX_UNMATCHED_PREVIEWS)) {
-      let preview = '';
+    const unresolvedBatch = unresolved.slice(0, MAX_UNMATCHED_PREVIEWS);
+    let previewsByUid = new Map();
+
+    // Recupera i preview dei messaggi non riconosciuti con una sola richiesta IMAP.
+    // Prima veniva eseguito un fetchOne per ogni mail, con molti round-trip e rischio
+    // di superare il limite della Function Netlify.
+    if (unresolvedBatch.length) {
       try {
-        const fetched = await client.fetchOne(
-          item.message.uid,
+        const previewMessages = await client.fetchAll(
+          unresolvedBatch.map((item) => item.message.uid),
           { source: { start: 0, maxLength: SOURCE_PREVIEW_BYTES } },
           { uid: true }
         );
-        preview = decodeQuotedPrintablePreview(fetched?.source?.toString('utf8') || '');
+        previewsByUid = new Map(
+          previewMessages.map((message) => [
+            String(message.uid),
+            decodeQuotedPrintablePreview(message?.source?.toString('utf8') || '')
+          ])
+        );
       } catch {}
 
-      const rawText = [
-        item.from.display,
-        item.subject,
-        item.filenames.join(' '),
-        preview
-      ].join(' ');
+      for (const item of unresolvedBatch) {
+        const preview = previewsByUid.get(String(item.message.uid)) || '';
+        const rawText = [
+          item.from.display,
+          item.subject,
+          item.filenames.join(' '),
+          preview
+        ].join(' ');
 
-      if (!rentalCandidate(item.subject, rawText)) continue;
+        if (!rentalCandidate(item.subject, rawText)) continue;
 
-      const match = matchSociety({
-        fromAddress: item.from.address,
-        rawText
-      }, societies);
+        const match = matchSociety({
+          fromAddress: item.from.address,
+          rawText
+        }, societies);
 
-      if (match.code) {
-        matchedCodes.add(match.code);
-      } else {
-        unmatched.push({
-          uid: item.message.uid,
-          subject: item.subject.slice(0, 180),
-          from: item.from.display.slice(0, 180),
-          date: item.message.envelope?.date
-            ? new Date(item.message.envelope.date).toISOString()
-            : (item.message.internalDate ? new Date(item.message.internalDate).toISOString() : ''),
-          suggestions: match.suggestions || item.suggestions || []
-        });
+        if (match.code) {
+          matchedCodes.add(match.code);
+        } else {
+          unmatched.push({
+            uid: item.message.uid,
+            subject: item.subject.slice(0, 180),
+            from: item.from.display.slice(0, 180),
+            date: item.message.envelope?.date
+              ? new Date(item.message.envelope.date).toISOString()
+              : (item.message.internalDate ? new Date(item.message.internalDate).toISOString() : ''),
+            suggestions: match.suggestions || item.suggestions || []
+          });
+        }
       }
     }
 
