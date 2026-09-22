@@ -3296,3 +3296,23 @@ tr.is-busy button.is-busy {
     width: auto;
   }
 }
+
+
+@media (max-width: 700px) {
+  .kpi__line > span {
+    display: inline;
+    margin-top: 0;
+  }
+
+  .admin-section .inline-help {
+    display: none;
+  }
+
+  .collapse-button[aria-expanded="false"] svg {
+    transform: rotate(180deg);
+  }
+
+  .collapse-button svg {
+    transition: transform .16s ease;
+  }
+}
