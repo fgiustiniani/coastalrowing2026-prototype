@@ -1282,7 +1282,7 @@
   }
 
 
-  function filteredBoardAssignmentRows({ selectedPeopleOnly = false } = {}) {
+  function filteredBoardAssignmentRows({ selectedPeopleOnly = false, selectedResponsesOnly = false } = {}) {
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
@@ -1299,7 +1299,7 @@
       if (selectedPeopleOnly && personIds.length && !personIds.includes(row.personId)) return false;
 
       const rowResponse = row.currentResponse || 'pending';
-      if (responses.length && !responses.includes(rowResponse)) return false;
+      if (selectedResponsesOnly && responses.length && !responses.includes(rowResponse)) return false;
       const warnings = assignmentWarningDetails(row);
       if (warningFilters.length && !warningFilters.some((warning) =>
         (warning === 'any' && warnings.length > 0)
@@ -1756,13 +1756,17 @@
 
   function filteredBoardRequirements() {
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
+    const selectedResponses = selectedFilterValues(assignmentResponseFilter);
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
-    const shouldMatchAssignments = selectedPeople.length > 0 || responsibleFilters.length > 0;
+    const shouldMatchAssignments = selectedPeople.length > 0 || selectedResponses.length > 0 || responsibleFilters.length > 0;
     const matchingAssignments = shouldMatchAssignments
-      ? filteredBoardAssignmentRows({ selectedPeopleOnly: selectedPeople.length > 0 }).filter((row) => !row.isAvailability)
+      ? filteredBoardAssignmentRows({
+          selectedPeopleOnly: selectedPeople.length > 0,
+          selectedResponsesOnly: selectedResponses.length > 0
+        }).filter((row) => !row.isAvailability)
       : [];
 
     return requirements().filter((requirement) => {
@@ -1786,6 +1790,8 @@
     if (!assignmentBoard) return;
     const rows = filteredBoardAssignmentRows();
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
+    const selectedResponses = selectedFilterValues(assignmentResponseFilter);
+    const forceExpandedGroups = selectedResponses.length > 0;
     const visibleRequirements = filteredBoardRequirements();
     const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
     if (selectedPeople.length) {
@@ -1871,7 +1877,7 @@
       const renderGroupBlock = (block) => {
         const group = block.group;
         const groupRequirements = block.requirements;
-        const collapsed = boardGroupCollapsed(shift.id, group.id);
+        const collapsed = !forceExpandedGroups && boardGroupCollapsed(shift.id, group.id);
         const groupKey = boardGroupKey(shift.id, group.id);
         return `
           <section class="assignment-board__activity-group ${collapsed ? 'is-collapsed' : ''}"
