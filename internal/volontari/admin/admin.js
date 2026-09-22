@@ -2296,11 +2296,76 @@
     };
   }
 
+  function boardEditTargetRequirement() {
+    const source = boardEditSource();
+    if (!source || !boardEditContent) return null;
+    const requirementId = boardEditContent.querySelector('[data-board-edit-requirement]')?.value
+      || assignmentRequirementId(source)
+      || source.requirementId
+      || '';
+    return requirementById(requirementId);
+  }
+
+  function refreshBoardEditOperationContext() {
+    const node = boardEditContent?.querySelector('[data-board-edit-operation]');
+    if (!node) return;
+    const source = boardEditSource();
+    const requirement = boardEditTargetRequirement();
+    const day = requirement?.day || source?.day || '—';
+    const shift = requirement?.shift || source?.shift || '—';
+    const activity = requirement?.activity ? prettifyActivityName(requirement.activity) : 'Seleziona un’attività';
+    node.innerHTML = `
+      <div class="board-edit-operation__item">
+        <span>Turno</span>
+        <strong>${escapeHtml(day)} · ${escapeHtml(shift)}</strong>
+      </div>
+      <div class="board-edit-operation__item">
+        <span>Attività</span>
+        <strong>${escapeHtml(activity)}</strong>
+      </div>`;
+  }
+
+  function refreshBoardEditDeclinedAlert() {
+    const node = boardEditContent?.querySelector('[data-board-edit-declined-alert]');
+    if (!node) return;
+    const candidate = boardEditCandidate();
+    if (!candidate?.personId) {
+      node.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+
+    const declined = declinedResponsesForCandidate(candidate);
+    if (!declined.length) {
+      node.hidden = true;
+      node.innerHTML = '';
+      return;
+    }
+
+    const person = (snapshot?.people || []).find((item) => item.id === candidate.personId);
+    const source = boardEditSource();
+    const personName = person?.display_name || source?.personName || 'La persona selezionata';
+    const activities = [...new Map(
+      declined
+        .map((row) => displayActivity(row) || String(row.activity || 'Attività').trim())
+        .filter(Boolean)
+        .map((activity) => [activity.toLocaleLowerCase('it-IT'), activity])
+    ).values()].sort((a, b) => a.localeCompare(b, 'it'));
+
+    node.hidden = false;
+    node.innerHTML = `
+      <strong>ATTENZIONE: ${escapeHtml(personName)} ha già rifiutato ${activities.length === 1 ? 'un’attività' : 'delle attività'} in questo turno</strong>
+      <span>${activities.map((activity) => escapeHtml(activity)).join(' · ')}</span>`;
+  }
+
   function refreshBoardEditWarnings() {
     const node = boardEditContent?.querySelector('[data-board-edit-warnings]');
     if (!node) return;
     const candidate = boardEditCandidate();
-    node.innerHTML = candidate ? warningHtml(assignmentWarningDetails(candidate)) : '<span class="warning-none">—</span>';
+    const warnings = candidate
+      ? assignmentWarningDetails(candidate).filter((warning) => warning.type !== 'declined')
+      : [];
+    node.innerHTML = warnings.length ? warningHtml(warnings) : '<span class="warning-none">—</span>';
   }
   function refreshBoardEditPersonActivities() {
     const node = boardEditContent?.querySelector('[data-board-edit-person-activities]');
@@ -2360,6 +2425,10 @@
 
     boardEditContent.innerHTML = `
       <div class="board-edit-grid">
+        <div class="board-edit-operation field--wide">
+          <span class="board-edit-operation__label">Operazione su</span>
+          <div class="board-edit-operation__details" data-board-edit-operation></div>
+        </div>
         <label class="field"><span>Persona</span>
           <select data-board-edit-person>${personOptions('')}</select>
         </label>
@@ -2370,6 +2439,7 @@
           <div><span>Copertura</span><strong>${requirement.assignedCount}/${requirement.requiredCount}</strong></div>
           <div><span>Responsabile</span>—</div>
         </div>
+        <div class="board-edit-declined-alert field--wide" data-board-edit-declined-alert hidden></div>
         <div class="board-edit-warning field--wide">
           <span>Warning</span>
           <div data-board-edit-warnings><span class="warning-none">—</span></div>
@@ -2383,6 +2453,8 @@
     if (boardEditDelete) boardEditDelete.hidden = true;
     if (boardEditHistory) boardEditHistory.hidden = true;
     initSearchablePersonSelect(boardEditContent?.querySelector('[data-board-edit-person]'));
+    refreshBoardEditOperationContext();
+    refreshBoardEditDeclinedAlert();
     refreshBoardEditWarnings();
     refreshBoardEditPersonActivities();
     boardEditDialog.showModal();
@@ -2402,6 +2474,10 @@
 
     boardEditContent.innerHTML = `
       <div class="board-edit-grid">
+        <div class="board-edit-operation field--wide">
+          <span class="board-edit-operation__label">Operazione su</span>
+          <div class="board-edit-operation__details" data-board-edit-operation></div>
+        </div>
         <label class="field"><span>Persona</span>
           <select data-board-edit-person ${isAvailability ? 'disabled' : ''}>${personOptions(source.personId)}</select>
         </label>
@@ -2412,6 +2488,7 @@
           <div><span>Risposta</span>${response}</div>
           <div><span>Responsabile</span>${!isAvailability && source.isResponsible ? responsibleBadge(source.personName) : '—'}</div>
         </div>
+        <div class="board-edit-declined-alert field--wide" data-board-edit-declined-alert hidden></div>
         <div class="board-edit-warning field--wide">
           <span>Warning</span>
           <div data-board-edit-warnings></div>
@@ -2425,6 +2502,8 @@
     if (boardEditDelete) boardEditDelete.hidden = isAvailability;
     if (boardEditHistory) boardEditHistory.hidden = isAvailability;
     initSearchablePersonSelect(boardEditContent?.querySelector('[data-board-edit-person]'));
+    refreshBoardEditOperationContext();
+    refreshBoardEditDeclinedAlert();
     refreshBoardEditWarnings();
     refreshBoardEditPersonActivities();
     boardEditDialog.showModal();
@@ -5372,11 +5451,16 @@
 
   boardEditContent?.addEventListener('change', (event) => {
     if (event.target.matches('[data-board-edit-person]')) {
+      refreshBoardEditDeclinedAlert();
       refreshBoardEditWarnings();
       refreshBoardEditPersonActivities();
       return;
     }
-    if (event.target.matches('[data-board-edit-requirement]')) refreshBoardEditWarnings();
+    if (event.target.matches('[data-board-edit-requirement]')) {
+      refreshBoardEditOperationContext();
+      refreshBoardEditDeclinedAlert();
+      refreshBoardEditWarnings();
+    }
   });
   boardEditSave?.addEventListener('click', saveBoardEdit);
   boardEditDelete?.addEventListener('click', deleteBoardEdit);
