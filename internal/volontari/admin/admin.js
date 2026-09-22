@@ -816,7 +816,16 @@
       wrapper.querySelector('.multi-filter__button')?.setAttribute('aria-expanded', 'false');
       const panel = wrapper.querySelector('.multi-filter__panel');
       if (panel) panel.hidden = true;
+      wrapper.querySelector('.multi-filter__search')?.blur();
     });
+  }
+
+  function closeAssignmentFiltersOnMobile() {
+    if (!assignmentMobileQuery.matches || !assignmentFiltersPanel) return;
+    closeMultiFilters();
+    assignmentFiltersPanel.classList.remove('is-open');
+    assignmentFiltersToggle?.setAttribute('aria-expanded', 'false');
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   }
 
   function syncMultiFilter(select, { focusSearch = false } = {}) {
@@ -861,8 +870,11 @@
           if (sentinel) sentinel.selected = false;
           if (!selectedFilterValues(select).length && sentinel) sentinel.selected = true;
         }
-        syncMultiFilter(select, { focusSearch: true });
+        const isMobileAssignmentFilter = assignmentMobileQuery.matches
+          && Boolean(select.closest('[data-assignment-filters]'));
+        syncMultiFilter(select, { focusSearch: !isMobileAssignmentFilter });
         select.dispatchEvent(new Event('change', { bubbles: true }));
+        if (isMobileAssignmentFilter) closeAssignmentFiltersOnMobile();
       });
     });
 
@@ -930,7 +942,7 @@
       button.setAttribute('aria-expanded', 'true');
       panel.hidden = false;
       search.value = initialQuery;
-      syncMultiFilter(select, { focusSearch: true });
+      syncMultiFilter(select, { focusSearch: !assignmentMobileQuery.matches });
     };
 
     button.addEventListener('click', (event) => {
@@ -959,6 +971,7 @@
         wrapper.classList.remove('is-open');
         button.setAttribute('aria-expanded', 'false');
         panel.hidden = true;
+        search.blur();
         button.focus();
       }
     });

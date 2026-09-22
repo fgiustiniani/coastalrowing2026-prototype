@@ -3316,3 +3316,23 @@ tr.is-busy button.is-busy {
     transition: transform .16s ease;
   }
 }
+
+
+/* Safari iOS: evita lo zoom automatico quando si usa la ricerca nei filtri */
+@media (max-width: 700px) {
+  .assignment-filters-panel .multi-filter__search,
+  .assignment-filters-panel .multi-filter__button,
+  .assignment-filters-panel input,
+  .assignment-filters-panel select {
+    font-size: 16px;
+  }
+
+  .assignment-filters-panel .multi-filter__search {
+    min-height: 44px;
+  }
+
+  .assignment-filters-panel .multi-filter__option {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
