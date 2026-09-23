@@ -250,7 +250,7 @@ export default async (request) => {
               action_type: 'summary_email_sent',
               entity_type: 'submission',
               entity_id: submission.id,
-              new_value: { sent: true }
+              new_value: { sent: true, email }
             },
             prefer: 'return=minimal'
           });
