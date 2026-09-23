@@ -3947,12 +3947,34 @@
 
   function showRespondedPeople() {
     const people = respondedAssignedPeople();
+    const shiftById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift]));
+
+    const sortedAvailability = (person) => [...(person.latestSubmission?.availability || [])].sort((a, b) => {
+      const shiftA = shiftById.get(a.shiftId) || {};
+      const shiftB = shiftById.get(b.shiftId) || {};
+      const orderA = Number(shiftA.sort_order);
+      const orderB = Number(shiftB.sort_order);
+      if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+
+      const startA = Date.parse(shiftA.starts_at || '');
+      const startB = Date.parse(shiftB.starts_at || '');
+      if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
+
+      return `${a.day || ''} ${a.shift || ''}`.localeCompare(`${b.day || ''} ${b.shift || ''}`, 'it');
+    });
+
     detailTargetRow = null;
     detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
     detailContent.innerHTML = people.length
-      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th></tr></thead><tbody>${people.map((person) =>
-          `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td></tr>`
-        ).join('')}</tbody></table>`
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${people.map((person) => {
+          const availability = sortedAvailability(person);
+          const availabilityHtml = availability.length
+            ? `<div class="availability-report-list">${availability.map((item) =>
+                `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>${item.note ? `<small>${escapeHtml(item.note)}</small>` : ''}</div>`
+              ).join('')}</div>`
+            : '—';
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td><td>${availabilityHtml}</td></tr>`;
+        }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
     detailDialog.showModal();
   }
