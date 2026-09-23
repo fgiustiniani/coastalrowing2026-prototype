@@ -207,16 +207,24 @@
 
   function sortShiftsChronologically(shifts = []) {
     return [...shifts].sort((a, b) => {
+      const orderA = Number(a?.sortOrder);
+      const orderB = Number(b?.sortOrder);
+      const hasOrderA = Number.isFinite(orderA);
+      const hasOrderB = Number.isFinite(orderB);
+      if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
+      if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
+
       const startA = Date.parse(a?.startsAt || '');
       const startB = Date.parse(b?.startsAt || '');
       if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
       if (Number.isFinite(startA) !== Number.isFinite(startB)) return Number.isFinite(startA) ? -1 : 1;
+
       return `${a?.day || ''} ${a?.shift || ''}`.localeCompare(`${b?.day || ''} ${b?.shift || ''}`, 'it');
     });
   }
 
   function renderAssignments() {
-    const assignments = state.personState?.assignments || [];
+    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
     if (!assignments.length) {
       assignmentList.innerHTML = '<div class="assignment-card"><strong>Nessuna attività proposta.</strong><p class="muted">Puoi proseguire e indicare eventuali disponibilità aggiuntive.</p></div>';
       return;
@@ -285,7 +293,7 @@
   }
 
   function renderSummary() {
-    const assignments = state.personState?.assignments || [];
+    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
     const confirmed = assignments.filter((a) => state.responses.get(a.id)?.response === 'confirmed');
     const declined = assignments.filter((a) => state.responses.get(a.id)?.response === 'declined');
     const shifts = sortShiftsChronologically(
