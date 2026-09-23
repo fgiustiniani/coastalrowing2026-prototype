@@ -41,7 +41,7 @@ function responseLabel(value) {
   return 'Da rispondere';
 }
 
-export async function sendVolunteerSummaryEmail({ email, personState, requestUrl }) {
+export async function sendVolunteerSummaryEmail({ email, personState, requestUrl, accompanyingMessage = '' }) {
   const recipient = cleanHeader(email, 254);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
     throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
@@ -67,6 +67,7 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
   }
 
   const personName = clean(personState?.person?.display_name || 'Volontario', 160);
+  const message = clean(accompanyingMessage, 4000);
   const assignments = Array.isArray(personState?.assignments) ? personState.assignments : [];
   const availability = (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
     .filter((shift) => shift.selected && !shift.assigned);
@@ -105,6 +106,7 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
   const text = [
     `Riepilogo disponibilità di ${personName}`,
     '',
+    ...(message ? [message, ''] : []),
     'Attività assegnate:',
     assignmentText,
     '',
@@ -119,6 +121,7 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
   const html = `
     <h2>Riepilogo disponibilità</h2>
     <p><strong>${escapeHtml(personName)}</strong></p>
+    ${message ? `<p class="accompanying-message">${escapeHtml(message).replace(/\n/g, '<br>')}</p>` : ''}
     <h3>Attività assegnate</h3>
     ${assignmentHtml}
     <h3>Disponibilità aggiuntive</h3>
