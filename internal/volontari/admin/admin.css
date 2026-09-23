@@ -520,7 +520,8 @@ tr.is-busy button.is-busy {
   overflow: auto;
 }
 
-.person-report-table {
+.person-report-table,
+#person-report-content .person-report-table {
   width: 100%;
   min-width: 0;
   max-width: 100%;
