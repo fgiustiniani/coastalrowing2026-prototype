@@ -3854,3 +3854,79 @@ tr.is-busy button.is-busy {
     gap: 4px;
   }
 }
+
+
+.person-report-submission-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.report-email-button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.report-email-button:hover,
+.report-email-button:focus-visible {
+  background: var(--soft);
+  border-color: #9fb5bb;
+}
+.summary-email-dialog {
+  width: min(680px, calc(100vw - 28px));
+}
+.summary-email-dialog textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 130px;
+}
+.submission-history__admin-emails {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.submission-history__admin-emails h3 {
+  margin: 0 0 2px;
+  font-size: 1rem;
+}
+.submission-history__admin-emails article {
+  padding: 10px 12px;
+  border: 1px solid #cfe0d4;
+  border-radius: 10px;
+  background: var(--ok-bg);
+}
+.submission-history__admin-emails article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.submission-history__admin-emails article span {
+  color: var(--muted);
+  font-size: .78rem;
+}
+.submission-history__admin-emails article p {
+  margin: 7px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .person-report-submission-actions {
+    align-items: flex-start;
+  }
+  .submission-history__admin-emails article > div {
+    display: grid;
+    gap: 3px;
+  }
+}
