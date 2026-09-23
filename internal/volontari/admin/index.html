@@ -239,6 +239,29 @@
         </div>
       </dialog>
 
+      <dialog class="audit-dialog summary-email-dialog" data-summary-email-dialog>
+        <form class="audit-dialog__content" data-summary-email-form>
+          <div class="section-head">
+            <div><p class="eyebrow">Riepilogo volontario</p><h2 data-summary-email-title>Invia email</h2></div>
+            <button class="audit-close" type="button" data-summary-email-close aria-label="Chiudi">×</button>
+          </div>
+          <p class="intro">Conferma o modifica l’indirizzo email e, se vuoi, aggiungi un messaggio che comparirà all’inizio del riepilogo.</p>
+          <label class="field">
+            <span>Email destinatario</span>
+            <input type="email" data-summary-email-address autocomplete="email" required>
+          </label>
+          <label class="field">
+            <span>Messaggio di accompagnamento</span>
+            <textarea data-summary-email-message rows="6" maxlength="4000" placeholder="Messaggio facoltativo..."></textarea>
+          </label>
+          <p class="status" data-summary-email-status aria-live="polite"></p>
+          <div class="actions actions--end">
+            <button class="button button--secondary" type="button" data-summary-email-close>Chiudi</button>
+            <button class="button button--primary" type="submit" data-summary-email-send>Invia email</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog class="audit-dialog" data-audit-dialog>
         <div class="audit-dialog__content">
           <div class="section-head"><div><p class="eyebrow">Storico</p><h2 data-audit-title>Audit</h2></div><button class="audit-close" type="button" data-audit-close aria-label="Chiudi">×</button></div>
