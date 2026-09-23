@@ -3694,3 +3694,107 @@ tr.is-busy button.is-busy {
   color: var(--muted);
   white-space: nowrap;
 }
+
+
+.person-report-submission-link {
+  min-width: 38px;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.submission-history {
+  display: grid;
+  gap: 14px;
+}
+.submission-history__card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.submission-history__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #edf4f6;
+  border-bottom: 1px solid var(--line);
+}
+.submission-history__header > div {
+  display: grid;
+  gap: 2px;
+}
+.submission-history__header > div > strong {
+  font-size: 1rem;
+}
+.submission-history__header span,
+.submission-history__header small {
+  color: var(--muted);
+}
+.submission-history__changes {
+  display: grid;
+}
+.submission-history__change {
+  display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 1.4fr);
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e6edef;
+  border-left: 4px solid #97a7ac;
+}
+.submission-history__change.is-confirmed {
+  border-left-color: var(--ok);
+}
+.submission-history__change.is-declined {
+  border-left-color: var(--no);
+}
+.submission-history__change.is-availability {
+  border-left-color: #b08b00;
+  background: #fffdf4;
+}
+.submission-history__change > span {
+  color: #49636c;
+}
+.submission-history__no-change {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--muted);
+}
+.submission-history__email {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  padding: 10px 14px;
+  background: #f7f9f9;
+}
+.submission-history__email.is-sent {
+  background: var(--ok-bg);
+}
+.submission-history__email span {
+  overflow-wrap: anywhere;
+}
+.submission-history__email small {
+  color: var(--muted);
+}
+.submission-history__other {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.submission-history__other > summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .submission-history__header {
+    display: grid;
+  }
+  .submission-history__change {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
