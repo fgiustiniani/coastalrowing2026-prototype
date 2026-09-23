@@ -2923,18 +2923,21 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th>Note</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
+      const submissionCount = Number(item.submissionCount || 0);
+      const submissionCountHtml = submissionCount > 0
+        ? `<button class="table-link person-report-submission-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Apri storico dei ${submissionCount} invii di ${escapeHtml(item.name)}">${submissionCount}</button>`
+        : '<strong>0</strong>';
       return `<tr class="person-report-row is-${escapeHtml(item.responseState.key)}">
         <td><strong>${escapeHtml(item.name)}</strong></td>
         <td><span class="status-badge is-${escapeHtml(item.responseState.key)}">${escapeHtml(item.responseState.label)}</span></td>
         <td class="people-cell">${item.activityRows?.length ? `<div class="activity-report-list">${item.activityRows.map((activity) => `<div class="activity-report-line person-report-activity"><span>${escapeHtml(activity.label)}</span><span class="status-badge is-${escapeHtml(activity.response)}">${escapeHtml(activity.responseLabel)}</span></div>`).join('')}</div>` : '—'}</td>
         <td><strong>${item.confirmed}</strong></td>
         <td><strong>${item.declined}</strong></td>
-        <td class="person-report-submissions"><strong>${item.submissionCount}</strong>${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
+        <td class="person-report-submissions">${submissionCountHtml}${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
         <td class="notes-cell">${item.notes ? escapeHtml(item.notes) : '—'}</td>
         <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
-        <td><button class="table-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}">Storico</button></td>
       </tr>`;
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
@@ -4052,10 +4055,151 @@
 
   async function showAudit(personId, personName) {
     const result = await api(`${API}?view=audit&personId=${encodeURIComponent(personId)}`);
-    auditTitle.textContent = `Storico · ${personName}`;
-    const rows = result.audit || [];
-    auditList.innerHTML = rows.length ? `<div class="audit-list">${rows.map((row) => `
-      <article class="audit-item"><div><strong>${escapeHtml(row.action_type)}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div><p><strong>Operatore:</strong> ${escapeHtml(row.actor_name || '—')}</p>${row.note ? `<p><strong>Nota:</strong> ${escapeHtml(row.note)}</p>` : ''}<details><summary>Dettaglio modifica</summary><pre>${escapeHtml(JSON.stringify({ precedente: row.previous_value, nuovo: row.new_value }, null, 2))}</pre></details></article>`).join('')}</div>` : '<p class="empty-state">Nessun evento registrato.</p>';
+    auditTitle.textContent = `Storico invii · ${personName}`;
+
+    const submissions = result.submissions || [];
+    const auditRows = result.audit || [];
+    const responses = result.responses || [];
+    const shifts = result.shifts || [];
+    const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
+    const responseByKey = new Map(responses.map((row) => [`${row.submission_id}|${row.assignment_id}`, row]));
+
+    const responseLabel = (value) => value === 'confirmed'
+      ? 'Confermata'
+      : value === 'declined'
+        ? 'Non può'
+        : value
+          ? String(value)
+          : '—';
+
+    const shiftLabel = (shiftId) => {
+      const shift = shiftById.get(shiftId);
+      return shift ? `${shift.day_label || ''} · ${shift.shift_label || ''}` : 'Turno non disponibile';
+    };
+
+    const availabilityMap = (value) => new Map(
+      (Array.isArray(value) ? value : [])
+        .filter((item) => item?.shiftId)
+        .map((item) => [item.shiftId, item])
+    );
+
+    const submissionCards = submissions.map((submission, index) => {
+      const number = submissions.length - index;
+      const events = auditRows.filter((row) => row.submission_id === submission.id);
+      const changes = [];
+
+      for (const event of events.filter((row) => row.action_type === 'assignment_response')) {
+        const previous = event.previous_value && typeof event.previous_value === 'object' ? event.previous_value : null;
+        const next = event.new_value && typeof event.new_value === 'object' ? event.new_value : null;
+        if (!next) continue;
+
+        const previousResponse = previous?.response || '';
+        const nextResponse = next.response || '';
+        const previousNote = String(previous?.note || '');
+        const nextNote = String(next.note || '');
+        if (previous && previousResponse === nextResponse && previousNote === nextNote) continue;
+
+        const snapshot = responseByKey.get(`${submission.id}|${event.entity_id}`) || null;
+        const assignmentLabel = snapshot
+          ? `${snapshot.day_snapshot || '—'} · ${snapshot.shift_snapshot || '—'} — ${snapshot.activity_snapshot || 'Attività'}`
+          : 'Attività';
+
+        const parts = [];
+        if (!previous) {
+          parts.push(`Scelta: ${responseLabel(nextResponse)}`);
+        } else if (previousResponse !== nextResponse) {
+          parts.push(`Risposta: ${responseLabel(previousResponse)} → ${responseLabel(nextResponse)}`);
+        }
+        if (previousNote !== nextNote) {
+          if (!previousNote && nextNote) parts.push(`Nota aggiunta: “${nextNote}”`);
+          else if (previousNote && !nextNote) parts.push('Nota rimossa');
+          else parts.push(`Nota modificata: “${previousNote}” → “${nextNote}”`);
+        }
+
+        changes.push({
+          type: nextResponse === 'declined' ? 'declined' : nextResponse === 'confirmed' ? 'confirmed' : 'pending',
+          title: assignmentLabel,
+          detail: parts.join(' · ') || `Risposta: ${responseLabel(nextResponse)}`
+        });
+      }
+
+      for (const event of events.filter((row) => row.action_type === 'availability_snapshot')) {
+        const previous = availabilityMap(event.previous_value);
+        const next = availabilityMap(event.new_value);
+
+        for (const [shiftId, item] of next.entries()) {
+          if (!previous.has(shiftId)) {
+            changes.push({
+              type: 'availability',
+              title: shiftLabel(shiftId),
+              detail: `Disponibilità aggiunta${item.note ? ` · Nota: “${item.note}”` : ''}`
+            });
+            continue;
+          }
+          const previousNote = String(previous.get(shiftId)?.note || '');
+          const nextNote = String(item?.note || '');
+          if (previousNote !== nextNote) {
+            changes.push({
+              type: 'availability',
+              title: shiftLabel(shiftId),
+              detail: nextNote
+                ? `Nota disponibilità modificata: “${previousNote || '—'}” → “${nextNote}”`
+                : 'Nota disponibilità rimossa'
+            });
+          }
+        }
+
+        for (const [shiftId] of previous.entries()) {
+          if (!next.has(shiftId)) {
+            changes.push({
+              type: 'declined',
+              title: shiftLabel(shiftId),
+              detail: 'Disponibilità rimossa'
+            });
+          }
+        }
+      }
+
+      const emailEvents = events
+        .filter((row) => row.action_type === 'summary_email_sent')
+        .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+      const emailHtml = emailEvents.length
+        ? `<div class="submission-history__email is-sent"><strong>Riepilogo email:</strong> ${emailEvents.map((event) => {
+            const email = event.new_value && typeof event.new_value === 'object' ? String(event.new_value.email || '') : '';
+            return email
+              ? `<span>${escapeHtml(email)} <small>(${escapeHtml(formatDateTime(event.created_at))})</small></span>`
+              : '<span>richiesto · indirizzo non registrato per gli invii precedenti</span>';
+          }).join('')}</div>`
+        : '<div class="submission-history__email"><strong>Riepilogo email:</strong> <span>non richiesto</span></div>';
+
+      const changesHtml = changes.length
+        ? `<div class="submission-history__changes">${changes.map((change) => `
+            <div class="submission-history__change is-${escapeHtml(change.type)}">
+              <strong>${escapeHtml(change.title)}</strong>
+              <span>${escapeHtml(change.detail)}</span>
+            </div>`).join('')}</div>`
+        : '<p class="submission-history__no-change">Nessuna modifica rispetto alle scelte già registrate.</p>';
+
+      return `
+        <article class="submission-history__card">
+          <header class="submission-history__header">
+            <div><strong>Invio #${number}</strong><span>${escapeHtml(formatDateTime(submission.created_at))}</span></div>
+            <small>Compilato da: ${escapeHtml(submission.actor_name || '—')}</small>
+          </header>
+          ${changesHtml}
+          ${emailHtml}
+        </article>`;
+    }).join('');
+
+    const otherAuditRows = auditRows.filter((row) => !row.submission_id);
+    const otherHtml = otherAuditRows.length
+      ? `<details class="submission-history__other"><summary>Altre modifiche amministrative (${otherAuditRows.length})</summary><div class="audit-list">${otherAuditRows.map((row) => `
+          <article class="audit-item"><div><strong>${escapeHtml(row.action_type)}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div><p><strong>Operatore:</strong> ${escapeHtml(row.actor_name || '—')}</p>${row.note ? `<p><strong>Nota:</strong> ${escapeHtml(row.note)}</p>` : ''}<details><summary>Dettaglio</summary><pre>${escapeHtml(JSON.stringify({ precedente: row.previous_value, nuovo: row.new_value }, null, 2))}</pre></details></article>`).join('')}</div></details>`
+      : '';
+
+    auditList.innerHTML = submissionCards
+      ? `<div class="submission-history">${submissionCards}</div>${otherHtml}`
+      : (otherHtml || '<p class="empty-state">Nessun invio registrato.</p>');
     auditDialog.showModal();
   }
 
