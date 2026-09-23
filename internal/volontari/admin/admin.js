@@ -1231,7 +1231,12 @@
       row?.isResponsible ? 'is-responsible-row' : ''
     ].filter(Boolean).join(' ');
 
-    const requirementSelect = `<select class="inline-select inline-select--requirement" data-inline-requirement ${isAvailability ? '' : ''}>${requirementOptions(selectedRequirementId, isAvailability ? row.shiftId : '')}</select>`;
+    const requirementOptionsHtml = (!isNew && !isAvailability)
+      ? (selectedRequirement
+        ? `<option value="${escapeHtml(selectedRequirement.id)}" selected>${escapeHtml(requirementLabel(selectedRequirement))} · ${selectedRequirement.assignedCount}/${selectedRequirement.requiredCount}</option>`
+        : '<option value="" selected>Seleziona turno e attività…</option>')
+      : requirementOptions(selectedRequirementId, isAvailability ? row.shiftId : '');
+    const requirementSelect = `<select class="inline-select inline-select--requirement" data-inline-requirement data-options-loaded="${(!isNew && !isAvailability) ? 'false' : 'true'}">${requirementOptionsHtml}</select>`;
 
     const shiftCell = isAvailability
       ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">Disponibilità indicata dal volontario</small>`
@@ -1258,7 +1263,7 @@
              <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
              <button class="inline-edit-button" type="button" data-edit-person aria-label="Cambia persona" title="Cambia persona">✎</button>
            </div>
-           <select class="inline-select inline-select--person" data-inline-person hidden>${personOptions(personId)}</select>`);
+           <select class="inline-select inline-select--person" data-inline-person data-options-loaded="false" hidden><option value="${escapeHtml(personId)}" selected>${escapeHtml(row.personName)}</option></select>`);
 
     const groupResponsible = (!isNew && !isAvailability) ? responsibleForGroup(row) : null;
     const responsibleCell = (!isNew && !isAvailability)
@@ -4302,14 +4307,27 @@
     } else if (editRequirement && rowNode) {
       const display = rowNode.querySelector('[data-activity-display]');
       const edit = rowNode.querySelector('[data-requirement-edit]');
+      const select = edit?.querySelector('[data-inline-requirement]');
+      if (select && select.dataset.optionsLoaded !== 'true') {
+        const selectedId = select.value || '';
+        select.innerHTML = requirementOptions(selectedId);
+        select.value = selectedId;
+        select.dataset.optionsLoaded = 'true';
+      }
       if (display) display.hidden = true;
       if (edit) {
         edit.hidden = false;
-        edit.querySelector('[data-inline-requirement]')?.focus();
+        select?.focus();
       }
     } else if (editPerson && rowNode) {
       const display = rowNode.querySelector('[data-person-display]');
       const select = rowNode.querySelector('[data-inline-person]');
+      if (select && select.dataset.optionsLoaded !== 'true') {
+        const selectedId = select.value || '';
+        select.innerHTML = personOptions(selectedId);
+        select.value = selectedId;
+        select.dataset.optionsLoaded = 'true';
+      }
       if (display) display.hidden = true;
       if (select) {
         select.hidden = false;
