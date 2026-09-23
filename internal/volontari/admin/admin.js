@@ -3949,7 +3949,7 @@
     const people = respondedAssignedPeople();
     const shiftById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift]));
 
-    const sortedAvailability = (person) => [...(person.latestSubmission?.availability || [])].sort((a, b) => {
+    const compareByShift = (a, b) => {
       const shiftA = shiftById.get(a.shiftId) || {};
       const shiftB = shiftById.get(b.shiftId) || {};
       const orderA = Number(shiftA.sort_order);
@@ -3961,19 +3961,32 @@
       if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
 
       return `${a.day || ''} ${a.shift || ''}`.localeCompare(`${b.day || ''} ${b.shift || ''}`, 'it');
-    });
+    };
+
+    const sortedAvailability = (person) => [...(person.latestSubmission?.availability || [])].sort(compareByShift);
+    const sortedAssignments = (person) => (snapshot?.assignments || [])
+      .filter((row) => row.personId === person.id)
+      .sort((a, b) => compareByShift(a, b) || displayActivity(a).localeCompare(displayActivity(b), 'it'));
 
     detailTargetRow = null;
     detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
     detailContent.innerHTML = people.length
-      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${people.map((person) => {
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th><th>Attività assegnate / risposta</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${people.map((person) => {
+          const assignments = sortedAssignments(person);
+          const assignmentsHtml = assignments.length
+            ? `<div class="availability-report-list">${assignments.map((item) =>
+                `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(displayActivity(item))}</strong><small>${responseBadge(item.currentResponse)}${item.currentNote ? ` · ${escapeHtml(item.currentNote)}` : ''}</small></div>`
+              ).join('')}</div>`
+            : '—';
+
           const availability = sortedAvailability(person);
           const availabilityHtml = availability.length
             ? `<div class="availability-report-list">${availability.map((item) =>
                 `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>${item.note ? `<small>${escapeHtml(item.note)}</small>` : ''}</div>`
               ).join('')}</div>`
             : '—';
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td><td>${availabilityHtml}</td></tr>`;
+
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
     detailDialog.showModal();
