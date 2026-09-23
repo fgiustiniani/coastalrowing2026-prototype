@@ -2923,7 +2923,7 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th>Note</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       const submissionCount = Number(item.submissionCount || 0);
       const submissionCountHtml = submissionCount > 0
@@ -2936,7 +2936,7 @@
         <td><strong>${item.confirmed}</strong></td>
         <td><strong>${item.declined}</strong></td>
         <td class="person-report-submissions">${submissionCountHtml}${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
-        <td class="notes-cell">${item.notes ? escapeHtml(item.notes) : '—'}</td>
+        <td class="notes-cell person-report-notes-col">${item.notes ? `<button class="report-note-button" type="button" data-report-note-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Visualizza note di ${escapeHtml(item.name)}" title="Visualizza note">👁</button>` : '—'}</td>
         <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
       </tr>`;
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
@@ -3663,6 +3663,15 @@
     raceProgram.innerHTML = body
       ? `<table class="admin-table race-table"><thead><tr><th>Persona</th><th>Codice</th><th>Equipaggio / categoria</th><th>Giorno gara</th><th>Ora gara</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
       : '<p class="empty-state">Nessuna voce del programma corrisponde ai filtri.</p>';
+  }
+
+  function showPersonReportNotes(personId, personName) {
+    const item = personReportRows().find((row) => row.id === personId) || null;
+    detailTitle.textContent = `Note · ${personName || item?.name || 'Persona'}`;
+    detailContent.innerHTML = item?.notes
+      ? `<div class="report-note-popup">${escapeHtml(item.notes)}</div>`
+      : '<p class="empty-state">Nessuna nota registrata.</p>';
+    detailDialog.showModal();
   }
 
   function showPersonDetail(personId) {
@@ -5661,6 +5670,12 @@
   });
 
   personReport?.addEventListener('click', async (event) => {
+    const note = event.target.closest('[data-report-note-person]');
+    if (note) {
+      showPersonReportNotes(note.dataset.reportNotePerson || '', note.dataset.personName || 'Persona');
+      return;
+    }
+
     const audit = event.target.closest('[data-audit-person]');
     if (!audit) return;
     await withButtonBusy(audit, 'Caricamento…', async () => {
