@@ -521,9 +521,64 @@ tr.is-busy button.is-busy {
 }
 
 .person-report-table {
-  width: max-content;
-  min-width: 1180px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  table-layout: fixed;
+}
+.person-report-table th,
+.person-report-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.person-report-table th:nth-child(1) { width: 13%; }
+.person-report-table th:nth-child(2) { width: 12%; }
+.person-report-table th:nth-child(3) { width: 32%; }
+.person-report-table th:nth-child(4),
+.person-report-table th:nth-child(5) { width: 6%; }
+.person-report-table th:nth-child(6) { width: 9%; }
+.person-report-table th:nth-child(7) { width: 46px; }
+.person-report-table th:nth-child(8) { width: 18%; }
+.person-report-table .people-cell,
+.person-report-table .availability-report-cell,
+.person-report-table .notes-cell {
+  min-width: 0;
   max-width: none;
+}
+.person-report-table .status-badge {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
+.person-report-notes-col {
+  width: 46px;
+  text-align: center;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+.report-note-button {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+.report-note-button:hover,
+.report-note-button:focus-visible {
+  background: var(--soft);
+  border-color: #9fb5bb;
+}
+.report-note-popup {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  font-size: .95rem;
 }
 
 .activity-report-table {
