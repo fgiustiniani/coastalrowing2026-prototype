@@ -76,6 +76,13 @@
   const auditDialog = document.querySelector('[data-audit-dialog]');
   const auditTitle = document.querySelector('[data-audit-title]');
   const auditList = document.querySelector('[data-audit-list]');
+  const summaryEmailDialog = document.querySelector('[data-summary-email-dialog]');
+  const summaryEmailForm = document.querySelector('[data-summary-email-form]');
+  const summaryEmailTitle = document.querySelector('[data-summary-email-title]');
+  const summaryEmailAddress = document.querySelector('[data-summary-email-address]');
+  const summaryEmailMessage = document.querySelector('[data-summary-email-message]');
+  const summaryEmailStatus = document.querySelector('[data-summary-email-status]');
+  const summaryEmailSend = document.querySelector('[data-summary-email-send]');
 
   if (!loginForm || !dashboard) return;
 
@@ -104,6 +111,7 @@
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
+  let summaryEmailPersonId = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
   } catch {}
@@ -2929,13 +2937,14 @@
       const submissionCountHtml = submissionCount > 0
         ? `<button class="table-link person-report-submission-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Apri storico dei ${submissionCount} invii di ${escapeHtml(item.name)}">${submissionCount}</button>`
         : '<strong>0</strong>';
+      const summaryEmailButton = `<button class="report-email-button" type="button" data-send-summary-email-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Invia riepilogo email a ${escapeHtml(item.name)}" title="Invia riepilogo email">✉</button>`;
       return `<tr class="person-report-row is-${escapeHtml(item.responseState.key)}">
         <td><strong>${escapeHtml(item.name)}</strong></td>
         <td><span class="status-badge is-${escapeHtml(item.responseState.key)}">${escapeHtml(item.responseState.label)}</span></td>
         <td class="people-cell">${item.activityRows?.length ? `<div class="activity-report-list">${item.activityRows.map((activity) => `<div class="activity-report-line person-report-activity"><span>${escapeHtml(activity.label)}</span><span class="status-badge is-${escapeHtml(activity.response)}">${escapeHtml(activity.responseLabel)}</span></div>`).join('')}</div>` : '—'}</td>
         <td><strong>${item.confirmed}</strong></td>
         <td><strong>${item.declined}</strong></td>
-        <td class="person-report-submissions">${submissionCountHtml}${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
+        <td class="person-report-submissions"><div class="person-report-submission-actions">${submissionCountHtml}${summaryEmailButton}</div>${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
         <td class="notes-cell person-report-notes-col">${item.notes ? `<button class="report-note-button" type="button" data-report-note-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Visualizza note di ${escapeHtml(item.name)}" title="Visualizza note">👁</button>` : '—'}</td>
         <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
       </tr>`;
@@ -4200,16 +4209,87 @@
         </article>`;
     }).join('');
 
-    const otherAuditRows = auditRows.filter((row) => !row.submission_id);
+    const adminEmailRows = auditRows.filter((row) => !row.submission_id && row.action_type === 'summary_email_admin_sent');
+    const adminEmailHtml = adminEmailRows.length
+      ? `<section class="submission-history__admin-emails"><h3>Email riepilogo inviate dall’amministrazione</h3>${adminEmailRows.map((row) => {
+          const value = row.new_value && typeof row.new_value === 'object' ? row.new_value : {};
+          return `<article><div><strong>${escapeHtml(String(value.email || '—'))}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div>${value.message ? `<p>${escapeHtml(String(value.message))}</p>` : '<p class="muted-text">Nessun messaggio di accompagnamento.</p>'}</article>`;
+        }).join('')}</section>`
+      : '';
+
+    const otherAuditRows = auditRows.filter((row) => !row.submission_id && row.action_type !== 'summary_email_admin_sent');
     const otherHtml = otherAuditRows.length
       ? `<details class="submission-history__other"><summary>Altre modifiche amministrative (${otherAuditRows.length})</summary><div class="audit-list">${otherAuditRows.map((row) => `
           <article class="audit-item"><div><strong>${escapeHtml(row.action_type)}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div><p><strong>Operatore:</strong> ${escapeHtml(row.actor_name || '—')}</p>${row.note ? `<p><strong>Nota:</strong> ${escapeHtml(row.note)}</p>` : ''}<details><summary>Dettaglio</summary><pre>${escapeHtml(JSON.stringify({ precedente: row.previous_value, nuovo: row.new_value }, null, 2))}</pre></details></article>`).join('')}</div></details>`
       : '';
 
     auditList.innerHTML = submissionCards
-      ? `<div class="submission-history">${submissionCards}</div>${otherHtml}`
-      : (otherHtml || '<p class="empty-state">Nessun invio registrato.</p>');
+      ? `<div class="submission-history">${submissionCards}</div>${adminEmailHtml}${otherHtml}`
+      : (adminEmailHtml || otherHtml || '<p class="empty-state">Nessun invio registrato.</p>');
     auditDialog.showModal();
+  }
+
+  async function openSummaryEmailDialog(personId, personName) {
+    if (!summaryEmailDialog || !summaryEmailAddress || !summaryEmailMessage) return;
+    summaryEmailPersonId = personId;
+    if (summaryEmailTitle) summaryEmailTitle.textContent = `Invia riepilogo · ${personName}`;
+    summaryEmailAddress.value = '';
+    summaryEmailMessage.value = '';
+    setStatus(summaryEmailStatus, 'Recupero dell’ultimo indirizzo email utilizzato…');
+    summaryEmailDialog.showModal();
+
+    try {
+      const result = await api(`${API}?view=audit&personId=${encodeURIComponent(personId)}`);
+      const latestEmailEvent = (result.audit || []).find((row) =>
+        ['summary_email_admin_sent', 'summary_email_sent'].includes(row.action_type)
+        && row.new_value
+        && typeof row.new_value === 'object'
+        && String(row.new_value.email || '').trim()
+      );
+      const lastEmail = String(latestEmailEvent?.new_value?.email || '').trim();
+      summaryEmailAddress.value = lastEmail;
+      setStatus(
+        summaryEmailStatus,
+        lastEmail
+          ? 'Indirizzo precompilato con l’ultima email registrata. Puoi modificarlo prima dell’invio.'
+          : 'Nessun indirizzo precedente registrato: inserisci l’email del destinatario.'
+      );
+      summaryEmailAddress.focus();
+      summaryEmailAddress.select();
+    } catch (error) {
+      setStatus(summaryEmailStatus, 'Non è stato possibile recuperare l’ultima email. Puoi comunque inserirla manualmente.', 'error');
+      summaryEmailAddress.focus();
+    }
+  }
+
+  async function sendSummaryEmailFromAdmin(event) {
+    event.preventDefault();
+    if (!summaryEmailPersonId || !summaryEmailAddress) return;
+
+    const email = summaryEmailAddress.value.trim();
+    const message = summaryEmailMessage?.value.trim() || '';
+    if (!summaryEmailForm.reportValidity()) return;
+    if (!confirm(`Inviare il riepilogo aggiornato a ${email}?`)) return;
+
+    if (summaryEmailSend) summaryEmailSend.disabled = true;
+    setStatus(summaryEmailStatus, 'Invio email in corso…');
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send-person-summary-email',
+          personId: summaryEmailPersonId,
+          email,
+          message
+        })
+      });
+      setStatus(summaryEmailStatus, `Email inviata a ${email}.`, 'success');
+    } catch (error) {
+      setStatus(summaryEmailStatus, error.message, 'error');
+    } finally {
+      if (summaryEmailSend) summaryEmailSend.disabled = false;
+    }
   }
 
   loginForm.addEventListener('submit', async (event) => {
@@ -5670,6 +5750,12 @@
   });
 
   personReport?.addEventListener('click', async (event) => {
+    const email = event.target.closest('[data-send-summary-email-person]');
+    if (email) {
+      await openSummaryEmailDialog(email.dataset.sendSummaryEmailPerson || '', email.dataset.personName || 'Persona');
+      return;
+    }
+
     const note = event.target.closest('[data-report-note-person]');
     if (note) {
       showPersonReportNotes(note.dataset.reportNotePerson || '', note.dataset.personName || 'Persona');
@@ -5768,6 +5854,18 @@
       }
       refreshCopyFromCount();
     }
+  });
+
+  summaryEmailForm?.addEventListener('submit', sendSummaryEmailFromAdmin);
+  document.querySelectorAll('[data-summary-email-close]').forEach((button) =>
+    button.addEventListener('click', () => summaryEmailDialog?.close())
+  );
+  summaryEmailDialog?.addEventListener('click', (event) => {
+    if (event.target === summaryEmailDialog) summaryEmailDialog.close();
+  });
+  summaryEmailDialog?.addEventListener('close', () => {
+    summaryEmailPersonId = null;
+    setStatus(summaryEmailStatus, '');
   });
 
   document.querySelectorAll('[data-detail-close]').forEach((button) => button.addEventListener('click', () => detailDialog.close()));
