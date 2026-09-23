@@ -1121,7 +1121,12 @@
     const assignedIds = new Set((snapshot?.assignments || []).map((row) => row.personId));
     return (snapshot?.people || [])
       .filter((person) => assignedIds.has(person.id) && person.latestSubmission)
-      .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
+      .sort((a, b) => {
+        const timeA = Date.parse(a.latestSubmission?.createdAt || '') || 0;
+        const timeB = Date.parse(b.latestSubmission?.createdAt || '') || 0;
+        return timeB - timeA
+          || String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it');
+      });
   }
 
   function renderKpis() {
