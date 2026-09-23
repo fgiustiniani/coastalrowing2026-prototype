@@ -40,15 +40,10 @@
   const submitButton = document.querySelector('[data-submit]');
   const submitWebsite = document.querySelector('[data-submit-website]');
   const success = document.querySelector('[data-success]');
-  const summaryChannelButtons = Array.from(document.querySelectorAll('[data-summary-channel]'));
   const summaryEmailForm = document.querySelector('[data-summary-email-form]');
   const summaryEmailInput = document.querySelector('[data-summary-email]');
   const summaryEmailStatus = document.querySelector('[data-summary-email-status]');
   const summaryEmailSubmit = document.querySelector('[data-summary-email-submit]');
-  const summaryWhatsAppForm = document.querySelector('[data-summary-whatsapp-form]');
-  const summaryWhatsAppPhone = document.querySelector('[data-summary-whatsapp-phone]');
-  const summaryWhatsAppStatus = document.querySelector('[data-summary-whatsapp-status]');
-  const summaryWhatsAppSubmit = document.querySelector('[data-summary-whatsapp-submit]');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -352,20 +347,6 @@
     showStep(step);
   }
 
-  function showSummaryChannel(channel = '') {
-    const isEmail = channel === 'email';
-    const isWhatsApp = channel === 'whatsapp';
-    if (summaryEmailForm) summaryEmailForm.hidden = !isEmail;
-    if (summaryWhatsAppForm) summaryWhatsAppForm.hidden = !isWhatsApp;
-    summaryChannelButtons.forEach((button) => {
-      const active = button.dataset.summaryChannel === channel;
-      button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      button.classList.toggle('is-active', active);
-    });
-    if (isEmail) summaryEmailInput?.focus();
-    if (isWhatsApp) summaryWhatsAppPhone?.focus();
-  }
-
   async function submit() {
     if (!validateAssignments()) { showStep(3); return; }
     submitButton.disabled = true;
@@ -387,9 +368,7 @@
       document.querySelectorAll('[data-step], .stepper').forEach((node) => { node.hidden = true; });
       state.latestSubmissionId = body.submission?.id || null;
       success.hidden = false;
-      showSummaryChannel('');
       setStatus(summaryEmailStatus, '');
-      setStatus(summaryWhatsAppStatus, '');
       setStatus(submitStatus, '');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
@@ -437,49 +416,6 @@
       if (summaryEmailSubmit) {
         summaryEmailSubmit.disabled = false;
         summaryEmailSubmit.textContent = originalText;
-      }
-    }
-  }
-
-  async function sendSummaryWhatsApp(event) {
-    event.preventDefault();
-    if (!state.latestSubmissionId || !summaryWhatsAppPhone) return;
-    const phone = String(summaryWhatsAppPhone.value || '').trim();
-    if (!summaryWhatsAppForm?.checkValidity()) {
-      summaryWhatsAppForm?.reportValidity();
-      return;
-    }
-
-    const originalText = summaryWhatsAppSubmit?.textContent || 'Invia riepilogo su WhatsApp';
-    if (summaryWhatsAppSubmit) {
-      summaryWhatsAppSubmit.disabled = true;
-      summaryWhatsAppSubmit.textContent = 'Invio in corso…';
-    }
-    setStatus(summaryWhatsAppStatus, 'Invio del riepilogo su WhatsApp…');
-
-    try {
-      await apiRequest(api, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action: 'whatsapp-summary',
-          submissionId: state.latestSubmissionId,
-          phone
-        })
-      });
-      setStatus(summaryWhatsAppStatus, 'Riepilogo inviato su WhatsApp.', 'success');
-      if (summaryWhatsAppSubmit) summaryWhatsAppSubmit.textContent = 'Riepilogo inviato';
-      summaryWhatsAppPhone.disabled = true;
-    } catch (error) {
-      if (error.status === 401) {
-        clearSession();
-        showAccess('La sessione è scaduta. Riapri il link ricevuto.');
-        return;
-      }
-      setStatus(summaryWhatsAppStatus, error.message, 'error');
-      if (summaryWhatsAppSubmit) {
-        summaryWhatsAppSubmit.disabled = false;
-        summaryWhatsAppSubmit.textContent = originalText;
       }
     }
   }
@@ -558,9 +494,7 @@
   document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => next(Number(button.dataset.next))));
   document.querySelectorAll('[data-back]').forEach((button) => button.addEventListener('click', () => showStep(Number(button.dataset.back))));
   submitButton?.addEventListener('click', submit);
-  summaryChannelButtons.forEach((button) => button.addEventListener('click', () => showSummaryChannel(button.dataset.summaryChannel)));
   summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
-  summaryWhatsAppForm?.addEventListener('submit', sendSummaryWhatsApp);
 
   accessForm?.addEventListener('submit', async (event) => {
     event.preventDefault(); setStatus(accessStatus, 'Verifica accesso…');
