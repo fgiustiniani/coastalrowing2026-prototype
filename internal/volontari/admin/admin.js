@@ -3967,16 +3967,22 @@
       </article>`).join('')}</div>`;
   }
 
+  function renderExpandedAdminSections() {
+    if (!document.getElementById('confirmation-changes-content')?.hidden) renderConfirmationChanges();
+    if (!document.getElementById('person-report-content')?.hidden) renderPersonReport();
+    if (!document.getElementById('person-catalog-content')?.hidden) renderPersonCatalog();
+    if (!document.getElementById('planning-catalog-content')?.hidden) {
+      renderRequirementCatalog();
+      renderActivityGroupCatalog();
+      renderActivityCatalog();
+    }
+    if (!document.getElementById('race-program-content')?.hidden) renderRaceProgram();
+  }
+
   function renderAll() {
     renderKpis();
     renderAssignments();
-    renderConfirmationChanges();
-    renderPersonCatalog();
-    renderActivityGroupCatalog();
-    renderActivityCatalog();
-    renderRequirementCatalog();
-    renderRaceProgram();
-    renderPersonReport();
+    renderExpandedAdminSections();
   }
 
   async function loadSnapshot() {
@@ -4264,6 +4270,16 @@
       if (!target) return;
       const collapsed = !target.hidden;
       target.hidden = collapsed;
+      if (!collapsed) {
+        if (target.id === 'confirmation-changes-content') renderConfirmationChanges();
+        else if (target.id === 'person-report-content') renderPersonReport();
+        else if (target.id === 'person-catalog-content') renderPersonCatalog();
+        else if (target.id === 'planning-catalog-content') {
+          renderRequirementCatalog();
+          renderActivityGroupCatalog();
+          renderActivityCatalog();
+        } else if (target.id === 'race-program-content') renderRaceProgram();
+      }
       button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
       const label = collapsed ? 'Espandi' : 'Comprimi';
       const labelNode = button.querySelector('[data-button-label]');
