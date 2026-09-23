@@ -450,17 +450,53 @@ async function adminSnapshot() {
   };
 }
 
-async function auditForPerson(personId) {
+async function historyForPerson(personId) {
   if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
-  const audit = await supabaseRequest('volunteer_audit_log', {
-    query: {
-      select: 'id,submission_id,actor_name,person_id,person_code,action_type,entity_type,entity_id,previous_value,new_value,note,created_at',
-      person_id: `eq.${personId}`,
-      order: 'created_at.desc',
-      limit: 300
-    }
-  });
-  return rows(audit);
+
+  const [audit, submissions, shifts] = await Promise.all([
+    supabaseRequest('volunteer_audit_log', {
+      query: {
+        select: 'id,submission_id,actor_name,person_id,person_code,action_type,entity_type,entity_id,previous_value,new_value,note,created_at',
+        person_id: `eq.${personId}`,
+        order: 'created_at.desc',
+        limit: 500
+      }
+    }),
+    supabaseRequest('volunteer_submissions', {
+      query: {
+        select: 'id,actor_name,person_id,person_code,selected_person_name,created_at',
+        person_id: `eq.${personId}`,
+        order: 'created_at.desc',
+        limit: 200
+      }
+    }),
+    supabaseRequest('volunteer_shifts', {
+      query: {
+        select: 'id,day_label,shift_label,starts_at,ends_at,sort_order',
+        order: 'sort_order.asc'
+      }
+    })
+  ]);
+
+  const submissionRows = rows(submissions);
+  const submissionIds = submissionRows.map((row) => row.id).filter(isUuid);
+  let responses = [];
+  if (submissionIds.length) {
+    responses = rows(await supabaseRequest('volunteer_assignment_responses', {
+      query: {
+        select: 'submission_id,assignment_id,response,note,day_snapshot,shift_snapshot,activity_snapshot,role_snapshot,created_at',
+        submission_id: `in.(${submissionIds.join(',')})`,
+        order: 'created_at.desc'
+      }
+    }));
+  }
+
+  return {
+    audit: rows(audit),
+    submissions: submissionRows,
+    responses,
+    shifts: rows(shifts)
+  };
 }
 
 async function auditAdminChange({ actorName, actionType, entityType, entityId, person = null, previousValue = null, newValue = null, note = null }) {
@@ -569,7 +605,7 @@ export default async (request) => {
       }
       if (view === 'audit') {
         const personId = clean(url.searchParams.get('personId'), 60);
-        return json({ audit: await auditForPerson(personId) });
+        return json(await historyForPerson(personId));
       }
       throw new ApiError('Vista non valida.', 400, 'INVALID_VIEW');
     }
