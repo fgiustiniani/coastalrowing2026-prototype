@@ -103,6 +103,7 @@ async function listSelectableShifts() {
     shift: shift.shift_label,
     startsAt: shift.starts_at,
     endsAt: shift.ends_at,
+    sortOrder: Number(shift.sort_order ?? 9999),
     assigned: false,
     selected: false,
     note: ''
@@ -158,6 +159,9 @@ async function personState(personId) {
       shift: shift?.shift_label || assignment.raw_shift || '',
       shiftId: shift?.id || null,
       shiftMatched: Boolean(shift),
+      startsAt: shift?.starts_at || null,
+      endsAt: shift?.ends_at || null,
+      sortOrder: Number(shift?.sort_order ?? 9999),
       activity: activity?.name || 'Attività',
       role: assignment.role || '',
       requestedProfile: assignment.requested_profile || '',
@@ -178,6 +182,7 @@ async function personState(personId) {
       shift: shift.shift_label,
       startsAt: shift.starts_at,
       endsAt: shift.ends_at,
+      sortOrder: Number(shift.sort_order ?? 9999),
       assigned: assignedShiftIds.has(shift.id),
       selected: availabilityByShift.has(shift.id),
       note: availabilityByShift.get(shift.id)?.note || ''
