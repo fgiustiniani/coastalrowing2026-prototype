@@ -81,6 +81,7 @@
 
   let credentials = null;
   let snapshot = null;
+  let assignmentWarningCache = new Map();
   let newAssignmentOpen = false;
   let newPersonOpen = false;
   let newActivityOpen = false;
@@ -660,6 +661,19 @@
     const assignments = snapshot?.assignments || [];
     if (!candidate?.personId) return warnings;
 
+    const cacheKey = candidate?.id
+      ? [
+          candidate.id,
+          candidate.personId || '',
+          candidate.shiftId || '',
+          candidate.day || '',
+          candidate.shift || ''
+        ].join('|')
+      : '';
+    if (cacheKey && assignmentWarningCache.has(cacheKey)) {
+      return assignmentWarningCache.get(cacheKey);
+    }
+
     const sameShift = assignments.filter((row) => {
       if (row.id === candidate.id || row.personId !== candidate.personId) return false;
       if (candidate.shiftId) return row.shiftId === candidate.shiftId;
@@ -711,12 +725,14 @@
     }
 
     const seen = new Set();
-    return warnings.filter((warning) => {
+    const result = warnings.filter((warning) => {
       const key = `${warning.type}|${warning.text}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
+    if (cacheKey) assignmentWarningCache.set(cacheKey, result);
+    return result;
   }
 
   function warningHtml(warnings) {
@@ -2829,10 +2845,20 @@
     }
 
     const personById = new Map(peopleRows.map((row) => [row.id, row]));
+    const responseLabel = (value) => value === 'confirmed'
+      ? 'Confermata'
+      : value === 'declined'
+        ? 'Non può'
+        : 'Da rispondere';
+
     return [...byPerson.values()].map((item) => {
       const confirmed = item.rows.filter((row) => row.currentResponse === 'confirmed').length;
       const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
-      const latest = personById.get(item.id)?.latestSubmission || null;
+      const pending = item.rows.length - confirmed - declined;
+      const person = personById.get(item.id) || null;
+      const latest = person?.latestSubmission || null;
+      const answered = Boolean(latest);
+      const submissionCount = Number(person?.submissionCount || 0);
       const availability = latest?.availability || [];
       const notes = item.rows
         .filter((row) => String(row.currentNote || '').trim())
@@ -2842,15 +2868,35 @@
         const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
+      const activityRows = sortedRows.map((row) => {
+        const response = row.currentResponse || 'pending';
+        return {
+          label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}`,
+          response,
+          responseLabel: responseLabel(response)
+        };
+      });
+
+      let responseState = { key: 'pending', label: 'Non ha risposto' };
+      if (answered && declined > 0 && confirmed > 0) responseState = { key: 'declined', label: 'Conferme + rifiuti' };
+      else if (answered && declined > 0) responseState = { key: 'declined', label: 'Ha rifiutato' };
+      else if (answered && confirmed > 0 && pending === 0) responseState = { key: 'confirmed', label: 'Ha confermato' };
+      else if (answered && pending > 0) responseState = { key: 'pending', label: 'Da completare' };
+      else if (answered) responseState = { key: 'confirmed', label: 'Ha risposto' };
+
       return {
         ...item,
         confirmed,
         declined,
-        answered: Boolean(latest),
+        pending,
+        answered,
+        submissionCount,
+        responseState,
         notes: notes.join('; '),
         availability,
-        activities: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · ★ Responsabile' : ''}`),
-        activitiesText: sortedRows.map((row) => `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · ★ Responsabile' : ''}`).join('\n'),
+        activityRows,
+        activities: activityRows.map((row) => row.label),
+        activitiesText: activityRows.map((row) => `${row.label} — ${row.responseLabel}`).join('\n'),
         availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
@@ -2868,14 +2914,15 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Ha risposto</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th>Note</th><th>Disponibilità aggiuntive</th><th></th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
-      return `<tr>
+      return `<tr class="person-report-row is-${escapeHtml(item.responseState.key)}">
         <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td class="people-cell">${item.activities?.length ? `<div class="activity-report-list">${item.activities.map((activity) => `<div class="activity-report-line">${escapeHtml(activity)}</div>`).join('')}</div>` : '—'}</td>
-        <td>${item.confirmed}</td>
-        <td>${item.declined}</td>
-        <td><span class="${item.answered ? 'answer-yes' : 'answer-no'}">${item.answered ? 'Sì' : 'No'}</span>${item.latest ? `<small>ultimo invio: ${escapeHtml(formatDateTime(item.latest.createdAt))} · ${escapeHtml(item.latest.actorName)}</small>` : ''}</td>
+        <td><span class="status-badge is-${escapeHtml(item.responseState.key)}">${escapeHtml(item.responseState.label)}</span></td>
+        <td class="people-cell">${item.activityRows?.length ? `<div class="activity-report-list">${item.activityRows.map((activity) => `<div class="activity-report-line person-report-activity"><span>${escapeHtml(activity.label)}</span><span class="status-badge is-${escapeHtml(activity.response)}">${escapeHtml(activity.responseLabel)}</span></div>`).join('')}</div>` : '—'}</td>
+        <td><strong>${item.confirmed}</strong></td>
+        <td><strong>${item.declined}</strong></td>
+        <td class="person-report-submissions"><strong>${item.submissionCount}</strong>${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
         <td class="notes-cell">${item.notes ? escapeHtml(item.notes) : '—'}</td>
         <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
         <td><button class="table-link" type="button" data-audit-person="${item.id}" data-person-name="${escapeHtml(item.name)}">Storico</button></td>
@@ -3113,17 +3160,19 @@
       persona: item.name,
       codice: item.code || '',
       attivita: item.activitiesText || '',
+      stato: item.responseState?.label || (item.answered ? 'Ha risposto' : 'Non ha risposto'),
       confermate: String(item.confirmed),
       nonPuo: String(item.declined),
-      haRisposto: item.answered ? 'Sì' : 'No',
+      invii: String(item.submissionCount || 0),
       note: item.notes || '',
       disponibilita: item.availabilityText || ''
     }));
     const commonColumns = [
       { key: 'persona', label: 'Persona' },
+      { key: 'stato', label: 'Stato' },
       { key: 'attivita', label: 'Attività' },
       { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
-      { key: 'haRisposto', label: 'Ha risposto' }, { key: 'note', label: 'Note' },
+      { key: 'invii', label: 'Invii' }, { key: 'note', label: 'Note' },
       { key: 'disponibilita', label: 'Disponibilità aggiuntive' }
     ];
     if (kind === 'excel') {
@@ -3987,6 +4036,7 @@
 
   async function loadSnapshot() {
     snapshot = await api();
+    assignmentWarningCache = new Map();
     populateFilters();
     renderAll();
   }
