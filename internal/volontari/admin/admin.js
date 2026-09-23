@@ -82,6 +82,7 @@
   let credentials = null;
   let snapshot = null;
   let assignmentWarningCache = new Map();
+  let assignmentRenderFrame = 0;
   let newAssignmentOpen = false;
   let newPersonOpen = false;
   let newActivityOpen = false;
@@ -2765,6 +2766,14 @@
     updateAssignmentActiveFilters();
   }
 
+  function scheduleAssignmentRender() {
+    if (assignmentRenderFrame) cancelAnimationFrame(assignmentRenderFrame);
+    assignmentRenderFrame = requestAnimationFrame(() => {
+      assignmentRenderFrame = 0;
+      renderAssignments();
+    });
+  }
+
   function clearAssignmentFilters() {
     assignmentFilterDescriptors().forEach(({ select }) => {
       if (!select) return;
@@ -2778,7 +2787,7 @@
       assignmentFiltersPanel.classList.remove('is-open');
       assignmentFiltersToggle?.setAttribute('aria-expanded', 'false');
     }
-    renderAssignments();
+    scheduleAssignmentRender();
   }
 
   function renderAssignments() {
@@ -4303,7 +4312,7 @@
   });
 
   [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
-    .forEach((filter) => filter?.addEventListener('change', renderAssignments));
+    .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
   [personReportPersonFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
