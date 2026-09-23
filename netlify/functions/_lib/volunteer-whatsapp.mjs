@@ -72,7 +72,12 @@ export async function sendVolunteerSummaryWhatsApp({ phone, personName, submissi
       code = clean(payload?.code, 40);
     } catch {}
     console.error('Invio WhatsApp riepilogo volontario fallito:', response.status, code || 'TWILIO_ERROR');
-    throw new ApiError('Non è stato possibile inviare il riepilogo su WhatsApp. Riprova tra poco.', 502, 'WHATSAPP_DELIVERY_FAILED');
+    const diagnostic = code ? `Twilio ${code}` : `HTTP ${response.status}`;
+    throw new ApiError(
+      `Non è stato possibile inviare il riepilogo su WhatsApp (${diagnostic}).`,
+      502,
+      'WHATSAPP_DELIVERY_FAILED'
+    );
   }
 
   return { sent: true };
