@@ -3663,3 +3663,34 @@ tr.is-busy button.is-busy {
     width: 100%;
   }
 }
+
+
+/* Report per persona: stato immediato e dettaglio risposta per attività */
+.person-report-row > td:first-child {
+  box-shadow: inset 4px 0 0 #97a7ac;
+}
+.person-report-row.is-confirmed > td:first-child {
+  box-shadow: inset 4px 0 0 var(--ok);
+}
+.person-report-row.is-declined > td:first-child {
+  box-shadow: inset 4px 0 0 var(--no);
+}
+.person-report-activity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.person-report-activity .status-badge {
+  justify-self: end;
+}
+.person-report-submissions strong {
+  display: block;
+  font-size: 1rem;
+}
+.person-report-submissions small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  white-space: nowrap;
+}
