@@ -138,7 +138,14 @@ async function adminSnapshot() {
   const responsibilityByAssignmentId = new Map(responsibilityRows.map((row) => [row.id, row.is_responsible === true]));
 
   const latestSubmissionByPerson = new Map();
+  const submissionCountByPerson = new Map();
   for (const submission of submissionRows) {
+    if (submission.person_id) {
+      submissionCountByPerson.set(
+        submission.person_id,
+        (submissionCountByPerson.get(submission.person_id) || 0) + 1
+      );
+    }
     if (!latestSubmissionByPerson.has(submission.person_id)) latestSubmissionByPerson.set(submission.person_id, submission);
   }
 
@@ -201,6 +208,7 @@ async function adminSnapshot() {
     const latest = latestSubmissionByPerson.get(person.id) || null;
     return {
       ...person,
+      submissionCount: submissionCountByPerson.get(person.id) || 0,
       latestSubmission: latest ? {
         id: latest.id,
         actorName: latest.actor_name,
