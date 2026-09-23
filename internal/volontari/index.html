@@ -116,28 +116,14 @@
         <h2>Grazie, disponibilità registrata</h2>
         <div class="success-delivery">
           <h3>Vuoi ricevere il riepilogo?</h3>
-          <p class="muted">Scegli come riceverlo.</p>
-          <div class="delivery-choice" role="group" aria-label="Modalità di invio del riepilogo">
-            <button class="delivery-choice__button" type="button" data-summary-channel="email" aria-pressed="false">Email</button>
-            <button class="delivery-choice__button" type="button" data-summary-channel="whatsapp" aria-pressed="false">WhatsApp</button>
-          </div>
-
-          <form data-summary-email-form hidden>
+          <p class="muted">Puoi riceverlo via email.</p>
+          <form data-summary-email-form>
             <label class="field">
               <span>Email</span>
               <input type="email" data-summary-email autocomplete="email" maxlength="254" placeholder="nome@esempio.it" required>
             </label>
             <p class="status" data-summary-email-status aria-live="polite"></p>
             <button class="button button--secondary" type="submit" data-summary-email-submit>Invia riepilogo via email</button>
-          </form>
-
-          <form data-summary-whatsapp-form hidden>
-            <label class="field">
-              <span>Numero di cellulare</span>
-              <input type="tel" data-summary-whatsapp-phone autocomplete="tel" maxlength="24" inputmode="tel" placeholder="+39 331 123 4567" required>
-            </label>
-            <p class="status" data-summary-whatsapp-status aria-live="polite"></p>
-            <button class="button button--secondary" type="submit" data-summary-whatsapp-submit>Invia riepilogo su WhatsApp</button>
           </form>
         </div>
       </section>
