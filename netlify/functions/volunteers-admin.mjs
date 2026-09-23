@@ -12,6 +12,7 @@ import {
   rpc,
   supabaseRequest
 } from './_lib/volunteers-common.mjs';
+import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
@@ -614,6 +615,56 @@ export default async (request) => {
       const body = await parseJsonBody(request);
       const action = clean(body.action, 40);
       const actorName = `admin:${clean(admin.username, 100)}`;
+
+      if (action === 'send-person-summary-email') {
+        const personId = clean(body.personId, 60);
+        const email = clean(body.email, 254);
+        const accompanyingMessage = clean(body.message, 4000);
+
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
+        }
+
+        const snapshot = await adminSnapshot();
+        const person = (snapshot.people || []).find((item) => item.id === personId) || null;
+        if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
+
+        const assignments = (snapshot.assignments || []).filter((item) => item.personId === personId);
+        const assignedShiftIds = new Set(assignments.map((item) => item.shiftId).filter(Boolean));
+        const availabilityShifts = (person.latestSubmission?.availability || []).map((item) => ({
+          ...item,
+          selected: true,
+          assigned: assignedShiftIds.has(item.shiftId)
+        }));
+
+        await sendVolunteerSummaryEmail({
+          email,
+          personState: {
+            person,
+            assignments,
+            availabilityShifts,
+            latestSubmission: person.latestSubmission || null
+          },
+          requestUrl: request.url,
+          accompanyingMessage
+        });
+
+        await auditAdminChange({
+          actorName,
+          actionType: 'summary_email_admin_sent',
+          entityType: 'person',
+          entityId: personId,
+          person,
+          newValue: {
+            sent: true,
+            email,
+            message: accompanyingMessage || null
+          }
+        });
+
+        return json({ ok: true, sent: true, email });
+      }
 
       if (action === 'save-person') {
         const personId = clean(body.personId, 60) || null;
