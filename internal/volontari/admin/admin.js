@@ -2072,6 +2072,16 @@
                 data-board-requirement-id="${escapeHtml(requirement.id)}"
                 aria-label="Aggiungi persona a ${escapeHtml(prettifyActivityName(requirement.activity))}"
                 title="Aggiungi persona">＋</button>
+              <button type="button"
+                class="assignment-board__delete-requirement"
+                data-board-delete-requirement
+                data-board-requirement-id="${escapeHtml(requirement.id)}"
+                aria-label="Elimina abbinamento ${escapeHtml(prettifyActivityName(requirement.activity))} da questo turno"
+                title="Elimina abbinamento attività-turno">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/>
+                </svg>
+              </button>
             </span>
           </header>
           <div class="assignment-board__activity-body" data-board-activity-body ${collapsed ? 'hidden' : ''}>
@@ -6017,6 +6027,47 @@
     if (copyFrom) {
       event.stopPropagation();
       showCopyFromRequirement(copyFrom.dataset.boardRequirementId || '');
+      return;
+    }
+
+    const deleteRequirement = event.target.closest('[data-board-delete-requirement]');
+    if (deleteRequirement) {
+      event.stopPropagation();
+      const requirementId = deleteRequirement.dataset.boardRequirementId || '';
+      const requirement = requirementById(requirementId);
+      if (!requirement) return;
+
+      const assignedCount = Number(requirement.assignedCount || 0);
+      if (assignedCount > 0) {
+        alert(
+          `Non puoi eliminare questo abbinamento perché contiene ${assignedCount} ${assignedCount === 1 ? 'persona assegnata' : 'persone assegnate'}.\n\nSposta o rimuovi prima ${assignedCount === 1 ? 'la persona' : 'le persone'} dall’attività.`
+        );
+        return;
+      }
+
+      const label = `${requirement.day || ''} · ${requirement.shift || ''} — ${prettifyActivityName(requirement.activity || '')}`;
+      if (!confirm(`Eliminare l’abbinamento attività-turno?\n\n${label}\n\nL’attività resterà nell’anagrafica e potrà essere riutilizzata in altri turni.`)) return;
+
+      void (async () => {
+        assignmentBoard?.classList.add('is-saving');
+        setStatus(assignmentBoardStatus, 'Eliminazione abbinamento…');
+        try {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'delete-requirement',
+              requirementId: requirement.id
+            })
+          });
+          await loadSnapshot();
+          setStatus(assignmentBoardStatus, 'Abbinamento attività-turno eliminato.', 'success');
+        } catch (error) {
+          setStatus(assignmentBoardStatus, error.message, 'error');
+        } finally {
+          assignmentBoard?.classList.remove('is-saving');
+        }
+      })();
       return;
     }
 

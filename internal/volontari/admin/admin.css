@@ -4505,3 +4505,33 @@ tr.is-busy button.is-busy {
     font-size: .75rem;
   }
 }
+
+
+/* Eliminazione rapida abbinamento attività-turno dalla gestione a schede */
+.assignment-board__delete-requirement {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d6a6a1;
+  border-radius: 7px;
+  background: #fff;
+  color: #9a3f37;
+  cursor: pointer;
+}
+.assignment-board__delete-requirement svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  pointer-events: none;
+}
+.assignment-board__delete-requirement:hover {
+  border-color: #bd6259;
+  background: #fff0ee;
+  color: #7f2f29;
+}
+.assignment-board.is-saving .assignment-board__delete-requirement {
+  pointer-events: none;
+  opacity: .55;
+}
