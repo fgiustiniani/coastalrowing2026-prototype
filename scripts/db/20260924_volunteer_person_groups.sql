@@ -1,4 +1,4 @@
--- PREPARATA PER feature/volontari. NON ESEGUIRE SENZA AUTORIZZAZIONE ESPLICITA.
+-- APPLICATA AL DATABASE CONDIVISO coastalrowing2026 IL 24/09/2026 SU AUTORIZZAZIONE ESPLICITA.
 -- Aggiunge il gruppo all'anagrafica volontari e importa i valori dal file Persone(1).xlsx.
 -- Chiave di aggiornamento: volunteer_people.person_code = colonna A "Codice".
 -- Alla preparazione risultavano 145 codici corrispondenti; PIL01 e PC05 vengono creati come persone esterne non selezionabili.
@@ -44,5 +44,7 @@ where p.person_code = incoming.person_code
 
 commit;
 
--- Rollback completo, se necessario e prima di eventuali altri utilizzi della colonna:
+-- Rollback della colonna, se necessario:
 -- alter table public.volunteer_people drop column if exists person_group;
+-- PIL01 e PC05 sono stati creati da questa migrazione. Rimuoverli solo dopo aver verificato
+-- che non siano referenziati da assegnazioni, invii, programma gare o altri dati collegati.
