@@ -2,12 +2,10 @@ import { FIC_SOCIETIES_2026 } from './_data/fic-societies-2026.mjs';
 import { syncRentalMailFromGmail } from './_lib/rental-mail-gmail.mjs';
 
 const ALLOWED_HOST = 'feature-admin-societa-iscritte--campionatiitalianicoastal2026.netlify.app';
-const CHECK_TOKEN = 'imap-check-7f2c9d41';
-
 export default async (request) => {
   const url = new URL(request.url);
   if (request.method !== 'GET') return new Response('Method not allowed', { status: 405 });
-  if (url.hostname.toLowerCase() !== ALLOWED_HOST || url.searchParams.get('check') !== CHECK_TOKEN) {
+  if (url.hostname.toLowerCase() !== ALLOWED_HOST) {
     return new Response('Not found', { status: 404 });
   }
 
@@ -33,5 +31,5 @@ export default async (request) => {
 };
 
 export const config = {
-  path: '/api/_tmp-mail-sync-diagnose'
+  path: '/api/_tmp-mail-sync-diagnose-7f2c9d41'
 };
