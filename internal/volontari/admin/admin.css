@@ -4467,46 +4467,6 @@ tr.is-busy button.is-busy {
 }
 
 
-/* Frecce per riordinare le attività senza drag & drop */
-.assignment-board__activity-order-buttons {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 1px;
-  flex: 0 0 auto;
-}
-.assignment-board__activity-order-button {
-  width: 20px;
-  height: 12px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid #aacbd1;
-  border-radius: 4px;
-  background: #fff;
-  color: var(--accent-dark);
-  font: inherit;
-  font-size: .67rem;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
-}
-.assignment-board__activity-order-button:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: #e9f6f8;
-}
-.assignment-board__activity-order-button:disabled {
-  opacity: .28;
-  cursor: default;
-}
-@media (max-width: 700px) {
-  .assignment-board__activity-order-button {
-    width: 24px;
-    height: 14px;
-    font-size: .75rem;
-  }
-}
-
-
 /* Eliminazione rapida abbinamento attività-turno dalla gestione a schede */
 .assignment-board__delete-requirement {
   width: 24px;

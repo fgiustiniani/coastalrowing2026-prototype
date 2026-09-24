@@ -1806,37 +1806,6 @@
       .map((row) => row.id);
   }
 
-  function boardActivitySiblingIds(requirement) {
-    if (!requirement?.id || !requirement.shiftId) return [];
-    const groupId = requirement.activityGroupId || '';
-    return boardShiftRequirementIds(requirement.shiftId).filter((id) => {
-      const row = requirementById(id);
-      return Boolean(row) && (row.activityGroupId || '') === groupId;
-    });
-  }
-
-  function boardActivityStepTarget(requirement, direction) {
-    const siblings = boardActivitySiblingIds(requirement);
-    const index = siblings.indexOf(requirement?.id || '');
-    if (index < 0) return null;
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= siblings.length) return null;
-    return siblings[targetIndex] || null;
-  }
-
-  async function moveBoardActivityByStep(requirementId, direction) {
-    const requirement = requirementById(requirementId);
-    if (!requirement || !['up', 'down'].includes(direction)) return;
-    const targetId = boardActivityStepTarget(requirement, direction);
-    if (!targetId) return;
-
-    await reorderBoardRequirement(
-      requirement.id,
-      targetId,
-      direction === 'down'
-    );
-  }
-
   async function reorderBoardRequirement(draggedId, targetRequirementId = '', placeAfter = false) {
     const dragged = requirementById(draggedId);
     if (!dragged) return;
@@ -2019,8 +1988,6 @@
       const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
       const activityKey = boardActivityKey(requirement);
       const collapsed = boardActivityCollapsed(requirement);
-      const canMoveUp = Boolean(boardActivityStepTarget(requirement, 'up'));
-      const canMoveDown = Boolean(boardActivityStepTarget(requirement, 'down'));
 
       return `
         <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'} ${collapsed ? 'is-collapsed' : ''}"
@@ -2034,22 +2001,6 @@
               data-board-requirement-id="${escapeHtml(requirement.id)}"
               title="Trascina per riordinare o spostare l’attività in un altro gruppo"
               aria-label="Trascina per riordinare o spostare l’attività in un altro gruppo">⋮⋮</span>
-            <span class="assignment-board__activity-order-buttons" aria-label="Sposta attività">
-              <button type="button"
-                class="assignment-board__activity-order-button"
-                data-board-activity-move="up"
-                data-board-requirement-id="${escapeHtml(requirement.id)}"
-                ${canMoveUp ? '' : 'disabled'}
-                title="Sposta attività in alto"
-                aria-label="Sposta ${escapeHtml(prettifyActivityName(requirement.activity))} in alto">↑</button>
-              <button type="button"
-                class="assignment-board__activity-order-button"
-                data-board-activity-move="down"
-                data-board-requirement-id="${escapeHtml(requirement.id)}"
-                ${canMoveDown ? '' : 'disabled'}
-                title="Sposta attività in basso"
-                aria-label="Sposta ${escapeHtml(prettifyActivityName(requirement.activity))} in basso">↓</button>
-            </span>
             <button type="button"
               class="assignment-board__activity-toggle"
               data-board-activity-toggle="${escapeHtml(activityKey)}"
@@ -5958,17 +5909,6 @@
       if (collapsed) boardCollapsedUnavailable.add(shiftId);
       else boardCollapsedUnavailable.delete(shiftId);
       persistBoardCollapsedUnavailable();
-      return;
-    }
-
-    const activityMove = event.target.closest('[data-board-activity-move]');
-    if (activityMove) {
-      event.stopPropagation();
-      if (activityMove.disabled) return;
-      const requirementId = activityMove.dataset.boardRequirementId || '';
-      const direction = activityMove.dataset.boardActivityMove || '';
-      if (!requirementId || !['up', 'down'].includes(direction)) return;
-      void moveBoardActivityByStep(requirementId, direction);
       return;
     }
 
