@@ -4670,3 +4670,71 @@ tr.is-busy button.is-busy {
     gap: 3px;
   }
 }
+
+
+/* Dettagli attività e gare nelle persone disponibili da assegnare */
+.assignment-board__availability-details {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #c9dde1;
+  min-width: 0;
+}
+
+.assignment-board__availability-detail-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px;
+  align-items: start;
+  min-width: 0;
+}
+
+.assignment-board__availability-detail-label {
+  color: #4e6970;
+  font-size: .64rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.assignment-board__availability-detail-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 5px;
+  min-width: 0;
+}
+
+.assignment-board__availability-detail-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: #edf6f7;
+  color: #35565e;
+  font-size: .62rem;
+  line-height: 1.35;
+}
+
+.assignment-board__availability-detail-item.is-race {
+  background: #fff5df;
+  color: #70581d;
+}
+
+.assignment-board__availability-detail-item strong {
+  font-size: inherit;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.assignment-board__availability-detail-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board__availability-detail-empty {
+  color: var(--muted);
+  font-size: .62rem;
+  font-style: italic;
+}

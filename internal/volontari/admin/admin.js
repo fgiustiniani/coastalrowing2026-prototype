@@ -1467,6 +1467,59 @@
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
 
+  function boardAvailabilityDetailsHtml(personId) {
+    const assignmentRows = (snapshot?.assignments || [])
+      .filter((item) => item.personId === personId)
+      .sort((a, b) => {
+        const reqA = requirementForAssignment(a);
+        const reqB = requirementForAssignment(b);
+        return (reqA?.shiftSortOrder ?? 9999) - (reqB?.shiftSortOrder ?? 9999)
+          || String(a.day || '').localeCompare(String(b.day || ''), 'it')
+          || String(a.shift || '').localeCompare(String(b.shift || ''), 'it')
+          || displayActivity(a).localeCompare(displayActivity(b), 'it');
+      });
+
+    const raceRows = snapshot?.raceProgramAvailable
+      ? (snapshot?.raceProgram || [])
+          .filter((race) => race.personId === personId)
+          .sort((a, b) =>
+            String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+            || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+            || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+          )
+      : [];
+
+    const assignmentsHtml = assignmentRows.length
+      ? assignmentRows.map((item) => `
+          <span class="assignment-board__availability-detail-item">
+            <strong>${escapeHtml(item.day || '—')} ${escapeHtml(item.shift || '')}</strong>
+            <span>${escapeHtml(displayActivity(item))}</span>
+          </span>`).join('')
+      : '<span class="assignment-board__availability-detail-empty">Nessuna assegnazione</span>';
+
+    const racesHtml = snapshot?.raceProgramAvailable
+      ? (raceRows.length
+          ? raceRows.map((race) => `
+              <span class="assignment-board__availability-detail-item is-race">
+                <strong>${escapeHtml(formatRaceDateShort(race.raceDate))}${race.raceTime ? ` ${escapeHtml(race.raceTime)}` : ''}</strong>
+                <span>${escapeHtml(race.crewLabel || 'Equipaggio non indicato')}</span>
+              </span>`).join('')
+          : '<span class="assignment-board__availability-detail-empty">Nessuna gara</span>')
+      : '<span class="assignment-board__availability-detail-empty">Programma gare non disponibile</span>';
+
+    return `
+      <div class="assignment-board__availability-details">
+        <div class="assignment-board__availability-detail-row">
+          <span class="assignment-board__availability-detail-label">Assegnato:</span>
+          <span class="assignment-board__availability-detail-list">${assignmentsHtml}</span>
+        </div>
+        <div class="assignment-board__availability-detail-row">
+          <span class="assignment-board__availability-detail-label">Gare:</span>
+          <span class="assignment-board__availability-detail-list">${racesHtml}</span>
+        </div>
+      </div>`;
+  }
+
   function boardPersonCard(row) {
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const isFilterMatch = selectedPeople.length > 0 && selectedPeople.includes(row.personId);
@@ -1523,6 +1576,7 @@
             aria-label="Elimina ${escapeHtml(row.personName)} dall’attività"
             title="Elimina assegnazione">×</button>` : ''}
         </div>
+        ${row.isAvailability ? boardAvailabilityDetailsHtml(row.personId) : ''}
       </div>`;
   }
 
