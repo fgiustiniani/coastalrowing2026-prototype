@@ -36,7 +36,7 @@ const HISTORICAL_2025_PROGRAM_BY_REGION = Object.freeze([
   { region: 'Veneto', athletes: 38, societies: 7 }
 ]);
 
-// Snapshot delle richieste di noleggio ricevute via e-mail e verificate fino al 21/09/2026.
+// Snapshot delle richieste di noleggio ricevute via e-mail e verificate manualmente fino al 24/09/2026.
 // La presenza indica esclusivamente che una mail di noleggio è stata ricevuta, non che la richiesta sia ancora attiva.
 const RENTAL_MAIL_RECEIVED_CODES = new Set([
   "110004","120060","030044","010096","030293","080131","020119","150003","030045","040083",
@@ -44,7 +44,7 @@ const RENTAL_MAIL_RECEIVED_CODES = new Set([
   "030127","132001","070007","110043","120016","030104","040081","010109","110213","120002",
   "120158","100044","130164","070101","050002","100037","050142","050005","030023","100118",
   "120021","070128",
-  "040165","060102","030017"
+  "040165","060102","030017","010014"
 ]);
 
 const SNAPSHOT_STORE_KEY = 'uploads';
@@ -726,7 +726,7 @@ export default async (request) => {
     sourceError: sourceError || undefined,
     latestUpload: snapshotMeta(snapshot),
     uploadHistory: uploads.map(snapshotMeta),
-    rentalMailUpdatedAt: rentalMailSync?.syncedAt || '2026-09-21',
+    rentalMailUpdatedAt: rentalMailSync?.syncedAt || '2026-09-24',
     rentalMailSync: rentalMailSyncPublic(rentalMailSync, rentalMailCodes),
     historical2025Available,
     historical2025ByRegion,
