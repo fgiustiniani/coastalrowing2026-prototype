@@ -148,6 +148,10 @@
         </div>
         <div id="planning-catalog-content" data-collapsible-content hidden>
           <p class="intro">Gestisci in un unico punto <strong>turno, attività e numero di persone previste</strong>. Per ogni abbinamento puoi scegliere un turno e un’attività già esistenti oppure crearli direttamente durante il salvataggio. I nuovi turni creati qui sono interni all’organizzazione e non vengono aggiunti automaticamente alle disponibilità selezionabili dai volontari.</p>
+          <div class="filter-grid filter-grid--report planning-filters">
+            <label class="field compact-field"><span>Turno</span><select data-requirement-shift-filter multiple><option value="">Tutti</option></select></label>
+            <label class="field compact-field"><span>Attività</span><select data-requirement-activity-filter multiple><option value="">Tutte</option></select></label>
+          </div>
           <p class="status" data-requirement-status aria-live="polite"></p>
           <div class="table-wrap" data-requirement-catalog></div>
 
