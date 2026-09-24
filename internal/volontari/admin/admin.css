@@ -955,6 +955,37 @@ tr.is-busy button.is-busy {
   background: #fbfcfc;
   transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
 }
+.assignment-board__activity.is-collapsed {
+  min-height: 0;
+}
+.assignment-board__activity-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.assignment-board__activity-toggle strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.assignment-board__activity-chevron {
+  flex: 0 0 auto;
+  width: 12px;
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.25;
+}
+.assignment-board__activity-body[hidden] {
+  display: none;
+}
 .assignment-board__activity.is-drop-target {
   border-style: solid;
   border-color: var(--accent);
@@ -4016,5 +4047,175 @@ tr.is-busy button.is-busy {
   .submission-history__admin-emails article > div {
     display: grid;
     gap: 3px;
+  }
+}
+
+
+/* Assegnazione multipla delle disponibilità aggiuntive */
+.assignment-board__availability > header {
+  align-items: center;
+}
+.assignment-board__availability-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+.assignment-board__availability-count {
+  min-width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #edf3f4;
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 850;
+}
+.assignment-board__availability-batch {
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid #8fbfc8;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--accent-dark);
+  font: inherit;
+  font-size: .66rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.assignment-board__availability-batch:hover {
+  border-color: var(--accent);
+  background: #e9f6f8;
+}
+.availability-batch {
+  display: grid;
+  gap: 12px;
+}
+.availability-batch__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f8fbfb;
+  font-size: .78rem;
+}
+.availability-batch__toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.availability-batch__list {
+  display: grid;
+  gap: 7px;
+  max-height: 48vh;
+  overflow: auto;
+}
+.availability-batch__person {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  border: 1px solid #d8e4e6;
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+}
+.availability-batch__person > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.availability-batch__person small {
+  color: var(--muted);
+}
+.availability-batch__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Gare nel popup persona */
+.person-races {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.person-races__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.person-races__head > span {
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #edf3f4;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 850;
+}
+.person-races__list {
+  display: grid;
+  gap: 7px;
+}
+.person-race {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid #d8e4e6;
+  border-radius: 9px;
+  background: #fff;
+}
+.person-race > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.person-race > div strong {
+  font-size: .8rem;
+}
+.person-race > div span,
+.person-races__empty {
+  color: var(--muted);
+  font-size: .74rem;
+}
+.person-race.is-current-shift {
+  border-color: #8fbfc8;
+  background: #eef8fa;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.person-race__current-badge {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid #8fbfc8;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-dark);
+  font-size: .66rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+@media (max-width: 620px) {
+  .assignment-board__availability-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .person-race {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

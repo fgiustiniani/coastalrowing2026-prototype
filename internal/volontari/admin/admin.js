@@ -117,6 +117,7 @@
   let boardGroupDragState = null;
   let boardGroupPointerDrag = null;
   let boardCollapsedGroups = new Set();
+  let boardCollapsedActivities = new Set();
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
@@ -128,6 +129,10 @@
   try {
     const storedCollapsed = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-groups') || '[]');
     boardCollapsedGroups = new Set(Array.isArray(storedCollapsed) ? storedCollapsed : []);
+  } catch {}
+  try {
+    const storedActivities = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-activities') || '[]');
+    boardCollapsedActivities = new Set(Array.isArray(storedActivities) ? storedActivities : []);
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -630,6 +635,20 @@
     } catch {}
   }
 
+  function boardActivityKey(requirement) {
+    return `${requirement?.shiftId || 'shift'}|${requirement?.id || 'activity'}`;
+  }
+
+  function boardActivityCollapsed(requirement) {
+    return boardCollapsedActivities.has(boardActivityKey(requirement));
+  }
+
+  function persistBoardCollapsedActivities() {
+    try {
+      localStorage.setItem('coastal2026-admin-board-collapsed-activities', JSON.stringify([...boardCollapsedActivities]));
+    } catch {}
+  }
+
   function activityIdOptions(selectedId = '', { allowNew = false } = {}) {
     return '<option value="">Seleziona…</option>' + [...(snapshot?.activities || [])]
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'it'))
@@ -822,6 +841,14 @@
     return rows.sort((a, b) =>
       (orderByShift.get(a.shiftId) ?? 9999) - (orderByShift.get(b.shiftId) ?? 9999)
       || a.personName.localeCompare(b.personName, 'it')
+    );
+  }
+
+  function personIsAvailableForRequirement(personId, requirementId) {
+    const requirement = requirementById(requirementId);
+    if (!personId || !requirement?.shiftId) return false;
+    return unassignedAvailabilityRows().some((row) =>
+      row.personId === personId && row.shiftId === requirement.shiftId
     );
   }
 
@@ -1896,9 +1923,11 @@
       );
       const uncovered = requirementIsUncovered(requirement);
       const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
+      const activityKey = boardActivityKey(requirement);
+      const collapsed = boardActivityCollapsed(requirement);
 
       return `
-        <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'}"
+        <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'} ${collapsed ? 'is-collapsed' : ''}"
           data-board-drop
           data-board-requirement-id="${escapeHtml(requirement.id)}"
           data-board-activity-id="${escapeHtml(requirement.activityId || '')}"
@@ -1909,7 +1938,14 @@
               data-board-requirement-id="${escapeHtml(requirement.id)}"
               title="Trascina per riordinare o spostare l’attività in un altro gruppo"
               aria-label="Trascina per riordinare o spostare l’attività in un altro gruppo">⋮⋮</span>
-            <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
+            <button type="button"
+              class="assignment-board__activity-toggle"
+              data-board-activity-toggle="${escapeHtml(activityKey)}"
+              aria-expanded="${collapsed ? 'false' : 'true'}"
+              title="${collapsed ? 'Espandi attività' : 'Comprimi attività'}">
+              <span class="assignment-board__activity-chevron" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
+              <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
+            </button>
             <span class="assignment-board__activity-actions">
               <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
               <button type="button"
@@ -1926,9 +1962,11 @@
                 title="Aggiungi persona">＋</button>
             </span>
           </header>
-          ${uncovered ? `<div class="assignment-board__coverage-warning">Mancano ${missing} ${missing === 1 ? 'persona' : 'persone'}</div>` : ''}
-          <div class="assignment-board__people">
-            ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Nessuna persona assegnata</span>'}
+          <div class="assignment-board__activity-body" data-board-activity-body ${collapsed ? 'hidden' : ''}>
+            ${uncovered ? `<div class="assignment-board__coverage-warning">Mancano ${missing} ${missing === 1 ? 'persona' : 'persone'}</div>` : ''}
+            <div class="assignment-board__people">
+              ${people.length ? people.map(boardPersonCard).join('') : '<span class="assignment-board__drop-hint">Nessuna persona assegnata</span>'}
+            </div>
           </div>
         </section>`;
     };
@@ -2050,7 +2088,13 @@
           </div>
           ${(!selectedPeople.length || availability.length) ? `
           <section class="assignment-board__availability">
-            <header><strong>Disponibili da assegnare</strong><span>${availability.length}</span></header>
+            <header>
+              <strong>Disponibili da assegnare</strong>
+              <div class="assignment-board__availability-actions">
+                <span class="assignment-board__availability-count">${availability.length}</span>
+                ${availability.length ? `<button type="button" class="assignment-board__availability-batch" data-board-batch-availability="${escapeHtml(shift.id)}">Assegna più persone</button>` : ''}
+              </div>
+            </header>
             <div class="assignment-board__availability-people">
               ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
             </div>
@@ -2060,6 +2104,137 @@
 
     assignmentBoard.innerHTML = `
       <div class="assignment-board">${columns || '<p class="empty-state">Nessuna attività prevista corrisponde ai filtri.</p>'}</div>`;
+  }
+
+  function batchAvailabilityRows(shiftId) {
+    return filteredBoardAssignmentRows()
+      .filter((row) => row.isAvailability && row.shiftId === shiftId)
+      .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'));
+  }
+
+  function refreshBatchAvailabilityCount() {
+    const inputs = [...(detailContent?.querySelectorAll('[data-batch-availability-person]') || [])];
+    const selected = inputs.filter((input) => input.checked);
+    const count = detailContent?.querySelector('[data-batch-availability-count]');
+    if (count) count.textContent = `${selected.length} ${selected.length === 1 ? 'persona selezionata' : 'persone selezionate'}`;
+    const selectAll = detailContent?.querySelector('[data-batch-availability-all]');
+    if (selectAll) {
+      selectAll.checked = Boolean(inputs.length) && inputs.every((input) => input.checked);
+      selectAll.indeterminate = selected.length > 0 && selected.length < inputs.length;
+    }
+  }
+
+  function showBatchAvailabilityAssign(shiftId) {
+    const shift = (snapshot?.shifts || []).find((item) => item.id === shiftId);
+    const available = batchAvailabilityRows(shiftId);
+    if (!shift || !detailDialog) return;
+
+    detailTargetRow = null;
+    copyRequirementContext = null;
+    detailTitle.textContent = `Assegna disponibilità · ${shift.day_label} ${shift.shift_label}`;
+
+    detailContent.innerHTML = available.length
+      ? `
+        <div class="availability-batch">
+          <p class="intro">Seleziona più persone disponibili e assegnale insieme alla stessa attività del turno.</p>
+          <label class="field"><span>Attività di destinazione</span>
+            <select data-batch-availability-requirement>${requirementOptions('', shiftId)}</select>
+          </label>
+          <div class="availability-batch__toolbar">
+            <label><input type="checkbox" data-batch-availability-all> Seleziona tutte</label>
+            <strong data-batch-availability-count>0 persone selezionate</strong>
+          </div>
+          <div class="availability-batch__list">
+            ${available.map((row) => `
+              <label class="availability-batch__person">
+                <input type="checkbox" data-batch-availability-person value="${escapeHtml(row.personId)}">
+                <span>
+                  <strong>${escapeHtml(row.personName)}</strong>
+                  ${row.personGroup ? `<small>${escapeHtml(row.personGroup)}</small>` : ''}
+                  ${row.note ? `<small>Nota: ${escapeHtml(row.note)}</small>` : ''}
+                </span>
+              </label>`).join('')}
+          </div>
+          <div class="availability-batch__actions">
+            <button class="button button--primary" type="button" data-batch-availability-save>Assegna selezionati</button>
+          </div>
+          <p class="status" data-batch-availability-status aria-live="polite"></p>
+        </div>`
+      : '<p class="empty-state">Non ci sono più disponibilità libere in questo turno.</p>';
+
+    detailDialog.showModal();
+  }
+
+  async function assignBatchAvailability(button) {
+    const requirementId = detailContent?.querySelector('[data-batch-availability-requirement]')?.value || '';
+    const selectedPersonIds = [...new Set(
+      [...(detailContent?.querySelectorAll('[data-batch-availability-person]:checked') || [])]
+        .map((input) => input.value)
+        .filter(Boolean)
+    )];
+    const statusNode = detailContent?.querySelector('[data-batch-availability-status]');
+
+    if (!requirementId) {
+      setStatus(statusNode, 'Seleziona l’attività di destinazione.', 'error');
+      return;
+    }
+    if (!selectedPersonIds.length) {
+      setStatus(statusNode, 'Seleziona almeno una persona.', 'error');
+      return;
+    }
+
+    const requirement = requirementById(requirementId);
+    if (!requirement) {
+      setStatus(statusNode, 'Attività non più disponibile. Aggiorna la pagina.', 'error');
+      return;
+    }
+
+    await withButtonBusy(button, 'Assegnazione…', async () => {
+      let assigned = 0;
+      const errors = [];
+
+      for (const personId of selectedPersonIds) {
+        const person = (snapshot?.people || []).find((item) => item.id === personId);
+        try {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'save-assignment',
+              assignmentId: null,
+              personId,
+              requirementId,
+              fromAvailability: true,
+              requestedProfile: null,
+              note: null
+            })
+          });
+          assigned += 1;
+        } catch (error) {
+          errors.push(`${person?.display_name || 'Persona'}: ${error.message}`);
+        }
+      }
+
+      await loadSnapshot();
+
+      if (!errors.length) {
+        detailDialog.close();
+        setStatus(
+          assignmentBoardStatus,
+          `${assigned} ${assigned === 1 ? 'persona assegnata' : 'persone assegnate'} a ${prettifyActivityName(requirement.activity)} · ${requirement.day} ${requirement.shift}.`,
+          'success'
+        );
+        return;
+      }
+
+      showBatchAvailabilityAssign(requirement.shiftId);
+      const refreshedStatus = detailContent?.querySelector('[data-batch-availability-status]');
+      setStatus(
+        refreshedStatus,
+        `${assigned} assegnate. ${errors.length} non assegnate: ${errors.join(' · ')}`,
+        'error'
+      );
+    });
   }
 
   function copySourceRequirements(targetRequirement) {
@@ -2252,6 +2427,7 @@
               assignmentId: null,
               personId,
               requirementId: targetRequirement.id,
+              fromAvailability: personIsAvailableForRequirement(personId, targetRequirement.id),
               requestedProfile: null,
               note: null
             })
@@ -2346,6 +2522,8 @@
           assignmentId,
           personId,
           requirementId: requirement.id,
+          fromAvailability: dragged.kind === 'availability'
+            || (!assignmentId && personIsAvailableForRequirement(personId, requirement.id)),
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -2727,6 +2905,8 @@
             assignmentId: (isAvailability || isNew) ? null : source.id,
             personId,
             requirementId,
+            fromAvailability: isAvailability
+              || (isNew && personIsAvailableForRequirement(personId, requirementId)),
             requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
             note: source.note || null
           })
@@ -2743,17 +2923,32 @@
     });
   }
 
+  function assignmentRemovalAuditNote(assignment) {
+    if (assignment?.currentResponse !== 'declined') return null;
+    const volunteerNote = String(assignment.currentNote || '').trim();
+    return `Rimossa a seguito della risposta "Non può" del volontario per questa attività.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
+  }
+
+  function assignmentRemovalConfirmText(assignment) {
+    const tracked = assignmentRemovalAuditNote(assignment);
+    return `Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.${tracked ? ' La rimozione verrà registrata come conseguenza della risposta “Non può”.' : ''}`;
+  }
+
   async function deleteBoardAssignment(assignmentId, button) {
     const assignment = (snapshot?.assignments || []).find((row) => row.id === assignmentId);
     if (!assignment) return;
-    if (!confirm(`Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
+    if (!confirm(assignmentRemovalConfirmText(assignment))) return;
 
     await withButtonBusy(button, '…', async () => {
       try {
         await api(API, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: assignment.id })
+          body: JSON.stringify({
+            action: 'deactivate-assignment',
+            assignmentId: assignment.id,
+            note: assignmentRemovalAuditNote(assignment)
+          })
         });
         const personName = assignment.personName;
         await loadSnapshot();
@@ -2768,14 +2963,18 @@
     if (boardEditContext?.kind !== 'assignment') return;
     const source = boardEditSource();
     if (!source) return;
-    if (!confirm(`Eliminare l’assegnazione “${displayActivity(source)}” di ${source.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
+    if (!confirm(assignmentRemovalConfirmText(source))) return;
 
     await withButtonBusy(boardEditDelete, 'Eliminazione…', async () => {
       try {
         await api(API, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: source.id })
+          body: JSON.stringify({
+            action: 'deactivate-assignment',
+            assignmentId: source.id,
+            note: assignmentRemovalAuditNote(source)
+          })
         });
         const personName = source.personName;
         boardEditDialog.close();
@@ -3865,6 +4064,62 @@
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
   }
 
+  function formatRaceDay(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || '—');
+  }
+
+  function raceFallsInShift(race, shift) {
+    if (!race?.raceDate || !race?.raceTime || !shift?.starts_at || !shift?.ends_at) return false;
+    if (race.raceDate !== localDateKey(shift.starts_at)) return false;
+    const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
+    const startMs = Date.parse(shift.starts_at);
+    const endMs = Date.parse(shift.ends_at);
+    return Number.isFinite(raceMs)
+      && Number.isFinite(startMs)
+      && Number.isFinite(endMs)
+      && startMs <= raceMs
+      && raceMs < endMs;
+  }
+
+  function personRacesHtml(personId, selectedAssignmentId = '') {
+    if (!snapshot?.raceProgramAvailable) return '';
+    const races = (snapshot?.raceProgram || [])
+      .filter((race) => race.personId === personId)
+      .sort((a, b) =>
+        String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+        || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+        || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+      );
+    const selectedAssignment = selectedAssignmentId
+      ? (snapshot?.assignments || []).find((row) => row.id === selectedAssignmentId) || null
+      : null;
+    const selectedShift = selectedAssignment?.shiftId
+      ? (snapshot?.shifts || []).find((shift) => shift.id === selectedAssignment.shiftId) || null
+      : null;
+
+    return `
+      <section class="person-races">
+        <div class="person-races__head">
+          <strong>Gare</strong>
+          <span>${races.length}</span>
+        </div>
+        ${races.length
+          ? `<div class="person-races__list">${races.map((race) => {
+              const inCurrentShift = raceFallsInShift(race, selectedShift);
+              return `
+                <article class="person-race ${inCurrentShift ? 'is-current-shift' : ''}">
+                  <div>
+                    <strong>${escapeHtml(race.crewLabel || 'Gara')}</strong>
+                    <span>${escapeHtml(formatRaceDay(race.raceDate))} · ${escapeHtml(race.raceTime || 'orario da completare')}</span>
+                  </div>
+                  ${inCurrentShift ? '<span class="person-race__current-badge">Nel turno selezionato</span>' : ''}
+                </article>`;
+            }).join('')}</div>`
+          : '<p class="person-races__empty">Nessuna gara registrata.</p>'}
+      </section>`;
+  }
+
   function personAddActivityForm(personId, defaultRequirementId = '') {
     const requirement = requirementById(defaultRequirementId);
     const candidate = requirement ? { id: null, personId, shiftId: requirement.shiftId } : null;
@@ -3928,7 +4183,8 @@
       </div>
       ${personAddActivityForm(personId, selectedRequirementId)}
       ${intro}
-      ${personActivitiesHtml(personId, selectedAssignmentId)}`;
+      ${personActivitiesHtml(personId, selectedAssignmentId)}
+      ${personRacesHtml(personId, selectedAssignmentId)}`;
     personActivitiesDialog.showModal();
   }
 
@@ -4000,6 +4256,7 @@
             assignmentId: null,
             personId,
             requirementId,
+            fromAvailability: personIsAvailableForRequirement(personId, requirementId),
             requestedProfile: null,
             note: null
           })
@@ -4552,6 +4809,7 @@
           assignmentId,
           personId,
           requirementId,
+          fromAvailability: !assignmentId && personIsAvailableForRequirement(personId, requirementId),
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -4768,9 +5026,17 @@
       showActivityDetail(activity.dataset.showActivity);
     } else if (remove) {
       const assignment = snapshot.assignments.find((row) => row.id === remove.dataset.deleteAssignment);
-      if (!assignment || !confirm(`Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`)) return;
+      if (!assignment || !confirm(assignmentRemovalConfirmText(assignment))) return;
       try {
-        await api(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'deactivate-assignment', assignmentId: assignment.id }) });
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'deactivate-assignment',
+            assignmentId: assignment.id,
+            note: assignmentRemovalAuditNote(assignment)
+          })
+        });
         await loadSnapshot();
       } catch (error) { alert(error.message); }
     } else if (audit) {
@@ -5284,6 +5550,28 @@
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
 
+    const activityToggle = event.target.closest('[data-board-activity-toggle]');
+    if (activityToggle) {
+      event.stopPropagation();
+      const key = activityToggle.dataset.boardActivityToggle || '';
+      const activityNode = activityToggle.closest('[data-board-requirement-id]');
+      const body = activityNode?.querySelector('[data-board-activity-body]');
+      const chevron = activityToggle.querySelector('.assignment-board__activity-chevron');
+      if (!key || !activityNode || !body) return;
+
+      const collapsed = !activityNode.classList.contains('is-collapsed');
+      activityNode.classList.toggle('is-collapsed', collapsed);
+      body.hidden = collapsed;
+      activityToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      activityToggle.title = collapsed ? 'Espandi attività' : 'Comprimi attività';
+      if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
+
+      if (collapsed) boardCollapsedActivities.add(key);
+      else boardCollapsedActivities.delete(key);
+      persistBoardCollapsedActivities();
+      return;
+    }
+
     const groupToggle = event.target.closest('[data-board-group-toggle]');
     if (groupToggle) {
       event.stopPropagation();
@@ -5303,6 +5591,13 @@
       if (collapsed) boardCollapsedGroups.add(key);
       else boardCollapsedGroups.delete(key);
       persistBoardCollapsedGroups();
+      return;
+    }
+
+    const batchAvailability = event.target.closest('[data-board-batch-availability]');
+    if (batchAvailability) {
+      event.stopPropagation();
+      showBatchAvailabilityAssign(batchAvailability.dataset.boardBatchAvailability || '');
       return;
     }
 
@@ -5910,6 +6205,12 @@
   });
 
   detailContent?.addEventListener('click', async (event) => {
+    const batchSave = event.target.closest('[data-batch-availability-save]');
+    if (batchSave) {
+      await assignBatchAvailability(batchSave);
+      return;
+    }
+
     const copySave = event.target.closest('[data-copy-from-save]');
     if (copySave) {
       await copyPeopleToRequirement(copySave);
@@ -5938,6 +6239,20 @@
     detailDialog.close();
   });
   detailContent?.addEventListener('change', (event) => {
+    const batchAll = event.target.closest('[data-batch-availability-all]');
+    if (batchAll) {
+      detailContent.querySelectorAll('[data-batch-availability-person]').forEach((input) => {
+        input.checked = batchAll.checked;
+      });
+      refreshBatchAvailabilityCount();
+      return;
+    }
+
+    if (event.target.matches('[data-batch-availability-person]')) {
+      refreshBatchAvailabilityCount();
+      return;
+    }
+
     const sourceSelect = event.target.closest('[data-copy-source-requirement-select]');
     if (sourceSelect) {
       const targetRequirement = requirementById(copyRequirementContext);

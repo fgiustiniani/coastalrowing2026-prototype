@@ -66,7 +66,7 @@ async function adminReadPeople() {
 }
 
 async function adminSnapshot() {
-  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, raceProgram, requirements] = await Promise.all([
     adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
@@ -116,6 +116,14 @@ async function adminSnapshot() {
     adminRead('disponibilità', 'volunteer_availability', {
       query: { select: 'id,submission_id,shift_id,note,created_at', order: 'created_at.desc' }
     }),
+    adminRead('origine disponibilità assegnazioni', 'volunteer_audit_log', {
+      query: {
+        select: 'entity_id,action_type,created_at',
+        action_type: 'eq.assignment_from_availability',
+        entity_type: 'eq.assignment',
+        order: 'created_at.asc'
+      }
+    }),
     adminReadOptional('programma gare', 'volunteer_race_program', {
       query: {
         select: 'id,person_id,person_code,person_name,crew_label,race_date,race_time,source_type,source_row,active,created_at,updated_at',
@@ -143,6 +151,7 @@ async function adminSnapshot() {
   const submissionRows = rows(submissions);
   const responseRows = rows(responses);
   const availabilityRows = rows(availability);
+  const assignmentAvailabilityAuditRows = rows(assignmentAvailabilityAudit);
   const raceRows = rows(raceProgram);
   const requirementRows = rows(requirements);
 
@@ -236,6 +245,9 @@ async function adminSnapshot() {
   });
 
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+  const availabilityMarkedAssignmentIds = new Set(
+    assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
+  );
 
   const availabilityDeclaredAtByPersonShift = new Map();
   for (const item of availabilityRows) {
@@ -268,6 +280,18 @@ async function adminSnapshot() {
 
   const assignmentComesFromAvailability = (assignment) => {
     if (!assignment?.person_id || !assignment.shift_id) return false;
+
+    let current = assignment;
+    const seen = new Set();
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      if (availabilityMarkedAssignmentIds.has(current.id)) return true;
+      if (!current.supersedes_assignment_id) break;
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || previous.shift_id !== assignment.shift_id) break;
+      current = previous;
+    }
+
     const enteredAt = assignmentEnteredCurrentShiftAt(assignment);
     if (!Number.isFinite(enteredAt)) return false;
     const declaredAt = availabilityDeclaredAtByPersonShift.get(`${assignment.person_id}|${assignment.shift_id}`) || [];
@@ -966,7 +990,32 @@ export default async (request) => {
           p_requested_profile: clean(body.requestedProfile, 200) || null,
           p_note: clean(body.note, 1000) || null
         });
-        return json({ ok: true, assignment: result });
+
+        let availabilityTracked = false;
+        if (body.fromAvailability === true && isUuid(result?.id)) {
+          try {
+            const person = await activePerson(personId);
+            await auditAdminChange({
+              actorName,
+              actionType: 'assignment_from_availability',
+              entityType: 'assignment',
+              entityId: result.id,
+              person,
+              newValue: {
+                assignmentId: result.id,
+                shiftId,
+                activity,
+                source: 'additional_availability'
+              },
+              note: 'Assegnata a seguito di disponibilità aggiuntiva dichiarata dal volontario.'
+            });
+            availabilityTracked = true;
+          } catch (error) {
+            console.error('Disponibilità aggiuntiva non registrata nell’audit', error);
+          }
+        }
+
+        return json({ ok: true, assignment: result, availabilityTracked });
       }
 
       if (action === 'set-assignment-responsible') {
