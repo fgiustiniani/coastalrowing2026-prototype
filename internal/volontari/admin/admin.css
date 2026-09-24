@@ -3491,7 +3491,7 @@ tr.is-busy button.is-busy {
 }
 
 
-/* Responsabile: identificazione solo tramite colore + legenda */
+/* Responsabile: identificazione tramite stellina oro + legenda */
 .assignment-title-row {
   display: flex;
   align-items: center;
@@ -3510,12 +3510,17 @@ tr.is-busy button.is-busy {
   font-weight: 800;
   white-space: nowrap;
 }
-.responsible-legend__swatch {
+.responsible-legend__star {
+  display: inline-grid;
   width: 18px;
   height: 18px;
-  border: 1px solid #c79d21;
-  border-radius: 6px;
-  background: #fff9e6;
+  place-items: center;
+  border: 1px solid #c89b1d;
+  border-radius: 50%;
+  background: #fff8dc;
+  color: #b78300;
+  font-size: .72rem;
+  line-height: 1;
 }
 .assignment-board__person.is-responsible.is-filter-match {
   border-color: #c79d21;
@@ -3536,9 +3541,10 @@ tr.is-busy button.is-busy {
   .responsible-legend {
     font-size: .7rem;
   }
-  .responsible-legend__swatch {
+  .responsible-legend__star {
     width: 16px;
     height: 16px;
+    font-size: .66rem;
   }
 }
 
