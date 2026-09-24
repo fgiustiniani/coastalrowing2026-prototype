@@ -1202,6 +1202,12 @@ tr.is-busy button.is-busy {
   border: 1px solid #dec36c;
   border-radius: 11px;
   background: #fff9e9;
+  transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+}
+.assignment-board__availability.is-drop-target {
+  border-color: #c79d21;
+  background: #fff3c9;
+  box-shadow: inset 0 0 0 2px rgba(199,157,33,.22);
 }
 .assignment-board__availability > header {
   color: #745a00;

@@ -845,6 +845,12 @@
     );
   }
 
+  function personDeclaredAvailabilityForShift(personId, shiftId) {
+    if (!personId || !shiftId) return false;
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    return Boolean(person?.latestSubmission?.availability?.some((item) => item.shiftId === shiftId));
+  }
+
   function personIsAvailableForRequirement(personId, requirementId) {
     const requirement = requirementById(requirementId);
     if (!personId || !requirement?.shiftId) return false;
@@ -1858,6 +1864,16 @@
     return Boolean(availability && availability.shiftId === requirement.shiftId);
   }
 
+  function boardCanReturnToAvailability(dragged, targetShiftId) {
+    if (!dragged || dragged.kind !== 'assignment' || !targetShiftId) return false;
+    const assignment = (snapshot?.assignments || []).find((row) => row.id === dragged.id);
+    return Boolean(
+      assignment
+      && assignment.shiftId === targetShiftId
+      && personDeclaredAvailabilityForShift(assignment.personId, targetShiftId)
+    );
+  }
+
   function filteredBoardRequirements() {
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const selectedGroups = selectedFilterValues(assignmentGroupFilter);
@@ -2087,8 +2103,9 @@
             ${groupDropPalette}
             ${mixedHtml}
           </div>
-          ${(!selectedPeople.length || availability.length) ? `
-          <section class="assignment-board__availability">
+          <section class="assignment-board__availability"
+            data-board-availability-drop="${escapeHtml(shift.id)}"
+            title="Trascina qui una persona che ha dichiarato disponibilità aggiuntiva per questo turno">
             <header>
               <strong>Disponibili da assegnare</strong>
               <div class="assignment-board__availability-actions">
@@ -2099,7 +2116,7 @@
             <div class="assignment-board__availability-people">
               ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
             </div>
-          </section>` : ''}
+          </section>
         </article>`;
     }).join('');
 
@@ -2474,6 +2491,65 @@
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
     if (render) renderAssignments();
+  }
+
+  async function moveBoardItemToAvailability(dragged, targetShiftId) {
+    if (!boardCanReturnToAvailability(dragged, targetShiftId)) {
+      setStatus(
+        assignmentBoardStatus,
+        'Puoi riportare tra i disponibili solo chi ha dichiarato disponibilità aggiuntiva per questo turno.',
+        'error'
+      );
+      return;
+    }
+
+    const assignment = (snapshot?.assignments || []).find((row) => row.id === dragged.id);
+    if (!assignment) return;
+
+    const personName = assignment.personName || 'Persona';
+    const baseNote = 'Rimossa dall’attività e riportata tra le disponibilità aggiuntive dichiarate per questo turno.';
+    const declineNote = assignmentRemovalAuditNote(assignment);
+    const auditNote = [baseNote, declineNote].filter(Boolean).join(' ');
+
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, `Spostamento di ${personName} tra i disponibili…`);
+
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'deactivate-assignment',
+          assignmentId: assignment.id,
+          note: auditNote
+        })
+      });
+
+      const personId = assignment.personId;
+      await loadSnapshot();
+
+      const stillAssigned = (snapshot?.assignments || []).some((row) =>
+        row.personId === personId && row.shiftId === targetShiftId
+      );
+
+      if (stillAssigned) {
+        setStatus(
+          assignmentBoardStatus,
+          `${personName}: assegnazione rimossa, ma resta assegnato ad almeno un’altra attività dello stesso turno e quindi non compare ancora tra i disponibili.`,
+          'success'
+        );
+      } else {
+        setStatus(
+          assignmentBoardStatus,
+          `${personName} riportato tra i disponibili da assegnare.`,
+          'success'
+        );
+      }
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
   }
 
   async function moveBoardItem(dragged, targetRequirementId) {
@@ -5409,6 +5485,24 @@
       return;
     }
 
+    const availabilityDrop = event.target.closest('[data-board-availability-drop]');
+    if (availabilityDrop && boardDragState) {
+      const targetShiftId = availabilityDrop.dataset.boardAvailabilityDrop || '';
+      if (!boardCanReturnToAvailability(boardDragState, targetShiftId)) {
+        event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      clearBoardReorderMarkers();
+      assignmentBoard.querySelectorAll('.is-drop-target').forEach((node) => {
+        if (node !== availabilityDrop) node.classList.remove('is-drop-target');
+      });
+      availabilityDrop.classList.add('is-drop-target');
+      return;
+    }
+
     const dropzone = event.target.closest('[data-board-drop]');
     if (!dropzone || !boardDragState) return;
     const targetRequirementId = dropzone.dataset.boardRequirementId || '';
@@ -5445,7 +5539,7 @@
   });
 
   assignmentBoard?.addEventListener('dragleave', (event) => {
-    const dropzone = event.target.closest('[data-board-drop]');
+    const dropzone = event.target.closest('[data-board-drop], [data-board-availability-drop]');
     if (dropzone && (!event.relatedTarget || !dropzone.contains(event.relatedTarget))) {
       dropzone.classList.remove('is-drop-target');
     }
@@ -5496,6 +5590,19 @@
       clearBoardGroupReorderMarkers();
       assignmentBoard.classList.remove('is-activity-drag-mode');
       await moveBoardActivity(dragged, target.groupId || '', targetRequirementId, placeAfter, canDropAtEnd);
+      return;
+    }
+
+    const availabilityDrop = event.target.closest('[data-board-availability-drop]');
+    if (availabilityDrop && boardDragState) {
+      const dragged = { ...boardDragState };
+      const targetShiftId = availabilityDrop.dataset.boardAvailabilityDrop || '';
+      if (!boardCanReturnToAvailability(dragged, targetShiftId)) return;
+
+      event.preventDefault();
+      availabilityDrop.classList.remove('is-drop-target');
+      clearBoardReorderMarkers();
+      await moveBoardItemToAvailability(dragged, targetShiftId);
       return;
     }
 
