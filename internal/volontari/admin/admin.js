@@ -250,11 +250,9 @@
   }
 
   function assignablePeople() {
-    return (snapshot?.people || []).filter((person) =>
-      person.active !== false
-      && person.selectable !== false
-      && person.source_type !== 'external'
-    );
+    // Area admin: tutte le persone attive devono poter essere assegnate,
+    // comprese quelle esterne o non selezionabili nel modulo pubblico.
+    return (snapshot?.people || []).filter((person) => person.active !== false);
   }
 
   function personOptions(selectedId, includeCurrent = true) {
