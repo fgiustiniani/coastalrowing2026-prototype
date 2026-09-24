@@ -1,12 +1,36 @@
 -- PREPARATA PER feature/volontari. NON ESEGUIRE SENZA AUTORIZZAZIONE ESPLICITA.
 -- Aggiunge il gruppo all'anagrafica volontari e importa i valori dal file Persone(1).xlsx.
 -- Chiave di aggiornamento: volunteer_people.person_code = colonna A "Codice".
--- Alla preparazione risultano 145 codici corrispondenti; PIL01 e PC05 non esistono nel DB e restano quindi non aggiornati.
+-- Alla preparazione risultavano 145 codici corrispondenti; PIL01 e PC05 vengono creati come persone esterne non selezionabili.
 
 begin;
 
 alter table public.volunteer_people
   add column if not exists person_group text;
+
+insert into public.volunteer_people (
+  person_code,
+  display_name,
+  source_type,
+  selectable,
+  active
+)
+select
+  incoming.person_code,
+  incoming.display_name,
+  'external',
+  false,
+  true
+from (
+  values
+    ('PIL01', 'Pilota abilitato 01 – DA CONFERMARE'),
+    ('PC05', 'Protezione Civile 05')
+) as incoming(person_code, display_name)
+where not exists (
+  select 1
+  from public.volunteer_people p
+  where p.person_code = incoming.person_code
+);
 
 update public.volunteer_people as p
 set person_group = incoming.person_group,
