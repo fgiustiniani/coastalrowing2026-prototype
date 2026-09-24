@@ -1336,7 +1336,7 @@
       if (responsibleFilters.length && row.isResponsible !== true) return false;
       if (selectedPeopleOnly && personIds.length && !personIds.includes(row.personId)) return false;
 
-      const rowResponse = row.currentResponse || 'pending';
+      const rowResponse = boardEffectiveResponse(row);
       if (selectedResponsesOnly && responses.length && !responses.includes(rowResponse)) return false;
       const warnings = assignmentWarningDetails(row);
       if (warningFilters.length && !warningFilters.some((warning) =>
@@ -1348,10 +1348,19 @@
     });
   }
 
+  function boardEffectiveResponse(row) {
+    if (row?.isAvailability) return 'availability';
+    if (row?.currentResponse === 'confirmed') return 'confirmed';
+    if (row?.currentResponse === 'declined') return 'declined';
+    if (row?.assignedFromAvailability) return 'confirmed';
+    return 'pending';
+  }
+
   function boardResponseMeta(row) {
-    if (row.isAvailability) return { className: 'is-availability', label: 'Disponibile', mark: '+' };
-    if (row.currentResponse === 'confirmed') return { className: 'is-confirmed', label: 'Confermata', mark: '✓' };
-    if (row.currentResponse === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
+    const value = boardEffectiveResponse(row);
+    if (value === 'availability') return { className: 'is-availability', label: 'Disponibile', mark: '+' };
+    if (value === 'confirmed') return { className: 'is-confirmed', label: row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata', mark: '✓' };
+    if (value === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
 
@@ -1359,22 +1368,27 @@
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const isFilterMatch = selectedPeople.length > 0 && selectedPeople.includes(row.personId);
     const warnings = row.isAvailability ? [] : assignmentWarningDetails(row);
-    const warningText = warnings.map((warning) => warning.text).join(' · ');
+    const visibleWarnings = row.currentResponse === 'declined'
+      ? warnings.filter((warning) => warning.type !== 'declined')
+      : warnings;
+    const warningText = visibleWarnings.map((warning) => warning.text).join(' · ');
+    const effectiveResponse = boardEffectiveResponse(row);
     const response = boardResponseMeta(row);
     const dragKind = row.isAvailability ? 'availability' : 'assignment';
     const dragId = row.id || '';
     const assignmentId = row.isAvailability ? '' : row.id;
-    const responseLabel = row.currentResponse === 'confirmed'
+    const responseLabel = effectiveResponse === 'confirmed'
       ? 'Confermata'
-      : row.currentResponse === 'declined'
+      : effectiveResponse === 'declined'
         ? 'Non può'
         : row.isAvailability
           ? 'Disponibile'
           : 'Da risp.';
+    const showResponseBadge = !(row.assignedFromAvailability && !row.currentResponse);
 
     return `
       <div
-        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.assignedFromAvailability ? 'is-from-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${warnings.length ? 'has-warning' : ''}"
+        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.assignedFromAvailability ? 'is-from-availability' : ''} ${effectiveResponse === 'confirmed' && !row.isAvailability ? 'is-confirmed-response' : ''} ${effectiveResponse === 'declined' ? 'is-declined-response' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${visibleWarnings.length ? 'has-warning' : ''}"
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
@@ -1390,9 +1404,9 @@
             ${escapeHtml(row.personName)}
           </button>
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
-          <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>
+          ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
           ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">N</span>` : ''}
-          ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
+          ${visibleWarnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
           <button type="button"
             class="assignment-board__edit"
             data-board-edit-kind="${escapeHtml(dragKind)}"
@@ -1901,9 +1915,9 @@
         row.shiftId === shiftId && activityIds.has(row.activityId)
       );
       const required = shiftRequirements.reduce((sum, item) => sum + Number(item.requiredCount || 0), 0);
-      const confirmed = shiftAssignments.filter((row) => row.currentResponse === 'confirmed').length;
-      const declined = shiftAssignments.filter((row) => row.currentResponse === 'declined').length;
-      const pending = shiftAssignments.length - confirmed - declined;
+      const confirmed = shiftAssignments.filter((row) => boardEffectiveResponse(row) === 'confirmed').length;
+      const declined = shiftAssignments.filter((row) => boardEffectiveResponse(row) === 'declined').length;
+      const pending = shiftAssignments.filter((row) => boardEffectiveResponse(row) === 'pending').length;
       const available = unassignedAvailabilityRows().filter((row) => row.shiftId === shiftId).length;
       return { required, confirmed, declined, pending, available };
     };

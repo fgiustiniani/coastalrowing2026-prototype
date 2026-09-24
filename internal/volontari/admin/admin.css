@@ -1028,8 +1028,8 @@ tr.is-busy button.is-busy {
   opacity: .42;
 }
 .assignment-board__person.is-responsible {
-  border-color: #c79d21;
-  background: #fff9e6;
+  border-color: #a9d3b4;
+  background: #eaf7ee;
 }
 .assignment-board__person.is-availability {
   border-style: dashed;
@@ -1037,7 +1037,6 @@ tr.is-busy button.is-busy {
   background: #fffaf0;
 }
 .assignment-board__person.is-from-availability {
-  border-color: #9bc9d1;
   background: #f2fafb;
 }
 .assignment-board__availability-origin {
@@ -1056,6 +1055,12 @@ tr.is-busy button.is-busy {
 }
 .assignment-board__person.has-warning {
   border-left: 4px solid #d5a617;
+}
+.assignment-board__person.is-confirmed-response {
+  border-left: 4px solid var(--ok);
+}
+.assignment-board__person.is-declined-response {
+  border-left: 4px solid var(--no);
 }
 .assignment-board__person-main,
 .assignment-board__person-meta {
