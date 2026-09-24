@@ -324,8 +324,8 @@
     const has2026 = rows.some((row) => row.athletes2026Known);
     const has2025 = data.historical2025Available === true;
     const width = Math.max(1120, rows.length * 72 + 110);
-    const height = 540;
-    const margin = { top: 112, right: 24, bottom: 150, left: 48 };
+    const height = 556;
+    const margin = { top: 128, right: 24, bottom: 150, left: 48 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
     const numericValues = rows.flatMap((row) => [
@@ -349,17 +349,20 @@
     const notes = [];
     if (!has2026) notes.push('2026: carica un file HTML aggiornato per il dettaglio atleti per regione.');
     if (has2025) {
-      notes.push(`2025: il totale FIC è ${historicalRegisteredAthletes} atleti iscritti; la distribuzione regionale disponibile dal programma gare riguarda ${historicalProgramAthletes} atleti unici.`);
+      notes.push(`2025: ${historicalRegisteredAthletes} atleti iscritti complessivi (totale ufficiale FIC). La ripartizione regionale dal programma gare definitivo comprende ${historicalProgramAthletes} atleti unici.`);
+      notes.push(`Il dettaglio regionale completo dei ${historicalRegisteredAthletes} iscritti non è pubblicamente disponibile.`);
     } else {
       notes.push('2025: dettaglio regionale non disponibile.');
     }
-    svg.appendChild(svgEl('text', {
-      x: margin.left,
-      y: 91,
-      fill: '#8a5b1e',
-      'font-size': 10.5,
-      'font-weight': 750
-    }, notes.join(' ')));
+    notes.forEach((note, index) => {
+      svg.appendChild(svgEl('text', {
+        x: margin.left,
+        y: 91 + index * 14,
+        fill: '#8a5b1e',
+        'font-size': 10.5,
+        'font-weight': 750
+      }, note));
+    });
 
     appendGrid(svg, width, margin, plotHeight, yMax);
 
@@ -446,7 +449,7 @@
     if (chartMode === 'athletes') {
       if (titleNode) titleNode.textContent = 'Atleti per regione';
       if (descriptionNode) {
-        descriptionNode.textContent = 'Confronto regionale: 2026 = “Atleti Fisici” dall’ultimo HTML caricato; 2025 = atleti unici presenti nel programma gare definitivo. I box in alto riportano i totali degli atleti iscritti; tra parentesi sopra le colonne è indicato il numero di società.';
+        descriptionNode.textContent = 'Confronto regionale: 2026 = “Atleti Fisici” dall’ultimo HTML caricato; 2025 = atleti unici presenti nel programma gare definitivo. I box in alto riportano i totali degli atleti iscritti; per il 2025 il totale ufficiale FIC è 445, mentre la ripartizione regionale disponibile riguarda 384 atleti unici. Il dettaglio regionale completo dei 445 iscritti non è pubblicamente disponibile. Tra parentesi sopra le colonne è indicato il numero di società.';
       }
       if (legendNode) {
         legendNode.innerHTML =
@@ -651,7 +654,7 @@
       ]);
       const pdf = pdfWithJpegPages([
         { ...societiesPage, title: 'Societa per regione - Campionati Italiani Coastal Rowing 2026' },
-        { ...athletesPage, title: 'Atleti per regione - 2026 iscritti / 2025: 445 FIC, 384 programma gare' }
+        { ...athletesPage, title: 'Atleti per regione - 2026 iscritti / 2025: 445 iscritti FIC / 384 nel programma gare' }
       ]);
       downloadBlob(pdf, `grafici-iscrizioni-coastal-2026-${fileStamp()}.pdf`);
     } catch (error) {
