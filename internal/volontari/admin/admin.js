@@ -60,6 +60,8 @@
   const activityGroupStatus = document.querySelector('[data-activity-group-status]');
   const requirementCatalog = document.querySelector('[data-requirement-catalog]');
   const requirementStatus = document.querySelector('[data-requirement-status]');
+  const requirementShiftFilter = document.querySelector('[data-requirement-shift-filter]');
+  const requirementActivityFilter = document.querySelector('[data-requirement-activity-filter]');
   const raceProgram = document.querySelector('[data-race-program]');
   const raceProgramStatus = document.querySelector('[data-race-program-status]');
   const racePersonFilter = document.querySelector('[data-race-person-filter]');
@@ -1194,6 +1196,25 @@
       .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
     setSelectOptions(activityReportShiftFilter, reportShifts, 'Tutti');
     setSelectOptions(shiftBoardShiftFilter, reportShifts, 'Tutti');
+
+    const planningShifts = [...new Map(requirements()
+      .filter((row) => row.shiftId)
+      .map((row) => [row.shiftId, {
+        value: row.shiftId,
+        label: `${row.day} · ${row.shift}`,
+        sortOrder: Number(row.shiftSortOrder ?? 9999)
+      }])).values()]
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, 'it'))
+      .map(({ value, label }) => ({ value, label }));
+    const planningActivities = [...new Map(requirements()
+      .filter((row) => row.activityId)
+      .map((row) => [row.activityId, {
+        value: row.activityId,
+        label: prettifyActivityName(row.activity)
+      }])).values()]
+      .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+    setSelectOptions(requirementShiftFilter, planningShifts, 'Tutti');
+    setSelectOptions(requirementActivityFilter, planningActivities, 'Tutte');
 
     const racePeople = [...new Map((snapshot?.raceProgram || []).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
@@ -4222,6 +4243,15 @@
     else rowNode.querySelector('[data-new-activity-name]')?.removeAttribute('required');
   }
 
+  function filteredRequirementsForCatalog() {
+    const shiftIds = selectedFilterValues(requirementShiftFilter);
+    const activityIds = selectedFilterValues(requirementActivityFilter);
+    return requirements().filter((row) =>
+      filterMatches(shiftIds, row.shiftId)
+      && filterMatches(activityIds, row.activityId)
+    );
+  }
+
   function renderRequirementCatalog() {
     if (!requirementCatalog) return;
     if (!snapshot?.requirementsAvailable) {
@@ -4229,14 +4259,16 @@
       requirementCatalog.innerHTML = '<p class="empty-state">La pianificazione non è ancora inizializzata.</p>';
       return;
     }
-    const rows = requirements();
+    const rows = filteredRequirementsForCatalog();
+    const filtersActive = selectedFilterValues(requirementShiftFilter).length > 0
+      || selectedFilterValues(requirementActivityFilter).length > 0;
     const body = [
       ...(newRequirementOpen ? [requirementRowHtml(null, true)] : []),
       ...rows.map((row) => requirementRowHtml(row, false))
     ].join('');
     requirementCatalog.innerHTML = body
       ? `<table class="admin-table requirements-table planning-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
-      : '<p class="empty-state">Nessun abbinamento attività-turno attivo.</p>';
+      : `<p class="empty-state">${filtersActive ? 'Nessun abbinamento corrisponde ai filtri selezionati.' : 'Nessun abbinamento attività-turno attivo.'}</p>`;
 
     requirementCatalog.querySelectorAll('[data-requirement-row]').forEach(refreshRequirementNewFields);
   }
@@ -5300,6 +5332,8 @@
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
   [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
+  [requirementShiftFilter, requirementActivityFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
   personCatalogSearch?.addEventListener('input', renderPersonCatalog);
