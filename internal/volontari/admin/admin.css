@@ -4225,3 +4225,84 @@ tr.is-busy button.is-busy {
     flex-direction: column;
   }
 }
+
+
+/* Persone rimosse dopo risposta "Non può" */
+.assignment-board__unavailable {
+  margin: 5px 9px 9px;
+  border: 1px solid #e3b6b6;
+  border-radius: 11px;
+  background: #fff7f7;
+}
+.assignment-board__unavailable > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 9px;
+}
+.assignment-board__unavailable-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8b2f2f;
+  text-align: left;
+  cursor: pointer;
+}
+.assignment-board__unavailable-toggle strong {
+  font-size: .78rem;
+  line-height: 1.25;
+}
+.assignment-board__unavailable-chevron {
+  flex: 0 0 auto;
+  width: 12px;
+  font-size: .72rem;
+  line-height: 1;
+}
+.assignment-board__unavailable-count {
+  min-width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #f7dddd;
+  color: #8b2f2f;
+  font-size: .7rem;
+  font-weight: 850;
+}
+.assignment-board__unavailable-body {
+  display: grid;
+  gap: 6px;
+  padding: 0 7px 8px;
+}
+.assignment-board__unavailable-body[hidden] {
+  display: none;
+}
+.assignment-board__unavailable-person {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid #ecd0d0;
+  border-radius: 8px;
+  background: #fff;
+}
+.assignment-board__unavailable-person strong {
+  color: #6f2929;
+  font-size: .76rem;
+  line-height: 1.2;
+}
+.assignment-board__unavailable-person span {
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.25;
+}
+.assignment-board__unavailable-empty {
+  padding: 5px 2px;
+  color: var(--muted);
+  font-size: .7rem;
+}

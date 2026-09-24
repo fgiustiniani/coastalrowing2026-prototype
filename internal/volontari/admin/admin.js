@@ -118,6 +118,7 @@
   let boardGroupPointerDrag = null;
   let boardCollapsedGroups = new Set();
   let boardCollapsedActivities = new Set();
+  let boardCollapsedUnavailable = new Set();
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
@@ -133,6 +134,10 @@
   try {
     const storedActivities = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-activities') || '[]');
     boardCollapsedActivities = new Set(Array.isArray(storedActivities) ? storedActivities : []);
+  } catch {}
+  try {
+    const storedUnavailable = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-unavailable') || '[]');
+    boardCollapsedUnavailable = new Set(Array.isArray(storedUnavailable) ? storedUnavailable : []);
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -647,6 +652,22 @@
     try {
       localStorage.setItem('coastal2026-admin-board-collapsed-activities', JSON.stringify([...boardCollapsedActivities]));
     } catch {}
+  }
+
+  function persistBoardCollapsedUnavailable() {
+    try {
+      localStorage.setItem('coastal2026-admin-board-collapsed-unavailable', JSON.stringify([...boardCollapsedUnavailable]));
+    } catch {}
+  }
+
+  function unavailableRowsForShift(shiftId) {
+    return (snapshot?.declinedRemovals || [])
+      .filter((row) => row.shiftId === shiftId)
+      .sort((a, b) =>
+        String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
+        || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+        || String(a.removedAt || '').localeCompare(String(b.removedAt || ''))
+      );
   }
 
   function activityIdOptions(selectedId = '', { allowNew = false } = {}) {
@@ -2010,6 +2031,8 @@
           || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
+      const unavailable = unavailableRowsForShift(shift.id);
+      const unavailableCollapsed = boardCollapsedUnavailable.has(shift.id);
       const summary = shiftSummary(shift.id);
 
       const blocks = boardShiftBlocks(shiftRequirements);
@@ -2115,6 +2138,29 @@
             </header>
             <div class="assignment-board__availability-people">
               ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
+            </div>
+          </section>
+
+          <section class="assignment-board__unavailable ${unavailableCollapsed ? 'is-collapsed' : ''}" data-board-unavailable-box="${escapeHtml(shift.id)}">
+            <header>
+              <button type="button"
+                class="assignment-board__unavailable-toggle"
+                data-board-unavailable-toggle="${escapeHtml(shift.id)}"
+                aria-expanded="${unavailableCollapsed ? 'false' : 'true'}"
+                title="${unavailableCollapsed ? 'Espandi non disponibili' : 'Comprimi non disponibili'}">
+                <span class="assignment-board__unavailable-chevron" aria-hidden="true">${unavailableCollapsed ? '▸' : '▾'}</span>
+                <strong>Non disponibili</strong>
+              </button>
+              <span class="assignment-board__unavailable-count">${unavailable.length}</span>
+            </header>
+            <div class="assignment-board__unavailable-body" data-board-unavailable-body ${unavailableCollapsed ? 'hidden' : ''}>
+              ${unavailable.length
+                ? unavailable.map((row) => `
+                    <div class="assignment-board__unavailable-person">
+                      <strong>${escapeHtml(row.personName || 'Persona')}</strong>
+                      <span>${escapeHtml(prettifyActivityName(row.activity || 'Attività'))}</span>
+                    </div>`).join('')
+                : '<span class="assignment-board__unavailable-empty">Nessuna persona rimossa per indisponibilità</span>'}
             </div>
           </section>
         </article>`;
@@ -5657,6 +5703,28 @@
 
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
+
+    const unavailableToggle = event.target.closest('[data-board-unavailable-toggle]');
+    if (unavailableToggle) {
+      event.stopPropagation();
+      const shiftId = unavailableToggle.dataset.boardUnavailableToggle || '';
+      const box = unavailableToggle.closest('[data-board-unavailable-box]');
+      const body = box?.querySelector('[data-board-unavailable-body]');
+      const chevron = unavailableToggle.querySelector('.assignment-board__unavailable-chevron');
+      if (!shiftId || !box || !body) return;
+
+      const collapsed = !box.classList.contains('is-collapsed');
+      box.classList.toggle('is-collapsed', collapsed);
+      body.hidden = collapsed;
+      unavailableToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      unavailableToggle.title = collapsed ? 'Espandi non disponibili' : 'Comprimi non disponibili';
+      if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
+
+      if (collapsed) boardCollapsedUnavailable.add(shiftId);
+      else boardCollapsedUnavailable.delete(shiftId);
+      persistBoardCollapsedUnavailable();
+      return;
+    }
 
     const activityToggle = event.target.closest('[data-board-activity-toggle]');
     if (activityToggle) {

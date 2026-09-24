@@ -66,7 +66,7 @@ async function adminReadPeople() {
 }
 
 async function adminSnapshot() {
-  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, raceProgram, requirements] = await Promise.all([
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements] = await Promise.all([
     adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
@@ -124,6 +124,14 @@ async function adminSnapshot() {
         order: 'created_at.asc'
       }
     }),
+    adminRead('rimozioni assegnazioni', 'volunteer_audit_log', {
+      query: {
+        select: 'id,person_id,entity_id,previous_value,note,created_at',
+        action_type: 'eq.assignment_deactivated',
+        entity_type: 'eq.assignment',
+        order: 'created_at.asc'
+      }
+    }),
     adminReadOptional('programma gare', 'volunteer_race_program', {
       query: {
         select: 'id,person_id,person_code,person_name,crew_label,race_date,race_time,source_type,source_row,active,created_at,updated_at',
@@ -152,6 +160,7 @@ async function adminSnapshot() {
   const responseRows = rows(responses);
   const availabilityRows = rows(availability);
   const assignmentAvailabilityAuditRows = rows(assignmentAvailabilityAudit);
+  const assignmentDeactivationAuditRows = rows(assignmentDeactivationAudit);
   const raceRows = rows(raceProgram);
   const requirementRows = rows(requirements);
 
@@ -248,6 +257,39 @@ async function adminSnapshot() {
   const availabilityMarkedAssignmentIds = new Set(
     assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
   );
+
+  const declinedRemovalMarker = 'Rimossa a seguito della risposta "Non può" del volontario per questa attività.';
+  const declinedRemovals = assignmentDeactivationAuditRows
+    .filter((event) => String(event.note || '').includes(declinedRemovalMarker))
+    .map((event) => {
+      const assignment = assignmentHistoryById.get(event.entity_id) || null;
+      const person = personById.get(event.person_id || assignment?.person_id) || null;
+      const previous = event.previous_value && typeof event.previous_value === 'object' ? event.previous_value : {};
+      const shift = assignment?.shift_id
+        ? shiftById.get(assignment.shift_id) || null
+        : shiftRows.find((item) =>
+            item.day_label === previous.day && item.shift_label === previous.shift
+          ) || null;
+      const activity = previous.activity
+        || activityById.get(assignment?.activity_id)?.name
+        || 'Attività';
+
+      if (!shift?.id || !person?.id) return null;
+      return {
+        id: event.id,
+        assignmentId: event.entity_id || null,
+        personId: person.id,
+        personCode: person.person_code || '',
+        personName: person.display_name || 'Persona',
+        personGroup: person.person_group || '',
+        shiftId: shift.id,
+        day: shift.day_label || previous.day || '',
+        shift: shift.shift_label || previous.shift || '',
+        activity,
+        removedAt: event.created_at || null
+      };
+    })
+    .filter(Boolean);
 
   const availabilityDeclaredAtByPersonShift = new Map();
   for (const item of availabilityRows) {
@@ -525,6 +567,7 @@ async function adminSnapshot() {
     activityGroups: activityGroupRows,
     assignments: hydratedAssignments,
     declinedAssignmentResponses,
+    declinedRemovals,
     requirementsAvailable: requirements !== null,
     requirements: hydratedRequirements,
     postConfirmationChanges,
