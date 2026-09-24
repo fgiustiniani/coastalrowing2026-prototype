@@ -172,7 +172,7 @@ async function adminSnapshot() {
     });
   }
 
-  const hydratedAssignments = assignmentRows.map((assignment) => {
+  let hydratedAssignments = assignmentRows.map((assignment) => {
     const person = personById.get(assignment.person_id) || null;
     const shift = shiftById.get(assignment.shift_id) || null;
     const activity = activityById.get(assignment.activity_id) || null;
@@ -220,6 +220,48 @@ async function adminSnapshot() {
   });
 
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+
+  const availabilityDeclaredAtByPersonShift = new Map();
+  for (const item of availabilityRows) {
+    const submission = submissionById.get(item.submission_id) || null;
+    if (!submission?.person_id || !item.shift_id) continue;
+    const stamp = Date.parse(submission.created_at || item.created_at || '');
+    if (!Number.isFinite(stamp)) continue;
+    const key = `${submission.person_id}|${item.shift_id}`;
+    if (!availabilityDeclaredAtByPersonShift.has(key)) availabilityDeclaredAtByPersonShift.set(key, []);
+    availabilityDeclaredAtByPersonShift.get(key).push(stamp);
+  }
+
+  const assignmentEnteredCurrentShiftAt = (assignment) => {
+    if (!assignment?.id || !assignment.shift_id) return null;
+    let current = assignment;
+    let enteredAt = Date.parse(current.created_at || '');
+    enteredAt = Number.isFinite(enteredAt) ? enteredAt : null;
+    const seen = new Set();
+
+    while (current?.supersedes_assignment_id && !seen.has(current.id)) {
+      seen.add(current.id);
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || previous.shift_id !== assignment.shift_id) break;
+      const previousAt = Date.parse(previous.created_at || '');
+      if (Number.isFinite(previousAt) && (enteredAt === null || previousAt < enteredAt)) enteredAt = previousAt;
+      current = previous;
+    }
+    return enteredAt;
+  };
+
+  const assignmentComesFromAvailability = (assignment) => {
+    if (!assignment?.person_id || !assignment.shift_id) return false;
+    const enteredAt = assignmentEnteredCurrentShiftAt(assignment);
+    if (!Number.isFinite(enteredAt)) return false;
+    const declaredAt = availabilityDeclaredAtByPersonShift.get(`${assignment.person_id}|${assignment.shift_id}`) || [];
+    return declaredAt.some((stamp) => stamp <= enteredAt);
+  };
+
+  hydratedAssignments = hydratedAssignments.map((row) => ({
+    ...row,
+    assignedFromAvailability: assignmentComesFromAvailability(assignmentHistoryById.get(row.id) || null)
+  }));
 
   const declinedAssignmentResponses = [];
   for (const [assignmentId, response] of latestResponseByAssignment.entries()) {

@@ -1374,7 +1374,7 @@
 
     return `
       <div
-        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${warnings.length ? 'has-warning' : ''}"
+        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.assignedFromAvailability ? 'is-from-availability' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${warnings.length ? 'has-warning' : ''}"
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
@@ -1389,6 +1389,7 @@
             title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
             ${escapeHtml(row.personName)}
           </button>
+          ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
           <span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>
           ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">N</span>` : ''}
           ${warnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
@@ -1893,6 +1894,20 @@
         </section>`;
     };
 
+    const shiftSummary = (shiftId) => {
+      const shiftRequirements = requirements().filter((item) => item.shiftId === shiftId);
+      const activityIds = new Set(shiftRequirements.map((item) => item.activityId).filter(Boolean));
+      const shiftAssignments = (snapshot?.assignments || []).filter((row) =>
+        row.shiftId === shiftId && activityIds.has(row.activityId)
+      );
+      const required = shiftRequirements.reduce((sum, item) => sum + Number(item.requiredCount || 0), 0);
+      const confirmed = shiftAssignments.filter((row) => row.currentResponse === 'confirmed').length;
+      const declined = shiftAssignments.filter((row) => row.currentResponse === 'declined').length;
+      const pending = shiftAssignments.length - confirmed - declined;
+      const available = unassignedAvailabilityRows().filter((row) => row.shiftId === shiftId).length;
+      return { required, confirmed, declined, pending, available };
+    };
+
     const columns = shifts.map((shift) => {
       const shiftRequirements = visibleRequirements
         .filter((item) => item.shiftId === shift.id)
@@ -1901,6 +1916,7 @@
           || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
+      const summary = shiftSummary(shift.id);
 
       const blocks = boardShiftBlocks(shiftRequirements);
       const renderPositionTarget = (targetRequirementId = '', placeAfter = false, dropAtEnd = false) => `
@@ -1981,6 +1997,13 @@
           <header class="assignment-board__header">
             <strong>${escapeHtml(shift.day_label)}</strong>
             <span>${escapeHtml(shift.shift_label)}</span>
+            <div class="assignment-board__shift-summary" aria-label="Riepilogo persone del turno">
+              <span class="is-required" title="Somma delle persone necessarie nelle attività del turno"><b>${summary.required}</b> necessarie</span>
+              <span class="is-confirmed" title="Assegnazioni confermate"><b>${summary.confirmed}</b> accettate</span>
+              <span class="is-declined" title="Assegnazioni rifiutate"><b>${summary.declined}</b> rifiutate</span>
+              <span class="is-pending" title="Assegnazioni ancora senza risposta"><b>${summary.pending}</b> da rispondere</span>
+              <span class="is-available" title="Persone con disponibilità aggiuntiva nel turno ma non ancora assegnate"><b>${summary.available}</b> disp. non assegnate</span>
+            </div>
           </header>
           <div class="assignment-board__activities">
             ${groupDropPalette}

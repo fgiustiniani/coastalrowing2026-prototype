@@ -897,6 +897,52 @@ tr.is-busy button.is-busy {
   font-size: .82rem;
   font-weight: 800;
 }
+.assignment-board__shift-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.assignment-board__shift-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 22px;
+  padding: 3px 6px;
+  border: 1px solid #cbdadd;
+  border-radius: 999px;
+  background: #fff;
+  color: #4f6269;
+  font-size: .64rem;
+  font-weight: 750;
+  line-height: 1.1;
+}
+.assignment-board__shift-summary span b {
+  font-size: .72rem;
+  color: var(--ink);
+}
+.assignment-board__shift-summary .is-required {
+  background: #f6f8f9;
+}
+.assignment-board__shift-summary .is-confirmed {
+  border-color: #b9d8c3;
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.assignment-board__shift-summary .is-declined {
+  border-color: #e6bcbc;
+  background: var(--no-bg);
+  color: var(--no);
+}
+.assignment-board__shift-summary .is-pending {
+  background: #edf1f2;
+  color: #607078;
+}
+.assignment-board__shift-summary .is-available {
+  border-color: #a9d3da;
+  background: #e8f6f8;
+  color: #2d6f7a;
+}
 .assignment-board__activities {
   display: grid;
   gap: 8px;
@@ -989,6 +1035,24 @@ tr.is-busy button.is-busy {
   border-style: dashed;
   border-color: #d8bd65;
   background: #fffaf0;
+}
+.assignment-board__person.is-from-availability {
+  border-color: #9bc9d1;
+  background: #f2fafb;
+}
+.assignment-board__availability-origin {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 5px;
+  border: 1px solid #a9d3da;
+  border-radius: 999px;
+  background: #dff2f5;
+  color: #2d6f7a;
+  font-size: .62rem;
+  font-weight: 850;
+  white-space: nowrap;
 }
 .assignment-board__person.has-warning {
   border-left: 4px solid #d5a617;
