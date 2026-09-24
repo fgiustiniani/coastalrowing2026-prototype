@@ -822,6 +822,7 @@
           personId: person.id,
           personCode: person.person_code || '',
           personName: person.display_name,
+          personGroup: person.person_group || '',
           shiftId: item.shiftId,
           day: item.day || '',
           shift: item.shift || '',
@@ -2162,7 +2163,7 @@
         </div>`
       : '<p class="empty-state">Non ci sono più disponibilità libere in questo turno.</p>';
 
-    detailDialog.showModal();
+    if (!detailDialog.open) detailDialog.showModal();
   }
 
   async function assignBatchAvailability(button) {
