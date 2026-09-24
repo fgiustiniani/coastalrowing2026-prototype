@@ -4631,3 +4631,42 @@ tr.is-busy button.is-busy {
   background: #fff;
   color: var(--ink);
 }
+
+
+/* Vista schede: ogni persona resta sempre su una sola riga */
+.assignment-board__person-main {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.assignment-board__person-name {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignment-board__drag-handle,
+.assignment-board__availability-origin,
+.assignment-board__response,
+.assignment-board__note,
+.assignment-board__warning,
+.assignment-board__edit,
+.assignment-board__delete {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .assignment-board__person-main {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+}
