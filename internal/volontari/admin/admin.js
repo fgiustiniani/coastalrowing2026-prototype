@@ -4243,6 +4243,45 @@
       </section>`;
   }
 
+  function personAdditionalAvailabilityHtml(personId, selectedAssignmentId = '') {
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    const availability = [...(person?.latestSubmission?.availability || [])];
+    const shiftById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift]));
+    const selectedAssignment = selectedAssignmentId
+      ? (snapshot?.assignments || []).find((row) => row.id === selectedAssignmentId) || null
+      : null;
+
+    availability.sort((a, b) => {
+      const shiftA = shiftById.get(a.shiftId) || {};
+      const shiftB = shiftById.get(b.shiftId) || {};
+      return Number(shiftA.sort_order ?? 9999) - Number(shiftB.sort_order ?? 9999)
+        || String(a.day || '').localeCompare(String(b.day || ''), 'it')
+        || String(a.shift || '').localeCompare(String(b.shift || ''), 'it');
+    });
+
+    return `
+      <section class="person-additional-availability">
+        <div class="person-additional-availability__head">
+          <strong>Disponibilità aggiuntive</strong>
+          <span>${availability.length}</span>
+        </div>
+        ${availability.length
+          ? `<div class="person-additional-availability__list">${availability.map((item) => {
+              const isSelectedShift = Boolean(selectedAssignment?.shiftId && item.shiftId === selectedAssignment.shiftId);
+              return `
+                <article class="person-additional-availability__item ${isSelectedShift ? 'is-current-shift' : ''}">
+                  <div>
+                    <strong>${escapeHtml(item.day || shiftById.get(item.shiftId)?.day_label || 'Turno')}</strong>
+                    <span>${escapeHtml(item.shift || shiftById.get(item.shiftId)?.shift_label || '—')}</span>
+                    ${item.note ? `<small>${escapeHtml(item.note)}</small>` : ''}
+                  </div>
+                  ${isSelectedShift ? '<span class="person-additional-availability__badge">Turno selezionato</span>' : ''}
+                </article>`;
+            }).join('')}</div>`
+          : '<p class="person-additional-availability__empty">Nessuna disponibilità aggiuntiva dichiarata.</p>'}
+      </section>`;
+  }
+
   function personAddActivityForm(personId, defaultRequirementId = '') {
     const requirement = requirementById(defaultRequirementId);
     const candidate = requirement ? { id: null, personId, shiftId: requirement.shiftId } : null;
@@ -4307,6 +4346,7 @@
       ${personAddActivityForm(personId, selectedRequirementId)}
       ${intro}
       ${personActivitiesHtml(personId, selectedAssignmentId)}
+      ${personAdditionalAvailabilityHtml(personId, selectedAssignmentId)}
       ${personRacesHtml(personId, selectedAssignmentId)}`;
     personActivitiesDialog.showModal();
   }
