@@ -193,6 +193,34 @@ async function adminSnapshot() {
     }
   }
 
+  const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+
+  const sameAssignmentTurn = (current, previous) => {
+    if (!current || !previous) return false;
+    if (current.shift_id || previous.shift_id) {
+      return Boolean(current.shift_id && previous.shift_id && current.shift_id === previous.shift_id);
+    }
+    return String(current.raw_day || '') === String(previous.raw_day || '')
+      && String(current.raw_shift || '') === String(previous.raw_shift || '');
+  };
+
+  const responseForAssignment = (assignment) => {
+    let current = assignment;
+    const seen = new Set();
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      const response = latestResponseByAssignment.get(current.id) || null;
+      if (response) return response;
+      if (!current.supersedes_assignment_id) break;
+
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      current = previous;
+    }
+    return null;
+  };
+
   const availabilityBySubmission = new Map();
   for (const item of availabilityRows) {
     if (!availabilityBySubmission.has(item.submission_id)) availabilityBySubmission.set(item.submission_id, []);
@@ -209,7 +237,7 @@ async function adminSnapshot() {
     const person = personById.get(assignment.person_id) || null;
     const shift = shiftById.get(assignment.shift_id) || null;
     const activity = activityById.get(assignment.activity_id) || null;
-    const current = latestResponseByAssignment.get(assignment.id) || null;
+    const current = responseForAssignment(assignment);
     return {
       id: assignment.id,
       personId: assignment.person_id,
@@ -253,7 +281,6 @@ async function adminSnapshot() {
     };
   });
 
-  const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
   const availabilityMarkedAssignmentIds = new Set(
     assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
   );

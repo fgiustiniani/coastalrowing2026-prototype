@@ -117,19 +117,22 @@ async function personState(personId) {
   const person = rows(people)[0];
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
-  const [assignments, activities, shifts, submissions] = await Promise.all([
-    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
+  const [assignments, assignmentHistory, activities, shifts, submissions] = await Promise.all([
+    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
+    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,raw_day,raw_shift,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } })
   ]);
 
   const assignmentRows = rows(assignments);
+  const assignmentHistoryRows = rows(assignmentHistory);
+  const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
   const submissionRows = rows(submissions);
   const activityById = new Map(rows(activities).map((row) => [row.id, row]));
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const submissionTime = new Map(submissionRows.map((row) => [row.id, row.created_at]));
-  const assignmentIds = assignmentRows.map((row) => row.id);
+  const assignmentIds = assignmentHistoryRows.map((row) => row.id);
 
   let responseRows = [];
   if (assignmentIds.length) {
@@ -142,6 +145,32 @@ async function personState(personId) {
     .sort((a, b) => String(submissionTime.get(b.submission_id) || b.created_at).localeCompare(String(submissionTime.get(a.submission_id) || a.created_at)))
     .forEach((row) => { if (!latestResponse.has(row.assignment_id)) latestResponse.set(row.assignment_id, row); });
 
+  const sameAssignmentTurn = (current, previous) => {
+    if (!current || !previous) return false;
+    if (current.shift_id || previous.shift_id) {
+      return Boolean(current.shift_id && previous.shift_id && current.shift_id === previous.shift_id);
+    }
+    return String(current.raw_day || '') === String(previous.raw_day || '')
+      && String(current.raw_shift || '') === String(previous.raw_shift || '');
+  };
+
+  const responseForAssignment = (assignment) => {
+    let current = assignment;
+    const seen = new Set();
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      const response = latestResponse.get(current.id) || null;
+      if (response) return response;
+      if (!current.supersedes_assignment_id) break;
+
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      current = previous;
+    }
+    return null;
+  };
+
   const latestSubmission = submissionRows[0] || null;
   let availabilityRows = [];
   if (latestSubmission) {
@@ -152,7 +181,7 @@ async function personState(personId) {
   const hydratedAssignments = assignmentRows.map((assignment) => {
     const shift = shiftById.get(assignment.shift_id) || null;
     const activity = activityById.get(assignment.activity_id) || null;
-    const current = latestResponse.get(assignment.id) || null;
+    const current = responseForAssignment(assignment);
     return {
       id: assignment.id,
       day: shift?.day_label || assignment.raw_day || '',
