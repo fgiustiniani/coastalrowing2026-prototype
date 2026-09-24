@@ -4495,3 +4495,76 @@ tr.is-busy button.is-busy {
   pointer-events: none;
   opacity: .55;
 }
+
+
+/* Evita sovrapposizioni orizzontali tra schede/colonne nella vista operativa */
+.assignment-board__column,
+.assignment-board__activities,
+.assignment-board__activity-group,
+.assignment-board__group-body,
+.assignment-board__ungrouped-zone,
+.assignment-board__activity {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.assignment-board__activity-head {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 145px);
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.assignment-board__activity-head > .assignment-board__activity-drag-handle {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.assignment-board__activity-toggle {
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.assignment-board__activity-toggle strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.assignment-board__activity-head > .assignment-board__activity-actions {
+  grid-column: 3;
+  width: 100%;
+  max-width: 145px;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  align-content: center;
+  gap: 4px;
+}
+
+.assignment-board__activity-actions > * {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .assignment-board__activity-head {
+    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 132px);
+  }
+
+  .assignment-board__activity-head > .assignment-board__activity-actions {
+    max-width: 132px;
+  }
+}
