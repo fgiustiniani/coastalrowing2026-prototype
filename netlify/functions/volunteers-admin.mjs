@@ -45,15 +45,29 @@ async function adminReadOptionalColumn(operation, path, options) {
   }
 }
 
+async function adminReadPeople() {
+  const withGroup = await adminReadOptionalColumn('persone con gruppo', 'volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,person_group,source_type,selectable,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'surname.asc,given_name.asc,display_name.asc'
+    }
+  });
+  if (withGroup !== null) return { data: withGroup, groupAvailable: true };
+
+  const fallback = await adminRead('persone', 'volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'surname.asc,given_name.asc,display_name.asc'
+    }
+  });
+  return { data: fallback, groupAvailable: false };
+}
+
 async function adminSnapshot() {
-  const [people, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
-    adminRead('persone', 'volunteer_people', {
-      query: {
-        select: 'id,person_code,display_name,surname,given_name,source_type,selectable,active,created_at,updated_at',
-        active: 'eq.true',
-        order: 'surname.asc,given_name.asc,display_name.asc'
-      }
-    }),
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, raceProgram, requirements] = await Promise.all([
+    adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
         select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable,active',
@@ -118,7 +132,8 @@ async function adminSnapshot() {
     })
   ]);
 
-  const peopleRows = rows(people);
+  const peopleRows = rows(peopleResult?.data);
+  const personGroupsAvailable = peopleResult?.groupAvailable === true;
   const shiftRows = rows(shifts);
   const activityRows = rows(activities);
   const activityGroupRows = rows(activityGroups);
@@ -182,6 +197,7 @@ async function adminSnapshot() {
       personId: assignment.person_id,
       personCode: person?.person_code || '',
       personName: person?.display_name || 'Persona non disponibile',
+      personGroup: person?.person_group || '',
       personSourceType: person?.source_type || '',
       shiftId: shift?.id || null,
       day: shift?.day_label || assignment.raw_day || '',
@@ -478,6 +494,7 @@ async function adminSnapshot() {
   return {
     generatedAt: new Date().toISOString(),
     people: peopleWithState,
+    personGroupsAvailable,
     shifts: shiftRows,
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
@@ -715,6 +732,7 @@ export default async (request) => {
         const givenName = clean(body.givenName, 100) || null;
         const displayName = clean(body.displayName, 160)
           || [surname, givenName].filter(Boolean).join(' ').trim();
+        const personGroup = clean(body.personGroup, 120) || null;
         const selectable = body.selectable !== false;
 
         if (personId && !isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
@@ -723,12 +741,19 @@ export default async (request) => {
         let current = null;
         let saved = null;
         let raceProgramAvailable = false;
+        const personGroupProbe = await adminReadOptionalColumn('campo gruppo persona', 'volunteer_people', {
+          query: { select: 'id,person_group', limit: 1 }
+        });
+        const personGroupsAvailable = personGroupProbe !== null;
+        const personSelect = personGroupsAvailable
+          ? 'id,person_code,surname,given_name,display_name,person_group,source_type,selectable,active'
+          : 'id,person_code,surname,given_name,display_name,source_type,selectable,active';
         const now = new Date().toISOString();
 
         if (personId) {
           const currentRows = await supabaseRequest('volunteer_people', {
             query: {
-              select: 'id,person_code,surname,given_name,display_name,source_type,selectable,active',
+              select: personSelect,
               id: `eq.${personId}`,
               limit: 1
             }
@@ -758,6 +783,7 @@ export default async (request) => {
               surname,
               given_name: givenName,
               display_name: displayName,
+              ...(personGroupsAvailable ? { person_group: personGroup } : {}),
               selectable,
               active: true,
               updated_at: now
@@ -773,6 +799,7 @@ export default async (request) => {
               surname,
               given_name: givenName,
               display_name: displayName,
+              ...(personGroupsAvailable ? { person_group: personGroup } : {}),
               source_type: 'manual',
               selectable,
               active: true
@@ -810,6 +837,7 @@ export default async (request) => {
             surname: saved.surname,
             givenName: saved.given_name,
             displayName: saved.display_name,
+            personGroup: saved.person_group || null,
             selectable: saved.selectable,
             active: saved.active
           }

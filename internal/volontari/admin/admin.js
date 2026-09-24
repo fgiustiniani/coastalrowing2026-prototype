@@ -2,6 +2,13 @@
   // Branch deploy trigger: 2026-09-21 requirements rollout
   const API = '/api/volunteers-admin';
   const SESSION_KEY = 'coastal2026-admin-session';
+  const ASSIGNED_PEOPLE_EXCLUDED_GROUPS = new Set([
+    'piloti gommoni',
+    'protezione civile',
+    'volontarx',
+    'vigili in pensione'
+  ]);
+  const personGroupKey = (value) => String(value || '').trim().toLocaleLowerCase('it-IT');
   const login = document.querySelector('[data-admin-login]');
   const loginForm = document.querySelector('[data-login-form]');
   const loginStatus = document.querySelector('[data-login-status]');
@@ -21,6 +28,7 @@
   const assignmentListOnlyFields = Array.from(document.querySelectorAll('[data-assignment-list-only]'));
   const assignmentSort = document.querySelector('[data-assignment-sort]');
   const assignmentPersonFilter = document.querySelector('[data-assignment-person-filter]');
+  const assignmentGroupFilter = document.querySelector('[data-assignment-group-filter]');
   const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
@@ -30,6 +38,7 @@
   const availabilityFilterStatus = document.querySelector('[data-availability-filter-status]');
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
+  const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
@@ -1074,7 +1083,14 @@
       .sort((a, b) => a.localeCompare(b, 'it'))
       .map((value) => ({ value, label: value }));
 
+    const personGroups = [...new Set((snapshot?.people || [])
+      .map((person) => String(person.person_group || '').trim())
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'it'))
+      .map((value) => ({ value, label: value }));
+
     setSelectOptions(assignmentPersonFilter, people, 'Tutte');
+    setSelectOptions(assignmentGroupFilter, personGroups, 'Tutti');
     setSelectOptions(assignmentShiftFilter, shifts, 'Tutti');
     setSelectOptions(assignmentActivityFilter, activities, 'Tutte');
 
@@ -1086,6 +1102,7 @@
       .map((person) => [person.id, { value: person.id, label: person.display_name }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
+    setSelectOptions(personReportGroupFilter, personGroups, 'Tutti');
     setSelectOptions(activityReportActivityFilter, reportActivities, 'Tutte');
     setSelectOptions(shiftBoardActivityFilter, reportActivities, 'Tutte');
 
@@ -1131,7 +1148,9 @@
 
   function renderKpis() {
     const assignments = snapshot?.assignments || [];
-    const assignedPeople = new Set(assignments.map((row) => row.personId)).size;
+    const assignedPeople = new Set(assignments
+      .filter((row) => !ASSIGNED_PEOPLE_EXCLUDED_GROUPS.has(personGroupKey(row.personGroup)))
+      .map((row) => row.personId)).size;
     const respondedPeople = respondedAssignedPeople();
     const unassignedAvailability = unassignedAvailabilityRows();
     const confirmed = assignments.filter((row) => row.currentResponse === 'confirmed').length;
@@ -1168,6 +1187,7 @@
 
   function filteredAssignments() {
     const personIds = selectedFilterValues(assignmentPersonFilter);
+    const groups = selectedFilterValues(assignmentGroupFilter);
     const shifts = selectedFilterValues(assignmentShiftFilter);
     const activities = selectedFilterValues(assignmentActivityFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
@@ -1199,6 +1219,7 @@
       );
 
       return filterMatches(personIds, row.personId)
+        && filterMatches(groups, row.personGroup || '')
         && filterMatches(shifts, shiftFilterKey(row))
         && (!activities.length || (!row.isAvailability && activities.includes(prettifyActivityName(row.activity))))
         && (!responses.length || (!row.isAvailability && responses.includes(rowResponse)))
@@ -1206,7 +1227,7 @@
     });
 
     const gapRows = requirementGapRows().filter((row) => {
-      if (personIds.length || responses.length || warningFilters.length || responsibleFilters.length) return false;
+      if (personIds.length || groups.length || responses.length || warningFilters.length || responsibleFilters.length) return false;
       const requirement = requirementById(row.requirementId);
       if (!coverageMatches(requirement)) return false;
       return filterMatches(shifts, shiftFilterKey(row))
@@ -1322,6 +1343,7 @@
 
   function filteredBoardAssignmentRows({ selectedPeopleOnly = false, selectedResponsesOnly = false } = {}) {
     const personIds = selectedFilterValues(assignmentPersonFilter);
+    const groups = selectedFilterValues(assignmentGroupFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
@@ -1330,11 +1352,13 @@
       if (row.isAvailability) {
         if (responsibleFilters.length) return false;
         if (personIds.length && !personIds.includes(row.personId)) return false;
+        if (groups.length && !groups.includes(row.personGroup || '')) return false;
         return !responses.length && !warningFilters.length;
       }
 
       if (responsibleFilters.length && row.isResponsible !== true) return false;
       if (selectedPeopleOnly && personIds.length && !personIds.includes(row.personId)) return false;
+      if (groups.length && !groups.includes(row.personGroup || '')) return false;
 
       const rowResponse = boardEffectiveResponse(row);
       if (selectedResponsesOnly && responses.length && !responses.includes(rowResponse)) return false;
@@ -1810,12 +1834,13 @@
 
   function filteredBoardRequirements() {
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
+    const selectedGroups = selectedFilterValues(assignmentGroupFilter);
     const selectedResponses = selectedFilterValues(assignmentResponseFilter);
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
-    const shouldMatchAssignments = selectedPeople.length > 0 || selectedResponses.length > 0 || responsibleFilters.length > 0;
+    const shouldMatchAssignments = selectedPeople.length > 0 || selectedGroups.length > 0 || selectedResponses.length > 0 || responsibleFilters.length > 0;
     const matchingAssignments = shouldMatchAssignments
       ? filteredBoardAssignmentRows({
           selectedPeopleOnly: selectedPeople.length > 0,
@@ -1844,11 +1869,12 @@
     if (!assignmentBoard) return;
     const rows = filteredBoardAssignmentRows();
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
+    const selectedGroups = selectedFilterValues(assignmentGroupFilter);
     const selectedResponses = selectedFilterValues(assignmentResponseFilter);
     const forceExpandedGroups = selectedResponses.length > 0;
     const visibleRequirements = filteredBoardRequirements();
     const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
-    if (selectedPeople.length) {
+    if (selectedPeople.length || selectedGroups.length) {
       rows.filter((row) => row.isAvailability).forEach((row) => visibleShiftIds.add(row.shiftId));
     }
     const shifts = [...(snapshot?.shifts || [])]
@@ -2768,6 +2794,7 @@
   function assignmentFilterDescriptors() {
     return [
       { label: 'Persona', select: assignmentPersonFilter },
+      { label: 'Gruppo', select: assignmentGroupFilter },
       { label: 'Turno', select: assignmentShiftFilter },
       { label: 'Attività', select: assignmentActivityFilter },
       { label: 'Risposta', select: assignmentResponseFilter },
@@ -2887,6 +2914,7 @@
           id: person.id,
           name: person.display_name,
           code: person.person_code || '',
+          group: person.person_group || '',
           rows: []
         });
       }
@@ -2898,9 +2926,11 @@
           id: row.personId,
           name: row.personName,
           code: row.personCode,
+          group: row.personGroup || '',
           rows: []
         });
       }
+      if (!byPerson.get(row.personId).group && row.personGroup) byPerson.get(row.personId).group = row.personGroup;
       byPerson.get(row.personId).rows.push(row);
     }
 
@@ -2965,9 +2995,11 @@
 
   function filteredPersonReportRows() {
     const personIds = selectedFilterValues(personReportPersonFilter);
+    const groups = selectedFilterValues(personReportGroupFilter);
     const answers = selectedFilterValues(personReportResponseFilter);
     return personReportRows().filter((item) =>
       filterMatches(personIds, item.id)
+      && filterMatches(groups, item.group || '')
       && filterMatches(answers, item.answered ? 'yes' : 'no')
     );
   }
@@ -3422,7 +3454,7 @@
       .filter((person) => {
         if (!q) return true;
         return normalizeFilterSearch(
-          `${person.person_code || ''} ${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''}`
+          `${person.person_code || ''} ${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_group || ''}`
         ).includes(q);
       })
       .sort((a, b) =>
@@ -3439,6 +3471,7 @@
         <td><input class="name-input" data-person-surname maxlength="100" value="${escapeHtml(person?.surname || '')}" placeholder="Cognome"></td>
         <td><input class="name-input" data-person-given-name maxlength="100" value="${escapeHtml(person?.given_name || '')}" placeholder="Nome"></td>
         <td><input class="name-input" data-person-display-name maxlength="160" value="${escapeHtml(person?.display_name || '')}" placeholder="Nominativo visualizzato"></td>
+        <td><input class="name-input" data-person-group maxlength="120" value="${escapeHtml(person?.person_group || '')}" placeholder="Gruppo" ${snapshot?.personGroupsAvailable === false ? 'disabled title="Campo non ancora inizializzato nel database"' : ''}></td>
         <td><label class="catalog-check"><input type="checkbox" data-person-selectable ${person?.selectable !== false ? 'checked' : ''}><span>Sì</span></label></td>
         <td><span class="source-badge">${escapeHtml(person?.source_type || (isNew ? 'manual' : '—'))}</span></td>
         <td>
@@ -3463,7 +3496,7 @@
 
     personCatalog.innerHTML = body
       ? `<table class="admin-table person-catalog-table">
-          <thead><tr><th>Codice</th><th>Cognome</th><th>Nome</th><th>Nominativo</th><th>Selezionabile</th><th>Origine</th><th>Azioni</th></tr></thead>
+          <thead><tr><th>Codice</th><th>Cognome</th><th>Nome</th><th>Nominativo</th><th>Gruppo</th><th>Selezionabile</th><th>Origine</th><th>Azioni</th></tr></thead>
           <tbody>${body}</tbody>
         </table>`
       : '<p class="empty-state">Nessuna persona attiva.</p>';
@@ -4622,10 +4655,10 @@
     renderRaceProgram();
   });
 
-  [assignmentSort, assignmentPersonFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
+  [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
-  [personReportPersonFilter, personReportResponseFilter]
+  [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
@@ -5334,6 +5367,7 @@
       const givenName = rowNode.querySelector('[data-person-given-name]')?.value.trim() || '';
       const displayName = rowNode.querySelector('[data-person-display-name]')?.value.trim()
         || [surname, givenName].filter(Boolean).join(' ').trim();
+      const personGroup = rowNode.querySelector('[data-person-group]')?.value.trim() || '';
       const selectable = rowNode.querySelector('[data-person-selectable]')?.checked !== false;
 
       if (!displayName) {
@@ -5356,6 +5390,7 @@
                 surname,
                 givenName,
                 displayName,
+                personGroup,
                 selectable
               })
             });
