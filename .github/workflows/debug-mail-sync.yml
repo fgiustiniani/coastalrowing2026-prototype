@@ -1,4 +1,5 @@
 name: Debug Gmail rental sync
+# run: blob-persist
 
 on:
   push:
