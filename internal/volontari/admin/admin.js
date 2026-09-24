@@ -424,8 +424,14 @@
 
     const render = (query = '') => {
       const normalized = normalizeFilterSearch(query);
+      const availabilityOnly = select.dataset.availabilityOnly === 'true';
+      const targetRequirement = boardEditTargetRequirement();
       const options = [...select.options]
         .filter((option) => option.value)
+        .filter((option) =>
+          !availabilityOnly
+          || Boolean(targetRequirement?.id && personIsAvailableForRequirement(option.value, targetRequirement.id))
+        )
         .filter((option) => {
           if (!normalized) return true;
           const haystack = normalizeFilterSearch(option.textContent);
@@ -445,7 +451,9 @@
                 ${personRacesHtml(option.value)}
               </span>
             </button>`).join('')
-        : '<p class="person-search-select__empty">Nessun nominativo corrispondente.</p>';
+        : `<p class="person-search-select__empty">${availabilityOnly
+            ? 'Nessuna disponibilità aggiuntiva libera per questo turno.'
+            : 'Nessun nominativo corrispondente.'}</p>`;
 
       wrapper.classList.add('is-open');
       panel.hidden = false;
@@ -494,6 +502,22 @@
         event.preventDefault();
         close({ restore: true });
       }
+    });
+
+    select.addEventListener('person-filter-refresh', () => {
+      const targetRequirement = boardEditTargetRequirement();
+      const availabilityOnly = select.dataset.availabilityOnly === 'true';
+      if (
+        availabilityOnly
+        && select.value
+        && (!targetRequirement?.id || !personIsAvailableForRequirement(select.value, targetRequirement.id))
+      ) {
+        select.value = '';
+        input.value = '';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      closePersonSearchSelects(wrapper);
+      render(input.value);
     });
 
     panel.addEventListener('mousedown', (event) => event.preventDefault());
@@ -2924,8 +2948,15 @@
           <span class="board-edit-operation__label">Operazione su</span>
           <div class="board-edit-operation__details" data-board-edit-operation></div>
         </div>
+        <label class="board-edit-availability-filter field--wide">
+          <input type="checkbox" data-board-edit-availability-only>
+          <span>
+            <strong>Solo disponibilità aggiuntive</strong>
+            <small>Mostra solo chi ha dichiarato disponibilità aggiuntiva ed è ancora libero in questo turno.</small>
+          </span>
+        </label>
         <label class="field"><span>Persona</span>
-          <select data-board-edit-person>${personOptions('')}</select>
+          <select data-board-edit-person data-availability-only="false">${personOptions('')}</select>
         </label>
         <label class="field field--wide"><span>Turno + attività</span>
           <select data-board-edit-requirement>${requirementOptions(requirement.id)}</select>
@@ -6712,6 +6743,15 @@
   personActivitiesDialog?.addEventListener('click', (event) => { if (event.target === personActivitiesDialog) personActivitiesDialog.close(); });
 
   boardEditContent?.addEventListener('change', (event) => {
+    if (event.target.matches('[data-board-edit-availability-only]')) {
+      const select = boardEditContent.querySelector('[data-board-edit-person]');
+      if (select) {
+        select.dataset.availabilityOnly = event.target.checked ? 'true' : 'false';
+        select.dispatchEvent(new Event('person-filter-refresh'));
+      }
+      return;
+    }
+
     if (event.target.matches('[data-board-edit-person]')) {
       refreshBoardEditResponse();
       refreshBoardEditDeclinedAlert();
@@ -6724,6 +6764,10 @@
       refreshBoardEditResponse();
       refreshBoardEditDeclinedAlert();
       refreshBoardEditWarnings();
+      const personSelect = boardEditContent.querySelector('[data-board-edit-person]');
+      if (personSelect?.dataset.availabilityOnly === 'true') {
+        personSelect.dispatchEvent(new Event('person-filter-refresh'));
+      }
     }
   });
   boardEditSave?.addEventListener('click', saveBoardEdit);

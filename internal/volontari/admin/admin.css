@@ -4434,3 +4434,32 @@ tr.is-busy button.is-busy {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Filtro disponibilità aggiuntive nel popup Aggiungi persona */
+.board-edit-availability-filter {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid #e4d49d;
+  border-radius: 10px;
+  background: #fffaf0;
+  cursor: pointer;
+}
+.board-edit-availability-filter input {
+  margin-top: 3px;
+}
+.board-edit-availability-filter span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.board-edit-availability-filter strong {
+  font-size: .8rem;
+}
+.board-edit-availability-filter small {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.3;
+}
