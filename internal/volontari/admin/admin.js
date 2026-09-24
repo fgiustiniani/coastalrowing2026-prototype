@@ -237,6 +237,11 @@
     } catch { return String(value); }
   };
 
+  const formatRaceDateShort = (value) => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[3]}/${match[2]}` : String(value || '—');
+  };
+
   function responseBadge(value) {
     if (value === 'confirmed') return '<span class="status-badge is-confirmed">Confermata</span>';
     if (value === 'declined') return '<span class="status-badge is-declined">Non può</span>';
@@ -330,11 +335,6 @@
       input.value = option.textContent.trim();
       close();
       select.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-
-    const formatRaceDateShort = (value) => {
-      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      return match ? `${match[3]}/${match[2]}` : String(value || '—');
     };
 
     const personAssignmentResponseHtml = (row) => {
