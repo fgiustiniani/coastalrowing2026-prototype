@@ -22,9 +22,9 @@
   background-position: center center;
   background-repeat: no-repeat;
 }
-.city-hero__content { max-width: 900px; }
+.city-hero__content { width: 100%; max-width: none; }
 .city-hero h1 { margin: 8px 0 0; font-size: clamp(4rem, 7vw, 6.4rem); line-height: .95; letter-spacing: -.045em; }
-.city-hero p:last-child { max-width: 720px; margin: 22px 0 0; font-size: clamp(1.05rem, 2vw, 1.3rem); line-height: 1.55; color: rgba(251,253,255,.94); }
+.city-hero p:last-child { max-width: none; margin: 22px 0 0; font-size: clamp(1rem, 1.35vw, 1.22rem); line-height: 1.55; color: rgba(251,253,255,.94); white-space: nowrap; }
 
 .city-section {
   padding: 42px 40px;
@@ -36,6 +36,8 @@
 .city-section__heading { max-width: none; margin-bottom: 26px; }
 .city-section__heading--branded { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; }
 .city-section__heading-copy { max-width: 860px; }
+.city-food .city-section__heading-copy { flex: 1 1 auto; max-width: none; min-width: 0; }
+.city-food .city-section__heading-copy > p:last-child { white-space: nowrap; font-size: clamp(.9rem, 1.05vw, 1rem); }
 .city-section__heading .section-event-logo { flex: 0 0 auto; width: clamp(150px, 18vw, 245px); max-height: 92px; object-fit: contain; }
 .city-section__heading h2 { margin: 0; color: var(--navy-940); font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1; letter-spacing: -.035em; }
 .city-section__heading p:last-child { margin: 14px 0 0; color: var(--muted); line-height: 1.65; }
@@ -326,6 +328,11 @@
 .city-note h2 { margin: 0 0 8px; font-size: clamp(1.8rem, 4vw, 3rem); }
 .city-note p { margin: 0; color: rgba(255,255,255,.82); }
 .city-note__actions { display: flex; flex-wrap: wrap; gap: 10px; flex: 0 0 auto; }
+
+@media (max-width: 1180px) {
+  .city-hero p:last-child,
+  .city-food .city-section__heading-copy > p:last-child { white-space: normal; }
+}
 
 @media (max-width: 980px) {
   .food-place-grid { grid-template-columns: 1fr; }

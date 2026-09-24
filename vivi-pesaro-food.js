@@ -29,6 +29,9 @@
     ristorante: 'assets/icons/food/ristorante.svg',
     pizzeria: 'assets/icons/food/pizzeria.svg',
     'lounge-bistrot': 'assets/icons/food/lounge-bistrot.svg',
+    caffetteria: 'assets/icons/food/caffetteria.svg',
+    gastronomia: 'assets/icons/food/gastronomia.svg',
+    pasticceria: 'assets/icons/food/pasticceria.svg',
     gelateria: 'assets/icons/food/gelateria.svg',
     piadineria: 'assets/icons/food/piadineria.svg',
     pub: 'assets/icons/food/pub.svg'
