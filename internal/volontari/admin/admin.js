@@ -1508,7 +1508,7 @@
           </button>
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
           ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
-          ${row.note && row.isAvailability ? `<span class="assignment-board__note" title="${escapeHtml(row.note)}">N</span>` : ''}
+          ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="Nota assegnazione: ${escapeHtml(row.note)}">N</span>` : ''}
           ${visibleWarnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
           <button type="button"
             class="assignment-board__edit"
@@ -2971,6 +2971,9 @@
         <label class="field field--wide"><span>Turno + attività</span>
           <select data-board-edit-requirement>${requirementOptions(requirement.id)}</select>
         </label>
+        <label class="field field--wide"><span>Nota assegnazione</span>
+          <textarea data-board-edit-note rows="3" maxlength="1000" placeholder="Nota facoltativa relativa a questa assegnazione"></textarea>
+        </label>
         <div class="board-edit-info field--wide">
           <div><span>Copertura</span><strong>${requirement.assignedCount}/${requirement.requiredCount}</strong></div>
           <div><span>Responsabile</span>—</div>
@@ -3021,6 +3024,9 @@
               <select data-board-edit-requirement>${requirementOptions(selectedRequirementId, source.shiftId)}</select>
             </label>`
           : `<input type="hidden" data-board-edit-requirement value="${escapeHtml(selectedRequirementId)}">`}
+        <label class="field field--wide"><span>Nota assegnazione</span>
+          <textarea data-board-edit-note rows="3" maxlength="1000" placeholder="Nota facoltativa relativa a questa assegnazione">${escapeHtml(isAvailability ? '' : (source.note || ''))}</textarea>
+        </label>
         <div class="board-edit-info field--wide">
           <div data-board-edit-response-row hidden><span>Risposta</span><div data-board-edit-response></div></div>
           <div><span>Responsabile</span>${!isAvailability && source.isResponsible ? responsibleBadge(source.personName) : '—'}</div>
@@ -3054,6 +3060,7 @@
     const isNew = boardEditContext?.kind === 'new';
     const personId = boardEditContent.querySelector('[data-board-edit-person]')?.value || '';
     const requirementId = boardEditContent.querySelector('[data-board-edit-requirement]')?.value || '';
+    const assignmentNote = boardEditContent.querySelector('[data-board-edit-note]')?.value.trim() || '';
 
     if (!personId || !requirementId) {
       setStatus(boardEditStatus, 'Seleziona persona e coppia turno-attività.', 'error');
@@ -3073,7 +3080,7 @@
             fromAvailability: isAvailability
               || (isNew && personIsAvailableForRequirement(personId, requirementId)),
             requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
-            note: source.note || null
+            note: assignmentNote || null
           })
         });
         const selectedPerson = (snapshot?.people || []).find((person) => person.id === personId);
