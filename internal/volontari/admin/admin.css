@@ -4400,8 +4400,10 @@ tr.is-busy button.is-busy {
   background: #fff;
 }
 .person-availability-editor__row.is-assigned {
-  background: #f3f5f5;
-  opacity: .72;
+  background: #f7f9f9;
+}
+.person-availability-editor__row.is-assigned .person-availability-editor__choice small {
+  font-weight: 700;
 }
 .person-availability-editor__choice {
   display: flex;

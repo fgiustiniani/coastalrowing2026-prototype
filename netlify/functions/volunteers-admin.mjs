@@ -864,20 +864,13 @@ export default async (request) => {
           throw new ApiError('Disponibilità non valida.', 400, 'INVALID_AVAILABILITY');
         }
 
-        const [shiftResult, assignmentResult, latestSubmissionResult] = await Promise.all([
+        const [shiftResult, latestSubmissionResult] = await Promise.all([
           adminRead('turni disponibilità admin', 'volunteer_shifts', {
             query: {
               select: 'id,day_label,shift_label,sort_order,availability_selectable,active',
               active: 'eq.true',
               availability_selectable: 'eq.true',
               order: 'sort_order.asc'
-            }
-          }),
-          adminRead('assegnazioni persona disponibilità admin', 'volunteer_assignments', {
-            query: {
-              select: 'id,shift_id',
-              person_id: `eq.${personId}`,
-              active: 'eq.true'
             }
           }),
           adminRead('ultimo invio disponibilità admin', 'volunteer_submissions', {
@@ -892,14 +885,10 @@ export default async (request) => {
 
         const selectableShifts = rows(shiftResult);
         const selectableById = new Map(selectableShifts.map((shift) => [shift.id, shift]));
-        const assignedShiftIds = new Set(rows(assignmentResult).map((item) => item.shift_id).filter(Boolean));
 
         for (const item of normalized) {
           if (!selectableById.has(item.shiftId)) {
             throw new ApiError('Uno dei turni selezionati non è disponibile per le disponibilità aggiuntive.', 400, 'INVALID_AVAILABILITY_SHIFT');
-          }
-          if (assignedShiftIds.has(item.shiftId)) {
-            throw new ApiError('Non puoi indicare come disponibilità aggiuntiva un turno in cui la persona è già assegnata.', 409, 'AVAILABILITY_ALREADY_ASSIGNED');
           }
         }
 

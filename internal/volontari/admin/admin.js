@@ -3877,14 +3877,13 @@
           ${shifts.map((shift) => {
             const assigned = assignedShiftIds.has(shift.id);
             const current = currentAvailability.get(shift.id) || null;
-            const checked = Boolean(current) && !assigned;
+            const checked = Boolean(current);
             return `
               <div class="person-availability-editor__row ${assigned ? 'is-assigned' : ''}">
                 <label class="person-availability-editor__choice">
                   <input type="checkbox"
                     data-person-availability-shift="${escapeHtml(shift.id)}"
-                    ${checked ? 'checked' : ''}
-                    ${assigned ? 'disabled' : ''}>
+                    ${checked ? 'checked' : ''}>
                   <span>
                     <strong>${escapeHtml(shift.day_label || '')}</strong>
                     <small>${escapeHtml(shift.shift_label || '')}${assigned ? ' · già assegnato' : ''}</small>
@@ -3895,7 +3894,7 @@
                   maxlength="1000"
                   value="${escapeHtml(current?.note || '')}"
                   placeholder="Nota facoltativa"
-                  ${checked && !assigned ? '' : 'disabled'}>
+                  ${checked ? '' : 'disabled'}>
               </div>`;
           }).join('')}
         </div>
