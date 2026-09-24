@@ -4568,3 +4568,66 @@ tr.is-busy button.is-busy {
     max-width: 132px;
   }
 }
+
+
+/* Note sulle singole assegnazioni */
+.assignment-board__note {
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #d8c77e;
+  border-radius: 50%;
+  background: #fff8dc;
+  color: #725f18;
+  font-size: .65rem;
+  font-weight: 900;
+  cursor: help;
+}
+.assignment-board__note::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 210;
+  left: 50%;
+  top: calc(100% + 8px);
+  width: max-content;
+  max-width: 280px;
+  transform: translateX(-50%);
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #173e4b;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgba(10,31,39,.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.assignment-board__note:hover::after,
+.assignment-board__note:focus::after {
+  opacity: 1;
+}
+.board-edit-grid textarea[data-board-edit-note],
+.assignment-note-input,
+.person-assignment-note-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.assignment-note-cell {
+  min-width: 190px;
+}
+.person-assignment-note-input {
+  min-width: 180px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}

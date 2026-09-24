@@ -1340,7 +1340,7 @@
           <td><strong>${escapeHtml(row.day)}</strong><small>${escapeHtml(row.shift)}</small></td>
           <td><strong>${escapeHtml(prettifyActivityName(row.activity))}</strong></td>
           <td><span class="coverage-gap"><strong>Mancano ${row.missingCount}</strong><small>${row.assignedCount}/${row.requiredCount} assegnati</small></span></td>
-          <td>—</td><td>—</td><td><span class="status-badge is-declined">Scoperta</span></td>
+          <td>—</td><td>—</td><td><span class="status-badge is-declined">Scoperta</span></td><td>—</td>
           <td><div class="row-actions"><button type="button" data-add-person-requirement="${escapeHtml(row.requirementId)}">Aggiungi persona</button></div></td>
         </tr>`;
     }
@@ -1407,6 +1407,7 @@
         <td class="responsible-cell">${responsibleCell}</td>
         <td class="warning-cell" data-warning-cell>${warningHtml(warnings)}</td>
         <td>${responseHtml}</td>
+        <td class="assignment-note-cell"><input class="assignment-note-input" type="text" maxlength="1000" data-inline-note value="${escapeHtml((!isAvailability && !isNew) ? (row?.note || '') : '')}" placeholder="Nota facoltativa"></td>
         <td>
           <div class="row-actions">
             <button type="button" data-save-inline-assignment>Salva</button>
@@ -1508,7 +1509,7 @@
           </button>
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
           ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
-          ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="Nota assegnazione: ${escapeHtml(row.note)}">N</span>` : ''}
+          ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="${row.isAvailability ? 'Nota disponibilità' : 'Nota assegnazione'}: ${escapeHtml(row.note)}">N</span>` : ''}
           ${visibleWarnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
           <button type="button"
             class="assignment-board__edit"
@@ -2239,6 +2240,9 @@
           <label class="field"><span>Attività di destinazione</span>
             <select data-batch-availability-requirement>${requirementOptions('', shiftId)}</select>
           </label>
+          <label class="field"><span>Nota assegnazione</span>
+            <input type="text" maxlength="1000" data-batch-availability-note placeholder="Nota facoltativa applicata alle persone selezionate">
+          </label>
           <div class="availability-batch__toolbar">
             <label><input type="checkbox" data-batch-availability-all> Seleziona tutte</label>
             <strong data-batch-availability-count>0 persone selezionate</strong>
@@ -2266,6 +2270,7 @@
 
   async function assignBatchAvailability(button) {
     const requirementId = detailContent?.querySelector('[data-batch-availability-requirement]')?.value || '';
+    const assignmentNote = detailContent?.querySelector('[data-batch-availability-note]')?.value.trim() || '';
     const selectedPersonIds = [...new Set(
       [...(detailContent?.querySelectorAll('[data-batch-availability-person]:checked') || [])]
         .map((input) => input.value)
@@ -2305,7 +2310,7 @@
               requirementId,
               fromAvailability: true,
               requestedProfile: null,
-              note: null
+              note: assignmentNote || null
             })
           });
           assigned += 1;
@@ -3269,7 +3274,7 @@
       return;
     }
 
-    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Responsabile</th><th>Warning</th><th>Risposta</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
+    assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Responsabile</th><th>Warning</th><th>Risposta</th><th>Nota assegnazione</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function personReportRows() {
@@ -4323,7 +4328,7 @@
 
     return rows.length
       ? `<div class="person-activities-table-wrap"><table class="detail-table person-activities-table">
-          <thead><tr><th>Turno + attività</th><th>Ruolo</th><th>Risposta</th><th>Warning</th><th></th></tr></thead>
+          <thead><tr><th>Turno + attività</th><th>Ruolo</th><th>Risposta</th><th>Nota assegnazione</th><th>Warning</th><th></th></tr></thead>
           <tbody>${rows.map((row) => `
             <tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}" data-person-assignment-row="${escapeHtml(row.id)}">
               <td>
@@ -4333,8 +4338,9 @@
               </td>
               <td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td>
               <td>${responseBadge(row.currentResponse)}</td>
+              <td><input class="person-assignment-note-input" type="text" maxlength="1000" data-person-assignment-note value="${escapeHtml(row.note || '')}" placeholder="Nota facoltativa"></td>
               <td class="person-activity-warning" data-person-row-warning>${personActivityWarningHtml(row)}</td>
-              <td><button class="table-link" type="button" data-person-move-assignment="${escapeHtml(row.id)}">Sposta</button></td>
+              <td><button class="table-link" type="button" data-person-move-assignment="${escapeHtml(row.id)}">Salva</button></td>
             </tr>`).join('')}</tbody>
         </table></div>`
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
@@ -4444,6 +4450,9 @@
           <label class="field"><span>Turno + attività</span>
             <select data-person-add-requirement>${requirementOptions(defaultRequirementId)}</select>
           </label>
+          <label class="field"><span>Nota assegnazione</span>
+            <input type="text" maxlength="1000" data-person-add-note placeholder="Nota facoltativa">
+          </label>
           <div class="person-add-activity__warning">
             <span>Warning</span>
             <div data-person-add-warning>${candidate ? personActivityWarningHtml(candidate) : '<span class="warning-none">—</span>'}</div>
@@ -4508,15 +4517,18 @@
     const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
     const rowNode = button?.closest('[data-person-assignment-row]');
     const requirementId = rowNode?.querySelector('[data-person-move-requirement]')?.value || '';
+    const assignmentNote = rowNode?.querySelector('[data-person-assignment-note]')?.value.trim() || '';
     const statusNode = personActivitiesContent?.querySelector('[data-person-activities-status]');
     if (!row || !requirementId) return;
 
-    if (requirementId === assignmentRequirementId(row)) {
-      setStatus(statusNode, 'Turno e attività sono già quelli attuali.');
+    const moved = requirementId !== assignmentRequirementId(row);
+    const noteChanged = assignmentNote !== String(row.note || '').trim();
+    if (!moved && !noteChanged) {
+      setStatus(statusNode, 'Nessuna modifica da salvare.');
       return;
     }
 
-    await withButtonBusy(button, 'Spostamento…', async () => {
+    await withButtonBusy(button, 'Salvataggio…', async () => {
       try {
         const result = await api(API, {
           method: 'POST',
@@ -4527,13 +4539,13 @@
             personId: row.personId,
             requirementId,
             requestedProfile: row.requestedProfile || null,
-            note: row.note || null
+            note: assignmentNote || null
           })
         });
         const personId = row.personId;
         await loadSnapshot();
         showPersonActivitiesPopup(personId, result?.assignment?.id || '');
-        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), 'Turno/attività aggiornati e salvati.', 'success');
+        setStatus(personActivitiesContent?.querySelector('[data-person-activities-status]'), moved ? 'Turno/attività e nota salvati.' : 'Nota assegnazione salvata.', 'success');
       } catch (error) {
         setStatus(statusNode, error.message, 'error');
       }
@@ -4556,6 +4568,7 @@
   async function addPersonActivityFromPopup(button) {
     const personId = personActivitiesContent?.dataset.personId || '';
     const requirementId = personActivitiesContent?.querySelector('[data-person-add-requirement]')?.value || '';
+    const assignmentNote = personActivitiesContent?.querySelector('[data-person-add-note]')?.value.trim() || '';
     const statusNode = personActivitiesContent?.querySelector('[data-person-add-status]');
     if (!personId || !requirementId) {
       setStatus(statusNode, 'Seleziona una coppia turno-attività.', 'error');
@@ -4574,7 +4587,7 @@
             requirementId,
             fromAvailability: personIsAvailableForRequirement(personId, requirementId),
             requestedProfile: null,
-            note: null
+            note: assignmentNote || null
           })
         });
         await loadSnapshot();
@@ -5107,6 +5120,7 @@
     const current = assignmentId ? (snapshot?.assignments || []).find((row) => row.id === assignmentId) : null;
     const personId = rowNode.querySelector('[data-inline-person]')?.value || '';
     const requirementId = rowNode.querySelector('[data-inline-requirement]')?.value || '';
+    const assignmentNote = rowNode.querySelector('[data-inline-note]')?.value.trim() || '';
 
     if (!personId || !requirementId) {
       status.textContent = 'Seleziona persona e coppia turno-attività.';
@@ -5127,7 +5141,7 @@
           requirementId,
           fromAvailability: !assignmentId && personIsAvailableForRequirement(personId, requirementId),
           requestedProfile: current?.requestedProfile || null,
-          note: current?.note || null
+          note: assignmentNote || null
         })
       });
       newAssignmentOpen = false;
