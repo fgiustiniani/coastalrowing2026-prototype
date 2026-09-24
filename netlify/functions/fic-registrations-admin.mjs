@@ -619,7 +619,8 @@ export default async (request) => {
         ]);
         return json({
           ok: true,
-          rentalMailSync: rentalMailSyncPublic(state, rentalMailCodes)
+          rentalMailSync: rentalMailSyncPublic(state, rentalMailCodes),
+          rentalMailCodes: Array.from(rentalMailCodes).sort()
         });
       } catch (error) {
         console.error('Errore sincronizzazione mail noleggio:', error?.code || error?.name || 'IMAP_ERROR');

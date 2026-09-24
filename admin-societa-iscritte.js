@@ -171,6 +171,37 @@
     return body || {};
   }
 
+  function applyRentalMailSyncResult(result) {
+    if (!data || !Array.isArray(data.rows)) return false;
+
+    const sync = result?.rentalMailSync || null;
+    const codes = Array.isArray(result?.rentalMailCodes)
+      ? new Set(result.rentalMailCodes.map((code) => String(code || '')))
+      : null;
+
+    if (!sync || !codes) return false;
+
+    data.rentalMailSync = sync;
+    data.rentalMailUpdatedAt = sync.syncedAt || data.rentalMailUpdatedAt || null;
+    data.rows = data.rows.map((row) => ({
+      ...row,
+      rentalMailReceived: codes.has(String(row.code || ''))
+    }));
+
+    if (data.summary) {
+      const rentalMailReceived = data.rows.filter((row) => row.rentalMailReceived).length;
+      const rentalMailRegistered = data.rows.filter(
+        (row) => row.status === 'registered' && row.rentalMailReceived
+      ).length;
+      data.summary = {
+        ...data.summary,
+        rentalMailReceived,
+        rentalMailRegistered
+      };
+    }
+    return true;
+  }
+
   async function uploadHtmlSnapshot(file, updateDateValue) {
     const html = await file.text();
     const response = await fetch(api, {
@@ -523,16 +554,28 @@
 
     try {
       const result = await requestRentalMailSync();
-      data = await requestData();
+      const applied = applyRentalMailSyncResult(result);
+
+      // La sincronizzazione Gmail è già conclusa e salvata sul server.
+      // Non facciamo dipendere l'esito del pulsante da una seconda lettura completa del portale FIC.
+      if (!applied) {
+        try {
+          data = await requestData();
+        } catch (refreshError) {
+          console.warn('Mail sincronizzate, ma aggiornamento completo del report non riuscito:', refreshError);
+        }
+      }
+
       renderAll();
 
-      const sync = result.rentalMailSync || data.rentalMailSync || {};
+      const sync = result.rentalMailSync || data?.rentalMailSync || {};
       const unmatchedCount = Number(sync.unmatchedCount || 0);
+      const total = sync.totalSocietiesWithMail ?? data?.summary?.rentalMailReceived ?? 0;
       setStatus(
         statusNode,
         unmatchedCount
-          ? `Mail aggiornate. ${sync.totalSocietiesWithMail ?? data.summary?.rentalMailReceived ?? 0} società riconosciute; ${unmatchedCount} mail da verificare.`
-          : `Mail aggiornate. ${sync.totalSocietiesWithMail ?? data.summary?.rentalMailReceived ?? 0} società riconosciute.`,
+          ? `Mail aggiornate. ${total} società riconosciute; ${unmatchedCount} mail da verificare.`
+          : `Mail aggiornate. ${total} società riconosciute.`,
         unmatchedCount ? 'warning' : 'success'
       );
     } catch (error) {
