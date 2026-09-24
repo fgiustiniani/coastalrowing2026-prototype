@@ -213,11 +213,16 @@
   const createPlaceMarker = (card, addressElement, lat, lng) => {
     const name = getPlaceName(card);
     const address = addressElement.querySelector('.food-place__address-label')?.textContent.trim() || '';
-    const categories = getCardCategories(card).filter((category) => CATEGORY_ICONS[category]);
+    const categories = getCardCategories(card);
     const categoryLabels = getCategoryLabels(card);
-    const iconWidth = categories.length > 1 ? 68 : 44;
+    const iconWidth = Math.max(44, 18 + (categories.length * 28));
     const iconImages = categories
-      .map((category) => `<img src="${CATEGORY_ICONS[category]}" alt="">`)
+      .map((category, index) => {
+        const iconUrl = CATEGORY_ICONS[category];
+        if (iconUrl) return `<img src="${iconUrl}" alt="">`;
+        const label = categoryLabels[index] || category;
+        return `<span class="food-map-key" aria-hidden="true">${escapeHtml(label.charAt(0).toUpperCase())}</span>`;
+      })
       .join('');
 
     const icon = window.L.divIcon({
@@ -256,6 +261,101 @@
     }
 
     return marker;
+  };
+
+  const LOCATION_CACHE_PREFIX = 'coastal-food-location-v1:';
+
+  const addPlaceMarker = (addressElement, lat, lng) => {
+    if (!map || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+    const card = addressElement.closest('.food-place');
+    if (!card) return false;
+
+    const key = addressElement.dataset.locationId || `${lat},${lng}`;
+    if (markers.has(key)) return true;
+
+    const marker = createPlaceMarker(card, addressElement, lat, lng);
+    markers.set(key, { marker, card });
+    if (!card.hidden) marker.addTo(map);
+    return true;
+  };
+
+  const readCachedLocation = (addressElement) => {
+    const id = addressElement.dataset.locationId;
+    if (!id) return null;
+
+    try {
+      const cached = JSON.parse(window.localStorage.getItem(`${LOCATION_CACHE_PREFIX}${id}`) || 'null');
+      const lat = Number(cached?.lat);
+      const lng = Number(cached?.lng);
+      return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const cacheLocation = (addressElement, lat, lng) => {
+    const id = addressElement.dataset.locationId;
+    if (!id) return;
+
+    try {
+      window.localStorage.setItem(`${LOCATION_CACHE_PREFIX}${id}`, JSON.stringify({ lat, lng }));
+    } catch {
+      // La mappa funziona anche se lo storage non è disponibile.
+    }
+  };
+
+  const geocodeAddressElement = async (addressElement) => {
+    const cached = readCachedLocation(addressElement);
+    if (cached) return addPlaceMarker(addressElement, cached.lat, cached.lng);
+
+    const query = addressElement.dataset.geocodeAddress
+      || addressElement.querySelector('.food-place__address-label')?.textContent.trim();
+    if (!query) return false;
+
+    try {
+      const endpoint = new URL('https://nominatim.openstreetmap.org/search');
+      endpoint.searchParams.set('format', 'jsonv2');
+      endpoint.searchParams.set('limit', '1');
+      endpoint.searchParams.set('countrycodes', 'it');
+      endpoint.searchParams.set('accept-language', 'it');
+      endpoint.searchParams.set('q', query);
+
+      const response = await fetch(endpoint, { headers: { Accept: 'application/json' } });
+      if (!response.ok) return false;
+
+      const results = await response.json();
+      if (!Array.isArray(results) || !results.length) return false;
+
+      const lat = Number(results[0].lat);
+      const lng = Number(results[0].lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+      cacheLocation(addressElement, lat, lng);
+      return addPlaceMarker(addressElement, lat, lng);
+    } catch {
+      return false;
+    }
+  };
+
+  const resolveGeocodedLocations = async (addressElements) => {
+    let failed = 0;
+
+    for (const addressElement of addressElements) {
+      const cached = readCachedLocation(addressElement);
+      if (cached) {
+        addPlaceMarker(addressElement, cached.lat, cached.lng);
+        continue;
+      }
+
+      // Evita richieste ravvicinate al servizio pubblico di geocodifica.
+      await new Promise((resolve) => window.setTimeout(resolve, 1050));
+      const resolved = await geocodeAddressElement(addressElement);
+      if (!resolved) failed += 1;
+      updateMapMarkers();
+    }
+
+    return failed;
   };
 
   const addClubLegend = () => {
@@ -384,26 +484,52 @@
     addClubLegend();
     resolveClubPosition();
 
-    const addressElements = Array.from(section.querySelectorAll('.food-place__address[data-lat][data-lng]'));
+    const addressElements = Array.from(section.querySelectorAll('.food-place__address'));
+    const geocodedLocations = [];
     let invalidLocations = 0;
 
     addressElements.forEach((addressElement) => {
-      const card = addressElement.closest('.food-place');
       const lat = Number(addressElement.dataset.lat);
       const lng = Number(addressElement.dataset.lng);
 
-      if (!card || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-        invalidLocations += 1;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (!addPlaceMarker(addressElement, lat, lng)) invalidLocations += 1;
         return;
       }
 
-      const marker = createPlaceMarker(card, addressElement, lat, lng);
-      markers.set(addressElement.dataset.locationId || `${lat},${lng}`, { marker, card });
+      if (addressElement.dataset.geocodeAddress) {
+        geocodedLocations.push(addressElement);
+        return;
+      }
+
+      invalidLocations += 1;
     });
 
     updateMapMarkers();
 
-    if (mapStatus) {
+    if (geocodedLocations.length) {
+      if (mapStatus) {
+        mapStatus.hidden = false;
+        mapStatus.textContent = 'Posizionamento delle sedi sulla mappa…';
+      }
+
+      void resolveGeocodedLocations(geocodedLocations).then((geocodeFailures) => {
+        invalidLocations += geocodeFailures;
+        updateMapMarkers();
+
+        if (!mapStatus) return;
+        if (invalidLocations === 0 && markers.size > 0) {
+          mapStatus.textContent = '';
+          mapStatus.hidden = true;
+          return;
+        }
+
+        mapStatus.hidden = false;
+        mapStatus.textContent = invalidLocations
+          ? `${invalidLocations} ${invalidLocations === 1 ? 'sede non è disponibile' : 'sedi non sono disponibili'} sulla mappa. I link Google Maps restano disponibili nell’elenco.`
+          : '';
+      });
+    } else if (mapStatus) {
       if (invalidLocations === 0 && markers.size > 0) {
         mapStatus.textContent = '';
         mapStatus.hidden = true;
