@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   ApiError,
   SupabaseError,
@@ -15,6 +16,9 @@ import {
 import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
+const ADMIN_AVAILABILITY_SESSION_PREFIX = 'admin-availability:';
+const isAdminAvailabilitySubmission = (submission) =>
+  String(submission?.session_id || '').startsWith(ADMIN_AVAILABILITY_SESSION_PREFIX);
 
 async function adminRead(operation, path, options) {
   try {
@@ -172,13 +176,18 @@ async function adminSnapshot() {
   const responsibilityByAssignmentId = new Map(responsibilityRows.map((row) => [row.id, row.is_responsible === true]));
 
   const latestSubmissionByPerson = new Map();
+  const latestVolunteerSubmissionByPerson = new Map();
   const submissionCountByPerson = new Map();
   for (const submission of submissionRows) {
-    if (submission.person_id) {
+    const isAdminAvailability = isAdminAvailabilitySubmission(submission);
+    if (submission.person_id && !isAdminAvailability) {
       submissionCountByPerson.set(
         submission.person_id,
         (submissionCountByPerson.get(submission.person_id) || 0) + 1
       );
+      if (!latestVolunteerSubmissionByPerson.has(submission.person_id)) {
+        latestVolunteerSubmissionByPerson.set(submission.person_id, submission);
+      }
     }
     if (!latestSubmissionByPerson.has(submission.person_id)) latestSubmissionByPerson.set(submission.person_id, submission);
   }
@@ -269,13 +278,20 @@ async function adminSnapshot() {
 
   const peopleWithState = peopleRows.map((person) => {
     const latest = latestSubmissionByPerson.get(person.id) || null;
+    const latestVolunteer = latestVolunteerSubmissionByPerson.get(person.id) || null;
     return {
       ...person,
       submissionCount: submissionCountByPerson.get(person.id) || 0,
+      latestVolunteerSubmission: latestVolunteer ? {
+        id: latestVolunteer.id,
+        actorName: latestVolunteer.actor_name,
+        createdAt: latestVolunteer.created_at
+      } : null,
       latestSubmission: latest ? {
         id: latest.id,
         actorName: latest.actor_name,
         createdAt: latest.created_at,
+        adminAvailability: isAdminAvailabilitySubmission(latest),
         availability: availabilityBySubmission.get(latest.id) || []
       } : null
     };
@@ -817,6 +833,157 @@ export default async (request) => {
         });
 
         return json({ ok: true, sent: true, email });
+      }
+
+      if (action === 'save-person-availability') {
+        const personId = clean(body.personId, 60);
+        const availability = Array.isArray(body.availability) ? body.availability.slice(0, 50) : [];
+
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+
+        const people = await supabaseRequest('volunteer_people', {
+          query: {
+            select: 'id,person_code,display_name,source_type,selectable,active',
+            id: `eq.${personId}`,
+            active: 'eq.true',
+            limit: 1
+          }
+        });
+        const person = rows(people)[0] || null;
+        if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
+        if (person.selectable !== false) {
+          throw new ApiError('Questa funzione è riservata alle persone non selezionabili dal link volontari.', 400, 'PERSON_IS_SELECTABLE');
+        }
+
+        const normalized = availability.map((item) => ({
+          shiftId: clean(item?.shiftId, 60),
+          note: clean(item?.note, 1000) || null
+        }));
+        const selectedIds = normalized.map((item) => item.shiftId);
+        if (selectedIds.some((id) => !isUuid(id)) || new Set(selectedIds).size !== selectedIds.length) {
+          throw new ApiError('Disponibilità non valida.', 400, 'INVALID_AVAILABILITY');
+        }
+
+        const [shiftResult, assignmentResult, latestSubmissionResult] = await Promise.all([
+          adminRead('turni disponibilità admin', 'volunteer_shifts', {
+            query: {
+              select: 'id,day_label,shift_label,sort_order,availability_selectable,active',
+              active: 'eq.true',
+              availability_selectable: 'eq.true',
+              order: 'sort_order.asc'
+            }
+          }),
+          adminRead('assegnazioni persona disponibilità admin', 'volunteer_assignments', {
+            query: {
+              select: 'id,shift_id',
+              person_id: `eq.${personId}`,
+              active: 'eq.true'
+            }
+          }),
+          adminRead('ultimo invio disponibilità admin', 'volunteer_submissions', {
+            query: {
+              select: 'id,session_id,created_at',
+              person_id: `eq.${personId}`,
+              order: 'created_at.desc',
+              limit: 1
+            }
+          })
+        ]);
+
+        const selectableShifts = rows(shiftResult);
+        const selectableById = new Map(selectableShifts.map((shift) => [shift.id, shift]));
+        const assignedShiftIds = new Set(rows(assignmentResult).map((item) => item.shift_id).filter(Boolean));
+
+        for (const item of normalized) {
+          if (!selectableById.has(item.shiftId)) {
+            throw new ApiError('Uno dei turni selezionati non è disponibile per le disponibilità aggiuntive.', 400, 'INVALID_AVAILABILITY_SHIFT');
+          }
+          if (assignedShiftIds.has(item.shiftId)) {
+            throw new ApiError('Non puoi indicare come disponibilità aggiuntiva un turno in cui la persona è già assegnata.', 409, 'AVAILABILITY_ALREADY_ASSIGNED');
+          }
+        }
+
+        const latestSubmission = rows(latestSubmissionResult)[0] || null;
+        let previousAvailability = [];
+        if (latestSubmission?.id) {
+          const previousRows = await adminRead('disponibilità precedente admin', 'volunteer_availability', {
+            query: {
+              select: 'shift_id,note',
+              submission_id: `eq.${latestSubmission.id}`,
+              order: 'created_at.asc'
+            }
+          });
+          previousAvailability = rows(previousRows).map((item) => ({
+            shiftId: item.shift_id,
+            note: item.note || null
+          }));
+        }
+
+        const clientSubmissionId = randomUUID();
+        const sessionId = `${ADMIN_AVAILABILITY_SESSION_PREFIX}${randomUUID()}`;
+        let savedSubmission = null;
+
+        try {
+          const submissionResult = await supabaseRequest('volunteer_submissions', {
+            method: 'POST',
+            body: {
+              client_submission_id: clientSubmissionId,
+              session_id: sessionId,
+              actor_name: actorName,
+              person_id: person.id,
+              selected_person_name: person.display_name,
+              person_code: person.person_code || null
+            },
+            prefer: 'return=representation'
+          });
+          savedSubmission = rows(submissionResult)[0] || null;
+          if (!savedSubmission?.id) throw new ApiError('Disponibilità non salvata.', 500, 'AVAILABILITY_SAVE_FAILED');
+
+          if (normalized.length) {
+            await supabaseRequest('volunteer_availability', {
+              method: 'POST',
+              body: normalized.map((item) => ({
+                submission_id: savedSubmission.id,
+                shift_id: item.shiftId,
+                note: item.note
+              })),
+              prefer: 'return=minimal'
+            });
+          }
+        } catch (error) {
+          if (savedSubmission?.id) {
+            try {
+              await supabaseRequest('volunteer_submissions', {
+                method: 'DELETE',
+                query: { id: `eq.${savedSubmission.id}` },
+                prefer: 'return=minimal'
+              });
+            } catch {}
+          }
+          throw error;
+        }
+
+        try {
+          await supabaseRequest('volunteer_audit_log', {
+            method: 'POST',
+            body: {
+              submission_id: savedSubmission.id,
+              actor_name: actorName,
+              person_id: person.id,
+              person_code: person.person_code || null,
+              action_type: 'availability_snapshot_admin',
+              entity_type: 'availability',
+              entity_id: person.id,
+              previous_value: previousAvailability,
+              new_value: normalized
+            },
+            prefer: 'return=minimal'
+          });
+        } catch (auditError) {
+          console.error('Audit disponibilità amministrativa fallito', auditError?.message || auditError);
+        }
+
+        return json({ ok: true, submissionId: savedSubmission.id, availability: normalized });
       }
 
       if (action === 'save-person') {

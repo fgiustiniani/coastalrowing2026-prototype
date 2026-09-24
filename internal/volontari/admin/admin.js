@@ -108,6 +108,7 @@
   let newRequirementOpen = false;
   let newRaceEntryOpen = false;
   let detailTargetRow = null;
+  let personAvailabilityContext = null;
   const assignmentMobileQuery = window.matchMedia('(max-width: 700px)');
   let assignmentView = 'list';
   let boardDragState = null;
@@ -1190,10 +1191,10 @@
   function respondedAssignedPeople() {
     const assignedIds = new Set((snapshot?.assignments || []).map((row) => row.personId));
     return (snapshot?.people || [])
-      .filter((person) => assignedIds.has(person.id) && person.latestSubmission)
+      .filter((person) => assignedIds.has(person.id) && Number(person.submissionCount || 0) > 0)
       .sort((a, b) => {
-        const timeA = Date.parse(a.latestSubmission?.createdAt || '') || 0;
-        const timeB = Date.parse(b.latestSubmission?.createdAt || '') || 0;
+        const timeA = Date.parse(a.latestVolunteerSubmission?.createdAt || '') || 0;
+        const timeB = Date.parse(b.latestVolunteerSubmission?.createdAt || '') || 0;
         return timeB - timeA
           || String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it');
       });
@@ -3266,10 +3267,10 @@
       const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
       const pending = item.rows.length - confirmed - declined;
       const person = personById.get(item.id) || null;
-      const latest = person?.latestSubmission || null;
-      const answered = Boolean(latest);
+      const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
-      const availability = latest?.availability || [];
+      const answered = submissionCount > 0;
+      const availability = person?.latestSubmission?.availability || [];
       const notes = item.rows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
@@ -3799,7 +3800,7 @@
             <button type="button" data-save-person>Salva</button>
             ${isNew
               ? '<button type="button" data-cancel-new-person>Annulla</button>'
-              : '<button class="is-danger" type="button" data-delete-person>Elimina</button>'}
+              : `${person?.selectable === false ? '<button type="button" data-edit-person-availability>Disponibilità</button>' : ''}<button class="is-danger" type="button" data-delete-person>Elimina</button>`}
           </div>
           <small class="row-save-status" data-row-status></small>
         </td>
@@ -3820,6 +3821,111 @@
           <tbody>${body}</tbody>
         </table>`
       : '<p class="empty-state">Nessuna persona attiva.</p>';
+  }
+
+  function personAvailabilityEditorHtml(person) {
+    const currentAvailability = new Map(
+      (person?.latestSubmission?.availability || []).map((item) => [item.shiftId, item])
+    );
+    const assignedShiftIds = new Set(
+      (snapshot?.assignments || [])
+        .filter((row) => row.personId === person.id && row.shiftId)
+        .map((row) => row.shiftId)
+    );
+    const shifts = [...(snapshot?.shifts || [])]
+      .filter((shift) => shift.active !== false && shift.availability_selectable !== false)
+      .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+
+    return `
+      <div class="person-availability-editor" data-person-availability-editor data-person-id="${escapeHtml(person.id)}">
+        <p class="intro">
+          Imposta le disponibilità aggiuntive di <strong>${escapeHtml(person.display_name)}</strong>.
+          La persona resterà non selezionabile nel link pubblico.
+        </p>
+        <div class="person-availability-editor__list">
+          ${shifts.map((shift) => {
+            const assigned = assignedShiftIds.has(shift.id);
+            const current = currentAvailability.get(shift.id) || null;
+            const checked = Boolean(current) && !assigned;
+            return `
+              <div class="person-availability-editor__row ${assigned ? 'is-assigned' : ''}">
+                <label class="person-availability-editor__choice">
+                  <input type="checkbox"
+                    data-person-availability-shift="${escapeHtml(shift.id)}"
+                    ${checked ? 'checked' : ''}
+                    ${assigned ? 'disabled' : ''}>
+                  <span>
+                    <strong>${escapeHtml(shift.day_label || '')}</strong>
+                    <small>${escapeHtml(shift.shift_label || '')}${assigned ? ' · già assegnato' : ''}</small>
+                  </span>
+                </label>
+                <input type="text"
+                  data-person-availability-note="${escapeHtml(shift.id)}"
+                  maxlength="1000"
+                  value="${escapeHtml(current?.note || '')}"
+                  placeholder="Nota facoltativa"
+                  ${checked && !assigned ? '' : 'disabled'}>
+              </div>`;
+          }).join('')}
+        </div>
+        <p class="status" data-person-availability-status aria-live="polite"></p>
+        <div class="actions actions--end">
+          <button class="button button--primary" type="button" data-save-person-availability>Salva disponibilità</button>
+        </div>
+      </div>`;
+  }
+
+  function openPersonAvailabilityEditor(personId) {
+    const person = (snapshot?.people || []).find((item) => item.id === personId);
+    if (!person || !detailDialog || !detailTitle || !detailContent) return;
+    if (person.selectable !== false) {
+      alert('La gestione amministrativa delle disponibilità è prevista per le persone non selezionabili.');
+      return;
+    }
+
+    detailTargetRow = null;
+    personAvailabilityContext = person.id;
+    detailTitle.textContent = `Disponibilità · ${person.display_name}`;
+    detailContent.innerHTML = personAvailabilityEditorHtml(person);
+    if (!detailDialog.open) detailDialog.showModal();
+  }
+
+  async function savePersonAvailabilityFromAdmin(button) {
+    const personId = personAvailabilityContext || '';
+    const editor = detailContent?.querySelector('[data-person-availability-editor]');
+    const statusNode = detailContent?.querySelector('[data-person-availability-status]');
+    if (!personId || !editor) return;
+
+    const availability = [...editor.querySelectorAll('[data-person-availability-shift]:checked')]
+      .map((input) => ({
+        shiftId: input.dataset.personAvailabilityShift || '',
+        note: editor.querySelector(`[data-person-availability-note="${CSS.escape(input.dataset.personAvailabilityShift || '')}"]`)?.value.trim() || ''
+      }));
+
+    await withButtonBusy(button, 'Salvataggio…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save-person-availability',
+            personId,
+            availability
+          })
+        });
+        await loadSnapshot();
+        openPersonAvailabilityEditor(personId);
+        setStatus(
+          detailContent?.querySelector('[data-person-availability-status]'),
+          availability.length
+            ? `Disponibilità aggiornate: ${availability.length} turni.`
+            : 'Disponibilità aggiuntive azzerate.',
+          'success'
+        );
+      } catch (error) {
+        setStatus(statusNode, error.message, 'error');
+      }
+    });
   }
 
   function renderActivityGroupCatalog() {
@@ -4475,7 +4581,7 @@
               ).join('')}</div>`
             : '—';
 
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestVolunteerSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
     detailDialog.showModal();
@@ -5860,6 +5966,7 @@
     if (!rowNode) return;
 
     const save = event.target.closest('[data-save-person]');
+    const editAvailability = event.target.closest('[data-edit-person-availability]');
     const remove = event.target.closest('[data-delete-person]');
     const cancel = event.target.closest('[data-cancel-new-person]');
     const status = rowNode.querySelector('[data-row-status]');
@@ -5867,6 +5974,12 @@
     if (cancel) {
       newPersonOpen = false;
       renderPersonCatalog();
+      return;
+    }
+
+    if (editAvailability) {
+      const personId = rowNode.dataset.personId || '';
+      if (personId) openPersonAvailabilityEditor(personId);
       return;
     }
 
@@ -6421,6 +6534,12 @@
   });
 
   detailContent?.addEventListener('click', async (event) => {
+    const availabilitySave = event.target.closest('[data-save-person-availability]');
+    if (availabilitySave) {
+      await savePersonAvailabilityFromAdmin(availabilitySave);
+      return;
+    }
+
     const batchSave = event.target.closest('[data-batch-availability-save]');
     if (batchSave) {
       await assignBatchAvailability(batchSave);
@@ -6455,6 +6574,17 @@
     detailDialog.close();
   });
   detailContent?.addEventListener('change', (event) => {
+    const availabilityShift = event.target.closest('[data-person-availability-shift]');
+    if (availabilityShift) {
+      const shiftId = availabilityShift.dataset.personAvailabilityShift || '';
+      const note = detailContent.querySelector(`[data-person-availability-note="${CSS.escape(shiftId)}"]`);
+      if (note) {
+        note.disabled = !availabilityShift.checked;
+        if (availabilityShift.checked) note.focus();
+      }
+      return;
+    }
+
     const batchAll = event.target.closest('[data-batch-availability-all]');
     if (batchAll) {
       detailContent.querySelectorAll('[data-batch-availability-person]').forEach((input) => {
@@ -6515,6 +6645,7 @@
   detailDialog?.addEventListener('close', () => {
     detailTargetRow = null;
     copyRequirementContext = null;
+    personAvailabilityContext = null;
   });
   personActivitiesContent?.addEventListener('click', async (event) => {
     const responsible = event.target.closest('[data-person-responsible-assignment]');
