@@ -1467,7 +1467,7 @@
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
 
-  function boardAvailabilityDetailsHtml(personId) {
+  function boardAvailabilityHoverBadgesHtml(personId) {
     const assignmentRows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
@@ -1489,35 +1489,35 @@
           )
       : [];
 
-    const assignmentsHtml = assignmentRows.length
-      ? assignmentRows.map((item) => `
-          <span class="assignment-board__availability-detail-item">
-            <strong>${escapeHtml(item.day || '—')} ${escapeHtml(item.shift || '')}</strong>
-            <span>${escapeHtml(displayActivity(item))}</span>
-          </span>`).join('')
-      : '<span class="assignment-board__availability-detail-empty">Nessuna assegnazione</span>';
+    const assignmentBadge = assignmentRows.length
+      ? `<span class="assignment-board__availability-hover" tabindex="0" aria-label="${assignmentRows.length} attività già assegnate">
+          <span class="assignment-board__availability-hover-chip">A${assignmentRows.length}</span>
+          <span class="assignment-board__availability-popover">
+            <strong class="assignment-board__availability-popover-title">Attività già assegnate</strong>
+            ${assignmentRows.map((item) => `
+              <span class="assignment-board__availability-popover-row">
+                <b>${escapeHtml(item.day || '—')} · ${escapeHtml(item.shift || '—')}</b>
+                <span>${escapeHtml(displayActivity(item))}</span>
+              </span>`).join('')}
+          </span>
+        </span>`
+      : '';
 
-    const racesHtml = snapshot?.raceProgramAvailable
-      ? (raceRows.length
-          ? raceRows.map((race) => `
-              <span class="assignment-board__availability-detail-item is-race">
-                <strong>${escapeHtml(formatRaceDateShort(race.raceDate))}${race.raceTime ? ` ${escapeHtml(race.raceTime)}` : ''}</strong>
+    const raceBadge = snapshot?.raceProgramAvailable && raceRows.length
+      ? `<span class="assignment-board__availability-hover is-race" tabindex="0" aria-label="${raceRows.length} gare previste">
+          <span class="assignment-board__availability-hover-chip">G${raceRows.length}</span>
+          <span class="assignment-board__availability-popover">
+            <strong class="assignment-board__availability-popover-title">Gare previste</strong>
+            ${raceRows.map((race) => `
+              <span class="assignment-board__availability-popover-row">
+                <b>${escapeHtml(formatRaceDateShort(race.raceDate))}${race.raceTime ? ` · ${escapeHtml(race.raceTime)}` : ' · orario da definire'}</b>
                 <span>${escapeHtml(race.crewLabel || 'Equipaggio non indicato')}</span>
-              </span>`).join('')
-          : '<span class="assignment-board__availability-detail-empty">Nessuna gara</span>')
-      : '<span class="assignment-board__availability-detail-empty">Programma gare non disponibile</span>';
+              </span>`).join('')}
+          </span>
+        </span>`
+      : '';
 
-    return `
-      <div class="assignment-board__availability-details">
-        <div class="assignment-board__availability-detail-row">
-          <span class="assignment-board__availability-detail-label">Assegnato:</span>
-          <span class="assignment-board__availability-detail-list">${assignmentsHtml}</span>
-        </div>
-        <div class="assignment-board__availability-detail-row">
-          <span class="assignment-board__availability-detail-label">Gare:</span>
-          <span class="assignment-board__availability-detail-list">${racesHtml}</span>
-        </div>
-      </div>`;
+    return assignmentBadge + raceBadge;
   }
 
   function boardPersonCard(row) {
@@ -1560,6 +1560,7 @@
             title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
             ${escapeHtml(row.personName)}
           </button>
+          ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId) : ''}
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
           ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
           ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="${row.isAvailability ? 'Nota disponibilità' : 'Nota assegnazione'}: ${escapeHtml(row.note)}">N</span>` : ''}
@@ -1576,7 +1577,6 @@
             aria-label="Elimina ${escapeHtml(row.personName)} dall’attività"
             title="Elimina assegnazione">×</button>` : ''}
         </div>
-        ${row.isAvailability ? boardAvailabilityDetailsHtml(row.personId) : ''}
       </div>`;
   }
 

@@ -4671,70 +4671,88 @@ tr.is-busy button.is-busy {
   }
 }
 
-
-/* Dettagli attività e gare nelle persone disponibili da assegnare */
-.assignment-board__availability-details {
-  display: grid;
-  gap: 5px;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed #c9dde1;
-  min-width: 0;
+/* Overlay attività e gare nelle persone disponibili da assegnare */
+.assignment-board__availability-hover {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  outline: none;
 }
 
-.assignment-board__availability-detail-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 5px;
-  align-items: start;
-  min-width: 0;
-}
-
-.assignment-board__availability-detail-label {
-  color: #4e6970;
-  font-size: .64rem;
+.assignment-board__availability-hover-chip {
+  min-width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 1px solid #a9cfd6;
+  border-radius: 999px;
+  background: #edf7f8;
+  color: #2e6c77;
+  font-size: .6rem;
   font-weight: 900;
-  white-space: nowrap;
+  line-height: 1;
+  cursor: help;
 }
 
-.assignment-board__availability-detail-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 5px;
-  min-width: 0;
+.assignment-board__availability-hover.is-race .assignment-board__availability-hover-chip {
+  border-color: #ddc271;
+  background: #fff6dd;
+  color: #725b18;
 }
 
-.assignment-board__availability-detail-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  min-width: 0;
-  padding: 1px 4px;
-  border-radius: 5px;
-  background: #edf6f7;
-  color: #35565e;
-  font-size: .62rem;
-  line-height: 1.35;
+.assignment-board__availability-popover {
+  position: absolute;
+  z-index: 260;
+  top: calc(100% + 7px);
+  left: 50%;
+  width: max-content;
+  min-width: 220px;
+  max-width: 310px;
+  display: none;
+  gap: 6px;
+  transform: translateX(-50%);
+  padding: 9px 10px;
+  border: 1px solid #b9cfd4;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgba(23,62,75,.22);
+  white-space: normal;
 }
 
-.assignment-board__availability-detail-item.is-race {
-  background: #fff5df;
-  color: #70581d;
+.assignment-board__availability-hover:hover .assignment-board__availability-popover,
+.assignment-board__availability-hover:focus .assignment-board__availability-popover,
+.assignment-board__availability-hover:focus-within .assignment-board__availability-popover {
+  display: grid;
 }
 
-.assignment-board__availability-detail-item strong {
-  font-size: inherit;
-  font-weight: 850;
-  white-space: nowrap;
+.assignment-board__availability-popover-title {
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e9eb;
+  color: var(--accent-dark);
+  font-size: .72rem;
 }
 
-.assignment-board__availability-detail-item span {
-  min-width: 0;
+.assignment-board__availability-popover-row {
+  display: grid;
+  gap: 1px;
+  font-size: .68rem;
+  line-height: 1.3;
+}
+
+.assignment-board__availability-popover-row b {
+  font-size: .65rem;
+  color: #536a71;
+}
+
+.assignment-board__availability-popover-row span {
   overflow-wrap: anywhere;
 }
 
-.assignment-board__availability-detail-empty {
-  color: var(--muted);
-  font-size: .62rem;
-  font-style: italic;
+.assignment-board__availability-people,
+.assignment-board__availability,
+.assignment-board__person.is-availability {
+  overflow: visible;
 }
