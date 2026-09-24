@@ -318,7 +318,7 @@
           (unmatchedCount ? ` · ${unmatchedCount} mail da verificare` : '');
         mailSyncStatus.classList.toggle('is-warning', unmatchedCount > 0);
       } else {
-        mailSyncStatus.textContent = `Mail noleggio: ${total} società · base verificata al 21/09/2026. Usa “Aggiorna mail noleggio” per leggere le nuove mail.`;
+        mailSyncStatus.textContent = `Mail noleggio: ${total} società · base verificata al 24/09/2026. Usa “Aggiorna mail noleggio” per leggere le nuove mail.`;
         mailSyncStatus.classList.remove('is-warning');
       }
     }
