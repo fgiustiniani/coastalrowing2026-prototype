@@ -3192,31 +3192,28 @@ tr.is-busy button.is-busy {
 }
 
 
-/* Filtri assegnazioni: su mobile sono raccolti sotto un solo pulsante */
+/* Filtri assegnazioni: chiusi di default, visibili solo dal pulsante Filtri */
 .assignment-filters-toggle {
-  display: none;
+  display: inline-flex;
 }
 .assignment-filters-panel {
+  display: none;
   width: 100%;
+  padding-top: 2px;
+}
+.assignment-filters-panel.is-open {
+  display: block;
+}
+.assignment-filters-panel .filter-grid {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fbfb;
 }
 @media (max-width: 700px) {
-  .assignment-filters-toggle {
-    display: inline-flex;
-  }
-  .assignment-filters-panel {
-    display: none;
-    padding-top: 2px;
-  }
-  .assignment-filters-panel.is-open {
-    display: block;
-  }
   .assignment-filters-panel .filter-grid {
     grid-template-columns: 1fr;
-    margin-top: 10px;
-    padding: 10px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: #f8fbfb;
   }
 }
 
