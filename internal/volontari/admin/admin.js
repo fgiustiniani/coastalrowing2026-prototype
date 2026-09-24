@@ -1394,6 +1394,7 @@
         data-board-drag-id="${escapeHtml(dragId)}"
         ${assignmentId ? `data-board-assignment-id="${escapeHtml(assignmentId)}"` : ''}
         ${assignmentId ? `data-board-source-requirement-id="${escapeHtml(assignmentRequirementId(row))}"` : ''}>
+        ${row.isResponsible ? '<span class="assignment-board__responsible-star" title="Responsabile" aria-label="Responsabile">★</span>' : ''}
         <div class="assignment-board__person-main">
           ${assignmentId ? `<span class="assignment-board__drag-handle" data-board-reorder-handle title="Trascina per cambiare posizione" aria-label="Trascina per cambiare posizione">⋮⋮</span>` : ''}
           <button type="button"
