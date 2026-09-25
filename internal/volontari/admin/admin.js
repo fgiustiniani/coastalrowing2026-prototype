@@ -6754,15 +6754,26 @@
     if (remove) {
       const requirement = requirementById(rowNode.dataset.requirementId || '');
       if (!requirement) return;
-      if (!confirm(`Eliminare l’abbinamento “${requirementLabel(requirement)}”? È possibile solo se non ci sono persone assegnate.`)) return;
+      const assignedCount = Number(requirement.assignedCount || 0);
+      const assignedWarning = assignedCount > 0
+        ? `\n\nATTENZIONE: verranno rimosse anche ${assignedCount} ${assignedCount === 1 ? 'assegnazione collegata' : 'assegnazioni collegate'}.`
+        : '';
+      if (!confirm(`Eliminare l’abbinamento “${requirementLabel(requirement)}”?${assignedWarning}\n\nL’attività resterà nell’anagrafica e potrà essere riutilizzata in altri turni.`)) return;
       try {
-        await api(API, {
+        const result = await api(API, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'delete-requirement', requirementId: requirement.id })
         });
         await loadSnapshot();
-        setStatus(requirementStatus, 'Abbinamento eliminato.', 'success');
+        const removedAssignments = Number(result?.requirement?.deactivatedAssignments || assignedCount || 0);
+        setStatus(
+          requirementStatus,
+          removedAssignments > 0
+            ? `Abbinamento eliminato · ${removedAssignments} ${removedAssignments === 1 ? 'assegnazione rimossa' : 'assegnazioni rimosse'}.`
+            : 'Abbinamento eliminato.',
+          'success'
+        );
       } catch (error) { alert(error.message); }
     }
   });
