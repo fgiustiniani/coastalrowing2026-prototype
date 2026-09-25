@@ -4474,7 +4474,7 @@
     const body = rows.map((row) => `<Row>${columns.map((column) => {
       const escapedValue = xmlEscape(row[column.key] ?? '');
       const cellValue = column.multiline
-        ? escapedValue.replace(/\\r?\\n/g, '&#10;')
+        ? escapedValue.replace(/\r?\n/g, '&#10;')
         : escapedValue;
       const preserveWhitespace = column.multiline ? ' xml:space="preserve"' : '';
       return `<Cell><Data ss:Type="String"${preserveWhitespace}>${cellValue}</Data></Cell>`;
