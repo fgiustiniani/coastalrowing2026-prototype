@@ -37,7 +37,7 @@
         },
         {
           q: 'Saranno disponibili imbarcazioni per le prove?',
-          a: 'No.'
+          a: 'Sì. Venerdì 2 ottobre, dalle ore 14.00 alle 18.00, saranno disponibili imbarcazioni per le prove su prenotazione. Per prenotare vai in <a href="info-gare.html#programma">Info per chi gareggia → Programma delle attività</a>, apri la giornata di <strong>Venerdì 02/10/2026</strong> e seleziona <strong>“Prenota le barche per le prove”</strong>. Puoi anche accedere direttamente alla <a href="prenotazione-barche.html">pagina di prenotazione</a>.'
         }
       ]
     },
