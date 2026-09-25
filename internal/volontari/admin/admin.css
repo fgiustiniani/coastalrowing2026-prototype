@@ -998,6 +998,29 @@ tr.is-busy button.is-busy {
   background: #e8f6f8;
   color: #2d6f7a;
 }
+.assignment-board__shift-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.assignment-board__shift-actions button {
+  min-height: 25px;
+  padding: 3px 7px;
+  border: 1px solid #b9cdd2;
+  border-radius: 7px;
+  background: #fff;
+  color: #36555f;
+  font: inherit;
+  font-size: .65rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.assignment-board__shift-actions button:hover {
+  border-color: #7ca7b0;
+  background: #f6fbfc;
+}
 .assignment-board__activities {
   display: grid;
   gap: 8px;
