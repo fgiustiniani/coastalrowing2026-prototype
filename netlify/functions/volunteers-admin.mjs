@@ -463,6 +463,54 @@ async function adminSnapshot() {
     latestBaselineResponsesByPerson.get(submission.person_id).push(response);
   }
 
+  const activePersonShiftKeys = new Set(
+    assignmentRows
+      .filter((row) => row.person_id && row.shift_id)
+      .map((row) => `${row.person_id}|${row.shift_id}`)
+  );
+  const latestReleasedResponseByPersonShift = new Map();
+  for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
+    const assignment = assignmentHistoryById.get(assignmentId) || null;
+    if (!assignment?.person_id || !assignment.shift_id) continue;
+    if (activeDescendantByAncestor.has(assignmentId)) continue;
+
+    const key = `${assignment.person_id}|${assignment.shift_id}`;
+    if (activePersonShiftKeys.has(key)) continue;
+
+    const stamp = response?.stamp || response?.created_at || '';
+    const current = latestReleasedResponseByPersonShift.get(key);
+    if (!current || String(stamp).localeCompare(String(current.stamp || '')) > 0) {
+      latestReleasedResponseByPersonShift.set(key, { assignment, response, stamp });
+    }
+  }
+
+  const releasedConfirmedAvailability = [...latestReleasedResponseByPersonShift.values()]
+    .filter(({ response }) => response?.response === 'confirmed')
+    .map(({ assignment, response, stamp }) => {
+      const person = personById.get(assignment.person_id) || null;
+      const shift = shiftById.get(assignment.shift_id) || null;
+      const activity = activityById.get(assignment.activity_id) || null;
+      if (!person?.id || !shift?.id) return null;
+      return {
+        id: `released-confirmed:${assignment.id}`,
+        sourceAssignmentId: assignment.id,
+        personId: person.id,
+        personCode: person.person_code || '',
+        personName: person.display_name || 'Persona',
+        personGroup: person.person_group || '',
+        shiftId: shift.id,
+        day: shift.day_label || assignment.raw_day || '',
+        shift: shift.shift_label || assignment.raw_shift || '',
+        sourceActivity: activity?.name || 'Attività',
+        currentResponse: 'confirmed',
+        currentNote: response.note || '',
+        currentResponseAt: stamp || null,
+        currentActorName: response.actorName || '',
+        releasedAt: assignment.updated_at || null
+      };
+    })
+    .filter(Boolean);
+
   const postConfirmationChanges = [];
   for (const [personId, latestSubmission] of latestSubmissionByPerson.entries()) {
     const person = personById.get(personId);
@@ -610,6 +658,7 @@ async function adminSnapshot() {
     activityCatalog: activityRows,
     activityGroups: activityGroupRows,
     assignments: hydratedAssignments,
+    releasedConfirmedAvailability,
     declinedAssignmentResponses,
     declinedRemovals,
     requirementsAvailable: requirements !== null,
