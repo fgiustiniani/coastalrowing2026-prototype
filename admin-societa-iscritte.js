@@ -196,7 +196,10 @@
       data.summary = {
         ...data.summary,
         rentalMailReceived,
-        rentalMailRegistered
+        rentalMailRegistered,
+        rentalMailNotRegistered: data.ficAvailable
+          ? Math.max(0, rentalMailReceived - rentalMailRegistered)
+          : null
       };
     }
     return true;
@@ -288,24 +291,25 @@
     sourceCard?.classList.toggle('is-warning', data.ficAvailable !== true || data.financialAvailable !== true);
     if (sourceLink && data.sourceUrl) sourceLink.href = data.sourceUrl;
 
-    if (data.registrationSource === 'upload' && data.latestUpload) {
-      sourceTitle.textContent = `Elenco iscritti aggiornato al ${formatDate(data.latestUpload.updateDate)}`;
-      const athleteText = data.latestUpload.athletesTotal === null || data.latestUpload.athletesTotal === undefined
-        ? 'atleti non disponibili'
-        : `${data.latestUpload.athletesTotal} atleti`;
+    const athleteText = data.latestUpload?.athletesTotal === null || data.latestUpload?.athletesTotal === undefined
+      ? 'totale atleti non disponibile'
+      : `${data.latestUpload.athletesTotal} atleti iscritti`;
+
+    if (data.ficAvailable) {
+      sourceTitle.textContent = 'Società da FIC live · atleti da HTML caricato';
       sourceDetail.textContent =
-        `${data.latestUpload.societyCount} società · ${athleteText} · file ${data.latestUpload.fileName}. ` +
-        (data.financialAvailable
-          ? `Dati economici FIC letti il ${formatTimestamp(data.fetchedAt)}.`
-          : `Dati economici FIC non disponibili: ${data.sourceError || 'portale non raggiungibile'}`);
-    } else if (data.ficAvailable) {
-      sourceTitle.textContent = 'Dati FIC live aggiornati';
-      sourceDetail.textContent =
-        `Lettura effettuata il ${formatTimestamp(data.fetchedAt)} · ${data.summary?.sourceRegistrations ?? 0} società presenti nel portale FIC. Nessun file HTML caricato.` +
-        ((data.summary?.unmatchedRegistrations || 0) ? ` ${data.summary.unmatchedRegistrations} riga/e da verificare.` : '');
+        `Pagina FIC letta il ${formatTimestamp(data.fetchedAt)} · ${data.summary?.sourceRegistrations ?? 0} società iscritte.` +
+        (data.latestUpload
+          ? ` Totale atleti: ${athleteText}, dall’HTML ${data.latestUpload.fileName} aggiornato al ${formatDate(data.latestUpload.updateDate)}.`
+          : ' Nessun HTML caricato: il totale degli atleti non è disponibile.') +
+        ((data.summary?.unmatchedRegistrations || 0) ? ` ${data.summary.unmatchedRegistrations} riga/e FIC da verificare.` : '');
     } else {
-      sourceTitle.textContent = 'Anagrafica disponibile, elenco iscritti non disponibile';
-      sourceDetail.textContent = `${data.sourceError || 'Portale FIC non disponibile.'} Carica un file HTML per aggiornare lo stato delle iscrizioni.`;
+      sourceTitle.textContent = 'Pagina FIC live non disponibile';
+      sourceDetail.textContent =
+        `${data.sourceError || 'Portale FIC non disponibile.'} Il numero delle società iscritte non viene ricavato dall’HTML caricato.` +
+        (data.latestUpload
+          ? ` L’ultimo HTML disponibile (${data.latestUpload.fileName}, ${formatDate(data.latestUpload.updateDate)}) viene usato solo per gli atleti: ${athleteText}.`
+          : ' Nessun HTML atleti disponibile.');
     }
 
     if (mailSyncStatus) {
@@ -358,7 +362,11 @@
         historic: `${s.registered2025 ?? 62} nel 2025`,
         mailBreakdown: data.ficAvailable ? {
           registered: s.rentalMailRegistered ?? 0,
-          other: Math.max(0, Number(s.rentalMailReceived || 0) - Number(s.rentalMailRegistered || 0))
+          notRegistered: s.rentalMailNotRegistered ?? Math.max(
+            0,
+            Number(s.rentalMailReceived || 0) - Number(s.rentalMailRegistered || 0)
+          ),
+          total: s.rentalMailReceived ?? 0
         } : null,
         className: 'society-kpi--registered'
       },
@@ -389,8 +397,13 @@
           </div>
           <div class="society-kpi__mail-row society-kpi__mail-row--extra">
             <span class="society-kpi__mail-marker" aria-hidden="true">+</span>
-            <b>${escapeHtml(card.mailBreakdown.other)}</b>
-            <span>${card.mailBreakdown.other === 1 ? 'altra società ha inviato' : 'altre società hanno inviato'} mail di noleggio</span>
+            <b>${escapeHtml(card.mailBreakdown.notRegistered)}</b>
+            <span>${card.mailBreakdown.notRegistered === 1 ? 'società non iscritta ha inviato' : 'società non iscritte hanno inviato'} mail di noleggio</span>
+          </div>
+          <div class="society-kpi__mail-row">
+            <span class="society-kpi__mail-marker" aria-hidden="true">=</span>
+            <b>${escapeHtml(card.mailBreakdown.total)}</b>
+            <span>società con mail di noleggio</span>
           </div>
         </div>` : ''}
       </article>`).join('');
