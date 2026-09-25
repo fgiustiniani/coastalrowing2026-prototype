@@ -175,7 +175,22 @@
     state.personState = detail;
     state.responses = new Map();
     (detail.assignments || []).forEach((assignment) => {
-      if (assignment.currentResponse) state.responses.set(assignment.id, { response: assignment.currentResponse, note: assignment.currentNote || '' });
+      if (assignment.currentResponse) {
+        state.responses.set(assignment.id, {
+          response: assignment.currentResponse,
+          note: assignment.currentNote || '',
+          previousResponse: assignment.currentResponse,
+          responseAt: assignment.currentResponseAt || null
+        });
+      } else if (assignment.assignedFromAvailability) {
+        state.responses.set(assignment.id, {
+          response: 'confirmed',
+          note: '',
+          previousResponse: null,
+          responseAt: null,
+          confirmedFromAvailability: true
+        });
+      }
     });
     state.availability = new Map();
     (detail.availabilityShifts || []).forEach((shift) => {
@@ -205,6 +220,18 @@
     return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
   }
 
+  function formatPreviousResponseDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'Europe/Rome'
+    }).format(date);
+  }
+
   function sortShiftsChronologically(shifts = []) {
     return [...shifts].sort((a, b) => {
       const orderA = Number(a?.sortOrder);
@@ -231,18 +258,34 @@
     }
     assignmentList.innerHTML = assignments.map((assignment) => {
       const saved = state.responses.get(assignment.id) || {};
-      const declined = saved.response === 'declined';
+      const previousResponse = assignment.currentResponse || saved.previousResponse || null;
+      const responseDate = formatPreviousResponseDate(assignment.currentResponseAt || saved.responseAt);
+      const confirmedFromAvailability = Boolean(assignment.assignedFromAvailability && !previousResponse);
+      const confirmedLabel = previousResponse === 'declined'
+        ? 'Ora posso'
+        : (previousResponse === 'confirmed' || confirmedFromAvailability ? 'Confermata' : 'Confermo');
+      const declinedLabel = previousResponse === 'declined'
+        ? 'Rifiutata'
+        : (previousResponse === 'confirmed' || confirmedFromAvailability ? 'Non posso più' : 'Non posso');
+      const confirmedDate = previousResponse === 'confirmed' && responseDate
+        ? `<small class="response-choice__date">${escapeHtml(responseDate)}</small>`
+        : '';
+      const declinedDate = previousResponse === 'declined' && responseDate
+        ? `<small class="response-choice__date">${escapeHtml(responseDate)}</small>`
+        : '';
+
       return `
         <article class="assignment-card" data-assignment-id="${escapeHtml(assignment.id)}">
           <div class="assignment-card__head"><div><h3>${escapeHtml(displayActivityName(assignment.activity))}</h3><div class="meta">
             <span class="pill">${escapeHtml(assignment.day)}</span><span class="pill">${escapeHtml(assignment.shift)}</span>
             ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
+            ${assignment.assignedFromAvailability ? '<span class="pill pill--availability-assigned">Attività assegnata come da disponibilità aggiuntiva</span>' : ''}
             ${!assignment.shiftMatched ? '<span class="pill pill--warn">Turno da verificare</span>' : ''}
           </div></div></div>
           ${assignment.note ? `<p class="muted">${escapeHtml(assignment.note)}</p>` : ''}
           <div class="response-options">
-            <label class="response-choice response-choice--yes"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}><span>Confermo</span></label>
-            <label class="response-choice response-choice--no"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${declined ? 'checked' : ''}><span>Non posso</span></label>
+            <label class="response-choice response-choice--yes"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}><span><strong>${escapeHtml(confirmedLabel)}</strong>${confirmedDate}</span></label>
+            <label class="response-choice response-choice--no"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${saved.response === 'declined' ? 'checked' : ''}><span><strong>${escapeHtml(declinedLabel)}</strong>${declinedDate}</span></label>
           </div>
           <label class="field assignment-note"><span>Nota facoltativa</span><textarea maxlength="1000" data-assignment-note placeholder="Se vuoi, aggiungi una nota utile per questa attività">${escapeHtml(saved.note || '')}</textarea></label>
         </article>`;

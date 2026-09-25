@@ -135,15 +135,32 @@ async function personState(personId) {
   const assignmentIds = assignmentHistoryRows.map((row) => row.id);
 
   let responseRows = [];
+  let assignmentAvailabilityAuditRows = [];
   if (assignmentIds.length) {
-    responseRows = rows(await supabaseRequest('volunteer_assignment_responses', {
-      query: { select: 'assignment_id,submission_id,response,note,created_at', assignment_id: `in.(${assignmentIds.join(',')})`, order: 'created_at.desc' }
-    }));
+    [responseRows, assignmentAvailabilityAuditRows] = await Promise.all([
+      supabaseRequest('volunteer_assignment_responses', {
+        query: { select: 'assignment_id,submission_id,response,note,created_at', assignment_id: `in.(${assignmentIds.join(',')})`, order: 'created_at.desc' }
+      }).then(rows),
+      supabaseRequest('volunteer_audit_log', {
+        query: {
+          select: 'entity_id,action_type,created_at',
+          person_id: `eq.${personId}`,
+          entity_type: 'eq.assignment',
+          action_type: 'eq.assignment_from_availability',
+          entity_id: `in.(${assignmentIds.join(',')})`,
+          order: 'created_at.asc'
+        }
+      }).then(rows)
+    ]);
   }
   const latestResponse = new Map();
   responseRows
     .sort((a, b) => String(submissionTime.get(b.submission_id) || b.created_at).localeCompare(String(submissionTime.get(a.submission_id) || a.created_at)))
     .forEach((row) => { if (!latestResponse.has(row.assignment_id)) latestResponse.set(row.assignment_id, row); });
+
+  const availabilityMarkedAssignmentIds = new Set(
+    assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
+  );
 
   const sameAssignmentTurn = (current, previous) => {
     if (!current || !previous) return false;
@@ -171,6 +188,22 @@ async function personState(personId) {
     return null;
   };
 
+  const assignmentComesFromAvailability = (assignment) => {
+    let current = assignment;
+    const seen = new Set();
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      if (availabilityMarkedAssignmentIds.has(current.id)) return true;
+      if (!current.supersedes_assignment_id) break;
+
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      current = previous;
+    }
+    return false;
+  };
+
   const latestSubmission = submissionRows[0] || null;
   let availabilityRows = [];
   if (latestSubmission) {
@@ -195,6 +228,7 @@ async function personState(personId) {
       role: assignment.role || '',
       requestedProfile: assignment.requested_profile || '',
       note: assignment.note || '',
+      assignedFromAvailability: assignmentComesFromAvailability(assignment),
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
       currentResponseAt: current ? (submissionTime.get(current.submission_id) || current.created_at) : null
