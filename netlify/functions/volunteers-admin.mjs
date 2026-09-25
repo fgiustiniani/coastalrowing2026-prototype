@@ -386,6 +386,13 @@ async function adminSnapshot() {
       current = previous;
     }
 
+    const person = personById.get(assignment.person_id) || null;
+    const latestSubmission = latestSubmissionByPerson.get(assignment.person_id) || null;
+    const latestAdminAvailability = person?.selectable === false
+      && isAdminAvailabilitySubmission(latestSubmission)
+      && (availabilityBySubmission.get(latestSubmission?.id) || []).some((item) => item.shiftId === assignment.shift_id);
+    if (latestAdminAvailability) return true;
+
     const enteredAt = assignmentEnteredCurrentShiftAt(assignment);
     if (!Number.isFinite(enteredAt)) return false;
     const declaredAt = availabilityDeclaredAtByPersonShift.get(`${assignment.person_id}|${assignment.shift_id}`) || [];
