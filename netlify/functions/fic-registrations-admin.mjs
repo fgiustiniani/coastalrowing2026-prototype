@@ -557,7 +557,7 @@ async function fetchFicPage() {
   throw lastError || new Error('Pagina FIC non raggiungibile.');
 }
 
-function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAvailable, financialAvailable, snapshot) {
+function summaryFrom(rows, registrations, unmatchedRegistrations, financialAvailable, snapshot) {
   const money = registrations.reduce((sum, item) => ({
     amountDue: sum.amountDue + Number(item.amountDue || 0),
     boatRental: sum.boatRental + Number(item.boatRental || 0),
@@ -565,10 +565,15 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAv
     amountPaid: sum.amountPaid + Number(item.amountPaid || 0)
   }), { amountDue: 0, boatRental: 0, oarRental: 0, amountPaid: 0 });
 
-  const registered = registrationAvailable ? rows.filter((row) => row.status === 'registered').length : 0;
+  // Le società iscritte arrivano sempre dalla pagina FIC live.
+  // Lo snapshot HTML caricato viene usato esclusivamente per il totale/dettaglio atleti.
+  const registered = financialAvailable ? registrations.length : null;
   const rentalMailReceived = rows.filter((row) => row.rentalMailReceived).length;
-  const rentalMailRegistered = registrationAvailable
+  const rentalMailRegistered = financialAvailable
     ? rows.filter((row) => row.status === 'registered' && row.rentalMailReceived).length
+    : null;
+  const rentalMailNotRegistered = financialAvailable
+    ? Math.max(0, rentalMailReceived - rentalMailRegistered)
     : null;
 
   return {
@@ -578,14 +583,13 @@ function summaryFrom(rows, registrations, unmatchedRegistrations, registrationAv
     athletes2025Program: ATHLETES_2025_PROGRAM,
     athletes2026: snapshotRegisteredAthletesTotal(snapshot),
     registered,
-    notRegistered: registrationAvailable ? rows.length - registered : null,
-    sourceRegistrations: registrationAvailable
-      ? (snapshot ? Number(snapshot.societyCount || snapshot.societies?.length || 0) : registrations.length)
-      : null,
+    notRegistered: financialAvailable ? Math.max(0, rows.length - registered) : null,
+    sourceRegistrations: financialAvailable ? registrations.length : null,
     financialRegistrations: financialAvailable ? registrations.length : null,
     unmatchedRegistrations: financialAvailable ? unmatchedRegistrations.length : null,
     rentalMailReceived,
     rentalMailRegistered,
+    rentalMailNotRegistered,
     ...money
   };
 }
@@ -695,8 +699,9 @@ export default async (request) => {
       : 'Il portale FIC non è raggiungibile o il formato della pagina è cambiato.';
   }
 
-  const registrationAvailable = Boolean(snapshot) || financialAvailable;
-  const registrationSource = snapshot ? 'upload' : (financialAvailable ? 'live' : 'none');
+  // Lo stato delle società è sempre live FIC. Lo snapshot HTML resta una fonte separata per gli atleti.
+  const registrationAvailable = financialAvailable;
+  const registrationSource = financialAvailable ? 'live' : 'none';
 
   const rows = FIC_SOCIETIES_2026.map((society, index) => {
     const match = bySociety.get(index);
@@ -704,8 +709,7 @@ export default async (request) => {
     const snapshotRegistration = snapshotByCode.get(code) || null;
     let status = 'unknown';
 
-    if (snapshot) status = snapshotRegistration ? 'registered' : 'not_registered';
-    else if (financialAvailable) status = match ? 'registered' : 'not_registered';
+    if (financialAvailable) status = match ? 'registered' : 'not_registered';
 
     return {
       ...society,
@@ -741,7 +745,6 @@ export default async (request) => {
       rows,
       registrations,
       unmatchedRegistrations,
-      registrationAvailable,
       financialAvailable,
       snapshot
     ),
