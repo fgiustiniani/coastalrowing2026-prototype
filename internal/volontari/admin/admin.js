@@ -3493,87 +3493,90 @@
 
   function personPathBlockHtml(person, shifts, shiftByLabel) {
     const personId = person?.id || '';
-    const noPreassignment = person?.hadPreassignedAssignment === false;
-    const personRows = (snapshot?.assignments || [])
-      .filter((row) => row.personId === personId)
-      .sort((a, b) =>
-        assignmentShiftOrder(a) - assignmentShiftOrder(b)
-        || displayActivity(a).localeCompare(displayActivity(b), 'it')
-      );
-    const availability = person?.latestSubmission?.availability || [];
-    const declinedResponses = (snapshot?.declinedAssignmentResponses || [])
+    const activeRows = (snapshot?.assignments || [])
       .filter((row) => row.personId === personId);
+    const adminConfirmedRows = activeRows.filter((row) =>
+      row.assignedFromAvailability !== true
+      && row.currentResponse === 'confirmed'
+    );
+    const fromAvailabilityRows = activeRows.filter((row) =>
+      row.assignedFromAvailability === true
+      && row.currentResponse !== 'declined'
+    );
+    const adminDeclinedRows = (snapshot?.declinedAssignmentResponses || [])
+      .filter((row) => row.personId === personId && row.assignedFromAvailability !== true);
+    const availability = person?.latestSubmission?.availability || [];
 
     const shiftOrderById = new Map(shifts.map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
-    const activityMeta = new Map();
-    for (const row of personRows) {
-      const activity = displayActivity(row);
-      const order = shiftOrderById.get(row.shiftId) ?? assignmentShiftOrder(row);
-      const current = activityMeta.get(activity);
-      if (!current || order < current.firstOrder) activityMeta.set(activity, { label: activity, firstOrder: order });
-    }
-    const activities = [...activityMeta.values()]
+    const visibleActivityMeta = new Map();
+    const registerActivity = (activity, shiftId, fallbackDay = '', fallbackShift = '') => {
+      const label = prettifyActivityName(activity || 'Attività');
+      const matchedShiftId = shiftId || shiftByLabel.get(`${fallbackDay || ''}|||${fallbackShift || ''}`)?.id || '';
+      const order = shiftOrderById.get(matchedShiftId) ?? 9999;
+      const current = visibleActivityMeta.get(label);
+      if (!current || order < current.firstOrder) visibleActivityMeta.set(label, { label, firstOrder: order });
+    };
+
+    adminConfirmedRows.forEach((row) => registerActivity(displayActivity(row), row.shiftId, row.day, row.shift));
+    fromAvailabilityRows.forEach((row) => registerActivity(displayActivity(row), row.shiftId, row.day, row.shift));
+    adminDeclinedRows.forEach((row) => registerActivity(row.activity, row.shiftId, row.day, row.shift));
+
+    const activities = [...visibleActivityMeta.values()]
       .sort((a, b) => a.firstOrder - b.firstOrder || a.label.localeCompare(b.label, 'it'))
       .map((item) => item.label);
 
-    const availabilityLabel = 'Disp.+';
-    const declinedLabel = 'Non può';
-    const rowsByShift = new Map();
-    for (const row of personRows) {
-      if (!row.shiftId) continue;
-      if (!rowsByShift.has(row.shiftId)) rowsByShift.set(row.shiftId, []);
-      rowsByShift.get(row.shiftId).push(row);
+    const adminConfirmedByShift = new Map();
+    const fromAvailabilityByShift = new Map();
+    const adminDeclinedByShift = new Map();
+
+    const addToShiftMap = (map, shiftId, row) => {
+      if (!shiftId) return;
+      if (!map.has(shiftId)) map.set(shiftId, []);
+      map.get(shiftId).push(row);
+    };
+
+    for (const row of adminConfirmedRows) addToShiftMap(adminConfirmedByShift, row.shiftId, row);
+    for (const row of fromAvailabilityRows) addToShiftMap(fromAvailabilityByShift, row.shiftId, row);
+    for (const row of adminDeclinedRows) {
+      const shiftId = row.shiftId || shiftByLabel.get(`${row.day || ''}|||${row.shift || ''}`)?.id || '';
+      addToShiftMap(adminDeclinedByShift, shiftId, row);
     }
 
-    const availabilityByShift = new Map();
+    const usedAvailabilityShiftIds = new Set(fromAvailabilityRows.map((row) => row.shiftId).filter(Boolean));
+    const unusedAvailabilityByShift = new Map();
     for (const item of availability) {
-      if (!item.shiftId) continue;
-      if (!availabilityByShift.has(item.shiftId)) availabilityByShift.set(item.shiftId, []);
-      availabilityByShift.get(item.shiftId).push(item);
+      if (!item.shiftId || usedAvailabilityShiftIds.has(item.shiftId)) continue;
+      addToShiftMap(unusedAvailabilityByShift, item.shiftId, item);
     }
 
-    const declinedByShift = new Map();
-    for (const item of declinedResponses) {
-      const shiftId = item.shiftId || shiftByLabel.get(`${item.day || ''}|||${item.shift || ''}`)?.id || '';
-      if (!shiftId) continue;
-      if (!declinedByShift.has(shiftId)) declinedByShift.set(shiftId, []);
-      declinedByShift.get(shiftId).push(item);
-    }
-
-    const left = 205;
-    const right = 18;
-    const top = 54;
-    const bottom = 24;
-    const xGap = 58;
-    const rowHeight = 26;
-    const width = Math.max(920, left + right + Math.max(0, shifts.length - 1) * xGap + 18);
-    const chartRows = [...activities, availabilityLabel, declinedLabel];
+    const unusedAvailabilityLabel = 'Disp.+ non usata';
+    const left = 232;
+    const right = 22;
+    const top = 60;
+    const bottom = 28;
+    const xGap = 86;
+    const rowHeight = 32;
+    const width = Math.max(1280, left + right + Math.max(0, shifts.length - 1) * xGap + 24);
+    const chartRows = [...activities, unusedAvailabilityLabel];
     const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
     const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
-    const availabilityY = yByActivity.get(availabilityLabel);
-    const declinedY = yByActivity.get(declinedLabel);
+    const unusedAvailabilityY = yByActivity.get(unusedAvailabilityLabel);
     const xForShift = (index) => left + index * xGap;
 
     const grid = chartRows.map((activity) => {
       const y = yByActivity.get(activity);
-      const isState = activity === availabilityLabel || activity === declinedLabel;
-      const classes = [
-        'person-path-activity-label',
-        isState ? 'is-state' : '',
-        activity === availabilityLabel ? 'is-availability' : '',
-        activity === declinedLabel ? 'is-declined' : ''
-      ].filter(Boolean).join(' ');
+      const isUnusedAvailability = activity === unusedAvailabilityLabel;
       return `
-        <line class="person-path-grid-line${isState ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
-        <text class="${classes}" x="${left - 18}" y="${y + 3}" text-anchor="end">${escapeHtml(activity)}</text>`;
+        <line class="person-path-grid-line${isUnusedAvailability ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
+        <text class="person-path-activity-label${isUnusedAvailability ? ' is-unused-availability' : ''}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
     }).join('');
 
     const headers = shifts.map((shift, index) => {
       const x = xForShift(index);
       const day = String(shift.day_label || '').replace(/ ottobre$/i, '');
       return `
-        <text class="person-path-shift-day" x="${x}" y="19" text-anchor="middle">${escapeHtml(day)}</text>
-        <text class="person-path-shift-time" x="${x}" y="35" text-anchor="middle">${escapeHtml(shift.shift_label || '')}</text>`;
+        <text class="person-path-shift-day" x="${x}" y="20" text-anchor="middle">${escapeHtml(day)}</text>
+        <text class="person-path-shift-time" x="${x}" y="39" text-anchor="middle">${escapeHtml(shift.shift_label || '')}</text>`;
     }).join('');
 
     const separators = shifts.map((shift, index) => {
@@ -3584,68 +3587,68 @@
 
     const anchors = [];
     const nodes = [];
+
     shifts.forEach((shift, index) => {
       const x = xForShift(index);
-      const rows = rowsByShift.get(shift.id) || [];
-      const assigned = rows.filter((row) => row.currentResponse !== 'declined');
-      const declinedActive = rows.filter((row) => row.currentResponse === 'declined');
-      const assignedYs = assigned.map((row) => yByActivity.get(displayActivity(row))).filter(Number.isFinite);
-      const anchorY = assignedYs.length
-        ? assignedYs.reduce((sum, value) => sum + value, 0) / assignedYs.length
-        : null;
-      anchors.push({ x, y: anchorY, assigned: assignedYs.length > 0 });
+      const confirmedRows = adminConfirmedByShift.get(shift.id) || [];
+      const availabilityRows = fromAvailabilityByShift.get(shift.id) || [];
+      const declinedRows = adminDeclinedByShift.get(shift.id) || [];
+      const operationalRows = [...confirmedRows, ...availabilityRows];
 
-      if (assignedYs.length > 1) {
-        nodes.push(`<line class="person-path-multi-line" x1="${x}" y1="${Math.min(...assignedYs)}" x2="${x}" y2="${Math.max(...assignedYs)}"></line>`);
+      const operationalYs = operationalRows
+        .map((row) => yByActivity.get(prettifyActivityName(displayActivity(row))))
+        .filter(Number.isFinite);
+      const anchorY = operationalYs.length
+        ? operationalYs.reduce((sum, value) => sum + value, 0) / operationalYs.length
+        : null;
+      anchors.push({ x, y: anchorY, assigned: operationalYs.length > 0 });
+
+      if (operationalYs.length > 1) {
+        nodes.push(`<line class="person-path-multi-line" x1="${x}" y1="${Math.min(...operationalYs)}" x2="${x}" y2="${Math.max(...operationalYs)}"></line>`);
       }
 
-      for (const row of assigned) {
-        const activity = displayActivity(row);
+      for (const row of confirmedRows) {
+        const activity = prettifyActivityName(displayActivity(row));
         const y = yByActivity.get(activity);
         if (!Number.isFinite(y)) continue;
-        const response = row.currentResponse === 'confirmed' ? 'Confermata' : 'Da rispondere';
         nodes.push(`
-          <circle class="person-path-node is-assigned" cx="${x}" cy="${y}" r="5">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · ${response}`)}</title>
+          <circle class="person-path-node is-admin-confirmed" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Assegnata dall'admin e confermata`)}</title>
           </circle>`);
       }
 
-      for (const row of declinedActive) {
-        const activity = displayActivity(row);
+      for (const row of fromAvailabilityRows) {
+        if (row.shiftId !== shift.id) continue;
+        const activity = prettifyActivityName(displayActivity(row));
         const y = yByActivity.get(activity);
         if (!Number.isFinite(y)) continue;
         nodes.push(`
-          <circle class="person-path-node is-declined" cx="${x}" cy="${y}" r="5">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Non può`)}</title>
+          <circle class="person-path-node is-from-availability" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Assegnata a seguito di disponibilità aggiuntiva`)}</title>
           </circle>
-          <line class="person-path-declined-cross" x1="${x - 3}" y1="${y - 3}" x2="${x + 3}" y2="${y + 3}"></line>
-          <line class="person-path-declined-cross" x1="${x + 3}" y1="${y - 3}" x2="${x - 3}" y2="${y + 3}"></line>`);
+          <text class="person-path-node-plus is-from-availability" x="${x}" y="${y + 4}" text-anchor="middle">+</text>`);
       }
 
-      const shiftAvailability = availabilityByShift.get(shift.id) || [];
-      if (shiftAvailability.length) {
-        const notes = shiftAvailability.map((item) => String(item.note || '').trim()).filter(Boolean);
+      for (const row of declinedRows) {
+        const activity = prettifyActivityName(row.activity || 'Attività');
+        const y = yByActivity.get(activity);
+        if (!Number.isFinite(y)) continue;
         nodes.push(`
-          <circle class="person-path-node is-availability" cx="${x}" cy="${availabilityY}" r="6">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Disponibilità aggiuntiva${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
+          <circle class="person-path-node is-admin-declined" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Assegnata dall'admin e rifiutata${row.note ? ` · ${row.note}` : ''}`)}</title>
           </circle>
-          <text class="person-path-availability-plus" x="${x}" y="${availabilityY + 4}" text-anchor="middle">+</text>`);
+          <line class="person-path-declined-cross" x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}"></line>
+          <line class="person-path-declined-cross" x1="${x + 4}" y1="${y - 4}" x2="${x - 4}" y2="${y + 4}"></line>`);
       }
 
-      const shiftDeclined = declinedByShift.get(shift.id) || [];
-      if (shiftDeclined.length) {
-        const activityNames = [...new Set(shiftDeclined.map((item) => String(item.activity || 'Attività').trim()).filter(Boolean))];
-        const notes = [...new Set(shiftDeclined.map((item) => String(item.note || '').trim()).filter(Boolean))];
-        const details = [
-          activityNames.length ? `rifiutato: ${activityNames.join(' · ')}` : 'rifiuto registrato',
-          notes.length ? `note: ${notes.join(' · ')}` : ''
-        ].filter(Boolean).join(' · ');
+      const unusedAvailability = unusedAvailabilityByShift.get(shift.id) || [];
+      if (unusedAvailability.length) {
+        const notes = unusedAvailability.map((item) => String(item.note || '').trim()).filter(Boolean);
         nodes.push(`
-          <circle class="person-path-node is-declined-status" cx="${x}" cy="${declinedY}" r="6">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${details}`)}</title>
+          <circle class="person-path-node is-unused-availability" cx="${x}" cy="${unusedAvailabilityY}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Disponibilità aggiuntiva non usata${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
           </circle>
-          <line class="person-path-declined-cross" x1="${x - 3}" y1="${declinedY - 3}" x2="${x + 3}" y2="${declinedY + 3}"></line>
-          <line class="person-path-declined-cross" x1="${x + 3}" y1="${declinedY - 3}" x2="${x - 3}" y2="${declinedY + 3}"></line>`);
+          <text class="person-path-node-plus is-unused-availability" x="${x}" y="${unusedAvailabilityY + 4}" text-anchor="middle">+</text>`);
       }
     });
 
@@ -3655,30 +3658,22 @@
       return `<line class="person-path-segment is-solid" x1="${previous.x}" y1="${previous.y}" x2="${current.x}" y2="${current.y}"></line>`;
     }).join('');
 
-    const assignedShiftCount = shifts.filter((shift) =>
-      (rowsByShift.get(shift.id) || []).some((row) => row.currentResponse !== 'declined')
-    ).length;
-    const multipleShiftCount = shifts.filter((shift) =>
-      (rowsByShift.get(shift.id) || []).filter((row) => row.currentResponse !== 'declined').length > 1
-    ).length;
-    const availabilityShiftCount = shifts.filter((shift) => (availabilityByShift.get(shift.id) || []).length > 0).length;
-    const declinedShiftCount = shifts.filter((shift) => (declinedByShift.get(shift.id) || []).length > 0).length;
     const summaryParts = [
-      `${assignedShiftCount} turni con attività`,
-      multipleShiftCount ? `${multipleShiftCount} con più attività` : '',
-      availabilityShiftCount ? `${availabilityShiftCount} Disp.+` : '',
-      declinedShiftCount ? `${declinedShiftCount} con rifiuti` : ''
+      adminConfirmedRows.length ? `${adminConfirmedRows.length} admin confermate` : '',
+      adminDeclinedRows.length ? `${adminDeclinedRows.length} admin rifiutate` : '',
+      fromAvailabilityRows.length ? `${fromAvailabilityRows.length} da Disp.+` : '',
+      unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} Disp.+ non usate` : ''
     ].filter(Boolean);
-    const hasData = assignedShiftCount > 0 || availabilityShiftCount > 0 || declinedShiftCount > 0;
+    const hasData = summaryParts.length > 0;
 
     return `
-      <article class="person-path-person-block${hasData ? '' : ' is-empty'}${noPreassignment ? ' is-no-preassignment' : ''}">
+      <article class="person-path-person-block${hasData ? '' : ' is-empty'}">
         <div class="person-path-summary">
           <div class="person-path-summary__person">
             <strong>${escapeHtml(person?.display_name || 'Persona')}</strong>
-            ${noPreassignment ? '<span class="person-path-preassignment-badge">Nessuna attività preassegnata</span>' : ''}
+            ${person?.person_group ? `<span class="person-path-group-badge">${escapeHtml(person.person_group)}</span>` : ''}
           </div>
-          <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessuna attività, disponibilità o rifiuto registrato'}</span>
+          <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessun dato nei quattro stati visualizzati'}</span>
         </div>
         <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || 'persona')}">
           <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
@@ -3694,9 +3689,11 @@
 
   function personPathVisiblePeople() {
     const selectedPersonId = personPathFilter?.value || '';
+    const selectedGroups = selectedFilterValues(personPathGroupFilter);
     return (snapshot?.people || [])
       .filter((person) => person.active !== false)
       .filter((person) => !selectedPersonId || person.id === selectedPersonId)
+      .filter((person) => filterMatches(selectedGroups, person.person_group || ''))
       .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
   }
 
@@ -3721,70 +3718,67 @@
       shift
     ]));
     const exportedAt = formatDateTime(new Date().toISOString());
-    const pages = people.map((person) => `
-      <section class="person-path-pdf-page">
-        <header class="person-path-pdf-header">
-          <div>
-            <h1>Percorso attività volontari</h1>
-            <p>Turni, attività, disponibilità aggiuntive e rifiuti</p>
-          </div>
-          <span>Esportato il ${escapeHtml(exportedAt)}</span>
-        </header>
-        <div class="person-path-pdf-legend">
-          <span><i class="person-path-dot is-assigned"></i>Attività assegnata</span>
-          <span><i class="person-path-dot is-availability">+</i>Disp.+</span>
-          <span><i class="person-path-dot is-declined"></i>Non può</span>
-          <span class="person-path-preassignment-badge">Nessuna attività preassegnata</span>
-        </div>
-        ${personPathBlockHtml(person, shifts, shiftByLabel)}
-      </section>`).join('');
+    const blocks = people.map((person) => personPathBlockHtml(person, shifts, shiftByLabel)).join('');
 
     popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Percorso attività volontari</title><style>
       @page { size: A4 landscape; margin: 6mm; }
       * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; background: white; }
-      .person-path-pdf-page { break-after: page; page-break-after: always; width: 100%; }
-      .person-path-pdf-page:last-child { break-after: auto; page-break-after: auto; }
-      .person-path-pdf-header { display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin:0 0 4mm; }
-      .person-path-pdf-header h1 { margin:0; font-size:13pt; }
-      .person-path-pdf-header p { margin:1mm 0 0; font-size:7.5pt; color:#60757d; }
+      .person-path-pdf-header { display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin:0 0 3mm; }
+      .person-path-pdf-header h1 { margin:0; font-size:12pt; }
+      .person-path-pdf-header p { margin:1mm 0 0; font-size:7pt; color:#60757d; }
       .person-path-pdf-header > span { font-size:6.5pt; color:#60757d; white-space:nowrap; }
-      .person-path-pdf-legend { display:flex; align-items:center; gap:4mm; margin:0 0 3mm; font-size:7pt; color:#60757d; }
-      .person-path-pdf-legend > span { display:inline-flex; align-items:center; gap:1.5mm; }
-      .person-path-person-block { padding:2.5mm; border:1px solid #cfdcdf; border-radius:3mm; background:#fbfcfc; overflow:hidden; break-inside:avoid; page-break-inside:avoid; }
-      .person-path-person-block.is-no-preassignment { border:1.5px solid #d09a2d; background:#fffaf0; }
-      .person-path-summary { display:flex; justify-content:space-between; align-items:center; gap:4mm; margin:0 0 2mm; }
-      .person-path-summary__person { display:flex; align-items:center; gap:2mm; min-width:0; }
-      .person-path-summary strong { font-size:9pt; }
-      .person-path-summary > span { font-size:6.5pt; color:#60757d; }
-      .person-path-preassignment-badge { display:inline-flex; padding:.7mm 1.5mm; border:1px solid #d09a2d; border-radius:8px; background:#fff1cf; color:#76520d; font-size:6pt; font-weight:800; white-space:nowrap; }
+      .person-path-pdf-legend { display:flex; align-items:center; gap:3.5mm; margin:0 0 3mm; font-size:6.8pt; color:#60757d; flex-wrap:wrap; }
+      .person-path-pdf-legend > span { display:inline-flex; align-items:center; gap:1.2mm; }
+      .person-path-pdf-list { display:block; }
+      .person-path-person-block { padding:1.8mm; margin:0 0 2mm; border:1px solid #cfdcdf; border-radius:2mm; background:#fbfcfc; overflow:hidden; break-inside:avoid; page-break-inside:avoid; }
+      .person-path-summary { display:flex; justify-content:space-between; align-items:center; gap:3mm; margin:0 0 1.2mm; }
+      .person-path-summary__person { display:flex; align-items:center; gap:1.5mm; min-width:0; }
+      .person-path-summary strong { font-size:7.8pt; }
+      .person-path-summary > span { font-size:5.8pt; color:#60757d; }
+      .person-path-group-badge { display:inline-flex; padding:.4mm 1.2mm; border:1px solid #c9d7da; border-radius:8px; background:#eef4f5; color:#526a72; font-size:5.5pt; font-weight:700; white-space:nowrap; }
       .person-path-scroll { width:100%; overflow:visible; border:0; background:white; }
       .person-path-svg { display:block; width:100%; height:auto; font-family:Arial,sans-serif; }
       .person-path-grid-line { stroke:#d8e2e4; stroke-width:1; }
       .person-path-grid-line.is-state { stroke-dasharray:3 4; }
-      .person-path-day-separator { stroke:#b8c9ce; stroke-width:1.3; stroke-dasharray:4 5; }
-      .person-path-activity-label { fill:#173e4b; font-size:9px; font-weight:700; }
-      .person-path-activity-label.is-state { font-weight:800; }
-      .person-path-activity-label.is-availability { fill:#2f6f48; }
-      .person-path-activity-label.is-declined { fill:#943f37; }
-      .person-path-shift-day { fill:#173e4b; font-size:8px; font-weight:800; }
-      .person-path-shift-time { fill:#60757d; font-size:8px; font-weight:700; }
-      .person-path-segment { stroke-width:2.4; stroke-linecap:round; }
+      .person-path-day-separator { stroke:#b8c9ce; stroke-width:1.2; stroke-dasharray:4 5; }
+      .person-path-activity-label { fill:#173e4b; font-size:8.5px; font-weight:700; }
+      .person-path-activity-label.is-unused-availability { fill:#32704a; font-weight:800; }
+      .person-path-shift-day { fill:#173e4b; font-size:7.5px; font-weight:800; }
+      .person-path-shift-time { fill:#60757d; font-size:7.5px; font-weight:700; }
+      .person-path-segment { stroke-width:2.2; stroke-linecap:round; }
       .person-path-segment.is-solid { stroke:#2f6978; }
-      .person-path-multi-line { stroke:#2f6978; stroke-width:2.4; stroke-linecap:round; }
-      .person-path-node { stroke-width:2; }
-      .person-path-node.is-assigned { fill:#2f6978; stroke:white; }
-      .person-path-node.is-availability { fill:#e9f6ed; stroke:#2f6f48; }
-      .person-path-node.is-declined, .person-path-node.is-declined-status { fill:white; stroke:#943f37; }
-      .person-path-availability-plus { fill:#2f6f48; font-size:9px; font-weight:900; }
+      .person-path-multi-line { stroke:#2f6978; stroke-width:2.2; stroke-linecap:round; }
+      .person-path-node { stroke-width:1.8; }
+      .person-path-node.is-admin-confirmed { fill:#2f6978; stroke:white; }
+      .person-path-node.is-admin-declined { fill:white; stroke:#943f37; }
+      .person-path-node.is-from-availability { fill:#2f7a4b; stroke:white; }
+      .person-path-node.is-unused-availability { fill:white; stroke:#2f7a4b; }
+      .person-path-node-plus { font-size:9px; font-weight:900; pointer-events:none; }
+      .person-path-node-plus.is-from-availability { fill:white; }
+      .person-path-node-plus.is-unused-availability { fill:#2f7a4b; }
       .person-path-declined-cross { stroke:#943f37; stroke-width:1.6; stroke-linecap:round; }
-      .person-path-dot { width:3mm; height:3mm; border-radius:50%; border:1.5px solid #2f6978; display:inline-block; box-sizing:border-box; }
-      .person-path-dot.is-assigned { background:#2f6978; }
-      .person-path-dot.is-availability { background:#e9f6ed; border-color:#2f6f48; color:#2f6f48; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
-      .person-path-dot.is-declined { background:white; border-color:#943f37; position:relative; }
-      .person-path-dot.is-declined::before, .person-path-dot.is-declined::after { content:''; position:absolute; left:1mm; top:.1mm; width:.4mm; height:2.3mm; background:#943f37; transform:rotate(45deg); }
-      .person-path-dot.is-declined::after { transform:rotate(-45deg); }
-    </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));<\/script></body></html>`);
+      .person-path-dot { width:3mm; height:3mm; border-radius:50%; border:1.5px solid; display:inline-block; box-sizing:border-box; position:relative; }
+      .person-path-dot.is-admin-confirmed { background:#2f6978; border-color:#2f6978; }
+      .person-path-dot.is-admin-declined { background:white; border-color:#943f37; }
+      .person-path-dot.is-admin-declined::before, .person-path-dot.is-admin-declined::after { content:''; position:absolute; left:1mm; top:.1mm; width:.4mm; height:2.3mm; background:#943f37; transform:rotate(45deg); }
+      .person-path-dot.is-admin-declined::after { transform:rotate(-45deg); }
+      .person-path-dot.is-from-availability { background:#2f7a4b; border-color:#2f7a4b; color:white; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
+      .person-path-dot.is-unused-availability { background:white; border-color:#2f7a4b; color:#2f7a4b; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
+    </style></head><body>
+      <header class="person-path-pdf-header">
+        <div><h1>Percorso attività volontari</h1><p>Stati operativi per persona e turno</p></div>
+        <span>Esportato il ${escapeHtml(exportedAt)}</span>
+      </header>
+      <div class="person-path-pdf-legend">
+        <span><i class="person-path-dot is-admin-confirmed"></i>Admin confermata</span>
+        <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
+        <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
+        <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
+      </div>
+      <main class="person-path-pdf-list">${blocks}</main>
+      <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));<\/script>
+    </body></html>`);
     popup.document.close();
   }
 
@@ -3806,7 +3800,7 @@
 
     personPathChart.innerHTML = people.length
       ? `<div class="person-path-blocks">${people.map((person) => personPathBlockHtml(person, shifts, shiftByLabel)).join('')}</div>`
-      : '<p class="empty-state">Nessuna persona disponibile.</p>';
+      : '<p class="empty-state">Nessuna persona disponibile con i filtri selezionati.</p>';
   }
 
   function reportAssignmentRows({ personIds = [], activities = [], shiftIds = [] } = {}) {
