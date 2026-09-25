@@ -203,12 +203,6 @@ async function adminSnapshot() {
   }
 
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
-  const preassignedPersonIds = new Set(
-    assignmentHistoryRows
-      .filter((row) => String(row.source_type || '').toLocaleLowerCase('it-IT') === 'excel')
-      .map((row) => row.person_id)
-      .filter(Boolean)
-  );
 
   const sameAssignmentTurn = (current, previous) => {
     if (!current || !previous) return false;
@@ -287,7 +281,6 @@ async function adminSnapshot() {
     const latestVolunteer = latestVolunteerSubmissionByPerson.get(person.id) || null;
     return {
       ...person,
-      hadPreassignedAssignment: preassignedPersonIds.has(person.id),
       submissionCount: submissionCountByPerson.get(person.id) || 0,
       latestVolunteerSubmission: latestVolunteer ? {
         id: latestVolunteer.id,
@@ -412,6 +405,7 @@ async function adminSnapshot() {
       day: response.day_snapshot || shift?.day_label || assignment?.raw_day || '',
       shift: response.shift_snapshot || shift?.shift_label || assignment?.raw_shift || '',
       activity: response.activity_snapshot || activity?.name || 'Attività',
+      assignedFromAvailability: assignmentComesFromAvailability(assignment),
       responseAt: response.stamp || response.created_at || null,
       note: response.note || ''
     });
