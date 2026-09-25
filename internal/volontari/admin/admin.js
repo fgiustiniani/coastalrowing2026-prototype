@@ -42,6 +42,7 @@
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
   const personPathFilter = document.querySelector('[data-person-path-filter]');
+  const personPathExportPdf = document.querySelector('[data-person-path-export-pdf]');
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
   const activityReportPersonFilter = document.querySelector('[data-activity-report-person-filter]');
@@ -3490,6 +3491,7 @@
 
   function personPathBlockHtml(person, shifts, shiftByLabel) {
     const personId = person?.id || '';
+    const noPreassignment = person?.hadPreassignedAssignment === false;
     const personRows = (snapshot?.assignments || [])
       .filter((row) => row.personId === personId)
       .sort((a, b) =>
@@ -3536,13 +3538,13 @@
       declinedByShift.get(shiftId).push(item);
     }
 
-    const left = 292;
-    const right = 34;
-    const top = 76;
-    const bottom = 46;
-    const xGap = 138;
-    const rowHeight = 44;
-    const width = Math.max(900, left + right + Math.max(0, shifts.length - 1) * xGap + 32);
+    const left = 205;
+    const right = 18;
+    const top = 54;
+    const bottom = 24;
+    const xGap = 58;
+    const rowHeight = 26;
+    const width = Math.max(920, left + right + Math.max(0, shifts.length - 1) * xGap + 18);
     const chartRows = [...activities, availabilityLabel, declinedLabel];
     const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
     const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
@@ -3561,15 +3563,15 @@
       ].filter(Boolean).join(' ');
       return `
         <line class="person-path-grid-line${isState ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
-        <text class="${classes}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
+        <text class="${classes}" x="${left - 18}" y="${y + 3}" text-anchor="end">${escapeHtml(activity)}</text>`;
     }).join('');
 
     const headers = shifts.map((shift, index) => {
       const x = xForShift(index);
       const day = String(shift.day_label || '').replace(/ ottobre$/i, '');
       return `
-        <text class="person-path-shift-day" x="${x}" y="24" text-anchor="middle">${escapeHtml(day)}</text>
-        <text class="person-path-shift-time" x="${x}" y="43" text-anchor="middle">${escapeHtml(shift.shift_label || '')}</text>`;
+        <text class="person-path-shift-day" x="${x}" y="19" text-anchor="middle">${escapeHtml(day)}</text>
+        <text class="person-path-shift-time" x="${x}" y="35" text-anchor="middle">${escapeHtml(shift.shift_label || '')}</text>`;
     }).join('');
 
     const separators = shifts.map((shift, index) => {
@@ -3601,7 +3603,7 @@
         if (!Number.isFinite(y)) continue;
         const response = row.currentResponse === 'confirmed' ? 'Confermata' : 'Da rispondere';
         nodes.push(`
-          <circle class="person-path-node is-assigned" cx="${x}" cy="${y}" r="7">
+          <circle class="person-path-node is-assigned" cx="${x}" cy="${y}" r="5">
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · ${response}`)}</title>
           </circle>`);
       }
@@ -3611,18 +3613,18 @@
         const y = yByActivity.get(activity);
         if (!Number.isFinite(y)) continue;
         nodes.push(`
-          <circle class="person-path-node is-declined" cx="${x}" cy="${y}" r="7">
+          <circle class="person-path-node is-declined" cx="${x}" cy="${y}" r="5">
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Non può`)}</title>
           </circle>
-          <line class="person-path-declined-cross" x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}"></line>
-          <line class="person-path-declined-cross" x1="${x + 4}" y1="${y - 4}" x2="${x - 4}" y2="${y + 4}"></line>`);
+          <line class="person-path-declined-cross" x1="${x - 3}" y1="${y - 3}" x2="${x + 3}" y2="${y + 3}"></line>
+          <line class="person-path-declined-cross" x1="${x + 3}" y1="${y - 3}" x2="${x - 3}" y2="${y + 3}"></line>`);
       }
 
       const shiftAvailability = availabilityByShift.get(shift.id) || [];
       if (shiftAvailability.length) {
         const notes = shiftAvailability.map((item) => String(item.note || '').trim()).filter(Boolean);
         nodes.push(`
-          <circle class="person-path-node is-availability" cx="${x}" cy="${availabilityY}" r="8">
+          <circle class="person-path-node is-availability" cx="${x}" cy="${availabilityY}" r="6">
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Disponibilità aggiuntiva${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
           </circle>
           <text class="person-path-availability-plus" x="${x}" y="${availabilityY + 4}" text-anchor="middle">+</text>`);
@@ -3637,11 +3639,11 @@
           notes.length ? `note: ${notes.join(' · ')}` : ''
         ].filter(Boolean).join(' · ');
         nodes.push(`
-          <circle class="person-path-node is-declined-status" cx="${x}" cy="${declinedY}" r="8">
+          <circle class="person-path-node is-declined-status" cx="${x}" cy="${declinedY}" r="6">
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${details}`)}</title>
           </circle>
-          <line class="person-path-declined-cross" x1="${x - 4}" y1="${declinedY - 4}" x2="${x + 4}" y2="${declinedY + 4}"></line>
-          <line class="person-path-declined-cross" x1="${x + 4}" y1="${declinedY - 4}" x2="${x - 4}" y2="${declinedY + 4}"></line>`);
+          <line class="person-path-declined-cross" x1="${x - 3}" y1="${declinedY - 3}" x2="${x + 3}" y2="${declinedY + 3}"></line>
+          <line class="person-path-declined-cross" x1="${x + 3}" y1="${declinedY - 3}" x2="${x - 3}" y2="${declinedY + 3}"></line>`);
       }
     });
 
@@ -3668,9 +3670,12 @@
     const hasData = assignedShiftCount > 0 || availabilityShiftCount > 0 || declinedShiftCount > 0;
 
     return `
-      <article class="person-path-person-block${hasData ? '' : ' is-empty'}">
+      <article class="person-path-person-block${hasData ? '' : ' is-empty'}${noPreassignment ? ' is-no-preassignment' : ''}">
         <div class="person-path-summary">
-          <strong>${escapeHtml(person?.display_name || 'Persona')}</strong>
+          <div class="person-path-summary__person">
+            <strong>${escapeHtml(person?.display_name || 'Persona')}</strong>
+            ${noPreassignment ? '<span class="person-path-preassignment-badge">Nessuna attività preassegnata</span>' : ''}
+          </div>
           <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessuna attività, disponibilità o rifiuto registrato'}</span>
         </div>
         <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || 'persona')}">
@@ -3685,9 +3690,104 @@
       </article>`;
   }
 
+  function personPathVisiblePeople() {
+    const selectedPersonId = personPathFilter?.value || '';
+    return (snapshot?.people || [])
+      .filter((person) => person.active !== false)
+      .filter((person) => !selectedPersonId || person.id === selectedPersonId)
+      .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
+  }
+
+  function exportPersonPathPdf() {
+    const shifts = [...(snapshot?.shifts || [])]
+      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+    const people = personPathVisiblePeople();
+
+    if (!shifts.length || !people.length) {
+      alert('Nessun dato da esportare.');
+      return;
+    }
+
+    const popup = window.open('', '_blank');
+    if (!popup) {
+      alert('Il browser ha bloccato la finestra di esportazione PDF. Consenti i popup e riprova.');
+      return;
+    }
+
+    const shiftByLabel = new Map(shifts.map((shift) => [
+      `${shift.day_label || ''}|||${shift.shift_label || ''}`,
+      shift
+    ]));
+    const exportedAt = formatDateTime(new Date().toISOString());
+    const pages = people.map((person) => `
+      <section class="person-path-pdf-page">
+        <header class="person-path-pdf-header">
+          <div>
+            <h1>Percorso attività volontari</h1>
+            <p>Turni, attività, disponibilità aggiuntive e rifiuti</p>
+          </div>
+          <span>Esportato il ${escapeHtml(exportedAt)}</span>
+        </header>
+        <div class="person-path-pdf-legend">
+          <span><i class="person-path-dot is-assigned"></i>Attività assegnata</span>
+          <span><i class="person-path-dot is-availability">+</i>Disp.+</span>
+          <span><i class="person-path-dot is-declined"></i>Non può</span>
+          <span class="person-path-preassignment-badge">Nessuna attività preassegnata</span>
+        </div>
+        ${personPathBlockHtml(person, shifts, shiftByLabel)}
+      </section>`).join('');
+
+    popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Percorso attività volontari</title><style>
+      @page { size: A4 landscape; margin: 6mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #173e4b; background: white; }
+      .person-path-pdf-page { break-after: page; page-break-after: always; width: 100%; }
+      .person-path-pdf-page:last-child { break-after: auto; page-break-after: auto; }
+      .person-path-pdf-header { display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin:0 0 4mm; }
+      .person-path-pdf-header h1 { margin:0; font-size:13pt; }
+      .person-path-pdf-header p { margin:1mm 0 0; font-size:7.5pt; color:#60757d; }
+      .person-path-pdf-header > span { font-size:6.5pt; color:#60757d; white-space:nowrap; }
+      .person-path-pdf-legend { display:flex; align-items:center; gap:4mm; margin:0 0 3mm; font-size:7pt; color:#60757d; }
+      .person-path-pdf-legend > span { display:inline-flex; align-items:center; gap:1.5mm; }
+      .person-path-person-block { padding:2.5mm; border:1px solid #cfdcdf; border-radius:3mm; background:#fbfcfc; overflow:hidden; break-inside:avoid; page-break-inside:avoid; }
+      .person-path-person-block.is-no-preassignment { border:1.5px solid #d09a2d; background:#fffaf0; }
+      .person-path-summary { display:flex; justify-content:space-between; align-items:center; gap:4mm; margin:0 0 2mm; }
+      .person-path-summary__person { display:flex; align-items:center; gap:2mm; min-width:0; }
+      .person-path-summary strong { font-size:9pt; }
+      .person-path-summary > span { font-size:6.5pt; color:#60757d; }
+      .person-path-preassignment-badge { display:inline-flex; padding:.7mm 1.5mm; border:1px solid #d09a2d; border-radius:8px; background:#fff1cf; color:#76520d; font-size:6pt; font-weight:800; white-space:nowrap; }
+      .person-path-scroll { width:100%; overflow:visible; border:0; background:white; }
+      .person-path-svg { display:block; width:100%; height:auto; font-family:Arial,sans-serif; }
+      .person-path-grid-line { stroke:#d8e2e4; stroke-width:1; }
+      .person-path-grid-line.is-state { stroke-dasharray:3 4; }
+      .person-path-day-separator { stroke:#b8c9ce; stroke-width:1.3; stroke-dasharray:4 5; }
+      .person-path-activity-label { fill:#173e4b; font-size:9px; font-weight:700; }
+      .person-path-activity-label.is-state { font-weight:800; }
+      .person-path-activity-label.is-availability { fill:#2f6f48; }
+      .person-path-activity-label.is-declined { fill:#943f37; }
+      .person-path-shift-day { fill:#173e4b; font-size:8px; font-weight:800; }
+      .person-path-shift-time { fill:#60757d; font-size:8px; font-weight:700; }
+      .person-path-segment { stroke-width:2.4; stroke-linecap:round; }
+      .person-path-segment.is-solid { stroke:#2f6978; }
+      .person-path-multi-line { stroke:#2f6978; stroke-width:2.4; stroke-linecap:round; }
+      .person-path-node { stroke-width:2; }
+      .person-path-node.is-assigned { fill:#2f6978; stroke:white; }
+      .person-path-node.is-availability { fill:#e9f6ed; stroke:#2f6f48; }
+      .person-path-node.is-declined, .person-path-node.is-declined-status { fill:white; stroke:#943f37; }
+      .person-path-availability-plus { fill:#2f6f48; font-size:9px; font-weight:900; }
+      .person-path-declined-cross { stroke:#943f37; stroke-width:1.6; stroke-linecap:round; }
+      .person-path-dot { width:3mm; height:3mm; border-radius:50%; border:1.5px solid #2f6978; display:inline-block; box-sizing:border-box; }
+      .person-path-dot.is-assigned { background:#2f6978; }
+      .person-path-dot.is-availability { background:#e9f6ed; border-color:#2f6f48; color:#2f6f48; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
+      .person-path-dot.is-declined { background:white; border-color:#943f37; position:relative; }
+      .person-path-dot.is-declined::before, .person-path-dot.is-declined::after { content:''; position:absolute; left:1mm; top:.1mm; width:.4mm; height:2.3mm; background:#943f37; transform:rotate(45deg); }
+      .person-path-dot.is-declined::after { transform:rotate(-45deg); }
+    </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));<\/script></body></html>`);
+    popup.document.close();
+  }
+
   function renderPersonPathChart() {
     if (!personPathChart) return;
-    const selectedPersonId = personPathFilter?.value || '';
     const shifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
 
@@ -3700,10 +3800,7 @@
       `${shift.day_label || ''}|||${shift.shift_label || ''}`,
       shift
     ]));
-    const people = (snapshot?.people || [])
-      .filter((person) => person.active !== false)
-      .filter((person) => !selectedPersonId || person.id === selectedPersonId)
-      .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
+    const people = personPathVisiblePeople();
 
     personPathChart.innerHTML = people.length
       ? `<div class="person-path-blocks">${people.map((person) => personPathBlockHtml(person, shifts, shiftByLabel)).join('')}</div>`
@@ -5569,6 +5666,7 @@
   [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   personPathFilter?.addEventListener('change', renderPersonPathChart);
+  personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
   [requirementShiftFilter, requirementActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
