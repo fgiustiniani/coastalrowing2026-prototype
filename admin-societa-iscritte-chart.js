@@ -46,7 +46,9 @@
       if (row.registered2025) current.registered2025 += 1;
 
       const physicalAthletes = Number(row.registrationSnapshot?.physicalAthletes);
-      if (row.status === 'registered' && Number.isFinite(physicalAthletes)) {
+      // Il dettaglio atleti 2026 proviene esclusivamente dall'ultimo HTML caricato,
+      // indipendentemente dallo stato live FIC usato per le società.
+      if (Number.isFinite(physicalAthletes)) {
         current.athletes2026 += physicalAthletes;
         current.athletes2026Known = true;
       }
@@ -449,7 +451,7 @@
     if (chartMode === 'athletes') {
       if (titleNode) titleNode.textContent = 'Atleti per regione';
       if (descriptionNode) {
-        descriptionNode.textContent = 'Confronto regionale: 2026 = “Atleti Fisici” dall’ultimo HTML caricato; 2025 = atleti unici presenti nel programma gare definitivo. I box in alto riportano i totali degli atleti iscritti; per il 2025 il totale ufficiale FIC è 445, mentre la ripartizione regionale disponibile riguarda 384 atleti unici. Il dettaglio regionale completo dei 445 iscritti non è pubblicamente disponibile. Tra parentesi sopra le colonne è indicato il numero di società.';
+        descriptionNode.textContent = 'Confronto regionale: gli atleti 2026 provengono esclusivamente dall’ultimo HTML caricato; il numero di società tra parentesi proviene invece dalla pagina FIC live. Per il 2025 il totale ufficiale FIC è 445 atleti iscritti, mentre la ripartizione regionale disponibile dal programma gare definitivo riguarda 384 atleti unici. Il dettaglio regionale completo dei 445 iscritti non è pubblicamente disponibile.';
       }
       if (legendNode) {
         legendNode.innerHTML =
@@ -459,7 +461,7 @@
     } else {
       if (titleNode) titleNode.textContent = 'Società per regione';
       if (descriptionNode) {
-        descriptionNode.textContent = 'La colonna 2026 mostra in verde tutte le società che risultano iscritte, indipendentemente dall’invio della mail; sopra, in arancione, le società che hanno inviato una mail di noleggio ma non risultano iscritte. La colonna 2025 mostra le società iscritte nello storico.';
+        descriptionNode.textContent = 'La colonna 2026 usa sempre la pagina FIC live: in verde le società iscritte e, sopra in arancione, le società che hanno inviato una mail di noleggio ma non risultano iscritte nella pagina FIC. La colonna 2025 mostra le società iscritte nello storico.';
       }
       if (legendNode) {
         legendNode.innerHTML =
