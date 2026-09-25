@@ -3515,6 +3515,15 @@
     const adminDeclinedRows = (snapshot?.declinedAssignmentResponses || [])
       .filter((row) => row.personId === personId && row.assignedFromAvailability !== true);
     const availability = person?.latestSubmission?.availability || [];
+    const races = snapshot?.raceProgramAvailable
+      ? (snapshot?.raceProgram || [])
+          .filter((race) => race.personId === personId)
+          .sort((a, b) =>
+            String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+            || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+            || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+          )
+      : [];
 
     const shiftOrderById = new Map(shifts.map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
     const visibleActivityMeta = new Map();
