@@ -6252,21 +6252,17 @@
       if (!requirement) return;
 
       const assignedCount = Number(requirement.assignedCount || 0);
-      if (assignedCount > 0) {
-        alert(
-          `Non puoi eliminare questo abbinamento perché contiene ${assignedCount} ${assignedCount === 1 ? 'persona assegnata' : 'persone assegnate'}.\n\nSposta o rimuovi prima ${assignedCount === 1 ? 'la persona' : 'le persone'} dall’attività.`
-        );
-        return;
-      }
-
       const label = `${requirement.day || ''} · ${requirement.shift || ''} — ${prettifyActivityName(requirement.activity || '')}`;
-      if (!confirm(`Eliminare l’abbinamento attività-turno?\n\n${label}\n\nL’attività resterà nell’anagrafica e potrà essere riutilizzata in altri turni.`)) return;
+      const assignedWarning = assignedCount > 0
+        ? `\n\nATTENZIONE: verranno rimosse anche ${assignedCount} ${assignedCount === 1 ? 'assegnazione collegata' : 'assegnazioni collegate'}.`
+        : '';
+      if (!confirm(`Eliminare l’abbinamento attività-turno?\n\n${label}${assignedWarning}\n\nL’attività resterà nell’anagrafica e potrà essere riutilizzata in altri turni.`)) return;
 
       void (async () => {
         assignmentBoard?.classList.add('is-saving');
         setStatus(assignmentBoardStatus, 'Eliminazione abbinamento…');
         try {
-          await api(API, {
+          const result = await api(API, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
@@ -6275,7 +6271,14 @@
             })
           });
           await loadSnapshot();
-          setStatus(assignmentBoardStatus, 'Abbinamento attività-turno eliminato.', 'success');
+          const removedAssignments = Number(result?.requirement?.deactivatedAssignments || assignedCount || 0);
+          setStatus(
+            assignmentBoardStatus,
+            removedAssignments > 0
+              ? `Abbinamento eliminato · ${removedAssignments} ${removedAssignments === 1 ? 'assegnazione rimossa' : 'assegnazioni rimosse'}.`
+              : 'Abbinamento attività-turno eliminato.',
+            'success'
+          );
         } catch (error) {
           setStatus(assignmentBoardStatus, error.message, 'error');
         } finally {
