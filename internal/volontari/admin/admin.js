@@ -458,7 +458,7 @@
               </span>
             </button>`).join('')
         : `<p class="person-search-select__empty">${availabilityOnly
-            ? 'Nessuna disponibilità aggiuntiva libera per questo turno.'
+            ? 'Nessuna persona disponibile per questo turno.'
             : 'Nessun nominativo corrispondente.'}</p>`;
 
       wrapper.classList.add('is-open');
@@ -2380,12 +2380,12 @@
 
     detailTargetRow = null;
     copyRequirementContext = null;
-    detailTitle.textContent = `Assegna disponibilità · ${shift.day_label} ${shift.shift_label}`;
+    detailTitle.textContent = `Assegna persone disponibili · ${shift.day_label} ${shift.shift_label}`;
 
     detailContent.innerHTML = available.length
       ? `
         <div class="availability-batch">
-          <p class="intro">Seleziona più persone disponibili e assegnale insieme alla stessa attività del turno.</p>
+          <p class="intro">Seleziona più persone disponibili e assegnale insieme alla stessa attività del turno. Le persone già confermate mantengono la conferma.</p>
           <label class="field"><span>Attività di destinazione</span>
             <select data-batch-availability-requirement>${requirementOptions('', shiftId)}</select>
           </label>
@@ -3134,8 +3134,8 @@
         <label class="board-edit-availability-filter field--wide">
           <input type="checkbox" data-board-edit-availability-only>
           <span>
-            <strong>Solo disponibilità aggiuntive</strong>
-            <small>Mostra solo chi ha dichiarato disponibilità aggiuntiva ed è ancora libero in questo turno.</small>
+            <strong>Solo disponibili</strong>
+            <small>Mostra chi è libero nel turno: disponibilità aggiuntive oppure persone già confermate e successivamente rimosse da un’attività.</small>
           </span>
         </label>
         <label class="field"><span>Persona</span>
