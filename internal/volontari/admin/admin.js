@@ -5091,6 +5091,7 @@
           </div>
           <div class="person-path-legend" aria-hidden="true">
             <span><i class="person-path-dot is-admin-confirmed"></i>Admin confermata</span>
+            <span><i class="person-path-dot is-admin-pending"></i>Admin da rispondere</span>
             <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
             <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
             <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
