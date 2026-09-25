@@ -3632,6 +3632,10 @@
       row.assignedFromAvailability !== true
       && row.currentResponse === 'confirmed'
     );
+    const adminPendingRows = activeRows.filter((row) =>
+      row.assignedFromAvailability !== true
+      && !['confirmed', 'declined'].includes(String(row.currentResponse || ''))
+    );
     const fromAvailabilityRows = activeRows.filter((row) =>
       row.assignedFromAvailability === true
       && row.currentResponse !== 'declined'
@@ -3660,6 +3664,7 @@
     };
 
     adminConfirmedRows.forEach((row) => registerActivity(displayActivity(row), row.shiftId, row.day, row.shift));
+    adminPendingRows.forEach((row) => registerActivity(displayActivity(row), row.shiftId, row.day, row.shift));
     fromAvailabilityRows.forEach((row) => registerActivity(displayActivity(row), row.shiftId, row.day, row.shift));
     adminDeclinedRows.forEach((row) => registerActivity(row.activity, row.shiftId, row.day, row.shift));
 
@@ -3668,6 +3673,7 @@
       .map((item) => item.label);
 
     const adminConfirmedByShift = new Map();
+    const adminPendingByShift = new Map();
     const fromAvailabilityByShift = new Map();
     const adminDeclinedByShift = new Map();
 
@@ -3678,6 +3684,7 @@
     };
 
     for (const row of adminConfirmedRows) addToShiftMap(adminConfirmedByShift, row.shiftId, row);
+    for (const row of adminPendingRows) addToShiftMap(adminPendingByShift, row.shiftId, row);
     for (const row of fromAvailabilityRows) addToShiftMap(fromAvailabilityByShift, row.shiftId, row);
     for (const row of adminDeclinedRows) {
       const shiftId = row.shiftId || shiftByLabel.get(`${row.day || ''}|||${row.shift || ''}`)?.id || '';
@@ -3743,9 +3750,10 @@
     shifts.forEach((shift, index) => {
       const x = xForShift(index);
       const confirmedRows = adminConfirmedByShift.get(shift.id) || [];
+      const pendingRows = adminPendingByShift.get(shift.id) || [];
       const availabilityRows = fromAvailabilityByShift.get(shift.id) || [];
       const declinedRows = adminDeclinedByShift.get(shift.id) || [];
-      const operationalRows = [...confirmedRows, ...availabilityRows];
+      const operationalRows = [...confirmedRows, ...pendingRows, ...availabilityRows];
 
       const operationalYs = operationalRows
         .map((row) => yByActivity.get(prettifyActivityName(displayActivity(row))))
@@ -3766,6 +3774,16 @@
         nodes.push(`
           <circle class="person-path-node is-admin-confirmed" cx="${x}" cy="${y}" r="7">
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Assegnata dall'admin e confermata`)}</title>
+          </circle>`);
+      }
+
+      for (const row of pendingRows) {
+        const activity = prettifyActivityName(displayActivity(row));
+        const y = yByActivity.get(activity);
+        if (!Number.isFinite(y)) continue;
+        nodes.push(`
+          <circle class="person-path-node is-admin-pending" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Assegnata dall'admin, in attesa di risposta`)}</title>
           </circle>`);
       }
 
@@ -3824,6 +3842,7 @@
 
     const summaryParts = [
       adminConfirmedRows.length ? `${adminConfirmedRows.length} admin confermate` : '',
+      adminPendingRows.length ? `${adminPendingRows.length} da rispondere` : '',
       adminDeclinedRows.length ? `${adminDeclinedRows.length} admin rifiutate` : '',
       fromAvailabilityRows.length ? `${fromAvailabilityRows.length} da Disp.+` : '',
       unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} Disp.+ non usate` : '',
@@ -3838,7 +3857,7 @@
             <strong>${escapeHtml(person?.display_name || 'Persona')}</strong>
             ${person?.person_group ? `<span class="person-path-group-badge">${escapeHtml(person.person_group)}</span>` : ''}
           </div>
-          <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessun dato nei quattro stati visualizzati'}</span>
+          <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessun dato negli stati visualizzati'}</span>
         </div>
         <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || 'persona')}">
           <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
@@ -3917,6 +3936,7 @@
       .person-path-multi-line { stroke:#2f6978; stroke-width:2.2; stroke-linecap:round; }
       .person-path-node { stroke-width:1.8; }
       .person-path-node.is-admin-confirmed { fill:#2f6978; stroke:white; }
+      .person-path-node.is-admin-pending { fill:white; stroke:#7c8d93; }
       .person-path-node.is-admin-declined { fill:white; stroke:#943f37; }
       .person-path-node.is-from-availability { fill:#2f7a4b; stroke:white; }
       .person-path-node.is-unused-availability { fill:white; stroke:#2f7a4b; }
@@ -3928,6 +3948,7 @@
       .person-path-declined-cross { stroke:#943f37; stroke-width:1.6; stroke-linecap:round; }
       .person-path-dot { width:3mm; height:3mm; border-radius:50%; border:1.5px solid; display:inline-block; box-sizing:border-box; position:relative; }
       .person-path-dot.is-admin-confirmed { background:#2f6978; border-color:#2f6978; }
+      .person-path-dot.is-admin-pending { background:white; border-color:#7c8d93; }
       .person-path-dot.is-admin-declined { background:white; border-color:#943f37; }
       .person-path-dot.is-admin-declined::before, .person-path-dot.is-admin-declined::after { content:''; position:absolute; left:1mm; top:.1mm; width:.4mm; height:2.3mm; background:#943f37; transform:rotate(45deg); }
       .person-path-dot.is-admin-declined::after { transform:rotate(-45deg); }
@@ -3941,6 +3962,7 @@
       </header>
       <div class="person-path-pdf-legend">
         <span><i class="person-path-dot is-admin-confirmed"></i>Admin confermata</span>
+        <span><i class="person-path-dot is-admin-pending"></i>Admin da rispondere</span>
         <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
         <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
         <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
