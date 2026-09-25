@@ -42,6 +42,7 @@
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
   const personPathFilter = document.querySelector('[data-person-path-filter]');
+  const personPathGroupFilter = document.querySelector('[data-person-path-group-filter]');
   const personPathExportPdf = document.querySelector('[data-person-path-export-pdf]');
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
@@ -1204,6 +1205,7 @@
         .join('');
       if (pathPeople.some((person) => person.value === currentPersonId)) personPathFilter.value = currentPersonId;
     }
+    setSelectOptions(personPathGroupFilter, personGroups, 'Tutti i gruppi');
 
     const reportShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
@@ -5666,6 +5668,7 @@
   [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   personPathFilter?.addEventListener('change', renderPersonPathChart);
+  personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
   [requirementShiftFilter, requirementActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
