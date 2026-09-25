@@ -9,6 +9,27 @@
     'vigili in pensione'
   ]);
   const personGroupKey = (value) => String(value || '').trim().toLocaleLowerCase('it-IT');
+  const BOARD_RESET_ACTIVITY_ORDER = [
+    'Sistemazione in spiaggia transenne',
+    'Posizionamento striscioni FIC',
+    'Allestimento gazebi, tavoli e sedie',
+    'Scarico barche',
+    'Supporto montaggio/smontaggio impianto audio',
+    'Segreteria gare',
+    'Gestione barche in spiaggia-info point',
+    'Gestione C1X',
+    'Gestione C2X',
+    'Gestione C4X',
+    'Gestione barche in gare - addetti ai rientri',
+    'Supporto ai giudici',
+    'Supporto tecnico',
+    'Viabilità',
+    'Gommoni',
+    'Riferimento per espositori',
+    'Premiazioni: coordinamento',
+    'Premiazioni: preparazione medaglie',
+    'Premiazioni: supporto'
+  ];
   const login = document.querySelector('[data-admin-login]');
   const loginForm = document.querySelector('[data-login-form]');
   const loginStatus = document.querySelector('[data-login-status]');
@@ -20,6 +41,7 @@
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
   const assignmentBoardExportPdf = document.querySelector('[data-assignment-board-export-pdf]');
+  const assignmentBoardResetOrder = document.querySelector('[data-assignment-board-reset-order]');
   const assignmentFiltersToggle = document.querySelector('[data-assignment-filters-toggle]');
   const assignmentFiltersPanel = document.querySelector('[data-assignment-filters]');
   const assignmentActiveFilters = document.querySelector('[data-assignment-active-filters]');
@@ -2097,6 +2119,156 @@
     return activityGroups().map((group) => group.id);
   }
 
+  function normalizeBoardActivityOrderName(value) {
+    return normalizeFilterSearch(prettifyActivityName(value))
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function boardResetActivityRank(value) {
+    const normalized = normalizeBoardActivityOrderName(value);
+    const directIndex = BOARD_RESET_ACTIVITY_ORDER.findIndex((name) =>
+      normalizeBoardActivityOrderName(name) === normalized
+    );
+    if (directIndex >= 0) return directIndex;
+
+    const aliases = new Map([
+      ['sistemazione e rimozione transenne in spiaggia', 0],
+      ['sistemazione transenne in spiaggia', 0],
+      ['gestione barche in gara addetti ai rientri', 10],
+      ['piloti gommoni', 14]
+    ]);
+    return aliases.get(normalized) ?? Number.POSITIVE_INFINITY;
+  }
+
+  function boardResetGroupIds() {
+    const currentIds = boardActivityGroupIds();
+    const currentIndex = new Map(currentIds.map((id, index) => [id, index]));
+    const rankByGroup = new Map();
+
+    for (const activity of (snapshot?.activityCatalog || [])) {
+      if (activity.active === false || !activity.group_id) continue;
+      const rank = boardResetActivityRank(activity.name);
+      if (!Number.isFinite(rank)) continue;
+      const previous = rankByGroup.get(activity.group_id);
+      if (previous === undefined || rank < previous) rankByGroup.set(activity.group_id, rank);
+    }
+
+    return [...currentIds].sort((a, b) =>
+      (rankByGroup.get(a) ?? Number.POSITIVE_INFINITY) - (rankByGroup.get(b) ?? Number.POSITIVE_INFINITY)
+      || (currentIndex.get(a) ?? 9999) - (currentIndex.get(b) ?? 9999)
+    );
+  }
+
+  function boardResetRequirementIds(shiftId, orderedGroupIds) {
+    const shiftRequirements = requirements().filter((row) => row.shiftId === shiftId);
+    const current = [...shiftRequirements].sort((a, b) =>
+      Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+      || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+    );
+    const currentIndex = new Map(current.map((item, index) => [item.id, index]));
+    const activeGroupIds = new Set(orderedGroupIds);
+    const grouped = new Map();
+    const blocks = [];
+
+    for (const requirement of current) {
+      const groupId = activeGroupIds.has(requirement.activityGroupId || '')
+        ? requirement.activityGroupId
+        : '';
+      if (!groupId) {
+        blocks.push({
+          rank: boardResetActivityRank(requirement.activity),
+          currentIndex: currentIndex.get(requirement.id) ?? 9999,
+          requirementIds: [requirement.id]
+        });
+        continue;
+      }
+      if (!grouped.has(groupId)) grouped.set(groupId, []);
+      grouped.get(groupId).push(requirement);
+    }
+
+    orderedGroupIds.forEach((groupId) => {
+      const groupRequirements = grouped.get(groupId) || [];
+      if (!groupRequirements.length) return;
+      groupRequirements.sort((a, b) =>
+        boardResetActivityRank(a.activity) - boardResetActivityRank(b.activity)
+        || (currentIndex.get(a.id) ?? 9999) - (currentIndex.get(b.id) ?? 9999)
+      );
+      blocks.push({
+        rank: Math.min(...groupRequirements.map((item) => boardResetActivityRank(item.activity))),
+        currentIndex: Math.min(...groupRequirements.map((item) => currentIndex.get(item.id) ?? 9999)),
+        requirementIds: groupRequirements.map((item) => item.id)
+      });
+    });
+
+    return blocks
+      .sort((a, b) => a.rank - b.rank || a.currentIndex - b.currentIndex)
+      .flatMap((block) => block.requirementIds);
+  }
+
+  async function resetBoardActivityOrder(button) {
+    if (!snapshot?.requirementsAvailable) {
+      setStatus(assignmentBoardStatus, 'L’ordine attività non è disponibile nel database.', 'error');
+      return;
+    }
+
+    const currentGroupIds = boardActivityGroupIds();
+    const orderedGroupIds = boardResetGroupIds();
+    const groupOrderChanged = orderedGroupIds.some((id, index) => id !== currentGroupIds[index]);
+    const shiftOrders = (snapshot?.shifts || []).map((shift) => {
+      const currentIds = shiftRequirementIds(shift.id);
+      const requirementIds = boardResetRequirementIds(shift.id, orderedGroupIds);
+      const changed = requirementIds.length === currentIds.length
+        && requirementIds.some((id, index) => id !== currentIds[index]);
+      return { shiftId: shift.id, requirementIds, changed };
+    }).filter((item) => item.changed);
+
+    if (!groupOrderChanged && !shiftOrders.length) {
+      setStatus(assignmentBoardStatus, 'Le attività sono già nell’ordine standard.', 'success');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Ripristinare l’ordine standard delle attività in tutti i turni? Le assegnazioni e i gruppi non verranno modificati.'
+    );
+    if (!confirmed) return;
+
+    await withButtonBusy(button, 'Ripristino…', async () => {
+      assignmentBoard?.classList.add('is-saving');
+      setStatus(assignmentBoardStatus, 'Ripristino ordine attività…');
+      try {
+        if (groupOrderChanged) {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'reorder-activity-groups',
+              groupIds: orderedGroupIds
+            })
+          });
+        }
+        for (const item of shiftOrders) {
+          await api(API, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              action: 'reorder-requirements',
+              shiftId: item.shiftId,
+              requirementIds: item.requirementIds
+            })
+          });
+        }
+        await loadSnapshot();
+        setStatus(assignmentBoardStatus, 'Ordine standard delle attività ripristinato.', 'success');
+      } catch (error) {
+        setStatus(assignmentBoardStatus, error.message, 'error');
+      } finally {
+        assignmentBoard?.classList.remove('is-saving');
+      }
+    });
+  }
+
   async function reorderBoardActivityGroup(draggedId, targetGroupId, placeAfter = false) {
     if (!draggedId || !targetGroupId || draggedId === targetGroupId) return;
     const ids = boardActivityGroupIds();
@@ -3761,6 +3933,7 @@
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
     if (assignmentBoardExportPdf) assignmentBoardExportPdf.hidden = !isBoard;
+    if (assignmentBoardResetOrder) assignmentBoardResetOrder.hidden = !isBoard;
     updateAssignmentFiltersToggle();
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentViewToggle) {
@@ -6147,6 +6320,10 @@
       singleTurnPerPage: true,
       pageSize: 'A4 landscape'
     });
+  });
+
+  assignmentBoardResetOrder?.addEventListener('click', () => {
+    resetBoardActivityOrder(assignmentBoardResetOrder);
   });
 
   document.querySelector('[data-new-person]')?.addEventListener('click', () => {
