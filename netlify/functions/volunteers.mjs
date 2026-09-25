@@ -133,14 +133,17 @@ async function personState(personId) {
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const submissionTime = new Map(submissionRows.map((row) => [row.id, row.created_at]));
   const assignmentIds = assignmentHistoryRows.map((row) => row.id);
+  const submissionIds = submissionRows.map((row) => row.id);
 
   let responseRows = [];
   let assignmentAvailabilityAuditRows = [];
+  let availabilityHistoryRows = [];
+  const lookupTasks = [];
   if (assignmentIds.length) {
-    [responseRows, assignmentAvailabilityAuditRows] = await Promise.all([
+    lookupTasks.push(
       supabaseRequest('volunteer_assignment_responses', {
         query: { select: 'assignment_id,submission_id,response,note,created_at', assignment_id: `in.(${assignmentIds.join(',')})`, order: 'created_at.desc' }
-      }).then(rows),
+      }).then((value) => { responseRows = rows(value); }),
       supabaseRequest('volunteer_audit_log', {
         query: {
           select: 'entity_id,action_type,created_at',
@@ -150,9 +153,21 @@ async function personState(personId) {
           entity_id: `in.(${assignmentIds.join(',')})`,
           order: 'created_at.asc'
         }
-      }).then(rows)
-    ]);
+      }).then((value) => { assignmentAvailabilityAuditRows = rows(value); })
+    );
   }
+  if (submissionIds.length) {
+    lookupTasks.push(
+      supabaseRequest('volunteer_availability', {
+        query: {
+          select: 'submission_id,shift_id,created_at',
+          submission_id: `in.(${submissionIds.join(',')})`,
+          order: 'created_at.asc'
+        }
+      }).then((value) => { availabilityHistoryRows = rows(value); })
+    );
+  }
+  if (lookupTasks.length) await Promise.all(lookupTasks);
   const latestResponse = new Map();
   responseRows
     .sort((a, b) => String(submissionTime.get(b.submission_id) || b.created_at).localeCompare(String(submissionTime.get(a.submission_id) || a.created_at)))
@@ -161,6 +176,14 @@ async function personState(personId) {
   const availabilityMarkedAssignmentIds = new Set(
     assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
   );
+  const availabilityDeclaredAtByShift = new Map();
+  for (const item of availabilityHistoryRows) {
+    if (!item.shift_id) continue;
+    const stamp = Date.parse(submissionTime.get(item.submission_id) || item.created_at || '');
+    if (!Number.isFinite(stamp)) continue;
+    if (!availabilityDeclaredAtByShift.has(item.shift_id)) availabilityDeclaredAtByShift.set(item.shift_id, []);
+    availabilityDeclaredAtByShift.get(item.shift_id).push(stamp);
+  }
 
   const sameAssignmentTurn = (current, previous) => {
     if (!current || !previous) return false;
@@ -188,7 +211,27 @@ async function personState(personId) {
     return null;
   };
 
+  const assignmentEnteredCurrentShiftAt = (assignment) => {
+    if (!assignment?.id || !assignment.shift_id) return null;
+    let current = assignment;
+    let enteredAt = Date.parse(current.created_at || '');
+    enteredAt = Number.isFinite(enteredAt) ? enteredAt : null;
+    const seen = new Set();
+
+    while (current?.supersedes_assignment_id && !seen.has(current.id)) {
+      seen.add(current.id);
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      const previousAt = Date.parse(previous.created_at || '');
+      if (Number.isFinite(previousAt) && (enteredAt === null || previousAt < enteredAt)) enteredAt = previousAt;
+      current = previous;
+    }
+    return enteredAt;
+  };
+
   const assignmentComesFromAvailability = (assignment) => {
+    if (!assignment?.shift_id) return false;
+
     let current = assignment;
     const seen = new Set();
 
@@ -201,7 +244,11 @@ async function personState(personId) {
       if (!previous || !sameAssignmentTurn(current, previous)) break;
       current = previous;
     }
-    return false;
+
+    const enteredAt = assignmentEnteredCurrentShiftAt(assignment);
+    if (!Number.isFinite(enteredAt)) return false;
+    const declaredAt = availabilityDeclaredAtByShift.get(assignment.shift_id) || [];
+    return declaredAt.some((stamp) => stamp <= enteredAt);
   };
 
   const latestSubmission = submissionRows[0] || null;
