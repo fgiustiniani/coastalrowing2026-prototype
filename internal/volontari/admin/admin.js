@@ -4471,9 +4471,14 @@
 
   function exportExcel(filename, sheetName, columns, rows) {
     const header = columns.map((column) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${xmlEscape(column.label)}</Data></Cell>`).join('');
-    const body = rows.map((row) => `<Row>${columns.map((column) =>
-      `<Cell><Data ss:Type="String">${xmlEscape(row[column.key] ?? '')}</Data></Cell>`
-    ).join('')}</Row>`).join('');
+    const body = rows.map((row) => `<Row>${columns.map((column) => {
+      const escapedValue = xmlEscape(row[column.key] ?? '');
+      const cellValue = column.multiline
+        ? escapedValue.replace(/\\r?\\n/g, '&#10;')
+        : escapedValue;
+      const preserveWhitespace = column.multiline ? ' xml:space="preserve"' : '';
+      return `<Cell><Data ss:Type="String"${preserveWhitespace}>${cellValue}</Data></Cell>`;
+    }).join('')}</Row>`).join('');
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -4521,7 +4526,7 @@
     const commonColumns = [
       { key: 'persona', label: 'Persona' },
       { key: 'stato', label: 'Stato' },
-      { key: 'attivita', label: 'Attività' },
+      { key: 'attivita', label: 'Attività', multiline: true },
       { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
       { key: 'invii', label: 'Invii' }, { key: 'note', label: 'Note' },
       { key: 'disponibilita', label: 'Disponibilità aggiuntive' }
