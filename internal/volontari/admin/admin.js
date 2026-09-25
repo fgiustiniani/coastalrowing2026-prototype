@@ -3548,15 +3548,6 @@
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
       const availability = person?.latestSubmission?.availability || [];
-    const races = snapshot?.raceProgramAvailable
-      ? (snapshot?.raceProgram || [])
-          .filter((race) => race.personId === personId)
-          .sort((a, b) =>
-            String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
-            || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
-            || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
-          )
-      : [];
       const notes = item.rows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
