@@ -2230,7 +2230,7 @@
     }
 
     const confirmed = window.confirm(
-      'Ripristinare l’ordine standard delle attività in tutti i turni? Le assegnazioni e i gruppi non verranno modificati.'
+      'Ripristinare l’ordine standard delle attività in tutti i turni? Le assegnazioni e l’appartenenza delle attività ai gruppi non verranno modificate; potrà cambiare solo l’ordine dei gruppi.'
     );
     if (!confirmed) return;
 
