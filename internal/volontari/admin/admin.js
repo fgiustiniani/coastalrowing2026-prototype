@@ -40,6 +40,8 @@
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
+  const personPathChart = document.querySelector('[data-person-path-chart]');
+  const personPathFilter = document.querySelector('[data-person-path-filter]');
   const activityReport = document.querySelector('[data-activity-report]');
   const activityReportActivityFilter = document.querySelector('[data-activity-report-activity-filter]');
   const activityReportPersonFilter = document.querySelector('[data-activity-report-person-filter]');
@@ -1190,6 +1192,13 @@
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(activityReportPersonFilter, assignedPeople, 'Tutte');
     setSelectOptions(shiftBoardPersonFilter, assignedPeople, 'Tutte');
+    if (personPathFilter) {
+      const currentPersonId = personPathFilter.value || '';
+      personPathFilter.innerHTML = '<option value="">Seleziona una persona…</option>' + assignedPeople
+        .map((person) => `<option value="${escapeHtml(person.value)}">${escapeHtml(person.label)}</option>`)
+        .join('');
+      if (assignedPeople.some((person) => person.value === currentPersonId)) personPathFilter.value = currentPersonId;
+    }
 
     const reportShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
@@ -3475,6 +3484,159 @@
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
 
+  function renderPersonPathChart() {
+    if (!personPathChart) return;
+    const personId = personPathFilter?.value || '';
+    if (!personId) {
+      personPathChart.innerHTML = '<p class="empty-state">Seleziona una persona per visualizzare il percorso tra le attività.</p>';
+      return;
+    }
+
+    const person = (snapshot?.people || []).find((item) => item.id === personId) || null;
+    const personRows = (snapshot?.assignments || [])
+      .filter((row) => row.personId === personId)
+      .sort((a, b) =>
+        assignmentShiftOrder(a) - assignmentShiftOrder(b)
+        || displayActivity(a).localeCompare(displayActivity(b), 'it')
+      );
+    const shifts = [...(snapshot?.shifts || [])]
+      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+    if (!personRows.length || !shifts.length) {
+      personPathChart.innerHTML = '<p class="empty-state">Nessuna assegnazione disponibile per questa persona.</p>';
+      return;
+    }
+
+    const shiftOrderById = new Map(shifts.map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
+    const activityMeta = new Map();
+    for (const row of personRows) {
+      const activity = displayActivity(row);
+      const order = shiftOrderById.get(row.shiftId) ?? assignmentShiftOrder(row);
+      const current = activityMeta.get(activity);
+      if (!current || order < current.firstOrder) activityMeta.set(activity, { label: activity, firstOrder: order });
+    }
+    const activities = [...activityMeta.values()]
+      .sort((a, b) => a.firstOrder - b.firstOrder || a.label.localeCompare(b.label, 'it'))
+      .map((item) => item.label);
+    const emptyLabel = 'Nessuna assegnazione';
+    const rowsByShift = new Map();
+    for (const row of personRows) {
+      if (!row.shiftId) continue;
+      if (!rowsByShift.has(row.shiftId)) rowsByShift.set(row.shiftId, []);
+      rowsByShift.get(row.shiftId).push(row);
+    }
+
+    const left = 292;
+    const right = 34;
+    const top = 76;
+    const bottom = 46;
+    const xGap = 138;
+    const rowHeight = 44;
+    const width = Math.max(900, left + right + Math.max(0, shifts.length - 1) * xGap + 32);
+    const chartRows = [...activities, emptyLabel];
+    const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
+    const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
+    const emptyY = yByActivity.get(emptyLabel);
+    const xForShift = (index) => left + index * xGap;
+
+    const grid = chartRows.map((activity) => {
+      const y = yByActivity.get(activity);
+      return `
+        <line class="person-path-grid-line" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
+        <text class="person-path-activity-label${activity === emptyLabel ? ' is-empty' : ''}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
+    }).join('');
+
+    const headers = shifts.map((shift, index) => {
+      const x = xForShift(index);
+      const day = String(shift.day_label || '').replace(/ ottobre$/i, '');
+      return `
+        <text class="person-path-shift-day" x="${x}" y="24" text-anchor="middle">${escapeHtml(day)}</text>
+        <text class="person-path-shift-time" x="${x}" y="43" text-anchor="middle">${escapeHtml(shift.shift_label || '')}</text>`;
+    }).join('');
+
+    const separators = shifts.map((shift, index) => {
+      if (!index || shift.day_label === shifts[index - 1]?.day_label) return '';
+      const x = xForShift(index) - xGap / 2;
+      return `<line class="person-path-day-separator" x1="${x}" y1="10" x2="${x}" y2="${height - bottom / 2}"></line>`;
+    }).join('');
+
+    const anchors = [];
+    const nodes = [];
+    shifts.forEach((shift, index) => {
+      const x = xForShift(index);
+      const rows = rowsByShift.get(shift.id) || [];
+      const assigned = rows.filter((row) => row.currentResponse !== 'declined');
+      const declined = rows.filter((row) => row.currentResponse === 'declined');
+      const assignedYs = assigned.map((row) => yByActivity.get(displayActivity(row))).filter(Number.isFinite);
+      const anchorY = assignedYs.length
+        ? assignedYs.reduce((sum, value) => sum + value, 0) / assignedYs.length
+        : emptyY;
+      anchors.push({ x, y: anchorY, assigned: assignedYs.length > 0 });
+
+      if (assignedYs.length > 1) {
+        nodes.push(`<line class="person-path-multi-line" x1="${x}" y1="${Math.min(...assignedYs)}" x2="${x}" y2="${Math.max(...assignedYs)}"></line>`);
+      }
+
+      for (const row of assigned) {
+        const activity = displayActivity(row);
+        const y = yByActivity.get(activity);
+        if (!Number.isFinite(y)) continue;
+        const response = row.currentResponse === 'confirmed' ? 'Confermata' : 'Da rispondere';
+        nodes.push(`
+          <circle class="person-path-node is-assigned" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · ${response}`)}</title>
+          </circle>`);
+      }
+
+      for (const row of declined) {
+        const activity = displayActivity(row);
+        const y = yByActivity.get(activity);
+        if (!Number.isFinite(y)) continue;
+        nodes.push(`
+          <circle class="person-path-node is-declined" cx="${x}" cy="${y}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${activity} · Non può`)}</title>
+          </circle>
+          <line class="person-path-declined-cross" x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}"></line>
+          <line class="person-path-declined-cross" x1="${x + 4}" y1="${y - 4}" x2="${x - 4}" y2="${y + 4}"></line>`);
+      }
+
+      if (!assignedYs.length) {
+        nodes.push(`
+          <circle class="person-path-node is-empty" cx="${x}" cy="${emptyY}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Nessuna attività assegnata`)}</title>
+          </circle>`);
+      }
+    });
+
+    const segments = anchors.slice(1).map((current, index) => {
+      const previous = anchors[index];
+      const solid = previous.assigned && current.assigned;
+      return `<line class="person-path-segment ${solid ? 'is-solid' : 'is-empty'}" x1="${previous.x}" y1="${previous.y}" x2="${current.x}" y2="${current.y}"></line>`;
+    }).join('');
+
+    const assignedShiftCount = shifts.filter((shift) =>
+      (rowsByShift.get(shift.id) || []).some((row) => row.currentResponse !== 'declined')
+    ).length;
+    const multipleShiftCount = shifts.filter((shift) =>
+      (rowsByShift.get(shift.id) || []).filter((row) => row.currentResponse !== 'declined').length > 1
+    ).length;
+
+    personPathChart.innerHTML = `
+      <div class="person-path-summary">
+        <strong>${escapeHtml(person?.display_name || personRows[0]?.personName || 'Persona')}</strong>
+        <span>${assignedShiftCount} turni con attività${multipleShiftCount ? ` · ${multipleShiftCount} con più attività` : ''}</span>
+      </div>
+      <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || personRows[0]?.personName || 'persona')}">
+        <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
+          ${grid}
+          ${separators}
+          ${headers}
+          ${segments}
+          ${nodes.join('')}
+        </svg>
+      </div>`;
+  }
+
   function reportAssignmentRows({ personIds = [], activities = [], shiftIds = [] } = {}) {
     return (snapshot?.assignments || []).filter((row) =>
       filterMatches(personIds, row.personId)
@@ -4830,6 +4992,7 @@
   function renderExpandedAdminSections() {
     if (!document.getElementById('confirmation-changes-content')?.hidden) renderConfirmationChanges();
     if (!document.getElementById('person-report-content')?.hidden) renderPersonReport();
+    if (!document.getElementById('person-path-content')?.hidden) renderPersonPathChart();
     if (!document.getElementById('person-catalog-content')?.hidden) renderPersonCatalog();
     if (!document.getElementById('planning-catalog-content')?.hidden) {
       renderRequirementCatalog();
@@ -5332,6 +5495,7 @@
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
   [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
+  personPathFilter?.addEventListener('change', renderPersonPathChart);
   [requirementShiftFilter, requirementActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
@@ -5350,6 +5514,7 @@
       if (!collapsed) {
         if (target.id === 'confirmation-changes-content') renderConfirmationChanges();
         else if (target.id === 'person-report-content') renderPersonReport();
+        else if (target.id === 'person-path-content') renderPersonPathChart();
         else if (target.id === 'person-catalog-content') renderPersonCatalog();
         else if (target.id === 'planning-catalog-content') {
           renderRequirementCatalog();
