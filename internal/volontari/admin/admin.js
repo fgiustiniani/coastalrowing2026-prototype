@@ -861,16 +861,49 @@
         .filter((row) => row.personId && row.shiftId)
         .map((row) => `${row.personId}|${row.shiftId}`)
     );
-    const rows = [];
+    const rowsByKey = new Map();
+
+    for (const item of snapshot?.releasedConfirmedAvailability || []) {
+      if (!item.personId || !item.shiftId) continue;
+      const key = `${item.personId}|${item.shiftId}`;
+      if (assignedKeys.has(key)) continue;
+      rowsByKey.set(key, {
+        id: item.id || `released-confirmed:${item.personId}:${item.shiftId}`,
+        isAvailability: true,
+        availabilityKind: 'released-confirmed',
+        isReleasedConfirmed: true,
+        personId: item.personId,
+        personCode: item.personCode || '',
+        personName: item.personName || 'Persona',
+        personGroup: item.personGroup || '',
+        shiftId: item.shiftId,
+        day: item.day || '',
+        shift: item.shift || '',
+        shiftMatched: true,
+        activity: '',
+        sourceActivity: item.sourceActivity || '',
+        role: '',
+        requestedProfile: '',
+        note: item.currentNote || '',
+        currentResponse: 'confirmed',
+        currentNote: item.currentNote || '',
+        currentResponseAt: item.currentResponseAt || null,
+        currentActorName: item.currentActorName || '',
+        releasedAt: item.releasedAt || null
+      });
+    }
+
     for (const person of snapshot?.people || []) {
       const availability = person.latestSubmission?.availability || [];
       for (const item of availability) {
         if (!item.shiftId) continue;
         const key = `${person.id}|${item.shiftId}`;
-        if (assignedKeys.has(key)) continue;
-        rows.push({
+        if (assignedKeys.has(key) || rowsByKey.has(key)) continue;
+        rowsByKey.set(key, {
           id: `availability:${person.id}:${item.shiftId}`,
           isAvailability: true,
+          availabilityKind: 'additional',
+          isReleasedConfirmed: false,
           personId: person.id,
           personCode: person.person_code || '',
           personName: person.display_name,
@@ -890,6 +923,8 @@
         });
       }
     }
+
+    const rows = [...rowsByKey.values()];
     const orderByShift = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift.sort_order ?? 9999]));
     return rows.sort((a, b) =>
       (orderByShift.get(a.shiftId) ?? 9999) - (orderByShift.get(b.shiftId) ?? 9999)
@@ -903,12 +938,20 @@
     return Boolean(person?.latestSubmission?.availability?.some((item) => item.shiftId === shiftId));
   }
 
-  function personIsAvailableForRequirement(personId, requirementId) {
+  function availabilityRowForRequirement(personId, requirementId) {
     const requirement = requirementById(requirementId);
-    if (!personId || !requirement?.shiftId) return false;
-    return unassignedAvailabilityRows().some((row) =>
+    if (!personId || !requirement?.shiftId) return null;
+    return unassignedAvailabilityRows().find((row) =>
       row.personId === personId && row.shiftId === requirement.shiftId
-    );
+    ) || null;
+  }
+
+  function personIsAvailableForRequirement(personId, requirementId) {
+    return Boolean(availabilityRowForRequirement(personId, requirementId));
+  }
+
+  function personIsAdditionalAvailabilityForRequirement(personId, requirementId) {
+    return availabilityRowForRequirement(personId, requirementId)?.availabilityKind === 'additional';
   }
 
   function allAssignmentRows() {
@@ -1388,7 +1431,9 @@
     const selectedRequirementId = row && !isAvailability ? assignmentRequirementId(row) : '';
     const selectedRequirement = requirementById(selectedRequirementId);
     const responseHtml = isAvailability
-      ? '<span class="status-badge is-availability">Disponibilità</span>'
+      ? (row.isReleasedConfirmed
+        ? `${responseBadge('confirmed')}<small>Disponibile dopo rimozione${row.currentResponseAt ? ` · ${escapeHtml(formatDateTime(row.currentResponseAt))}` : ''}</small>`
+        : '<span class="status-badge is-availability">Disponibilità</span>')
       : (isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
     const warnings = row ? assignmentWarningDetails(row) : [];
     const rowClass = [
@@ -1405,7 +1450,7 @@
     const requirementSelect = `<select class="inline-select inline-select--requirement" data-inline-requirement data-options-loaded="${(!isNew && !isAvailability) ? 'false' : 'true'}">${requirementOptionsHtml}</select>`;
 
     const shiftCell = isAvailability
-      ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">Disponibilità indicata dal volontario</small>`
+      ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">${row.isReleasedConfirmed ? 'Confermata · assegnazione rimossa' : 'Disponibilità indicata dal volontario'}</small>`
       : (isNew
         ? '<span class="muted-text">Seleziona la coppia →</span>'
         : `<div class="inline-display-row" data-requirement-display><button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId || '')}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button></div>`);
@@ -1422,7 +1467,7 @@
     const personCell = isAvailability
       ? `<input type="hidden" data-inline-person value="${escapeHtml(row.personId)}">
          <button class="inline-name-link" type="button" data-show-person="${escapeHtml(row.personId)}">${escapeHtml(row.personName)}</button>
-         ${row.note ? `<small class="availability-source-note">Nota disponibilità: ${escapeHtml(row.note)}</small>` : ''}`
+         ${row.note ? `<small class="availability-source-note">${row.isReleasedConfirmed ? 'Nota conferma' : 'Nota disponibilità'}: ${escapeHtml(row.note)}</small>` : ''}`
       : (isNew
         ? `<select class="inline-select inline-select--person" data-inline-person>${personOptions(personId)}</select>`
         : `<div class="inline-display-row" data-person-display>
@@ -1489,6 +1534,7 @@
   }
 
   function boardEffectiveResponse(row) {
+    if (row?.isAvailability && row?.currentResponse === 'confirmed') return 'confirmed';
     if (row?.isAvailability) return 'availability';
     if (row?.currentResponse === 'confirmed') return 'confirmed';
     if (row?.currentResponse === 'declined') return 'declined';
@@ -1499,7 +1545,7 @@
   function boardResponseMeta(row) {
     const value = boardEffectiveResponse(row);
     if (value === 'availability') return { className: 'is-availability', label: 'Disponibile', mark: '+' };
-    if (value === 'confirmed') return { className: 'is-confirmed', label: row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata', mark: '✓' };
+    if (value === 'confirmed') return { className: 'is-confirmed', label: row.isReleasedConfirmed ? 'Confermata · disponibile' : (row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata'), mark: '✓' };
     if (value === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
@@ -1581,7 +1627,7 @@
 
     return `
       <div
-        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.assignedFromAvailability ? 'is-from-availability' : ''} ${effectiveResponse === 'confirmed' && !row.isAvailability ? 'is-confirmed-response' : ''} ${effectiveResponse === 'declined' ? 'is-declined-response' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${visibleWarnings.length ? 'has-warning' : ''}"
+        class="assignment-board__person ${row.isAvailability ? 'is-availability' : ''} ${row.isReleasedConfirmed ? 'is-released-confirmed' : ''} ${row.assignedFromAvailability ? 'is-from-availability' : ''} ${effectiveResponse === 'confirmed' ? 'is-confirmed-response' : ''} ${effectiveResponse === 'declined' ? 'is-declined-response' : ''} ${row.isResponsible ? 'is-responsible' : ''} ${isFilterMatch ? 'is-filter-match' : ''} ${visibleWarnings.length ? 'has-warning' : ''}"
         draggable="true"
         data-board-drag-kind="${escapeHtml(dragKind)}"
         data-board-drag-id="${escapeHtml(dragId)}"
