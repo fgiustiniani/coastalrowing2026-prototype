@@ -187,3 +187,58 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   opacity: .78;
 }
 
+/* Navigazione sempre visibile durante la compilazione */
+.step:not([hidden]) {
+  padding-bottom: 86px;
+}
+.step:not([hidden]) > .actions {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: min(calc(100% - 28px), 724px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(23, 62, 75, .13);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 10px 30px rgba(23, 62, 75, .18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.step:not([hidden]) > .actions .button--primary {
+  box-shadow: 0 4px 12px rgba(7, 84, 102, .18);
+}
+.assignment-card.is-incomplete {
+  border-color: #c47a2c;
+  box-shadow: 0 0 0 3px rgba(196, 122, 44, .14);
+}
+.assignment-card.is-incomplete::before {
+  content: "Completa questa attività";
+  display: inline-flex;
+  margin: 0 0 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: .74rem;
+  font-weight: 850;
+}
+@media (max-width: 520px) {
+  .step:not([hidden]) {
+    padding-bottom: 92px;
+  }
+  .step:not([hidden]) > .actions {
+    width: calc(100% - 20px);
+    bottom: max(6px, env(safe-area-inset-bottom));
+    padding: 8px;
+    border-radius: 14px;
+  }
+  .step:not([hidden]) > .actions .button {
+    flex: 1 1 0;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+

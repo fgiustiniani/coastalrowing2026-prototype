@@ -327,8 +327,18 @@
   function validateAssignments() {
     const assignments = state.personState?.assignments || [];
     const missing = assignments.filter((assignment) => !state.responses.get(assignment.id)?.response);
+
+    assignmentList?.querySelectorAll('.assignment-card.is-incomplete').forEach((card) => {
+      card.classList.remove('is-incomplete');
+    });
+
     if (missing.length) {
       setStatus(assignmentStatus, `Manca una risposta per ${missing.length} attività.`, 'error');
+      missing.forEach((assignment) => {
+        assignmentList?.querySelector(`[data-assignment-id="${CSS.escape(assignment.id)}"]`)?.classList.add('is-incomplete');
+      });
+      const firstMissing = assignmentList?.querySelector('.assignment-card.is-incomplete');
+      firstMissing?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return false;
     }
     setStatus(assignmentStatus, '');
@@ -400,7 +410,9 @@
 
   async function submit() {
     if (!validateAssignments()) { showStep(3); return; }
+    const originalSubmitText = submitButton?.textContent || 'Invia disponibilità';
     submitButton.disabled = true;
+    submitButton.textContent = 'Invio in corso…';
     setStatus(submitStatus, 'Invio in corso…');
     try {
       const payload = {
@@ -425,7 +437,10 @@
     } catch (error) {
       if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); return; }
       setStatus(submitStatus, error.message, 'error');
-    } finally { submitButton.disabled = false; }
+    } finally {
+      submitButton.disabled = false;
+      if (!success || success.hidden) submitButton.textContent = originalSubmitText;
+    }
   }
 
   async function sendSummaryEmail(event) {
@@ -520,6 +535,10 @@
     if (event.target.matches('input[type="radio"]')) {
       const current = state.responses.get(assignmentId) || {};
       state.responses.set(assignmentId, { ...current, response: event.target.value });
+      card.classList.remove('is-incomplete');
+      if (!(state.personState?.assignments || []).some((assignment) => !state.responses.get(assignment.id)?.response)) {
+        setStatus(assignmentStatus, '');
+      }
     }
   });
   assignmentList?.addEventListener('input', (event) => {
