@@ -5170,3 +5170,40 @@ tr.is-busy button.is-busy {
   }
 }
 
+/* Vista schede: copia dell'ordine dal turno precedente */
+.assignment-board__shift-actions .assignment-board__copy-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.assignment-board__copy-order svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.assignment-board__shift-actions button:disabled {
+  opacity: .4;
+  cursor: default;
+}
+.assignment-board__shift-actions button:disabled:hover {
+  border-color: #b9cdd2;
+  background: #fff;
+}
+@media (max-width: 700px) {
+  .assignment-board__copy-order {
+    width: 28px;
+    min-width: 28px;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    justify-content: center;
+  }
+  .assignment-board__copy-order span {
+    display: none;
+  }
+}
+

@@ -2262,6 +2262,103 @@
     }
   }
 
+  function boardCopyOrderIds(targetShiftId, sourceShiftId) {
+    const sourceRequirements = requirements().filter((row) => row.shiftId === sourceShiftId);
+    const targetRequirements = requirements().filter((row) => row.shiftId === targetShiftId);
+    if (!sourceRequirements.length || !targetRequirements.length) return [];
+
+    const sourceBlocks = boardShiftBlocks(sourceRequirements);
+    const targetBlocks = boardShiftBlocks(targetRequirements);
+    const sourceBlockRank = new Map();
+    const sourceActivityRankByGroup = new Map();
+
+    sourceBlocks.forEach((block, blockIndex) => {
+      if (block.type === 'group') {
+        sourceBlockRank.set(`group:${block.groupId}`, blockIndex);
+        sourceActivityRankByGroup.set(
+          block.groupId,
+          new Map(block.requirements.map((item, index) => [item.activityId, index]))
+        );
+      } else if (block.requirement?.activityId) {
+        sourceBlockRank.set(`activity:${block.requirement.activityId}`, blockIndex);
+      }
+    });
+
+    const currentBlockIndex = new Map(targetBlocks.map((block, index) => [
+      block.type === 'group'
+        ? `group:${block.groupId}`
+        : `activity:${block.requirement?.activityId || block.requirement?.id || index}`,
+      index
+    ]));
+
+    const orderedBlocks = targetBlocks.map((block) => {
+      if (block.type !== 'group') return block;
+      const sourceActivityRank = sourceActivityRankByGroup.get(block.groupId);
+      if (!sourceActivityRank) return block;
+      const currentActivityIndex = new Map(block.requirements.map((item, index) => [item.id, index]));
+      return {
+        ...block,
+        requirements: [...block.requirements].sort((a, b) =>
+          (sourceActivityRank.get(a.activityId) ?? Number.POSITIVE_INFINITY)
+            - (sourceActivityRank.get(b.activityId) ?? Number.POSITIVE_INFINITY)
+          || (currentActivityIndex.get(a.id) ?? 9999) - (currentActivityIndex.get(b.id) ?? 9999)
+        )
+      };
+    }).sort((a, b) => {
+      const keyA = a.type === 'group'
+        ? `group:${a.groupId}`
+        : `activity:${a.requirement?.activityId || a.requirement?.id || ''}`;
+      const keyB = b.type === 'group'
+        ? `group:${b.groupId}`
+        : `activity:${b.requirement?.activityId || b.requirement?.id || ''}`;
+      const rankA = sourceBlockRank.get(keyA);
+      const rankB = sourceBlockRank.get(keyB);
+      const matchedA = rankA !== undefined;
+      const matchedB = rankB !== undefined;
+      if (matchedA && matchedB) return rankA - rankB;
+      if (matchedA !== matchedB) return matchedA ? -1 : 1;
+      return (currentBlockIndex.get(keyA) ?? 9999) - (currentBlockIndex.get(keyB) ?? 9999);
+    });
+
+    return orderedBlocks.flatMap(boardBlockRequirementIds);
+  }
+
+  async function copyBoardOrderFromPreviousShift(targetShiftId, sourceShiftId, button) {
+    if (!targetShiftId || !sourceShiftId || targetShiftId === sourceShiftId) return;
+    const currentIds = boardShiftRequirementIds(targetShiftId);
+    const nextIds = boardCopyOrderIds(targetShiftId, sourceShiftId);
+    if (!nextIds.length || nextIds.length !== currentIds.length) {
+      setStatus(assignmentBoardStatus, 'Impossibile ricostruire l’ordine dal turno precedente.', 'error');
+      return;
+    }
+    if (nextIds.every((id, index) => id === currentIds[index])) {
+      setStatus(assignmentBoardStatus, 'L’ordine coincide già con quello del turno precedente.', 'success');
+      return;
+    }
+
+    await withButtonBusy(button, 'Copia…', async () => {
+      assignmentBoard?.classList.add('is-saving');
+      setStatus(assignmentBoardStatus, 'Copia ordine dal turno precedente…');
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'reorder-requirements',
+            shiftId: targetShiftId,
+            requirementIds: nextIds
+          })
+        });
+        await loadSnapshot();
+        setStatus(assignmentBoardStatus, 'Ordine copiato dal turno precedente.', 'success');
+      } catch (error) {
+        setStatus(assignmentBoardStatus, error.message, 'error');
+      } finally {
+        assignmentBoard?.classList.remove('is-saving');
+      }
+    });
+  }
+
   async function setBoardActivityGroup(activityId, groupId) {
     const activity = (snapshot?.activityCatalog || []).find((item) => item.id === activityId);
     if (!activity) {
@@ -2511,9 +2608,10 @@
     if (selectedPeople.length || selectedGroups.length) {
       rows.filter((row) => row.isAvailability).forEach((row) => visibleShiftIds.add(row.shiftId));
     }
-    const shifts = [...(snapshot?.shifts || [])]
-      .filter((shift) => visibleShiftIds.has(shift.id))
+    const allShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+    const shifts = allShifts.filter((shift) => visibleShiftIds.has(shift.id));
+    const shiftIndexById = new Map(allShifts.map((shift, index) => [shift.id, index]));
 
     const groups = activityGroups().map((group) => ({
       id: group.id,
@@ -2629,6 +2727,11 @@
     };
 
     const columns = shifts.map((shift) => {
+      const shiftIndex = shiftIndexById.get(shift.id) ?? -1;
+      const previousShift = shiftIndex > 0 ? allShifts[shiftIndex - 1] : null;
+      const previousShiftHasRequirements = Boolean(
+        previousShift && requirements().some((item) => item.shiftId === previousShift.id)
+      );
       const shiftRequirements = visibleRequirements
         .filter((item) => item.shiftId === shift.id)
         .sort((a, b) =>
@@ -2755,6 +2858,18 @@
               <span class="is-available" title="Persone disponibili nel turno ma non ancora assegnate"><b>${summary.available}</b> disponibili</span>
             </div>
             <div class="assignment-board__shift-actions">
+              <button type="button"
+                class="assignment-board__copy-order"
+                data-board-copy-previous-order="${escapeHtml(shift.id)}"
+                data-board-source-shift-id="${escapeHtml(previousShift?.id || '')}"
+                aria-label="${previousShift ? `Copia ordine da ${previousShift.day_label} ${previousShift.shift_label}` : 'Nessun turno precedente'}"
+                title="${previousShift ? `Copia ordine da ${previousShift.day_label} · ${previousShift.shift_label}` : 'Nessun turno precedente'}"
+                ${previousShiftHasRequirements ? '' : 'disabled'}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 7V4h12v12h-3M4 8h12v12H4z"/>
+                </svg>
+                <span>Ordine prec.</span>
+              </button>
               <button type="button"
                 data-board-shift-collapse-all="${escapeHtml(shift.id)}"
                 title="Comprimi tutti i gruppi, le attività e i non disponibili di questo turno">Comprimi tutto</button>
@@ -6993,6 +7108,17 @@
 
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
+
+    const copyPreviousOrder = event.target.closest('[data-board-copy-previous-order]');
+    if (copyPreviousOrder) {
+      event.stopPropagation();
+      const targetShiftId = copyPreviousOrder.dataset.boardCopyPreviousOrder || '';
+      const sourceShiftId = copyPreviousOrder.dataset.boardSourceShiftId || '';
+      if (!copyPreviousOrder.disabled && targetShiftId && sourceShiftId) {
+        void copyBoardOrderFromPreviousShift(targetShiftId, sourceShiftId, copyPreviousOrder);
+      }
+      return;
+    }
 
     const collapseAll = event.target.closest('[data-board-shift-collapse-all]');
     if (collapseAll) {
