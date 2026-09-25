@@ -624,7 +624,9 @@ export default async (request) => {
         });
       } catch (error) {
         console.error('Errore sincronizzazione mail noleggio:', error?.code || error?.name || 'IMAP_ERROR');
-        const status = error?.code === 'IMAP_NOT_CONFIGURED' ? 503 : 502;
+        const status = ['IMAP_NOT_CONFIGURED', 'IMAP_APP_PASSWORD_REQUIRED'].includes(error?.code)
+          ? 503
+          : 502;
         return json({
           error: error?.message || 'Non è stato possibile aggiornare le mail di noleggio.',
           code: error?.code || 'IMAP_ERROR'
