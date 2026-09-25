@@ -2464,7 +2464,11 @@
                 data-board-copy-from
                 data-board-requirement-id="${escapeHtml(requirement.id)}"
                 aria-label="Copia persone da un’altra coppia turno-attività"
-                title="Copia persone da un’altra coppia turno-attività">Copia da</button>
+                title="Copia persone da un’altra coppia turno-attività">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 7V4h12v12h-3v4H4V7h4Zm2 0h7v7h1V6h-8v1Zm-4 2v9h9V9H6Z"/>
+                </svg>
+              </button>
               <button type="button"
                 class="assignment-board__add-person"
                 data-board-add-person
