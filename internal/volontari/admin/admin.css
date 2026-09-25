@@ -77,6 +77,7 @@
 .person-path-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .person-path-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; display: inline-block; box-sizing: border-box; position: relative; }
 .person-path-dot.is-admin-confirmed { background: var(--accent-dark); border-color: var(--accent-dark); }
+.person-path-dot.is-admin-pending { background: white; border-color: #7c8d93; }
 .person-path-dot.is-admin-declined { background: white; border-color: var(--no); }
 .person-path-dot.is-admin-declined::before,
 .person-path-dot.is-admin-declined::after { content: ''; position: absolute; left: 4px; top: 0; width: 2px; height: 9px; background: var(--no); transform: rotate(45deg); }
@@ -116,6 +117,7 @@
 .person-path-multi-line { stroke: var(--accent-dark); stroke-width: 2.7; stroke-linecap: round; }
 .person-path-node { stroke-width: 2; }
 .person-path-node.is-admin-confirmed { fill: var(--accent-dark); stroke: white; }
+.person-path-node.is-admin-pending { fill: white; stroke: #7c8d93; }
 .person-path-node.is-admin-declined { fill: white; stroke: var(--no); }
 .person-path-node.is-from-availability { fill: var(--ok); stroke: white; }
 .person-path-node.is-unused-availability { fill: white; stroke: var(--ok); }
