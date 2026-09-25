@@ -6,8 +6,8 @@ const MAX_MESSAGES = 80;
 const SOURCE_PREVIEW_BYTES = 80000;
 const MAX_UNMATCHED_PREVIEWS = 24;
 
-// La base manuale è verificata fino al 21/09/2026: il sync deve cercare solo
-// messaggi nuovi o a ridosso di quella data, evitando di rileggere settimane di posta.
+// La base manuale è verificata fino al 24/09/2026. Manteniamo qualche giorno
+// di sovrapposizione per intercettare risposte a thread precedenti senza rileggere tutta la posta.
 const RENTAL_SEARCH_QUERY =
   'in:anywhere after:2026/09/20 {to:segreteria-gare@canottieripesaro.it cc:segreteria-gare@canottieripesaro.it} {noleggio imbarcazioni "richiesta imbarcazioni" "disponibilita barche" "disponibilità barche"} -subject:"Nuova prenotazione prova barca"';
 
@@ -26,7 +26,7 @@ const STOPWORDS = new Set([
 ]);
 
 function env(name) {
-  return globalThis.Netlify?.env?.get?.(name) || '';
+  return globalThis.Netlify?.env?.get?.(name) || process.env[name] || '';
 }
 
 function normalize(value) {
@@ -207,11 +207,24 @@ function safeImapError(error) {
 
 export async function syncRentalMailFromGmail(societies) {
   const user = String(env('RENTAL_MAIL_IMAP_USER') || env('SMTP_USER') || '').trim();
-  const password = String(env('RENTAL_MAIL_IMAP_PASS') || env('SMTP_PASS') || '').replace(/\s+/g, '');
+  const dedicatedPassword = String(env('RENTAL_MAIL_IMAP_PASS') || '').replace(/\s+/g, '');
+  const smtpFallbackPassword = String(env('SMTP_PASS') || '').replace(/\s+/g, '');
+  const password = dedicatedPassword || smtpFallbackPassword;
 
   if (!user || !password) {
-    const error = new Error('Credenziali Gmail non configurate sul server.');
+    const error = new Error('Credenziali Gmail per la lettura delle mail non configurate sul server.');
     error.code = 'IMAP_NOT_CONFIGURED';
+    throw error;
+  }
+
+  // Le credenziali SMTP non sono necessariamente valide anche per IMAP.
+  // Per Gmail/Workspace, quando non è configurata una credenziale IMAP dedicata,
+  // accettiamo il fallback SMTP solo se ha il formato di una Google App Password.
+  if (!dedicatedPassword && smtpFallbackPassword.length !== 16) {
+    const error = new Error(
+      'Per aggiornare le mail serve una Google App Password dedicata alla lettura Gmail.'
+    );
+    error.code = 'IMAP_APP_PASSWORD_REQUIRED';
     throw error;
   }
 
