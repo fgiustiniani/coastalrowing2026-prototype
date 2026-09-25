@@ -9,27 +9,6 @@
     'vigili in pensione'
   ]);
   const personGroupKey = (value) => String(value || '').trim().toLocaleLowerCase('it-IT');
-  const BOARD_RESET_ACTIVITY_ORDER = [
-    'Sistemazione in spiaggia transenne',
-    'Posizionamento striscioni FIC',
-    'Allestimento gazebi, tavoli e sedie',
-    'Scarico barche',
-    'Supporto montaggio/smontaggio impianto audio',
-    'Segreteria gare',
-    'Gestione barche in spiaggia-info point',
-    'Gestione C1X',
-    'Gestione C2X',
-    'Gestione C4X',
-    'Gestione barche in gare - addetti ai rientri',
-    'Supporto ai giudici',
-    'Supporto tecnico',
-    'Viabilità',
-    'Gommoni',
-    'Riferimento per espositori',
-    'Premiazioni: coordinamento',
-    'Premiazioni: preparazione medaglie',
-    'Premiazioni: supporto'
-  ];
   const login = document.querySelector('[data-admin-login]');
   const loginForm = document.querySelector('[data-login-form]');
   const loginStatus = document.querySelector('[data-login-status]');
@@ -41,7 +20,6 @@
   const assignmentBoardStatus = document.querySelector('[data-assignment-board-status]');
   const assignmentViewToggle = document.querySelector('[data-assignment-view-toggle]');
   const assignmentBoardExportPdf = document.querySelector('[data-assignment-board-export-pdf]');
-  const assignmentBoardResetOrder = document.querySelector('[data-assignment-board-reset-order]');
   const assignmentFiltersToggle = document.querySelector('[data-assignment-filters-toggle]');
   const assignmentFiltersPanel = document.querySelector('[data-assignment-filters]');
   const assignmentActiveFilters = document.querySelector('[data-assignment-active-filters]');
@@ -2119,156 +2097,6 @@
     return activityGroups().map((group) => group.id);
   }
 
-  function normalizeBoardActivityOrderName(value) {
-    return normalizeFilterSearch(prettifyActivityName(value))
-      .replace(/[^a-z0-9]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function boardResetActivityRank(value) {
-    const normalized = normalizeBoardActivityOrderName(value);
-    const directIndex = BOARD_RESET_ACTIVITY_ORDER.findIndex((name) =>
-      normalizeBoardActivityOrderName(name) === normalized
-    );
-    if (directIndex >= 0) return directIndex;
-
-    const aliases = new Map([
-      ['sistemazione e rimozione transenne in spiaggia', 0],
-      ['sistemazione transenne in spiaggia', 0],
-      ['gestione barche in gara addetti ai rientri', 10],
-      ['piloti gommoni', 14]
-    ]);
-    return aliases.get(normalized) ?? Number.POSITIVE_INFINITY;
-  }
-
-  function boardResetGroupIds() {
-    const currentIds = boardActivityGroupIds();
-    const currentIndex = new Map(currentIds.map((id, index) => [id, index]));
-    const rankByGroup = new Map();
-
-    for (const activity of (snapshot?.activityCatalog || [])) {
-      if (activity.active === false || !activity.group_id) continue;
-      const rank = boardResetActivityRank(activity.name);
-      if (!Number.isFinite(rank)) continue;
-      const previous = rankByGroup.get(activity.group_id);
-      if (previous === undefined || rank < previous) rankByGroup.set(activity.group_id, rank);
-    }
-
-    return [...currentIds].sort((a, b) =>
-      (rankByGroup.get(a) ?? Number.POSITIVE_INFINITY) - (rankByGroup.get(b) ?? Number.POSITIVE_INFINITY)
-      || (currentIndex.get(a) ?? 9999) - (currentIndex.get(b) ?? 9999)
-    );
-  }
-
-  function boardResetRequirementIds(shiftId, orderedGroupIds) {
-    const shiftRequirements = requirements().filter((row) => row.shiftId === shiftId);
-    const current = [...shiftRequirements].sort((a, b) =>
-      Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
-      || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
-    );
-    const currentIndex = new Map(current.map((item, index) => [item.id, index]));
-    const activeGroupIds = new Set(orderedGroupIds);
-    const grouped = new Map();
-    const blocks = [];
-
-    for (const requirement of current) {
-      const groupId = activeGroupIds.has(requirement.activityGroupId || '')
-        ? requirement.activityGroupId
-        : '';
-      if (!groupId) {
-        blocks.push({
-          rank: boardResetActivityRank(requirement.activity),
-          currentIndex: currentIndex.get(requirement.id) ?? 9999,
-          requirementIds: [requirement.id]
-        });
-        continue;
-      }
-      if (!grouped.has(groupId)) grouped.set(groupId, []);
-      grouped.get(groupId).push(requirement);
-    }
-
-    orderedGroupIds.forEach((groupId) => {
-      const groupRequirements = grouped.get(groupId) || [];
-      if (!groupRequirements.length) return;
-      groupRequirements.sort((a, b) =>
-        boardResetActivityRank(a.activity) - boardResetActivityRank(b.activity)
-        || (currentIndex.get(a.id) ?? 9999) - (currentIndex.get(b.id) ?? 9999)
-      );
-      blocks.push({
-        rank: Math.min(...groupRequirements.map((item) => boardResetActivityRank(item.activity))),
-        currentIndex: Math.min(...groupRequirements.map((item) => currentIndex.get(item.id) ?? 9999)),
-        requirementIds: groupRequirements.map((item) => item.id)
-      });
-    });
-
-    return blocks
-      .sort((a, b) => a.rank - b.rank || a.currentIndex - b.currentIndex)
-      .flatMap((block) => block.requirementIds);
-  }
-
-  async function resetBoardActivityOrder(button) {
-    if (!snapshot?.requirementsAvailable) {
-      setStatus(assignmentBoardStatus, 'L’ordine attività non è disponibile nel database.', 'error');
-      return;
-    }
-
-    const currentGroupIds = boardActivityGroupIds();
-    const orderedGroupIds = boardResetGroupIds();
-    const groupOrderChanged = orderedGroupIds.some((id, index) => id !== currentGroupIds[index]);
-    const shiftOrders = (snapshot?.shifts || []).map((shift) => {
-      const currentIds = shiftRequirementIds(shift.id);
-      const requirementIds = boardResetRequirementIds(shift.id, orderedGroupIds);
-      const changed = requirementIds.length === currentIds.length
-        && requirementIds.some((id, index) => id !== currentIds[index]);
-      return { shiftId: shift.id, requirementIds, changed };
-    }).filter((item) => item.changed);
-
-    if (!groupOrderChanged && !shiftOrders.length) {
-      setStatus(assignmentBoardStatus, 'Le attività sono già nell’ordine standard.', 'success');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      'Ripristinare l’ordine standard delle attività in tutti i turni? Le assegnazioni e l’appartenenza delle attività ai gruppi non verranno modificate; potrà cambiare solo l’ordine dei gruppi.'
-    );
-    if (!confirmed) return;
-
-    await withButtonBusy(button, 'Ripristino…', async () => {
-      assignmentBoard?.classList.add('is-saving');
-      setStatus(assignmentBoardStatus, 'Ripristino ordine attività…');
-      try {
-        if (groupOrderChanged) {
-          await api(API, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              action: 'reorder-activity-groups',
-              groupIds: orderedGroupIds
-            })
-          });
-        }
-        for (const item of shiftOrders) {
-          await api(API, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              action: 'reorder-requirements',
-              shiftId: item.shiftId,
-              requirementIds: item.requirementIds
-            })
-          });
-        }
-        await loadSnapshot();
-        setStatus(assignmentBoardStatus, 'Ordine standard delle attività ripristinato.', 'success');
-      } catch (error) {
-        setStatus(assignmentBoardStatus, error.message, 'error');
-      } finally {
-        assignmentBoard?.classList.remove('is-saving');
-      }
-    });
-  }
-
   async function reorderBoardActivityGroup(draggedId, targetGroupId, placeAfter = false) {
     if (!draggedId || !targetGroupId || draggedId === targetGroupId) return;
     const ids = boardActivityGroupIds();
@@ -2325,6 +2153,106 @@
           })
         });
       }
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, 'Ordine gruppi aggiornato.', 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+    }
+  }
+
+  function boardActivityMoveTarget(requirement, direction) {
+    if (!requirement || !['up', 'down'].includes(direction)) return null;
+    const blocks = boardShiftBlocks(requirements().filter((row) => row.shiftId === requirement.shiftId));
+
+    if (requirement.activityGroupId) {
+      const groupBlock = blocks.find((block) =>
+        block.type === 'group' && block.groupId === requirement.activityGroupId
+      );
+      const groupRequirements = groupBlock?.requirements || [];
+      const index = groupRequirements.findIndex((item) => item.id === requirement.id);
+      const target = groupRequirements[index + (direction === 'up' ? -1 : 1)] || null;
+      return target
+        ? { targetRequirementId: target.id, placeAfter: direction === 'down' }
+        : null;
+    }
+
+    const index = blocks.findIndex((block) =>
+      block.type === 'activity' && block.requirement?.id === requirement.id
+    );
+    const adjacent = blocks[index + (direction === 'up' ? -1 : 1)] || null;
+    const adjacentIds = boardBlockRequirementIds(adjacent);
+    if (!adjacentIds.length) return null;
+    return {
+      targetRequirementId: direction === 'up' ? adjacentIds[0] : adjacentIds[adjacentIds.length - 1],
+      placeAfter: direction === 'down'
+    };
+  }
+
+  async function moveBoardActivityByDirection(requirementId, direction) {
+    const requirement = requirementById(requirementId);
+    const target = boardActivityMoveTarget(requirement, direction);
+    if (!requirement || !target) return;
+    await reorderBoardRequirement(requirement.id, target.targetRequirementId, target.placeAfter);
+  }
+
+  function boardGroupMoveTarget(shiftId, groupId, direction) {
+    if (!shiftId || !groupId || !['up', 'down'].includes(direction)) return null;
+    const blocks = boardShiftBlocks(requirements().filter((row) => row.shiftId === shiftId));
+    const index = blocks.findIndex((block) => block.type === 'group' && block.groupId === groupId);
+    const adjacent = blocks[index + (direction === 'up' ? -1 : 1)] || null;
+    if (!adjacent) return null;
+    if (adjacent.type === 'group') {
+      return {
+        type: 'group',
+        targetGroupId: adjacent.groupId,
+        placeAfter: direction === 'down'
+      };
+    }
+    return adjacent.requirement?.id
+      ? {
+          type: 'requirement',
+          targetRequirementId: adjacent.requirement.id,
+          placeAfter: direction === 'down'
+        }
+      : null;
+  }
+
+  async function moveBoardGroupByDirection(shiftId, groupId, direction) {
+    const target = boardGroupMoveTarget(shiftId, groupId, direction);
+    if (!target) return;
+
+    if (target.type === 'group') {
+      await reorderBoardActivityGroup(groupId, target.targetGroupId, target.placeAfter);
+      return;
+    }
+
+    const blocks = boardShiftBlocks(requirements().filter((row) => row.shiftId === shiftId));
+    const sourceBlock = blocks.find((block) => block.type === 'group' && block.groupId === groupId);
+    const sourceIds = boardBlockRequirementIds(sourceBlock);
+    if (!sourceIds.length) return;
+
+    const currentIds = boardShiftRequirementIds(shiftId);
+    const next = currentIds.filter((id) => !sourceIds.includes(id));
+    const targetIndex = next.indexOf(target.targetRequirementId);
+    if (targetIndex < 0) return;
+    next.splice(targetIndex + (target.placeAfter ? 1 : 0), 0, ...sourceIds);
+
+    if (next.every((id, index) => id === currentIds[index])) return;
+
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, 'Salvataggio ordine gruppi…');
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder-requirements',
+          shiftId,
+          requirementIds: next
+        })
+      });
       await loadSnapshot();
       setStatus(assignmentBoardStatus, 'Ordine gruppi aggiornato.', 'success');
     } catch (error) {
@@ -2607,6 +2535,8 @@
       const missing = metrics.missing;
       const activityKey = boardActivityKey(requirement);
       const collapsed = boardActivityCollapsed(requirement);
+      const canMoveUp = Boolean(boardActivityMoveTarget(requirement, 'up'));
+      const canMoveDown = Boolean(boardActivityMoveTarget(requirement, 'down'));
 
       return `
         <section class="assignment-board__activity ${uncovered ? 'is-uncovered' : 'is-covered'} ${collapsed ? 'is-collapsed' : ''}"
@@ -2629,6 +2559,22 @@
               <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
             </button>
             <span class="assignment-board__activity-actions">
+              <span class="assignment-board__move-controls" aria-label="Sposta attività">
+                <button type="button"
+                  class="assignment-board__move-button"
+                  data-board-activity-move="up"
+                  data-board-requirement-id="${escapeHtml(requirement.id)}"
+                  aria-label="Sposta attività su"
+                  title="Sposta attività su"
+                  ${canMoveUp ? '' : 'disabled'}>↑</button>
+                <button type="button"
+                  class="assignment-board__move-button"
+                  data-board-activity-move="down"
+                  data-board-requirement-id="${escapeHtml(requirement.id)}"
+                  aria-label="Sposta attività giù"
+                  title="Sposta attività giù"
+                  ${canMoveDown ? '' : 'disabled'}>↓</button>
+              </span>
               <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Presenti confermati o assegnati da disponibilità aggiuntiva / necessari">${metrics.present}/${metrics.required}</span>
               <span class="assignment-board__pending-count ${metrics.pending ? 'has-pending' : ''}" title="Persone assegnate dall'admin che non hanno ancora risposto">${metrics.pending} da risp.</span>
               <button type="button"
@@ -2712,6 +2658,8 @@
         const groupKey = boardGroupKey(shift.id, group.id);
         const groupMetrics = boardGroupMetrics(groupRequirements);
         const groupUncovered = groupMetrics.present < groupMetrics.required;
+        const canMoveUp = Boolean(boardGroupMoveTarget(shift.id, group.id, 'up'));
+        const canMoveDown = Boolean(boardGroupMoveTarget(shift.id, group.id, 'down'));
         return `
           <section class="assignment-board__activity-group ${collapsed ? 'is-collapsed' : ''}"
             data-board-activity-group
@@ -2733,9 +2681,29 @@
                 <span class="assignment-board__group-chevron" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
                 <strong>${escapeHtml(group.name)}</strong>
               </button>
-              <span class="assignment-board__group-kpis">
-                <span class="assignment-board__activity-count ${groupUncovered ? 'is-uncovered' : ''}" title="Presenti / necessari nel gruppo">${groupMetrics.present}/${groupMetrics.required}</span>
-                <span class="assignment-board__pending-count ${groupMetrics.pending ? 'has-pending' : ''}" title="Persone senza risposta nelle attività del gruppo">${groupMetrics.pending} da risp.</span>
+              <span class="assignment-board__group-actions">
+                <span class="assignment-board__move-controls" aria-label="Sposta gruppo">
+                  <button type="button"
+                    class="assignment-board__move-button"
+                    data-board-group-move="up"
+                    data-board-group-id="${escapeHtml(group.id)}"
+                    data-board-shift-id="${escapeHtml(shift.id)}"
+                    aria-label="Sposta gruppo su"
+                    title="Sposta gruppo su"
+                    ${canMoveUp ? '' : 'disabled'}>↑</button>
+                  <button type="button"
+                    class="assignment-board__move-button"
+                    data-board-group-move="down"
+                    data-board-group-id="${escapeHtml(group.id)}"
+                    data-board-shift-id="${escapeHtml(shift.id)}"
+                    aria-label="Sposta gruppo giù"
+                    title="Sposta gruppo giù"
+                    ${canMoveDown ? '' : 'disabled'}>↓</button>
+                </span>
+                <span class="assignment-board__group-kpis">
+                  <span class="assignment-board__activity-count ${groupUncovered ? 'is-uncovered' : ''}" title="Presenti / necessari nel gruppo">${groupMetrics.present}/${groupMetrics.required}</span>
+                  <span class="assignment-board__pending-count ${groupMetrics.pending ? 'has-pending' : ''}" title="Persone senza risposta nelle attività del gruppo">${groupMetrics.pending} da risp.</span>
+                </span>
               </span>
             </header>
             <div class="assignment-board__group-body"
@@ -3933,7 +3901,6 @@
     if (assignmentBoard) assignmentBoard.hidden = !isBoard;
     if (assignmentBoardStatus) assignmentBoardStatus.hidden = !isBoard;
     if (assignmentBoardExportPdf) assignmentBoardExportPdf.hidden = !isBoard;
-    if (assignmentBoardResetOrder) assignmentBoardResetOrder.hidden = !isBoard;
     updateAssignmentFiltersToggle();
     assignmentListOnlyFields.forEach((field) => { field.hidden = isBoard; });
     if (assignmentViewToggle) {
@@ -6322,10 +6289,6 @@
     });
   });
 
-  assignmentBoardResetOrder?.addEventListener('click', () => {
-    resetBoardActivityOrder(assignmentBoardResetOrder);
-  });
-
   document.querySelector('[data-new-person]')?.addEventListener('click', () => {
     newPersonOpen = true;
     renderPersonCatalog();
@@ -7042,6 +7005,29 @@
     if (expandAll) {
       event.stopPropagation();
       setBoardShiftCollapsed(expandAll.dataset.boardShiftExpandAll || '', false);
+      return;
+    }
+
+    const activityMove = event.target.closest('[data-board-activity-move]');
+    if (activityMove) {
+      event.stopPropagation();
+      const direction = activityMove.dataset.boardActivityMove || '';
+      const requirementId = activityMove.dataset.boardRequirementId || '';
+      if (!activityMove.disabled && requirementId && ['up', 'down'].includes(direction)) {
+        void moveBoardActivityByDirection(requirementId, direction);
+      }
+      return;
+    }
+
+    const groupMove = event.target.closest('[data-board-group-move]');
+    if (groupMove) {
+      event.stopPropagation();
+      const direction = groupMove.dataset.boardGroupMove || '';
+      const groupId = groupMove.dataset.boardGroupId || '';
+      const shiftId = groupMove.dataset.boardShiftId || '';
+      if (!groupMove.disabled && groupId && shiftId && ['up', 'down'].includes(direction)) {
+        void moveBoardGroupByDirection(shiftId, groupId, direction);
+      }
       return;
     }
 

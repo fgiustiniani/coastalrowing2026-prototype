@@ -5074,3 +5074,99 @@ tr.is-busy button.is-busy {
     max-width: none;
   }
 }
+
+/* Vista schede: intestazioni attività e gruppi su due righe con riordino a frecce */
+.assignment-board__move-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.assignment-board__move-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #9ebbc1;
+  border-radius: 7px;
+  background: #fff;
+  color: #345d67;
+  font-size: .8rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.assignment-board__move-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: #e9f6f8;
+  color: var(--accent-dark);
+}
+.assignment-board__move-button:disabled {
+  opacity: .32;
+  cursor: default;
+}
+.assignment-board.is-saving .assignment-board__move-button {
+  pointer-events: none;
+  opacity: .45;
+}
+
+.assignment-board__activity-head > .assignment-board__activity-actions {
+  justify-content: flex-end;
+}
+
+.assignment-board__activity-group-head {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 5px;
+  padding: 7px 8px;
+}
+.assignment-board__activity-group-head > .assignment-board__group-drag-handle {
+  grid-column: 1;
+  grid-row: 1;
+}
+.assignment-board__activity-group-head > .assignment-board__group-toggle {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+}
+.assignment-board__activity-group .assignment-board__group-toggle strong {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.assignment-board__group-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+}
+.assignment-board__group-kpis {
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .assignment-board__activity-group-head {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+  .assignment-board__activity-actions,
+  .assignment-board__group-actions {
+    flex-wrap: wrap;
+  }
+}
+
