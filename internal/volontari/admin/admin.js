@@ -954,6 +954,11 @@
     return availabilityRowForRequirement(personId, requirementId)?.availabilityKind === 'additional';
   }
 
+  function releasedConfirmedAvailabilityForRequirement(personId, requirementId) {
+    const row = availabilityRowForRequirement(personId, requirementId);
+    return row?.isReleasedConfirmed === true ? row : null;
+  }
+
   function allAssignmentRows() {
     return [...unassignedAvailabilityRows(), ...(snapshot?.assignments || [])];
   }
@@ -2444,6 +2449,7 @@
 
       for (const personId of selectedPersonIds) {
         const person = (snapshot?.people || []).find((item) => item.id === personId);
+        const availableRow = availabilityRowForRequirement(personId, requirementId);
         try {
           await api(API, {
             method: 'POST',
@@ -2453,7 +2459,9 @@
               assignmentId: null,
               personId,
               requirementId,
-              fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, requirementId),
+              fromAvailability: availableRow?.availabilityKind === 'additional',
+              fromConfirmedAvailability: availableRow?.isReleasedConfirmed === true,
+              sourceConfirmedAssignmentId: availableRow?.sourceAssignmentId || null,
               requestedProfile: null,
               note: assignmentNote || null
             })
@@ -2677,6 +2685,8 @@
               personId,
               requirementId: targetRequirement.id,
               fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, targetRequirement.id),
+              fromConfirmedAvailability: Boolean(releasedConfirmedAvailabilityForRequirement(personId, targetRequirement.id)),
+              sourceConfirmedAssignmentId: releasedConfirmedAvailabilityForRequirement(personId, targetRequirement.id)?.sourceAssignmentId || null,
               requestedProfile: null,
               note: null
             })
@@ -2774,7 +2784,9 @@
       } else {
         setStatus(
           assignmentBoardStatus,
-          `${personName} riportato tra i disponibili da assegnare.`,
+          assignment.currentResponse === 'confirmed'
+            ? `${personName} riportato tra i disponibili mantenendo lo stato Confermata.`
+            : `${personName} riportato tra i disponibili da assegnare.`,
           'success'
         );
       }
@@ -2837,6 +2849,12 @@
           fromAvailability: dragged.kind === 'availability'
             ? availabilitySource?.availabilityKind === 'additional'
             : (!assignmentId && personIsAdditionalAvailabilityForRequirement(personId, requirement.id)),
+          fromConfirmedAvailability: dragged.kind === 'availability'
+            ? availabilitySource?.isReleasedConfirmed === true
+            : (!assignmentId && Boolean(releasedConfirmedAvailabilityForRequirement(personId, requirement.id))),
+          sourceConfirmedAssignmentId: dragged.kind === 'availability'
+            ? (availabilitySource?.sourceAssignmentId || null)
+            : (releasedConfirmedAvailabilityForRequirement(personId, requirement.id)?.sourceAssignmentId || null),
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -3235,6 +3253,12 @@
             fromAvailability: isAvailability
               ? source.availabilityKind === 'additional'
               : (isNew && personIsAdditionalAvailabilityForRequirement(personId, requirementId)),
+            fromConfirmedAvailability: isAvailability
+              ? source.isReleasedConfirmed === true
+              : (isNew && Boolean(releasedConfirmedAvailabilityForRequirement(personId, requirementId))),
+            sourceConfirmedAssignmentId: isAvailability
+              ? (source.sourceAssignmentId || null)
+              : (releasedConfirmedAvailabilityForRequirement(personId, requirementId)?.sourceAssignmentId || null),
             requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
             note: assignmentNote || null
           })
@@ -3252,14 +3276,25 @@
   }
 
   function assignmentRemovalAuditNote(assignment) {
-    if (assignment?.currentResponse !== 'declined') return null;
-    const volunteerNote = String(assignment.currentNote || '').trim();
-    return `Rimossa a seguito della risposta "Non può" del volontario per questa attività.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
+    const volunteerNote = String(assignment?.currentNote || '').trim();
+    if (assignment?.currentResponse === 'confirmed') {
+      return `Rimossa dopo la risposta "Confermata"; la persona torna tra i disponibili del turno mantenendo la conferma.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
+    }
+    if (assignment?.currentResponse === 'declined') {
+      return `Rimossa a seguito della risposta "Non può" del volontario per questa attività.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
+    }
+    return null;
   }
 
   function assignmentRemovalConfirmText(assignment) {
-    const tracked = assignmentRemovalAuditNote(assignment);
-    return `Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.${tracked ? ' La rimozione verrà registrata come conseguenza della risposta “Non può”.' : ''}`;
+    const base = `Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`;
+    if (assignment?.currentResponse === 'confirmed') {
+      return `${base} La persona tornerà tra i disponibili del turno mantenendo lo stato “Confermata”.`;
+    }
+    if (assignment?.currentResponse === 'declined') {
+      return `${base} La rimozione verrà registrata come conseguenza della risposta “Non può”.`;
+    }
+    return base;
   }
 
   async function deleteBoardAssignment(assignmentId, button) {
@@ -5106,6 +5141,8 @@
             personId,
             requirementId,
             fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, requirementId),
+            fromConfirmedAvailability: Boolean(releasedConfirmedAvailabilityForRequirement(personId, requirementId)),
+            sourceConfirmedAssignmentId: releasedConfirmedAvailabilityForRequirement(personId, requirementId)?.sourceAssignmentId || null,
             requestedProfile: null,
             note: assignmentNote || null
           })
@@ -5661,6 +5698,10 @@
           personId,
           requirementId,
           fromAvailability: !assignmentId && personIsAdditionalAvailabilityForRequirement(personId, requirementId),
+          fromConfirmedAvailability: !assignmentId && Boolean(releasedConfirmedAvailabilityForRequirement(personId, requirementId)),
+          sourceConfirmedAssignmentId: !assignmentId
+            ? (releasedConfirmedAvailabilityForRequirement(personId, requirementId)?.sourceAssignmentId || null)
+            : null,
           requestedProfile: current?.requestedProfile || null,
           note: assignmentNote || null
         })
