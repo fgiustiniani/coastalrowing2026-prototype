@@ -2054,7 +2054,10 @@
     return Boolean(
       assignment
       && assignment.shiftId === targetShiftId
-      && personDeclaredAvailabilityForShift(assignment.personId, targetShiftId)
+      && (
+        assignment.currentResponse === 'confirmed'
+        || personDeclaredAvailabilityForShift(assignment.personId, targetShiftId)
+      )
     );
   }
 
@@ -2292,7 +2295,7 @@
               <span class="is-confirmed" title="Assegnazioni confermate"><b>${summary.confirmed}</b> accettate</span>
               <span class="is-declined" title="Assegnazioni rifiutate"><b>${summary.declined}</b> rifiutate</span>
               <span class="is-pending" title="Assegnazioni ancora senza risposta"><b>${summary.pending}</b> da rispondere</span>
-              <span class="is-available" title="Persone con disponibilità aggiuntiva nel turno ma non ancora assegnate"><b>${summary.available}</b> disp. non assegnate</span>
+              <span class="is-available" title="Persone disponibili nel turno ma non ancora assegnate"><b>${summary.available}</b> disponibili</span>
             </div>
           </header>
           <div class="assignment-board__activities">
@@ -2301,7 +2304,7 @@
           </div>
           <section class="assignment-board__availability"
             data-board-availability-drop="${escapeHtml(shift.id)}"
-            title="Trascina qui una persona che ha dichiarato disponibilità aggiuntiva per questo turno">
+            title="Trascina qui una persona disponibile per questo turno">
             <header>
               <strong>Disponibili da assegnare</strong>
               <div class="assignment-board__availability-actions">
@@ -2391,6 +2394,7 @@
                 <span>
                   <strong>${escapeHtml(row.personName)}</strong>
                   ${row.personGroup ? `<small>${escapeHtml(row.personGroup)}</small>` : ''}
+                  ${row.isReleasedConfirmed ? '<small><strong>✓ Confermata · ora disponibile</strong></small>' : '<small>Disponibilità aggiuntiva</small>'}
                   ${row.note ? `<small>Nota: ${escapeHtml(row.note)}</small>` : ''}
                 </span>
               </label>`).join('')}
@@ -2445,7 +2449,7 @@
               assignmentId: null,
               personId,
               requirementId,
-              fromAvailability: true,
+              fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, requirementId),
               requestedProfile: null,
               note: assignmentNote || null
             })
@@ -2668,7 +2672,7 @@
               assignmentId: null,
               personId,
               requirementId: targetRequirement.id,
-              fromAvailability: personIsAvailableForRequirement(personId, targetRequirement.id),
+              fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, targetRequirement.id),
               requestedProfile: null,
               note: null
             })
@@ -2720,7 +2724,7 @@
     if (!boardCanReturnToAvailability(dragged, targetShiftId)) {
       setStatus(
         assignmentBoardStatus,
-        'Puoi riportare tra i disponibili solo chi ha dichiarato disponibilità aggiuntiva per questo turno.',
+        'Puoi riportare tra i disponibili chi ha confermato il turno oppure chi ha dichiarato disponibilità aggiuntiva.',
         'error'
       );
       return;
@@ -2730,7 +2734,9 @@
     if (!assignment) return;
 
     const personName = assignment.personName || 'Persona';
-    const baseNote = 'Rimossa dall’attività e riportata tra le disponibilità aggiuntive dichiarate per questo turno.';
+    const baseNote = assignment.currentResponse === 'confirmed'
+      ? 'Rimossa dall’attività e riportata tra i disponibili mantenendo la risposta Confermata per questo turno.'
+      : 'Rimossa dall’attività e riportata tra le disponibilità aggiuntive dichiarate per questo turno.';
     const declineNote = assignmentRemovalAuditNote(assignment);
     const auditNote = [baseNote, declineNote].filter(Boolean).join(' ');
 
@@ -2783,6 +2789,7 @@
     let personId = '';
     let assignmentId = null;
     let sourceName = '';
+    let availabilitySource = null;
 
     if (dragged.kind === 'assignment') {
       current = (snapshot?.assignments || []).find((row) => row.id === dragged.id);
@@ -2807,6 +2814,7 @@
         setStatus(assignmentBoardStatus, 'La disponibilità può essere assegnata solo nel turno indicato dal volontario.', 'error');
         return;
       }
+      availabilitySource = availability;
       personId = availability.personId;
       sourceName = availability.personName;
     }
@@ -2823,7 +2831,8 @@
           personId,
           requirementId: requirement.id,
           fromAvailability: dragged.kind === 'availability'
-            || (!assignmentId && personIsAvailableForRequirement(personId, requirement.id)),
+            ? availabilitySource?.availabilityKind === 'additional'
+            : (!assignmentId && personIsAdditionalAvailabilityForRequirement(personId, requirement.id)),
           requestedProfile: current?.requestedProfile || null,
           note: current?.note || null
         })
@@ -3220,7 +3229,8 @@
             personId,
             requirementId,
             fromAvailability: isAvailability
-              || (isNew && personIsAvailableForRequirement(personId, requirementId)),
+              ? source.availabilityKind === 'additional'
+              : (isNew && personIsAdditionalAvailabilityForRequirement(personId, requirementId)),
             requestedProfile: (isAvailability || isNew) ? null : (source.requestedProfile || null),
             note: assignmentNote || null
           })
@@ -5091,7 +5101,7 @@
             assignmentId: null,
             personId,
             requirementId,
-            fromAvailability: personIsAvailableForRequirement(personId, requirementId),
+            fromAvailability: personIsAdditionalAvailabilityForRequirement(personId, requirementId),
             requestedProfile: null,
             note: assignmentNote || null
           })
@@ -5646,7 +5656,7 @@
           assignmentId,
           personId,
           requirementId,
-          fromAvailability: !assignmentId && personIsAvailableForRequirement(personId, requirementId),
+          fromAvailability: !assignmentId && personIsAdditionalAvailabilityForRequirement(personId, requirementId),
           requestedProfile: current?.requestedProfile || null,
           note: assignmentNote || null
         })
