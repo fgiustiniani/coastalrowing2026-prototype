@@ -4921,7 +4921,7 @@
 
     return rows.length
       ? `<div class="person-activities-table-wrap"><table class="detail-table person-activities-table">
-          <thead><tr><th>Turno + attività</th><th>Ruolo</th><th>Risposta</th><th>Nota assegnazione</th><th>Warning</th><th></th></tr></thead>
+          <thead><tr><th>Turno + attività</th><th>Risposta</th><th>Nota assegnazione</th><th>Warning</th><th></th></tr></thead>
           <tbody>${rows.map((row) => `
             <tr class="${row.id === selectedAssignmentId ? 'is-selected-assignment' : ''}" data-person-assignment-row="${escapeHtml(row.id)}">
               <td>
@@ -4929,7 +4929,6 @@
                   ${requirementOptions(assignmentRequirementId(row))}
                 </select>
               </td>
-              <td>${row.isResponsible ? responsibleBadge('Responsabile') : '—'}</td>
               <td>${responseBadge(row.currentResponse)}</td>
               <td><input class="person-assignment-note-input" type="text" maxlength="1000" data-person-assignment-note value="${escapeHtml(row.note || '')}" placeholder="Nota facoltativa"></td>
               <td class="person-activity-warning" data-person-row-warning>${personActivityWarningHtml(row)}</td>
@@ -5059,6 +5058,38 @@
       </div>`;
   }
 
+  function personPathPopupHtml(person) {
+    if (!person) return '';
+    const shifts = [...(snapshot?.shifts || [])]
+      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+    if (!shifts.length) return '';
+
+    const shiftByLabel = new Map(shifts.map((shift) => [
+      `${shift.day_label || ''}|||${shift.shift_label || ''}`,
+      shift
+    ]));
+
+    return `
+      <section class="person-popup-path">
+        <div class="person-popup-path__head">
+          <div>
+            <span class="eyebrow">Percorso attività</span>
+            <strong>Attività, disponibilità e gare lungo i turni</strong>
+          </div>
+          <div class="person-path-legend" aria-hidden="true">
+            <span><i class="person-path-dot is-admin-confirmed"></i>Admin confermata</span>
+            <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
+            <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
+            <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
+            <span><i class="person-path-dot is-race">G</i>Gara</span>
+          </div>
+        </div>
+        <div class="person-popup-path__chart">
+          ${personPathBlockHtml(person, shifts, shiftByLabel)}
+        </div>
+      </section>`;
+  }
+
   function showPersonActivitiesPopup(personId, selectedAssignmentId = '') {
     const person = (snapshot?.people || []).find((item) => item.id === personId);
     if (!person || !personActivitiesDialog) return;
@@ -5101,6 +5132,7 @@
       ${personAddActivityForm(personId, selectedRequirementId)}
       ${intro}
       ${personActivitiesHtml(personId, selectedAssignmentId)}
+      ${personPathPopupHtml(person)}
       ${personAdditionalAvailabilityHtml(personId, selectedAssignmentId)}
       ${personRacesHtml(personId, selectedAssignmentId)}`;
     personActivitiesDialog.showModal();
