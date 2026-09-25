@@ -369,6 +369,23 @@
       <section class="summary-section"><h3>Ulteriori disponibilità</h3>${extra.length ? `<ul class="summary-list">${extra.map((s) => { const note = state.availability.get(s.id)?.note || ''; return `<li><strong>${escapeHtml(s.day)} · ${escapeHtml(s.shift)}</strong>${note ? `<br><small>Nota: ${escapeHtml(note)}</small>` : ''}</li>`; }).join('')}</ul>` : '<p class="summary-empty">Nessuna ulteriore disponibilità indicata.</p>'}</section>`;
   }
 
+  function syncFloatingPrimary() {
+    const activeStep = document.querySelector('[data-step]:not([hidden])');
+    document.querySelectorAll('[data-step] > .actions .button--primary').forEach((button) => {
+      if (!activeStep || !activeStep.contains(button)) button.classList.remove('is-floating-primary');
+    });
+    if (!activeStep) return;
+
+    const actions = activeStep.querySelector(':scope > .actions');
+    const primary = actions?.querySelector('.button--primary');
+    if (!actions || !primary) return;
+
+    primary.classList.remove('is-floating-primary');
+    const rect = actions.getBoundingClientRect();
+    const actionsVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+    primary.classList.toggle('is-floating-primary', !actionsVisible);
+  }
+
   function showStep(step) {
     state.step = step;
     document.querySelectorAll('[data-step]').forEach((node) => { node.hidden = Number(node.dataset.step) !== step; });
@@ -379,6 +396,7 @@
     });
     if (step === 5) renderSummary();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(syncFloatingPrimary);
   }
 
   function next(step) {
@@ -563,6 +581,8 @@
 
   document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => next(Number(button.dataset.next))));
   document.querySelectorAll('[data-back]').forEach((button) => button.addEventListener('click', () => showStep(Number(button.dataset.back))));
+  window.addEventListener('scroll', syncFloatingPrimary, { passive: true });
+  window.addEventListener('resize', syncFloatingPrimary);
   submitButton?.addEventListener('click', submit);
   summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
 
@@ -594,6 +614,7 @@
         }
       }
       showApp();
+      requestAnimationFrame(syncFloatingPrimary);
     } catch (error) {
       if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); }
       else showAccess(error.message);

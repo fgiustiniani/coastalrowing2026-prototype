@@ -187,11 +187,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   opacity: .78;
 }
 
-/* Pulsante principale sempre visibile in sovraimpressione */
+/* Il pulsante principale galleggia solo quando la sua posizione naturale è fuori schermo */
 .step:not([hidden]) {
-  padding-bottom: 78px;
+  padding-bottom: 18px;
 }
-.step:not([hidden]) > .actions .button--primary {
+.step:not([hidden]) > .actions .button--primary.is-floating-primary {
   position: fixed;
   z-index: 30;
   right: max(14px, calc((100vw - 760px) / 2 + 14px));
@@ -215,10 +215,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   font-weight: 850;
 }
 @media (max-width: 520px) {
-  .step:not([hidden]) {
-    padding-bottom: 82px;
-  }
-  .step:not([hidden]) > .actions .button--primary {
+  .step:not([hidden]) > .actions .button--primary.is-floating-primary {
     right: 10px;
     bottom: max(10px, env(safe-area-inset-bottom));
     min-width: 154px;
