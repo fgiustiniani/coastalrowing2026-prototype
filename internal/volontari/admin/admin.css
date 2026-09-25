@@ -1562,7 +1562,7 @@ tr.is-busy button.is-busy {
 
 /* Popup persona: spostamento attività, warning e aggiunta rapida */
 [data-person-activities-dialog] {
-  width: min(1180px, calc(100vw - 28px));
+  width: min(1480px, calc(100vw - 28px));
 }
 .person-activities-toolbar {
   display: flex;
@@ -1574,20 +1574,36 @@ tr.is-busy button.is-busy {
   overflow-x: auto;
 }
 .person-activities-table {
-  min-width: 980px;
+  min-width: 1080px;
 }
 .person-activities-table th,
 .person-activities-table td {
   vertical-align: middle;
 }
+.person-activities-table th:nth-child(1),
 .person-activities-table td:nth-child(1) {
-  min-width: 170px;
+  width: 42%;
+  min-width: 430px;
 }
+.person-activities-table th:nth-child(2),
 .person-activities-table td:nth-child(2) {
-  min-width: 260px;
+  width: 12%;
+  min-width: 120px;
 }
+.person-activities-table th:nth-child(3),
+.person-activities-table td:nth-child(3) {
+  width: 22%;
+  min-width: 240px;
+}
+.person-activities-table th:nth-child(4),
+.person-activities-table td:nth-child(4) {
+  width: 19%;
+  min-width: 210px;
+}
+.person-activities-table th:nth-child(5),
 .person-activities-table td:nth-child(5) {
-  min-width: 220px;
+  width: 5%;
+  min-width: 64px;
 }
 .person-activity-move-select {
   width: 100%;
@@ -1607,6 +1623,48 @@ tr.is-busy button.is-busy {
 }
 .person-activity-selected__warning {
   margin-top: 7px;
+}
+.person-popup-path {
+  margin: 16px 0 14px;
+  padding: 12px;
+  border: 1px solid #cbdadd;
+  border-radius: 12px;
+  background: #f8fbfb;
+}
+.person-popup-path__head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.person-popup-path__head > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+.person-popup-path__head > div:first-child > strong {
+  color: var(--ink);
+  font-size: .9rem;
+}
+.person-popup-path .person-path-legend {
+  margin: 0;
+}
+.person-popup-path__chart {
+  width: 100%;
+}
+.person-popup-path .person-path-person-block {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.person-popup-path .person-path-summary {
+  display: none;
+}
+.person-popup-path .person-path-scroll {
+  border-radius: 10px;
+}
+.person-popup-path .person-path-svg {
+  width: 100%;
+  min-width: 1180px;
 }
 .person-add-activity {
   margin: 8px 0 14px;
@@ -1687,7 +1745,7 @@ tr.is-busy button.is-busy {
   min-width: 185px;
 }
 .person-activities-table td:first-child {
-  min-width: 205px;
+  min-width: 430px;
 }
 
 /* Vista modifiche dopo conferma */
@@ -2135,10 +2193,10 @@ tr.is-busy button.is-busy {
   grid-template-columns: minmax(320px, 1.5fr) minmax(220px, 1fr) auto;
 }
 .person-activities-table td:first-child {
-  min-width: 340px;
+  min-width: 430px;
 }
 .person-activity-move-select {
-  min-width: 320px;
+  min-width: 410px;
 }
 
 @media (max-width: 700px) {
