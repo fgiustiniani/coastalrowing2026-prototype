@@ -3415,6 +3415,15 @@
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
       const availability = person?.latestSubmission?.availability || [];
+    const races = snapshot?.raceProgramAvailable
+      ? (snapshot?.raceProgram || [])
+          .filter((race) => race.personId === personId)
+          .sort((a, b) =>
+            String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+            || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+            || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+          )
+      : [];
       const notes = item.rows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
@@ -3549,7 +3558,15 @@
       addToShiftMap(unusedAvailabilityByShift, item.shiftId, item);
     }
 
+    const racesByShift = new Map();
+    for (const race of races) {
+      const shift = shifts.find((item) => raceFallsInShift(race, item)) || null;
+      if (!shift) continue;
+      addToShiftMap(racesByShift, shift.id, race);
+    }
+
     const unusedAvailabilityLabel = 'Disp.+ non usata';
+    const raceLabel = 'Gara';
     const left = 232;
     const right = 22;
     const top = 60;
@@ -3557,18 +3574,20 @@
     const xGap = 86;
     const rowHeight = 32;
     const width = Math.max(1280, left + right + Math.max(0, shifts.length - 1) * xGap + 24);
-    const chartRows = [...activities, unusedAvailabilityLabel];
+    const chartRows = [...activities, unusedAvailabilityLabel, ...(races.length ? [raceLabel] : [])];
     const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
     const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
     const unusedAvailabilityY = yByActivity.get(unusedAvailabilityLabel);
+    const raceY = yByActivity.get(raceLabel);
     const xForShift = (index) => left + index * xGap;
 
     const grid = chartRows.map((activity) => {
       const y = yByActivity.get(activity);
       const isUnusedAvailability = activity === unusedAvailabilityLabel;
+      const isRace = activity === raceLabel;
       return `
-        <line class="person-path-grid-line${isUnusedAvailability ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
-        <text class="person-path-activity-label${isUnusedAvailability ? ' is-unused-availability' : ''}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
+        <line class="person-path-grid-line${isUnusedAvailability || isRace ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
+        <text class="person-path-activity-label${isUnusedAvailability ? ' is-unused-availability' : ''}${isRace ? ' is-race' : ''}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
     }).join('');
 
     const headers = shifts.map((shift, index) => {
@@ -3650,6 +3669,18 @@
           </circle>
           <text class="person-path-node-plus is-unused-availability" x="${x}" y="${unusedAvailabilityY + 4}" text-anchor="middle">+</text>`);
       }
+
+      const shiftRaces = racesByShift.get(shift.id) || [];
+      if (shiftRaces.length && Number.isFinite(raceY)) {
+        const raceDetails = shiftRaces.map((race) =>
+          `${race.raceTime || 'orario da definire'} · ${race.crewLabel || 'Gara'}`
+        ).join(' · ');
+        nodes.push(`
+          <circle class="person-path-node is-race" cx="${x}" cy="${raceY}" r="7">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Gara · ${raceDetails}`)}</title>
+          </circle>
+          <text class="person-path-node-race" x="${x}" y="${raceY + 4}" text-anchor="middle">G</text>`);
+      }
     });
 
     const segments = anchors.slice(1).map((current, index) => {
@@ -3662,7 +3693,8 @@
       adminConfirmedRows.length ? `${adminConfirmedRows.length} admin confermate` : '',
       adminDeclinedRows.length ? `${adminDeclinedRows.length} admin rifiutate` : '',
       fromAvailabilityRows.length ? `${fromAvailabilityRows.length} da Disp.+` : '',
-      unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} Disp.+ non usate` : ''
+      unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} Disp.+ non usate` : '',
+      races.length ? `${races.length} ${races.length === 1 ? 'gara' : 'gare'}` : ''
     ].filter(Boolean);
     const hasData = summaryParts.length > 0;
 
@@ -3744,6 +3776,7 @@
       .person-path-day-separator { stroke:#b8c9ce; stroke-width:1.2; stroke-dasharray:4 5; }
       .person-path-activity-label { fill:#173e4b; font-size:8.5px; font-weight:700; }
       .person-path-activity-label.is-unused-availability { fill:#32704a; font-weight:800; }
+      .person-path-activity-label.is-race { fill:#6a4b7b; font-weight:800; }
       .person-path-shift-day { fill:#173e4b; font-size:7.5px; font-weight:800; }
       .person-path-shift-time { fill:#60757d; font-size:7.5px; font-weight:700; }
       .person-path-segment { stroke-width:2.2; stroke-linecap:round; }
@@ -3754,7 +3787,9 @@
       .person-path-node.is-admin-declined { fill:white; stroke:#943f37; }
       .person-path-node.is-from-availability { fill:#2f7a4b; stroke:white; }
       .person-path-node.is-unused-availability { fill:white; stroke:#2f7a4b; }
+      .person-path-node.is-race { fill:#6a4b7b; stroke:white; }
       .person-path-node-plus { font-size:9px; font-weight:900; pointer-events:none; }
+      .person-path-node-race { fill:white; font-size:8px; font-weight:900; pointer-events:none; }
       .person-path-node-plus.is-from-availability { fill:white; }
       .person-path-node-plus.is-unused-availability { fill:#2f7a4b; }
       .person-path-declined-cross { stroke:#943f37; stroke-width:1.6; stroke-linecap:round; }
@@ -3765,6 +3800,7 @@
       .person-path-dot.is-admin-declined::after { transform:rotate(-45deg); }
       .person-path-dot.is-from-availability { background:#2f7a4b; border-color:#2f7a4b; color:white; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
       .person-path-dot.is-unused-availability { background:white; border-color:#2f7a4b; color:#2f7a4b; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
+      .person-path-dot.is-race { background:#6a4b7b; border-color:#6a4b7b; color:white; font-size:7px; line-height:2mm; text-align:center; font-weight:900; }
     </style></head><body>
       <header class="person-path-pdf-header">
         <div><h1>Percorso attività volontari</h1><p>Stati operativi per persona e turno</p></div>
@@ -3775,6 +3811,7 @@
         <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
         <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
         <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
+        <span><i class="person-path-dot is-race">G</i>Gara</span>
       </div>
       <main class="person-path-pdf-list">${blocks}</main>
       <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),180));<\/script>
