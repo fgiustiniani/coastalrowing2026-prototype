@@ -129,6 +129,7 @@
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
+  let boardSwapContext = null;
   let summaryEmailPersonId = null;
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
@@ -1694,12 +1695,229 @@
             aria-label="Modifica ${escapeHtml(row.personName)}"
             title="Modifica assegnazione">✎</button>
           ${assignmentId ? `<button type="button"
+            class="assignment-board__swap"
+            data-board-swap-assignment="${escapeHtml(assignmentId)}"
+            aria-label="Scambia ${escapeHtml(row.personName)} con un'altra persona dello stesso turno"
+            title="Scambia con un'altra persona dello stesso turno">⇄</button>` : ''}
+          ${assignmentId ? `<button type="button"
             class="assignment-board__delete"
             data-board-delete-assignment="${escapeHtml(assignmentId)}"
             aria-label="Elimina ${escapeHtml(row.personName)} dall’attività"
             title="Elimina assegnazione">×</button>` : ''}
         </div>
       </div>`;
+  }
+
+  function boardSwapCandidates(source) {
+    if (!source?.id || !source.shiftId) return [];
+    const sourceRequirementId = assignmentRequirementId(source);
+    if (!sourceRequirementId) return [];
+
+    const assignments = snapshot?.assignments || [];
+    return assignments
+      .filter((row) =>
+        row.id !== source.id
+        && row.personId !== source.personId
+        && row.shiftId === source.shiftId
+        && assignmentRequirementId(row)
+        && assignmentRequirementId(row) !== sourceRequirementId
+      )
+      .filter((candidate) => {
+        const sourceAlreadyInTarget = assignments.some((row) =>
+          row.id !== source.id
+          && row.personId === source.personId
+          && row.shiftId === source.shiftId
+          && row.activityId === candidate.activityId
+        );
+        const targetAlreadyInSource = assignments.some((row) =>
+          row.id !== candidate.id
+          && row.personId === candidate.personId
+          && row.shiftId === source.shiftId
+          && row.activityId === source.activityId
+        );
+        return !sourceAlreadyInTarget && !targetAlreadyInSource;
+      })
+      .sort((a, b) =>
+        String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
+        || displayActivity(a).localeCompare(displayActivity(b), 'it')
+      );
+  }
+
+  function swapResponseLabel(row) {
+    if (row?.currentResponse === 'confirmed') return 'Confermata';
+    if (row?.currentResponse === 'declined') return 'Non può';
+    return 'Da rispondere';
+  }
+
+  function renderBoardSwapDialog(sourceAssignmentId, targetAssignmentId = '') {
+    const source = (snapshot?.assignments || []).find((row) => row.id === sourceAssignmentId) || null;
+    if (!source || !detailDialog || !detailTitle || !detailContent) return;
+
+    const sourceRequirement = requirementForAssignment(source);
+    const candidates = boardSwapCandidates(source);
+    const selectedTarget = candidates.find((row) => row.id === targetAssignmentId) || candidates[0] || null;
+    boardSwapContext = {
+      sourceAssignmentId: source.id,
+      targetAssignmentId: selectedTarget?.id || ''
+    };
+
+    detailTargetRow = null;
+    detailTitle.textContent = `Scambia ${source.personName}`;
+
+    const targetOptions = candidates.map((row) =>
+      `<option value="${escapeHtml(row.id)}" ${row.id === selectedTarget?.id ? 'selected' : ''}>${escapeHtml(row.personName)} — ${escapeHtml(displayActivity(row))}</option>`
+    ).join('');
+
+    const preview = selectedTarget ? `
+      <div class="board-swap-preview">
+        <article>
+          <span>${escapeHtml(source.personName)}</span>
+          <strong>${escapeHtml(displayActivity(source))}</strong>
+          <b>→</b>
+          <strong>${escapeHtml(displayActivity(selectedTarget))}</strong>
+          <small>${escapeHtml(swapResponseLabel(source))}${source.isResponsible ? ' · Responsabile' : ''}</small>
+        </article>
+        <article>
+          <span>${escapeHtml(selectedTarget.personName)}</span>
+          <strong>${escapeHtml(displayActivity(selectedTarget))}</strong>
+          <b>→</b>
+          <strong>${escapeHtml(displayActivity(source))}</strong>
+          <small>${escapeHtml(swapResponseLabel(selectedTarget))}${selectedTarget.isResponsible ? ' · Responsabile' : ''}</small>
+        </article>
+      </div>
+      <p class="board-swap-note">Risposte, note, provenienza da disponibilità aggiuntiva e stato di responsabile restano associati alla persona. Lo scambio riguarda solo le due attività nello stesso turno.</p>`
+      : '<p class="empty-state">Non ci sono altre assegnazioni compatibili da scambiare in questo turno.</p>';
+
+    detailContent.innerHTML = `
+      <div class="board-swap-source">
+        <span>Turno</span>
+        <strong>${escapeHtml(source.day)} · ${escapeHtml(source.shift)}</strong>
+        <span>Persona di partenza</span>
+        <strong>${escapeHtml(source.personName)} — ${escapeHtml(displayActivity(source))}</strong>
+      </div>
+      ${candidates.length ? `
+        <label class="field board-swap-target-field">
+          <span>Scambia con</span>
+          <select data-board-swap-target>
+            ${targetOptions}
+          </select>
+        </label>` : ''}
+      ${preview}
+      <p class="status" data-board-swap-status aria-live="polite"></p>
+      ${selectedTarget ? `
+        <div class="actions actions--end">
+          <button class="button button--primary" type="button" data-board-swap-confirm>Scambia le persone</button>
+        </div>` : ''}`;
+
+    if (!detailDialog.open) detailDialog.showModal();
+  }
+
+  function showBoardSwapDialog(assignmentId) {
+    renderBoardSwapDialog(assignmentId);
+  }
+
+  async function saveSwapReplacement(row, requirementId, assignmentId = row?.id) {
+    if (!row?.personId || !requirementId || !assignmentId) throw new Error('Dati dello scambio incompleti.');
+    return api(API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'save-assignment',
+        assignmentId,
+        personId: row.personId,
+        requirementId,
+        requestedProfile: row.requestedProfile || null,
+        note: row.note || null
+      })
+    });
+  }
+
+  async function performBoardSwap(button) {
+    const sourceId = boardSwapContext?.sourceAssignmentId || '';
+    const targetId = detailContent?.querySelector('[data-board-swap-target]')?.value
+      || boardSwapContext?.targetAssignmentId
+      || '';
+    const source = (snapshot?.assignments || []).find((row) => row.id === sourceId) || null;
+    const target = (snapshot?.assignments || []).find((row) => row.id === targetId) || null;
+    const statusNode = detailContent?.querySelector('[data-board-swap-status]');
+
+    if (!source || !target || source.shiftId !== target.shiftId) {
+      setStatus(statusNode, 'Seleziona due persone assegnate nello stesso turno.', 'error');
+      return;
+    }
+
+    const sourceRequirementId = assignmentRequirementId(source);
+    const targetRequirementId = assignmentRequirementId(target);
+    if (!sourceRequirementId || !targetRequirementId || sourceRequirementId === targetRequirementId) {
+      setStatus(statusNode, 'Lo scambio richiede due attività diverse dello stesso turno.', 'error');
+      return;
+    }
+
+    await withButtonBusy(button, 'Scambio…', async () => {
+      setStatus(statusNode, 'Scambio in corso…');
+      let firstResult = null;
+
+      try {
+        firstResult = await saveSwapReplacement(source, targetRequirementId);
+
+        let secondResult = null;
+        try {
+          secondResult = await saveSwapReplacement(target, sourceRequirementId);
+        } catch (secondError) {
+          try {
+            const firstNewId = firstResult?.assignment?.id || '';
+            const rollback = await saveSwapReplacement(source, sourceRequirementId, firstNewId);
+            if (source.isResponsible && rollback?.assignment?.id) {
+              await api(API, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'set-assignment-responsible',
+                  assignmentId: rollback.assignment.id,
+                  isResponsible: true
+                })
+              });
+            }
+            await loadSnapshot();
+            throw new Error(`Scambio non completato: ${secondError.message}. La prima persona è stata riportata nell’attività originaria.`);
+          } catch (rollbackError) {
+            if (rollbackError?.message?.startsWith('Scambio non completato:')) throw rollbackError;
+            await loadSnapshot().catch(() => {});
+            throw new Error(`Scambio interrotto dopo il primo spostamento: ${secondError.message}. Verifica le due assegnazioni prima di proseguire.`);
+          }
+        }
+
+        const responsibilityErrors = [];
+        for (const [original, result] of [[source, firstResult], [target, secondResult]]) {
+          if (!original.isResponsible || !result?.assignment?.id) continue;
+          try {
+            await api(API, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                action: 'set-assignment-responsible',
+                assignmentId: result.assignment.id,
+                isResponsible: true
+              })
+            });
+          } catch (error) {
+            responsibilityErrors.push(original.personName || 'Persona');
+          }
+        }
+
+        await loadSnapshot();
+        detailDialog.close();
+        setStatus(
+          assignmentBoardStatus,
+          responsibilityErrors.length
+            ? `Scambio eseguito. Verifica il ruolo Responsabile per: ${responsibilityErrors.join(', ')}.`
+            : `${source.personName} e ${target.personName} scambiati tra ${displayActivity(source)} e ${displayActivity(target)}.`,
+          responsibilityErrors.length ? 'error' : 'success'
+        );
+      } catch (error) {
+        setStatus(statusNode, error.message, 'error');
+      }
+    });
   }
 
   function clearBoardActivityReorderMarkers() {
@@ -6708,6 +6926,13 @@
       return;
     }
 
+    const swap = event.target.closest('[data-board-swap-assignment]');
+    if (swap) {
+      event.stopPropagation();
+      showBoardSwapDialog(swap.dataset.boardSwapAssignment || '');
+      return;
+    }
+
     const remove = event.target.closest('[data-board-delete-assignment]');
     if (remove) {
       event.stopPropagation();
@@ -7316,6 +7541,12 @@
   });
 
   detailContent?.addEventListener('click', async (event) => {
+    const swapConfirm = event.target.closest('[data-board-swap-confirm]');
+    if (swapConfirm) {
+      await performBoardSwap(swapConfirm);
+      return;
+    }
+
     const availabilitySave = event.target.closest('[data-save-person-availability]');
     if (availabilitySave) {
       await savePersonAvailabilityFromAdmin(availabilitySave);
@@ -7356,6 +7587,12 @@
     detailDialog.close();
   });
   detailContent?.addEventListener('change', (event) => {
+    const swapTarget = event.target.closest('[data-board-swap-target]');
+    if (swapTarget && boardSwapContext?.sourceAssignmentId) {
+      renderBoardSwapDialog(boardSwapContext.sourceAssignmentId, swapTarget.value || '');
+      return;
+    }
+
     const availabilityShift = event.target.closest('[data-person-availability-shift]');
     if (availabilityShift) {
       const shiftId = availabilityShift.dataset.personAvailabilityShift || '';
@@ -7427,6 +7664,7 @@
   detailDialog?.addEventListener('close', () => {
     detailTargetRow = null;
     copyRequirementContext = null;
+    boardSwapContext = null;
     personAvailabilityContext = null;
   });
   personActivitiesContent?.addEventListener('click', async (event) => {
