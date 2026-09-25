@@ -125,6 +125,7 @@
   let boardGroupPointerDrag = null;
   let boardCollapsedGroups = new Set();
   let boardCollapsedActivities = new Set();
+  let boardCollapsedAvailability = new Set();
   let boardCollapsedUnavailable = new Set();
   let boardDragEndedAt = 0;
   let boardEditContext = null;
@@ -142,6 +143,10 @@
   try {
     const storedActivities = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-activities') || '[]');
     boardCollapsedActivities = new Set(Array.isArray(storedActivities) ? storedActivities : []);
+  } catch {}
+  try {
+    const storedAvailability = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-availability') || '[]');
+    boardCollapsedAvailability = new Set(Array.isArray(storedAvailability) ? storedAvailability : []);
   } catch {}
   try {
     const storedUnavailable = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-unavailable') || '[]');
@@ -686,6 +691,12 @@
     } catch {}
   }
 
+  function persistBoardCollapsedAvailability() {
+    try {
+      localStorage.setItem('coastal2026-admin-board-collapsed-availability', JSON.stringify([...boardCollapsedAvailability]));
+    } catch {}
+  }
+
   function persistBoardCollapsedUnavailable() {
     try {
       localStorage.setItem('coastal2026-admin-board-collapsed-unavailable', JSON.stringify([...boardCollapsedUnavailable]));
@@ -713,11 +724,17 @@
       else boardCollapsedGroups.delete(groupKey);
     }
 
-    if (collapsed) boardCollapsedUnavailable.add(shiftId);
-    else boardCollapsedUnavailable.delete(shiftId);
+    if (collapsed) {
+      boardCollapsedAvailability.add(shiftId);
+      boardCollapsedUnavailable.add(shiftId);
+    } else {
+      boardCollapsedAvailability.delete(shiftId);
+      boardCollapsedUnavailable.delete(shiftId);
+    }
 
     persistBoardCollapsedActivities();
     persistBoardCollapsedGroups();
+    persistBoardCollapsedAvailability();
     persistBoardCollapsedUnavailable();
     renderAssignmentBoard();
   }
@@ -2464,6 +2481,7 @@
           || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
         );
       const availability = rows.filter((row) => row.isAvailability && row.shiftId === shift.id);
+      const availabilityCollapsed = boardCollapsedAvailability.has(shift.id);
       const unavailable = unavailableRowsForShift(shift.id);
       const unavailableCollapsed = boardCollapsedUnavailable.has(shift.id);
       const summary = shiftSummary(shift.id);
@@ -2567,17 +2585,25 @@
             ${groupDropPalette}
             ${mixedHtml}
           </div>
-          <section class="assignment-board__availability"
+          <section class="assignment-board__availability ${availabilityCollapsed ? 'is-collapsed' : ''}"
+            data-board-availability-box="${escapeHtml(shift.id)}"
             data-board-availability-drop="${escapeHtml(shift.id)}"
             title="Trascina qui una persona disponibile per questo turno">
             <header>
-              <strong>Disponibili da assegnare</strong>
+              <button type="button"
+                class="assignment-board__availability-toggle"
+                data-board-availability-toggle="${escapeHtml(shift.id)}"
+                aria-expanded="${availabilityCollapsed ? 'false' : 'true'}"
+                title="${availabilityCollapsed ? 'Espandi disponibili da assegnare' : 'Comprimi disponibili da assegnare'}">
+                <span class="assignment-board__availability-chevron" aria-hidden="true">${availabilityCollapsed ? '▸' : '▾'}</span>
+                <strong>Disponibili da assegnare</strong>
+              </button>
               <div class="assignment-board__availability-actions">
                 <span class="assignment-board__availability-count">${availability.length}</span>
                 ${availability.length ? `<button type="button" class="assignment-board__availability-batch" data-board-batch-availability="${escapeHtml(shift.id)}">Assegna più persone</button>` : ''}
               </div>
             </header>
-            <div class="assignment-board__availability-people">
+            <div class="assignment-board__availability-people" data-board-availability-body ${availabilityCollapsed ? 'hidden' : ''}>
               ${availability.length ? availability.map(boardPersonCard).join('') : '<span class="assignment-board__availability-empty">Nessuna disponibilità libera</span>'}
             </div>
           </section>
@@ -6792,6 +6818,28 @@
     if (expandAll) {
       event.stopPropagation();
       setBoardShiftCollapsed(expandAll.dataset.boardShiftExpandAll || '', false);
+      return;
+    }
+
+    const availabilityToggle = event.target.closest('[data-board-availability-toggle]');
+    if (availabilityToggle) {
+      event.stopPropagation();
+      const shiftId = availabilityToggle.dataset.boardAvailabilityToggle || '';
+      const box = availabilityToggle.closest('[data-board-availability-box]');
+      const body = box?.querySelector('[data-board-availability-body]');
+      const chevron = availabilityToggle.querySelector('.assignment-board__availability-chevron');
+      if (!shiftId || !box || !body) return;
+
+      const collapsed = !box.classList.contains('is-collapsed');
+      box.classList.toggle('is-collapsed', collapsed);
+      body.hidden = collapsed;
+      availabilityToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      availabilityToggle.title = collapsed ? 'Espandi disponibili da assegnare' : 'Comprimi disponibili da assegnare';
+      if (chevron) chevron.textContent = collapsed ? '▸' : '▾';
+
+      if (collapsed) boardCollapsedAvailability.add(shiftId);
+      else boardCollapsedAvailability.delete(shiftId);
+      persistBoardCollapsedAvailability();
       return;
     }
 
