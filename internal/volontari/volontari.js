@@ -279,7 +279,7 @@
           <div class="assignment-card__head"><div><h3>${escapeHtml(displayActivityName(assignment.activity))}</h3><div class="meta">
             <span class="pill">${escapeHtml(assignment.day)}</span><span class="pill">${escapeHtml(assignment.shift)}</span>
             ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
-            ${assignment.assignedFromAvailability ? '<span class="pill pill--availability-assigned">Attività assegnata come da disponibilità aggiuntiva</span>' : ''}
+            ${assignment.assignedFromAvailability ? '<span class="pill pill--availability-assigned">Attività assegnata a seguito di disponibilità aggiuntiva comunicata</span>' : ''}
             ${!assignment.shiftMatched ? '<span class="pill pill--warn">Turno da verificare</span>' : ''}
           </div></div></div>
           ${assignment.note ? `<p class="muted">${escapeHtml(assignment.note)}</p>` : ''}
