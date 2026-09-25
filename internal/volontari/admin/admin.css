@@ -72,6 +72,35 @@
 .people-cell { min-width: 320px; white-space: normal; }
 .export-note { color: var(--muted); font-size: .78rem; }
 
+.person-path-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 12px; color: var(--muted); font-size: .78rem; }
+.person-path-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.person-path-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--accent-dark); display: inline-block; box-sizing: border-box; }
+.person-path-dot.is-assigned { background: var(--accent-dark); }
+.person-path-dot.is-empty { background: white; }
+.person-path-dot.is-declined { background: white; position: relative; border-color: var(--no); }
+.person-path-dot.is-declined::before, .person-path-dot.is-declined::after { content: ''; position: absolute; left: 3px; top: -1px; width: 2px; height: 9px; background: var(--no); transform: rotate(45deg); }
+.person-path-dot.is-declined::after { transform: rotate(-45deg); }
+.person-path-summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 2px 0 10px; }
+.person-path-summary strong { font-size: 1rem; }
+.person-path-summary span { color: var(--muted); font-size: .8rem; }
+.person-path-scroll { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: white; scrollbar-gutter: stable; }
+.person-path-svg { display: block; font-family: inherit; }
+.person-path-grid-line { stroke: var(--line); stroke-width: 1; }
+.person-path-day-separator { stroke: #b8c9ce; stroke-width: 1.5; stroke-dasharray: 4 5; }
+.person-path-activity-label { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.person-path-activity-label.is-empty { fill: var(--muted); font-style: italic; font-weight: 600; }
+.person-path-shift-day { fill: var(--ink); font-size: 11px; font-weight: 800; }
+.person-path-shift-time { fill: var(--muted); font-size: 11px; font-weight: 700; }
+.person-path-segment { stroke-width: 3; stroke-linecap: round; }
+.person-path-segment.is-solid { stroke: var(--accent-dark); }
+.person-path-segment.is-empty { stroke: #aebdc1; stroke-dasharray: 7 6; }
+.person-path-multi-line { stroke: var(--accent-dark); stroke-width: 3; stroke-linecap: round; }
+.person-path-node { stroke-width: 2.5; }
+.person-path-node.is-assigned { fill: var(--accent-dark); stroke: white; }
+.person-path-node.is-empty { fill: white; stroke: #91a5ab; }
+.person-path-node.is-declined { fill: white; stroke: var(--no); }
+.person-path-declined-cross { stroke: var(--no); stroke-width: 2; stroke-linecap: round; }
+
 @media (max-width: 900px) {
   .filter-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .section-head { align-items: flex-start; }
