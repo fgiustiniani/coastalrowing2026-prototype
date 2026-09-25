@@ -2896,16 +2896,16 @@
                   aria-label="Scegli giorno e turno da cui copiare automaticamente l’ordine"
                   title="Selezionando un turno, l’ordine viene copiato automaticamente"
                   ${hasOrderSources ? '' : 'disabled'}>
-                  <option value="">Copia ordine da…</option>
+                  <option value="">Copia da…</option>
                   ${sourceOptions || '<option value="" disabled>Nessun altro turno disponibile</option>'}
                 </select>
               </span>
               <button type="button"
                 data-board-shift-collapse-all="${escapeHtml(shift.id)}"
-                title="Comprimi tutti i gruppi, le attività e i non disponibili di questo turno">Comprimi tutto</button>
+                title="Comprimi tutti i gruppi, le attività e i non disponibili di questo turno">Comprimi</button>
               <button type="button"
                 data-board-shift-expand-all="${escapeHtml(shift.id)}"
-                title="Espandi tutti i gruppi, le attività e i non disponibili di questo turno">Espandi tutto</button>
+                title="Espandi tutti i gruppi, le attività e i non disponibili di questo turno">Espandi</button>
             </div>
           </header>
           <div class="assignment-board__activities">
