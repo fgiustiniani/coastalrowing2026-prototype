@@ -1194,15 +1194,8 @@
     setSelectOptions(shiftBoardPersonFilter, assignedPeople, 'Tutte');
     if (personPathFilter) {
       const currentPersonId = personPathFilter.value || '';
-      const pathPersonIds = new Set([
-        ...assignments.map((row) => row.personId),
-        ...(snapshot?.declinedAssignmentResponses || []).map((row) => row.personId),
-        ...(snapshot?.people || [])
-          .filter((person) => (person.latestSubmission?.availability || []).length > 0)
-          .map((person) => person.id)
-      ].filter(Boolean));
       const pathPeople = (snapshot?.people || [])
-        .filter((person) => pathPersonIds.has(person.id))
+        .filter((person) => person.active !== false)
         .map((person) => ({ value: person.id, label: person.display_name }))
         .sort((a, b) => a.label.localeCompare(b.label, 'it'));
       personPathFilter.innerHTML = '<option value="">Seleziona una persona…</option>' + pathPeople
@@ -3537,7 +3530,6 @@
       .sort((a, b) => a.firstOrder - b.firstOrder || a.label.localeCompare(b.label, 'it'))
       .map((item) => item.label);
 
-    const emptyLabel = 'Nessuna assegnazione';
     const availabilityLabel = 'Disp.+';
     const declinedLabel = 'Non può';
     const rowsByShift = new Map();
@@ -3569,10 +3561,9 @@
     const xGap = 138;
     const rowHeight = 44;
     const width = Math.max(900, left + right + Math.max(0, shifts.length - 1) * xGap + 32);
-    const chartRows = [...activities, emptyLabel, availabilityLabel, declinedLabel];
+    const chartRows = [...activities, availabilityLabel, declinedLabel];
     const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
     const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
-    const emptyY = yByActivity.get(emptyLabel);
     const availabilityY = yByActivity.get(availabilityLabel);
     const declinedY = yByActivity.get(declinedLabel);
     const xForShift = (index) => left + index * xGap;
@@ -3582,7 +3573,6 @@
       const isState = activity === availabilityLabel || activity === declinedLabel;
       const classes = [
         'person-path-activity-label',
-        activity === emptyLabel ? 'is-empty' : '',
         isState ? 'is-state' : '',
         activity === availabilityLabel ? 'is-availability' : '',
         activity === declinedLabel ? 'is-declined' : ''
@@ -3616,7 +3606,7 @@
       const assignedYs = assigned.map((row) => yByActivity.get(displayActivity(row))).filter(Number.isFinite);
       const anchorY = assignedYs.length
         ? assignedYs.reduce((sum, value) => sum + value, 0) / assignedYs.length
-        : emptyY;
+        : null;
       anchors.push({ x, y: anchorY, assigned: assignedYs.length > 0 });
 
       if (assignedYs.length > 1) {
@@ -3644,13 +3634,6 @@
           </circle>
           <line class="person-path-declined-cross" x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}"></line>
           <line class="person-path-declined-cross" x1="${x + 4}" y1="${y - 4}" x2="${x - 4}" y2="${y + 4}"></line>`);
-      }
-
-      if (!assignedYs.length) {
-        nodes.push(`
-          <circle class="person-path-node is-empty" cx="${x}" cy="${emptyY}" r="7">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Nessuna attività assegnata`)}</title>
-          </circle>`);
       }
 
       const shiftAvailability = availabilityByShift.get(shift.id) || [];
@@ -3682,8 +3665,8 @@
 
     const segments = anchors.slice(1).map((current, index) => {
       const previous = anchors[index];
-      const solid = previous.assigned && current.assigned;
-      return `<line class="person-path-segment ${solid ? 'is-solid' : 'is-empty'}" x1="${previous.x}" y1="${previous.y}" x2="${current.x}" y2="${current.y}"></line>`;
+      if (!previous.assigned || !current.assigned) return '';
+      return `<line class="person-path-segment is-solid" x1="${previous.x}" y1="${previous.y}" x2="${current.x}" y2="${current.y}"></line>`;
     }).join('');
 
     const assignedShiftCount = shifts.filter((shift) =>
