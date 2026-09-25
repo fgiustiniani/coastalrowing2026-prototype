@@ -127,14 +127,16 @@
             </div>
           </div>
           <div id="person-path-content" data-collapsible-content hidden>
-            <p class="intro">Ogni persona ha il proprio blocco lungo tutti i turni: le attività sono sull’asse verticale e i turni su quello orizzontale. Il grafico mostra anche eventuali disponibilità aggiuntive e rifiuti registrati nel turno, anche quando non esiste più un’assegnazione attiva.</p>
-            <div class="filter-grid filter-grid--report">
+            <p class="intro">Ogni persona ha il proprio blocco lungo tutti i turni. Il grafico distingue le attività assegnate dall’admin e confermate, quelle assegnate dall’admin e rifiutate, le attività assegnate a seguito di disponibilità aggiuntiva e le disponibilità aggiuntive ancora non utilizzate.</p>
+            <div class="filter-grid filter-grid--report person-path-filters">
               <label class="field compact-field"><span>Persona</span><select data-person-path-filter><option value="">Tutte le persone</option></select></label>
+              <label class="field compact-field"><span>Gruppo</span><select data-person-path-group-filter><option value="">Tutti i gruppi</option></select></label>
             </div>
             <div class="person-path-legend" aria-hidden="true">
-              <span><i class="person-path-dot is-assigned"></i>Attività assegnata</span>
-              <span><i class="person-path-dot is-availability">+</i>Disp.+</span>
-              <span><i class="person-path-dot is-declined"></i>Non può</span>
+              <span><i class="person-path-dot is-admin-confirmed"></i>Admin confermata</span>
+              <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
+              <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
+              <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
             </div>
             <div data-person-path-chart></div>
           </div>
