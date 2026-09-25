@@ -1198,7 +1198,7 @@
         .filter((person) => person.active !== false)
         .map((person) => ({ value: person.id, label: person.display_name }))
         .sort((a, b) => a.label.localeCompare(b.label, 'it'));
-      personPathFilter.innerHTML = '<option value="">Seleziona una persona…</option>' + pathPeople
+      personPathFilter.innerHTML = '<option value="">Tutte le persone</option>' + pathPeople
         .map((person) => `<option value="${escapeHtml(person.value)}">${escapeHtml(person.label)}</option>`)
         .join('');
       if (pathPeople.some((person) => person.value === currentPersonId)) personPathFilter.value = currentPersonId;
@@ -3488,36 +3488,18 @@
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
 
-  function renderPersonPathChart() {
-    if (!personPathChart) return;
-    const personId = personPathFilter?.value || '';
-    if (!personId) {
-      personPathChart.innerHTML = '<p class="empty-state">Seleziona una persona per visualizzare il percorso tra le attività.</p>';
-      return;
-    }
-
-    const person = (snapshot?.people || []).find((item) => item.id === personId) || null;
+  function personPathBlockHtml(person, shifts, shiftByLabel) {
+    const personId = person?.id || '';
     const personRows = (snapshot?.assignments || [])
       .filter((row) => row.personId === personId)
       .sort((a, b) =>
         assignmentShiftOrder(a) - assignmentShiftOrder(b)
         || displayActivity(a).localeCompare(displayActivity(b), 'it')
       );
-    const shifts = [...(snapshot?.shifts || [])]
-      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
     const availability = person?.latestSubmission?.availability || [];
     const declinedResponses = (snapshot?.declinedAssignmentResponses || [])
       .filter((row) => row.personId === personId);
 
-    if (!shifts.length) {
-      personPathChart.innerHTML = '<p class="empty-state">Nessun turno disponibile.</p>';
-      return;
-    }
-
-    const shiftByLabel = new Map(shifts.map((shift) => [
-      `${shift.day_label || ''}|||${shift.shift_label || ''}`,
-      shift
-    ]));
     const shiftOrderById = new Map(shifts.map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
     const activityMeta = new Map();
     for (const row of personRows) {
@@ -3683,21 +3665,49 @@
       availabilityShiftCount ? `${availabilityShiftCount} Disp.+` : '',
       declinedShiftCount ? `${declinedShiftCount} con rifiuti` : ''
     ].filter(Boolean);
+    const hasData = assignedShiftCount > 0 || availabilityShiftCount > 0 || declinedShiftCount > 0;
 
-    personPathChart.innerHTML = `
-      <div class="person-path-summary">
-        <strong>${escapeHtml(person?.display_name || personRows[0]?.personName || 'Persona')}</strong>
-        <span>${escapeHtml(summaryParts.join(' · '))}</span>
-      </div>
-      <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || personRows[0]?.personName || 'persona')}">
-        <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
-          ${grid}
-          ${separators}
-          ${headers}
-          ${segments}
-          ${nodes.join('')}
-        </svg>
-      </div>`;
+    return `
+      <article class="person-path-person-block${hasData ? '' : ' is-empty'}">
+        <div class="person-path-summary">
+          <strong>${escapeHtml(person?.display_name || 'Persona')}</strong>
+          <span>${hasData ? escapeHtml(summaryParts.join(' · ')) : 'Nessuna attività, disponibilità o rifiuto registrato'}</span>
+        </div>
+        <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || 'persona')}">
+          <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
+            ${grid}
+            ${separators}
+            ${headers}
+            ${segments}
+            ${nodes.join('')}
+          </svg>
+        </div>
+      </article>`;
+  }
+
+  function renderPersonPathChart() {
+    if (!personPathChart) return;
+    const selectedPersonId = personPathFilter?.value || '';
+    const shifts = [...(snapshot?.shifts || [])]
+      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+    if (!shifts.length) {
+      personPathChart.innerHTML = '<p class="empty-state">Nessun turno disponibile.</p>';
+      return;
+    }
+
+    const shiftByLabel = new Map(shifts.map((shift) => [
+      `${shift.day_label || ''}|||${shift.shift_label || ''}`,
+      shift
+    ]));
+    const people = (snapshot?.people || [])
+      .filter((person) => person.active !== false)
+      .filter((person) => !selectedPersonId || person.id === selectedPersonId)
+      .sort((a, b) => String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it'));
+
+    personPathChart.innerHTML = people.length
+      ? `<div class="person-path-blocks">${people.map((person) => personPathBlockHtml(person, shifts, shiftByLabel)).join('')}</div>`
+      : '<p class="empty-state">Nessuna persona disponibile.</p>';
   }
 
   function reportAssignmentRows({ personIds = [], activities = [], shiftIds = [] } = {}) {
