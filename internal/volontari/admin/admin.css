@@ -1297,6 +1297,32 @@ tr.is-busy button.is-busy {
 .assignment-board__availability > header {
   color: #745a00;
 }
+.assignment-board__availability-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #745a00;
+  text-align: left;
+  cursor: pointer;
+}
+.assignment-board__availability-toggle strong {
+  font-size: .78rem;
+  line-height: 1.25;
+}
+.assignment-board__availability-chevron {
+  flex: 0 0 auto;
+  width: 12px;
+  font-size: .72rem;
+  line-height: 1;
+}
+.assignment-board__availability-people[hidden] {
+  display: none !important;
+}
 @media (max-width: 760px) {
   .assignment-board {
     grid-auto-columns: minmax(275px, 84vw);
@@ -1532,7 +1558,7 @@ tr.is-busy button.is-busy {
   flex: 0 0 auto;
 }
 .assignment-board__activity-count {
-  min-width: 22px;
+  min-width: 34px;
   height: 22px;
   display: grid;
   place-items: center;
@@ -1543,6 +1569,32 @@ tr.is-busy button.is-busy {
   font-weight: 900;
   border: 1px solid #b6d4da;
 }
+.assignment-board__pending-count {
+  min-width: 54px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border: 1px solid #d2dde0;
+  border-radius: 999px;
+  background: #f4f6f7;
+  color: #607078;
+  font-size: .62rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.assignment-board__pending-count.has-pending {
+  border-color: #d8bd65;
+  background: #fff5d8;
+  color: #745a00;
+}
+.assignment-board__group-kpis {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 .assignment-board__add-person {
   display: inline-grid;
   width: 24px;
@@ -2374,18 +2426,24 @@ tr.is-busy button.is-busy {
 
 /* Copia persone dalla stessa attività in altri turni */
 .assignment-board__copy-from {
+  width: 24px;
+  height: 24px;
   min-height: 24px;
-  padding: 3px 7px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid #8fbfc8;
   border-radius: 7px;
   background: #fff;
   color: var(--accent-dark);
-  font: inherit;
-  font-size: .66rem;
-  font-weight: 850;
   line-height: 1;
-  white-space: nowrap;
   cursor: pointer;
+}
+.assignment-board__copy-from svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  pointer-events: none;
 }
 .assignment-board__copy-from:hover {
   border-color: var(--accent);
@@ -4665,7 +4723,7 @@ tr.is-busy button.is-busy {
   min-width: 0;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 145px);
+  grid-template-columns: 22px minmax(0, 1fr) minmax(0, 198px);
   align-items: center;
   gap: 6px;
   overflow: hidden;
@@ -4695,7 +4753,7 @@ tr.is-busy button.is-busy {
 .assignment-board__activity-head > .assignment-board__activity-actions {
   grid-column: 3;
   width: 100%;
-  max-width: 145px;
+  max-width: 198px;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
@@ -4711,11 +4769,11 @@ tr.is-busy button.is-busy {
 
 @media (max-width: 700px) {
   .assignment-board__activity-head {
-    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 132px);
+    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 184px);
   }
 
   .assignment-board__activity-head > .assignment-board__activity-actions {
-    max-width: 132px;
+    max-width: 184px;
   }
 }
 
