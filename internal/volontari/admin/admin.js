@@ -691,6 +691,36 @@
     } catch {}
   }
 
+  function setBoardShiftCollapsed(shiftId, collapsed) {
+    if (!shiftId) return;
+
+    const shiftRequirements = requirements().filter((item) => item.shiftId === shiftId);
+    for (const requirement of shiftRequirements) {
+      const activityKey = boardActivityKey(requirement);
+      if (collapsed) boardCollapsedActivities.add(activityKey);
+      else boardCollapsedActivities.delete(activityKey);
+    }
+
+    const groupIds = new Set(
+      shiftRequirements
+        .map((item) => item.activityGroupId || '')
+        .filter(Boolean)
+    );
+    for (const groupId of groupIds) {
+      const groupKey = boardGroupKey(shiftId, groupId);
+      if (collapsed) boardCollapsedGroups.add(groupKey);
+      else boardCollapsedGroups.delete(groupKey);
+    }
+
+    if (collapsed) boardCollapsedUnavailable.add(shiftId);
+    else boardCollapsedUnavailable.delete(shiftId);
+
+    persistBoardCollapsedActivities();
+    persistBoardCollapsedGroups();
+    persistBoardCollapsedUnavailable();
+    renderAssignmentBoard();
+  }
+
   function unavailableRowsForShift(shiftId) {
     return (snapshot?.declinedRemovals || [])
       .filter((row) => row.shiftId === shiftId)
@@ -2305,6 +2335,14 @@
               <span class="is-declined" title="Assegnazioni rifiutate"><b>${summary.declined}</b> rifiutate</span>
               <span class="is-pending" title="Assegnazioni ancora senza risposta"><b>${summary.pending}</b> da rispondere</span>
               <span class="is-available" title="Persone disponibili nel turno ma non ancora assegnate"><b>${summary.available}</b> disponibili</span>
+            </div>
+            <div class="assignment-board__shift-actions">
+              <button type="button"
+                data-board-shift-collapse-all="${escapeHtml(shift.id)}"
+                title="Comprimi tutti i gruppi, le attività e i non disponibili di questo turno">Comprimi tutto</button>
+              <button type="button"
+                data-board-shift-expand-all="${escapeHtml(shift.id)}"
+                title="Espandi tutti i gruppi, le attività e i non disponibili di questo turno">Espandi tutto</button>
             </div>
           </header>
           <div class="assignment-board__activities">
@@ -6478,6 +6516,20 @@
 
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
+
+    const collapseAll = event.target.closest('[data-board-shift-collapse-all]');
+    if (collapseAll) {
+      event.stopPropagation();
+      setBoardShiftCollapsed(collapseAll.dataset.boardShiftCollapseAll || '', true);
+      return;
+    }
+
+    const expandAll = event.target.closest('[data-board-shift-expand-all]');
+    if (expandAll) {
+      event.stopPropagation();
+      setBoardShiftCollapsed(expandAll.dataset.boardShiftExpandAll || '', false);
+      return;
+    }
 
     const unavailableToggle = event.target.closest('[data-board-unavailable-toggle]');
     if (unavailableToggle) {
