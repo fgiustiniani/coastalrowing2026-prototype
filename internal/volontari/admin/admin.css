@@ -83,6 +83,14 @@
 .person-path-dot.is-admin-declined::after { transform: rotate(-45deg); }
 .person-path-dot.is-from-availability { background: var(--ok); border-color: var(--ok); color: white; font-size: 9px; line-height: 8px; text-align: center; font-style: normal; font-weight: 900; }
 .person-path-dot.is-unused-availability { background: white; border-color: var(--ok); color: var(--ok); font-size: 9px; line-height: 8px; text-align: center; font-style: normal; font-weight: 900; }
+[data-person-path-chart] {
+  max-height: calc(100vh - 330px);
+  min-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
 .person-path-blocks { display: grid; gap: 12px; width: 100%; }
 .person-path-person-block { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfc; }
 .person-path-person-block.is-empty { background: #fff; }
@@ -121,6 +129,7 @@
 @media (max-width: 600px) {
   .filter-grid, .filter-grid--report { grid-template-columns: 1fr; }
   .section-actions { justify-content: flex-start; }
+  [data-person-path-chart] { max-height: calc(100vh - 250px); min-height: 320px; }
 }
 
 .inline-help { margin: 0 0 12px; font-size: .88rem; }
