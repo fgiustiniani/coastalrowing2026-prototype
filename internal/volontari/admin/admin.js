@@ -2323,22 +2323,26 @@
     return orderedBlocks.flatMap(boardBlockRequirementIds);
   }
 
-  async function copyBoardOrderFromPreviousShift(targetShiftId, sourceShiftId, button) {
+  async function copyBoardOrderFromShift(targetShiftId, sourceShiftId, button) {
     if (!targetShiftId || !sourceShiftId || targetShiftId === sourceShiftId) return;
+    const sourceShift = (snapshot?.shifts || []).find((item) => item.id === sourceShiftId) || null;
+    const sourceLabel = sourceShift
+      ? `${sourceShift.day_label || ''} · ${sourceShift.shift_label || ''}`.trim()
+      : 'turno selezionato';
     const currentIds = boardShiftRequirementIds(targetShiftId);
     const nextIds = boardCopyOrderIds(targetShiftId, sourceShiftId);
     if (!nextIds.length || nextIds.length !== currentIds.length) {
-      setStatus(assignmentBoardStatus, 'Impossibile ricostruire l’ordine dal turno precedente.', 'error');
+      setStatus(assignmentBoardStatus, `Impossibile ricostruire l’ordine da ${sourceLabel}.`, 'error');
       return;
     }
     if (nextIds.every((id, index) => id === currentIds[index])) {
-      setStatus(assignmentBoardStatus, 'L’ordine coincide già con quello del turno precedente.', 'success');
+      setStatus(assignmentBoardStatus, `L’ordine coincide già con ${sourceLabel}.`, 'success');
       return;
     }
 
     await withButtonBusy(button, 'Copia…', async () => {
       assignmentBoard?.classList.add('is-saving');
-      setStatus(assignmentBoardStatus, 'Copia ordine dal turno precedente…');
+      setStatus(assignmentBoardStatus, `Copia ordine da ${sourceLabel}…`);
       try {
         await api(API, {
           method: 'POST',
@@ -2350,7 +2354,7 @@
           })
         });
         await loadSnapshot();
-        setStatus(assignmentBoardStatus, 'Ordine copiato dal turno precedente.', 'success');
+        setStatus(assignmentBoardStatus, `Ordine copiato da ${sourceLabel}.`, 'success');
       } catch (error) {
         setStatus(assignmentBoardStatus, error.message, 'error');
       } finally {
@@ -2611,7 +2615,23 @@
     const allShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
     const shifts = allShifts.filter((shift) => visibleShiftIds.has(shift.id));
-    const shiftIndexById = new Map(allShifts.map((shift, index) => [shift.id, index]));
+    const orderSourceShiftIds = new Set(requirements().map((item) => item.shiftId).filter(Boolean));
+    const orderSourceShiftsByDay = new Map();
+    for (const sourceShift of allShifts) {
+      if (!orderSourceShiftIds.has(sourceShift.id)) continue;
+      const day = sourceShift.day_label || 'Giorno';
+      if (!orderSourceShiftsByDay.has(day)) orderSourceShiftsByDay.set(day, []);
+      orderSourceShiftsByDay.get(day).push(sourceShift);
+    }
+    const copyOrderSourceOptions = (targetShiftId) => [...orderSourceShiftsByDay.entries()]
+      .map(([day, dayShifts]) => {
+        const candidates = dayShifts.filter((sourceShift) => sourceShift.id !== targetShiftId);
+        if (!candidates.length) return '';
+        return `<optgroup label="${escapeHtml(day)}">${candidates.map((sourceShift) =>
+          `<option value="${escapeHtml(sourceShift.id)}">${escapeHtml(sourceShift.shift_label || 'Turno')}</option>`
+        ).join('')}</optgroup>`;
+      })
+      .join('');
 
     const groups = activityGroups().map((group) => ({
       id: group.id,
@@ -2727,11 +2747,8 @@
     };
 
     const columns = shifts.map((shift) => {
-      const shiftIndex = shiftIndexById.get(shift.id) ?? -1;
-      const previousShift = shiftIndex > 0 ? allShifts[shiftIndex - 1] : null;
-      const previousShiftHasRequirements = Boolean(
-        previousShift && requirements().some((item) => item.shiftId === previousShift.id)
-      );
+      const sourceOptions = copyOrderSourceOptions(shift.id);
+      const hasOrderSources = Boolean(sourceOptions);
       const shiftRequirements = visibleRequirements
         .filter((item) => item.shiftId === shift.id)
         .sort((a, b) =>
@@ -2858,18 +2875,27 @@
               <span class="is-available" title="Persone disponibili nel turno ma non ancora assegnate"><b>${summary.available}</b> disponibili</span>
             </div>
             <div class="assignment-board__shift-actions">
-              <button type="button"
-                class="assignment-board__copy-order"
-                data-board-copy-previous-order="${escapeHtml(shift.id)}"
-                data-board-source-shift-id="${escapeHtml(previousShift?.id || '')}"
-                aria-label="${previousShift ? `Copia ordine da ${previousShift.day_label} ${previousShift.shift_label}` : 'Nessun turno precedente'}"
-                title="${previousShift ? `Copia ordine da ${previousShift.day_label} · ${previousShift.shift_label}` : 'Nessun turno precedente'}"
-                ${previousShiftHasRequirements ? '' : 'disabled'}>
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M8 7V4h12v12h-3M4 8h12v12H4z"/>
-                </svg>
-                <span>Ordine prec.</span>
-              </button>
+              <span class="assignment-board__copy-order-control">
+                <select
+                  class="assignment-board__copy-order-source"
+                  data-board-copy-order-source="${escapeHtml(shift.id)}"
+                  aria-label="Scegli giorno e turno da cui copiare l’ordine"
+                  ${hasOrderSources ? '' : 'disabled'}>
+                  <option value="">Copia ordine da…</option>
+                  ${sourceOptions || '<option value="" disabled>Nessun altro turno disponibile</option>'}
+                </select>
+                <button type="button"
+                  class="assignment-board__copy-order"
+                  data-board-copy-order="${escapeHtml(shift.id)}"
+                  aria-label="Copia l’ordine dal turno selezionato"
+                  title="Copia l’ordine delle attività e dei gruppi dal turno selezionato"
+                  disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M8 7V4h12v12h-3M4 8h12v12H4z"/>
+                  </svg>
+                  <span>Copia</span>
+                </button>
+              </span>
               <button type="button"
                 data-board-shift-collapse-all="${escapeHtml(shift.id)}"
                 title="Comprimi tutti i gruppi, le attività e i non disponibili di questo turno">Comprimi tutto</button>
@@ -7106,16 +7132,25 @@
     boardDragEndedAt = Date.now();
   });
 
+  assignmentBoard?.addEventListener('change', (event) => {
+    const sourceSelect = event.target.closest('[data-board-copy-order-source]');
+    if (!sourceSelect) return;
+    const control = sourceSelect.closest('.assignment-board__copy-order-control');
+    const copyButton = control?.querySelector('[data-board-copy-order]');
+    if (copyButton) copyButton.disabled = !sourceSelect.value;
+  });
+
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
 
-    const copyPreviousOrder = event.target.closest('[data-board-copy-previous-order]');
-    if (copyPreviousOrder) {
+    const copyOrder = event.target.closest('[data-board-copy-order]');
+    if (copyOrder) {
       event.stopPropagation();
-      const targetShiftId = copyPreviousOrder.dataset.boardCopyPreviousOrder || '';
-      const sourceShiftId = copyPreviousOrder.dataset.boardSourceShiftId || '';
-      if (!copyPreviousOrder.disabled && targetShiftId && sourceShiftId) {
-        void copyBoardOrderFromPreviousShift(targetShiftId, sourceShiftId, copyPreviousOrder);
+      const targetShiftId = copyOrder.dataset.boardCopyOrder || '';
+      const control = copyOrder.closest('.assignment-board__copy-order-control');
+      const sourceShiftId = control?.querySelector('[data-board-copy-order-source]')?.value || '';
+      if (!copyOrder.disabled && targetShiftId && sourceShiftId) {
+        void copyBoardOrderFromShift(targetShiftId, sourceShiftId, copyOrder);
       }
       return;
     }
