@@ -1194,10 +1194,21 @@
     setSelectOptions(shiftBoardPersonFilter, assignedPeople, 'Tutte');
     if (personPathFilter) {
       const currentPersonId = personPathFilter.value || '';
-      personPathFilter.innerHTML = '<option value="">Seleziona una persona…</option>' + assignedPeople
+      const pathPersonIds = new Set([
+        ...assignments.map((row) => row.personId),
+        ...(snapshot?.declinedAssignmentResponses || []).map((row) => row.personId),
+        ...(snapshot?.people || [])
+          .filter((person) => (person.latestSubmission?.availability || []).length > 0)
+          .map((person) => person.id)
+      ].filter(Boolean));
+      const pathPeople = (snapshot?.people || [])
+        .filter((person) => pathPersonIds.has(person.id))
+        .map((person) => ({ value: person.id, label: person.display_name }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'it'));
+      personPathFilter.innerHTML = '<option value="">Seleziona una persona…</option>' + pathPeople
         .map((person) => `<option value="${escapeHtml(person.value)}">${escapeHtml(person.label)}</option>`)
         .join('');
-      if (assignedPeople.some((person) => person.value === currentPersonId)) personPathFilter.value = currentPersonId;
+      if (pathPeople.some((person) => person.value === currentPersonId)) personPathFilter.value = currentPersonId;
     }
 
     const reportShifts = [...(snapshot?.shifts || [])]
@@ -3501,12 +3512,19 @@
       );
     const shifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+    const availability = person?.latestSubmission?.availability || [];
+    const declinedResponses = (snapshot?.declinedAssignmentResponses || [])
+      .filter((row) => row.personId === personId);
 
-    if (!personRows.length || !shifts.length) {
-      personPathChart.innerHTML = '<p class="empty-state">Nessuna assegnazione disponibile per questa persona.</p>';
+    if (!shifts.length) {
+      personPathChart.innerHTML = '<p class="empty-state">Nessun turno disponibile.</p>';
       return;
     }
 
+    const shiftByLabel = new Map(shifts.map((shift) => [
+      `${shift.day_label || ''}|||${shift.shift_label || ''}`,
+      shift
+    ]));
     const shiftOrderById = new Map(shifts.map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
     const activityMeta = new Map();
     for (const row of personRows) {
@@ -3518,12 +3536,30 @@
     const activities = [...activityMeta.values()]
       .sort((a, b) => a.firstOrder - b.firstOrder || a.label.localeCompare(b.label, 'it'))
       .map((item) => item.label);
+
     const emptyLabel = 'Nessuna assegnazione';
+    const availabilityLabel = 'Disp.+';
+    const declinedLabel = 'Non può';
     const rowsByShift = new Map();
     for (const row of personRows) {
       if (!row.shiftId) continue;
       if (!rowsByShift.has(row.shiftId)) rowsByShift.set(row.shiftId, []);
       rowsByShift.get(row.shiftId).push(row);
+    }
+
+    const availabilityByShift = new Map();
+    for (const item of availability) {
+      if (!item.shiftId) continue;
+      if (!availabilityByShift.has(item.shiftId)) availabilityByShift.set(item.shiftId, []);
+      availabilityByShift.get(item.shiftId).push(item);
+    }
+
+    const declinedByShift = new Map();
+    for (const item of declinedResponses) {
+      const shiftId = item.shiftId || shiftByLabel.get(`${item.day || ''}|||${item.shift || ''}`)?.id || '';
+      if (!shiftId) continue;
+      if (!declinedByShift.has(shiftId)) declinedByShift.set(shiftId, []);
+      declinedByShift.get(shiftId).push(item);
     }
 
     const left = 292;
@@ -3533,17 +3569,27 @@
     const xGap = 138;
     const rowHeight = 44;
     const width = Math.max(900, left + right + Math.max(0, shifts.length - 1) * xGap + 32);
-    const chartRows = [...activities, emptyLabel];
+    const chartRows = [...activities, emptyLabel, availabilityLabel, declinedLabel];
     const height = top + bottom + Math.max(1, chartRows.length) * rowHeight;
     const yByActivity = new Map(chartRows.map((activity, index) => [activity, top + index * rowHeight + rowHeight / 2]));
     const emptyY = yByActivity.get(emptyLabel);
+    const availabilityY = yByActivity.get(availabilityLabel);
+    const declinedY = yByActivity.get(declinedLabel);
     const xForShift = (index) => left + index * xGap;
 
     const grid = chartRows.map((activity) => {
       const y = yByActivity.get(activity);
+      const isState = activity === availabilityLabel || activity === declinedLabel;
+      const classes = [
+        'person-path-activity-label',
+        activity === emptyLabel ? 'is-empty' : '',
+        isState ? 'is-state' : '',
+        activity === availabilityLabel ? 'is-availability' : '',
+        activity === declinedLabel ? 'is-declined' : ''
+      ].filter(Boolean).join(' ');
       return `
-        <line class="person-path-grid-line" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
-        <text class="person-path-activity-label${activity === emptyLabel ? ' is-empty' : ''}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
+        <line class="person-path-grid-line${isState ? ' is-state' : ''}" x1="${left - 8}" y1="${y}" x2="${width - right + 8}" y2="${y}"></line>
+        <text class="${classes}" x="${left - 18}" y="${y + 4}" text-anchor="end">${escapeHtml(activity)}</text>`;
     }).join('');
 
     const headers = shifts.map((shift, index) => {
@@ -3566,7 +3612,7 @@
       const x = xForShift(index);
       const rows = rowsByShift.get(shift.id) || [];
       const assigned = rows.filter((row) => row.currentResponse !== 'declined');
-      const declined = rows.filter((row) => row.currentResponse === 'declined');
+      const declinedActive = rows.filter((row) => row.currentResponse === 'declined');
       const assignedYs = assigned.map((row) => yByActivity.get(displayActivity(row))).filter(Number.isFinite);
       const anchorY = assignedYs.length
         ? assignedYs.reduce((sum, value) => sum + value, 0) / assignedYs.length
@@ -3588,7 +3634,7 @@
           </circle>`);
       }
 
-      for (const row of declined) {
+      for (const row of declinedActive) {
         const activity = displayActivity(row);
         const y = yByActivity.get(activity);
         if (!Number.isFinite(y)) continue;
@@ -3606,6 +3652,32 @@
             <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Nessuna attività assegnata`)}</title>
           </circle>`);
       }
+
+      const shiftAvailability = availabilityByShift.get(shift.id) || [];
+      if (shiftAvailability.length) {
+        const notes = shiftAvailability.map((item) => String(item.note || '').trim()).filter(Boolean);
+        nodes.push(`
+          <circle class="person-path-node is-availability" cx="${x}" cy="${availabilityY}" r="8">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Disponibilità aggiuntiva${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
+          </circle>
+          <text class="person-path-availability-plus" x="${x}" y="${availabilityY + 4}" text-anchor="middle">+</text>`);
+      }
+
+      const shiftDeclined = declinedByShift.get(shift.id) || [];
+      if (shiftDeclined.length) {
+        const activityNames = [...new Set(shiftDeclined.map((item) => String(item.activity || 'Attività').trim()).filter(Boolean))];
+        const notes = [...new Set(shiftDeclined.map((item) => String(item.note || '').trim()).filter(Boolean))];
+        const details = [
+          activityNames.length ? `rifiutato: ${activityNames.join(' · ')}` : 'rifiuto registrato',
+          notes.length ? `note: ${notes.join(' · ')}` : ''
+        ].filter(Boolean).join(' · ');
+        nodes.push(`
+          <circle class="person-path-node is-declined-status" cx="${x}" cy="${declinedY}" r="8">
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${details}`)}</title>
+          </circle>
+          <line class="person-path-declined-cross" x1="${x - 4}" y1="${declinedY - 4}" x2="${x + 4}" y2="${declinedY + 4}"></line>
+          <line class="person-path-declined-cross" x1="${x + 4}" y1="${declinedY - 4}" x2="${x - 4}" y2="${declinedY + 4}"></line>`);
+      }
     });
 
     const segments = anchors.slice(1).map((current, index) => {
@@ -3620,11 +3692,19 @@
     const multipleShiftCount = shifts.filter((shift) =>
       (rowsByShift.get(shift.id) || []).filter((row) => row.currentResponse !== 'declined').length > 1
     ).length;
+    const availabilityShiftCount = shifts.filter((shift) => (availabilityByShift.get(shift.id) || []).length > 0).length;
+    const declinedShiftCount = shifts.filter((shift) => (declinedByShift.get(shift.id) || []).length > 0).length;
+    const summaryParts = [
+      `${assignedShiftCount} turni con attività`,
+      multipleShiftCount ? `${multipleShiftCount} con più attività` : '',
+      availabilityShiftCount ? `${availabilityShiftCount} Disp.+` : '',
+      declinedShiftCount ? `${declinedShiftCount} con rifiuti` : ''
+    ].filter(Boolean);
 
     personPathChart.innerHTML = `
       <div class="person-path-summary">
         <strong>${escapeHtml(person?.display_name || personRows[0]?.personName || 'Persona')}</strong>
-        <span>${assignedShiftCount} turni con attività${multipleShiftCount ? ` · ${multipleShiftCount} con più attività` : ''}</span>
+        <span>${escapeHtml(summaryParts.join(' · '))}</span>
       </div>
       <div class="person-path-scroll" role="img" aria-label="Percorso delle attività per ${escapeHtml(person?.display_name || personRows[0]?.personName || 'persona')}">
         <svg class="person-path-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
