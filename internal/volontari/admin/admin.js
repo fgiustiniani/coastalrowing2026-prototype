@@ -2368,6 +2368,37 @@
     });
   }
 
+  function boardActivityMetrics(requirement) {
+    const allRows = (snapshot?.assignments || []).filter((row) =>
+      row.shiftId === requirement?.shiftId
+      && row.activityId === requirement?.activityId
+    );
+    const present = allRows.filter((row) =>
+      row.currentResponse === 'confirmed'
+      || (row.assignedFromAvailability === true && row.currentResponse !== 'declined')
+    ).length;
+    const pending = allRows.filter((row) =>
+      row.assignedFromAvailability !== true
+      && !['confirmed', 'declined'].includes(String(row.currentResponse || ''))
+    ).length;
+    const required = Number(requirement?.requiredCount || 0);
+    return {
+      present, pending, required,
+      missing: Math.max(0, required - present),
+      uncovered: present < required
+    };
+  }
+
+  function boardGroupMetrics(groupRequirements) {
+    return (groupRequirements || []).reduce((totals, requirement) => {
+      const metrics = boardActivityMetrics(requirement);
+      totals.present += metrics.present;
+      totals.pending += metrics.pending;
+      totals.required += metrics.required;
+      return totals;
+    }, { present: 0, pending: 0, required: 0 });
+  }
+
   function renderAssignmentBoard() {
     if (!assignmentBoard) return;
     const rows = filteredBoardAssignmentRows();
@@ -2399,8 +2430,9 @@
         Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
         || String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
       );
-      const uncovered = requirementIsUncovered(requirement);
-      const missing = Math.max(0, Number(requirement.requiredCount || 0) - Number(requirement.assignedCount || 0));
+      const metrics = boardActivityMetrics(requirement);
+      const uncovered = metrics.uncovered;
+      const missing = metrics.missing;
       const activityKey = boardActivityKey(requirement);
       const collapsed = boardActivityCollapsed(requirement);
 
@@ -2425,7 +2457,8 @@
               <strong>${escapeHtml(prettifyActivityName(requirement.activity))}</strong>
             </button>
             <span class="assignment-board__activity-actions">
-              <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Assegnati / previsti">${requirement.assignedCount}/${requirement.requiredCount}</span>
+              <span class="assignment-board__activity-count ${uncovered ? 'is-uncovered' : ''}" title="Presenti confermati o assegnati da disponibilità aggiuntiva / necessari">${metrics.present}/${metrics.required}</span>
+              <span class="assignment-board__pending-count ${metrics.pending ? 'has-pending' : ''}" title="Persone assegnate dall'admin che non hanno ancora risposto">${metrics.pending} da risp.</span>
               <button type="button"
                 class="assignment-board__copy-from"
                 data-board-copy-from
@@ -2501,6 +2534,8 @@
         const groupRequirements = block.requirements;
         const collapsed = !forceExpandedGroups && boardGroupCollapsed(shift.id, group.id);
         const groupKey = boardGroupKey(shift.id, group.id);
+        const groupMetrics = boardGroupMetrics(groupRequirements);
+        const groupUncovered = groupMetrics.present < groupMetrics.required;
         return `
           <section class="assignment-board__activity-group ${collapsed ? 'is-collapsed' : ''}"
             data-board-activity-group
@@ -2522,7 +2557,10 @@
                 <span class="assignment-board__group-chevron" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
                 <strong>${escapeHtml(group.name)}</strong>
               </button>
-              <span class="assignment-board__group-count">${groupRequirements.length}</span>
+              <span class="assignment-board__group-kpis">
+                <span class="assignment-board__activity-count ${groupUncovered ? 'is-uncovered' : ''}" title="Presenti / necessari nel gruppo">${groupMetrics.present}/${groupMetrics.required}</span>
+                <span class="assignment-board__pending-count ${groupMetrics.pending ? 'has-pending' : ''}" title="Persone senza risposta nelle attività del gruppo">${groupMetrics.pending} da risp.</span>
+              </span>
             </header>
             <div class="assignment-board__group-body"
               data-board-group-body
