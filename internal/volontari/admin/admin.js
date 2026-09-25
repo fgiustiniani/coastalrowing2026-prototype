@@ -1380,7 +1380,9 @@
         && filterMatches(groups, row.personGroup || '')
         && filterMatches(shifts, shiftFilterKey(row))
         && (!activities.length || (!row.isAvailability && activities.includes(prettifyActivityName(row.activity))))
-        && (!responses.length || (!row.isAvailability && responses.includes(rowResponse)))
+        && (!responses.length || (row.isAvailability
+          ? (row.isReleasedConfirmed === true && responses.includes('confirmed'))
+          : responses.includes(rowResponse)))
         && warningMatch;
     });
 
@@ -1514,7 +1516,9 @@
         if (responsibleFilters.length) return false;
         if (personIds.length && !personIds.includes(row.personId)) return false;
         if (groups.length && !groups.includes(row.personGroup || '')) return false;
-        return !responses.length && !warningFilters.length;
+        if (warningFilters.length) return false;
+        if (responses.length) return row.isReleasedConfirmed === true && responses.includes('confirmed');
+        return true;
       }
 
       if (responsibleFilters.length && row.isResponsible !== true) return false;
