@@ -187,28 +187,17 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   opacity: .78;
 }
 
-/* Navigazione sempre visibile durante la compilazione */
+/* Pulsante principale sempre visibile in sovraimpressione */
 .step:not([hidden]) {
-  padding-bottom: 86px;
-}
-.step:not([hidden]) > .actions {
-  position: fixed;
-  z-index: 30;
-  left: 50%;
-  bottom: max(10px, env(safe-area-inset-bottom));
-  width: min(calc(100% - 28px), 724px);
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(23, 62, 75, .13);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, .96);
-  box-shadow: 0 10px 30px rgba(23, 62, 75, .18);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding-bottom: 78px;
 }
 .step:not([hidden]) > .actions .button--primary {
-  box-shadow: 0 4px 12px rgba(7, 84, 102, .18);
+  position: fixed;
+  z-index: 30;
+  right: max(14px, calc((100vw - 760px) / 2 + 14px));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  min-width: 164px;
+  box-shadow: 0 8px 24px rgba(23, 62, 75, .24);
 }
 .assignment-card.is-incomplete {
   border-color: #c47a2c;
@@ -227,18 +216,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 }
 @media (max-width: 520px) {
   .step:not([hidden]) {
-    padding-bottom: 92px;
+    padding-bottom: 82px;
   }
-  .step:not([hidden]) > .actions {
-    width: calc(100% - 20px);
-    bottom: max(6px, env(safe-area-inset-bottom));
-    padding: 8px;
-    border-radius: 14px;
-  }
-  .step:not([hidden]) > .actions .button {
-    flex: 1 1 0;
-    padding-left: 10px;
-    padding-right: 10px;
+  .step:not([hidden]) > .actions .button--primary {
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    min-width: 154px;
   }
 }
 
