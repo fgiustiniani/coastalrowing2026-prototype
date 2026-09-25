@@ -5170,16 +5170,28 @@ tr.is-busy button.is-busy {
   }
 }
 
-/* Vista schede: copia dell'ordine da un turno scelto */
+/* Vista schede: copia automatica dell'ordine da un turno scelto */
+.assignment-board__shift-actions {
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.assignment-board__shift-actions > * {
+  flex: 0 0 auto;
+}
+.assignment-board__shift-actions button {
+  white-space: nowrap;
+}
 .assignment-board__copy-order-control {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   min-width: 0;
 }
 .assignment-board__copy-order-source {
-  min-width: 0;
-  max-width: 175px;
+  width: 155px;
+  min-width: 135px;
   height: 25px;
   padding: 2px 22px 2px 6px;
   border: 1px solid #b9cdd2;
@@ -5190,47 +5202,17 @@ tr.is-busy button.is-busy {
   font-size: .65rem;
   font-weight: 750;
 }
-.assignment-board__shift-actions .assignment-board__copy-order {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.assignment-board__copy-order svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: none;
-}
-.assignment-board__shift-actions button:disabled,
 .assignment-board__copy-order-source:disabled {
   opacity: .4;
   cursor: default;
 }
-.assignment-board__shift-actions button:disabled:hover {
-  border-color: #b9cdd2;
-  background: #fff;
+.assignment-board__copy-order-source.is-busy {
+  opacity: .65;
 }
 @media (max-width: 700px) {
-  .assignment-board__copy-order-control {
-    width: 100%;
-  }
   .assignment-board__copy-order-source {
-    flex: 1 1 auto;
-    max-width: none;
-  }
-  .assignment-board__copy-order {
-    width: 28px;
-    min-width: 28px;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-    justify-content: center;
-  }
-  .assignment-board__copy-order span {
-    display: none;
+    width: 145px;
+    min-width: 125px;
   }
 }
 

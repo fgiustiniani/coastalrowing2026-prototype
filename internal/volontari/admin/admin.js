@@ -2323,7 +2323,7 @@
     return orderedBlocks.flatMap(boardBlockRequirementIds);
   }
 
-  async function copyBoardOrderFromShift(targetShiftId, sourceShiftId, button) {
+  async function copyBoardOrderFromShift(targetShiftId, sourceShiftId, sourceSelect) {
     if (!targetShiftId || !sourceShiftId || targetShiftId === sourceShiftId) return;
     const sourceShift = (snapshot?.shifts || []).find((item) => item.id === sourceShiftId) || null;
     const sourceLabel = sourceShift
@@ -2331,36 +2331,50 @@
       : 'turno selezionato';
     const currentIds = boardShiftRequirementIds(targetShiftId);
     const nextIds = boardCopyOrderIds(targetShiftId, sourceShiftId);
+
     if (!nextIds.length || nextIds.length !== currentIds.length) {
+      if (sourceSelect?.isConnected) sourceSelect.value = '';
       setStatus(assignmentBoardStatus, `Impossibile ricostruire l’ordine da ${sourceLabel}.`, 'error');
       return;
     }
     if (nextIds.every((id, index) => id === currentIds[index])) {
+      if (sourceSelect?.isConnected) sourceSelect.value = '';
       setStatus(assignmentBoardStatus, `L’ordine coincide già con ${sourceLabel}.`, 'success');
       return;
     }
 
-    await withButtonBusy(button, 'Copia…', async () => {
-      assignmentBoard?.classList.add('is-saving');
-      setStatus(assignmentBoardStatus, `Copia ordine da ${sourceLabel}…`);
-      try {
-        await api(API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            action: 'reorder-requirements',
-            shiftId: targetShiftId,
-            requirementIds: nextIds
-          })
-        });
-        await loadSnapshot();
-        setStatus(assignmentBoardStatus, `Ordine copiato da ${sourceLabel}.`, 'success');
-      } catch (error) {
-        setStatus(assignmentBoardStatus, error.message, 'error');
-      } finally {
-        assignmentBoard?.classList.remove('is-saving');
+    const originalDisabled = Boolean(sourceSelect?.disabled);
+    if (sourceSelect) {
+      sourceSelect.disabled = true;
+      sourceSelect.setAttribute('aria-busy', 'true');
+      sourceSelect.classList.add('is-busy');
+    }
+
+    assignmentBoard?.classList.add('is-saving');
+    setStatus(assignmentBoardStatus, `Copia ordine da ${sourceLabel}…`);
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder-requirements',
+          shiftId: targetShiftId,
+          requirementIds: nextIds
+        })
+      });
+      await loadSnapshot();
+      setStatus(assignmentBoardStatus, `Ordine copiato da ${sourceLabel}.`, 'success');
+    } catch (error) {
+      setStatus(assignmentBoardStatus, error.message, 'error');
+    } finally {
+      assignmentBoard?.classList.remove('is-saving');
+      if (sourceSelect?.isConnected) {
+        sourceSelect.value = '';
+        sourceSelect.disabled = originalDisabled;
+        sourceSelect.removeAttribute('aria-busy');
+        sourceSelect.classList.remove('is-busy');
       }
-    });
+    }
   }
 
   async function setBoardActivityGroup(activityId, groupId) {
@@ -2879,22 +2893,12 @@
                 <select
                   class="assignment-board__copy-order-source"
                   data-board-copy-order-source="${escapeHtml(shift.id)}"
-                  aria-label="Scegli giorno e turno da cui copiare l’ordine"
+                  aria-label="Scegli giorno e turno da cui copiare automaticamente l’ordine"
+                  title="Selezionando un turno, l’ordine viene copiato automaticamente"
                   ${hasOrderSources ? '' : 'disabled'}>
                   <option value="">Copia ordine da…</option>
                   ${sourceOptions || '<option value="" disabled>Nessun altro turno disponibile</option>'}
                 </select>
-                <button type="button"
-                  class="assignment-board__copy-order"
-                  data-board-copy-order="${escapeHtml(shift.id)}"
-                  aria-label="Copia l’ordine dal turno selezionato"
-                  title="Copia l’ordine delle attività e dei gruppi dal turno selezionato"
-                  disabled>
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M8 7V4h12v12h-3M4 8h12v12H4z"/>
-                  </svg>
-                  <span>Copia</span>
-                </button>
               </span>
               <button type="button"
                 data-board-shift-collapse-all="${escapeHtml(shift.id)}"
@@ -7135,25 +7139,15 @@
   assignmentBoard?.addEventListener('change', (event) => {
     const sourceSelect = event.target.closest('[data-board-copy-order-source]');
     if (!sourceSelect) return;
-    const control = sourceSelect.closest('.assignment-board__copy-order-control');
-    const copyButton = control?.querySelector('[data-board-copy-order]');
-    if (copyButton) copyButton.disabled = !sourceSelect.value;
+    const targetShiftId = sourceSelect.dataset.boardCopyOrderSource || '';
+    const sourceShiftId = sourceSelect.value || '';
+    if (targetShiftId && sourceShiftId) {
+      void copyBoardOrderFromShift(targetShiftId, sourceShiftId, sourceSelect);
+    }
   });
 
   assignmentBoard?.addEventListener('click', (event) => {
     if (Date.now() - boardDragEndedAt < 300) return;
-
-    const copyOrder = event.target.closest('[data-board-copy-order]');
-    if (copyOrder) {
-      event.stopPropagation();
-      const targetShiftId = copyOrder.dataset.boardCopyOrder || '';
-      const control = copyOrder.closest('.assignment-board__copy-order-control');
-      const sourceShiftId = control?.querySelector('[data-board-copy-order-source]')?.value || '';
-      if (!copyOrder.disabled && targetShiftId && sourceShiftId) {
-        void copyBoardOrderFromShift(targetShiftId, sourceShiftId, copyOrder);
-      }
-      return;
-    }
 
     const collapseAll = event.target.closest('[data-board-shift-collapse-all]');
     if (collapseAll) {
