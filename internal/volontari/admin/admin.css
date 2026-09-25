@@ -81,6 +81,10 @@
 .person-path-dot.is-declined { background: white; position: relative; border-color: var(--no); }
 .person-path-dot.is-declined::before, .person-path-dot.is-declined::after { content: ''; position: absolute; left: 3px; top: -1px; width: 2px; height: 9px; background: var(--no); transform: rotate(45deg); }
 .person-path-dot.is-declined::after { transform: rotate(-45deg); }
+.person-path-blocks { display: grid; gap: 18px; }
+.person-path-person-block { padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: #fbfcfc; }
+.person-path-person-block.is-empty { background: #fff; }
+.person-path-person-block.is-empty .person-path-summary span { font-style: italic; }
 .person-path-summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 2px 0 10px; }
 .person-path-summary strong { font-size: 1rem; }
 .person-path-summary span { color: var(--muted); font-size: .8rem; }
