@@ -123,7 +123,7 @@ async function adminSnapshot() {
     adminRead('origine disponibilità assegnazioni', 'volunteer_audit_log', {
       query: {
         select: 'entity_id,action_type,created_at',
-        action_type: 'eq.assignment_from_availability',
+        action_type: 'in.(assignment_from_availability,assignment_from_confirmed_availability)',
         entity_type: 'eq.assignment',
         order: 'created_at.asc'
       }
@@ -298,7 +298,16 @@ async function adminSnapshot() {
   });
 
   const availabilityMarkedAssignmentIds = new Set(
-    assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
+    assignmentAvailabilityAuditRows
+      .filter((row) => row.action_type === 'assignment_from_availability')
+      .map((row) => row.entity_id)
+      .filter(Boolean)
+  );
+  const retainedConfirmationMarkedAssignmentIds = new Set(
+    assignmentAvailabilityAuditRows
+      .filter((row) => row.action_type === 'assignment_from_confirmed_availability')
+      .map((row) => row.entity_id)
+      .filter(Boolean)
   );
 
   const declinedRemovalMarker = 'Rimossa a seguito della risposta "Non può" del volontario per questa attività.';
@@ -383,10 +392,32 @@ async function adminSnapshot() {
     return declaredAt.some((stamp) => stamp <= enteredAt);
   };
 
-  hydratedAssignments = hydratedAssignments.map((row) => ({
-    ...row,
-    assignedFromAvailability: assignmentComesFromAvailability(assignmentHistoryById.get(row.id) || null)
-  }));
+  const assignmentRetainsConfirmation = (assignment) => {
+    if (!assignment?.id || !assignment.shift_id) return false;
+    let current = assignment;
+    const seen = new Set();
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      if (retainedConfirmationMarkedAssignmentIds.has(current.id)) return true;
+      if (!current.supersedes_assignment_id) break;
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || previous.shift_id !== assignment.shift_id) break;
+      current = previous;
+    }
+    return false;
+  };
+
+  hydratedAssignments = hydratedAssignments.map((row) => {
+    const assignment = assignmentHistoryById.get(row.id) || null;
+    const retainedConfirmation = assignmentRetainsConfirmation(assignment);
+    return {
+      ...row,
+      assignedFromAvailability: assignmentComesFromAvailability(assignment),
+      retainedConfirmation,
+      currentResponse: row.currentResponse || (retainedConfirmation ? 'confirmed' : null)
+    };
+  });
 
   const declinedAssignmentResponses = [];
   for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
@@ -1268,6 +1299,7 @@ export default async (request) => {
         });
 
         let availabilityTracked = false;
+        let retainedConfirmationTracked = false;
         if (body.fromAvailability === true && isUuid(result?.id)) {
           try {
             const person = await activePerson(personId);
@@ -1291,7 +1323,33 @@ export default async (request) => {
           }
         }
 
-        return json({ ok: true, assignment: result, availabilityTracked });
+        if (body.fromConfirmedAvailability === true && isUuid(result?.id)) {
+          try {
+            const person = await activePerson(personId);
+            await auditAdminChange({
+              actorName,
+              actionType: 'assignment_from_confirmed_availability',
+              entityType: 'assignment',
+              entityId: result.id,
+              person,
+              newValue: {
+                assignmentId: result.id,
+                shiftId,
+                activity,
+                source: 'released_confirmation',
+                sourceAssignmentId: isUuid(clean(body.sourceConfirmedAssignmentId, 60))
+                  ? clean(body.sourceConfirmedAssignmentId, 60)
+                  : null
+              },
+              note: 'Assegnata mantenendo la conferma già espressa per il turno dopo la rimozione di una precedente attività.'
+            });
+            retainedConfirmationTracked = true;
+          } catch (error) {
+            console.error('Conferma mantenuta non registrata nell’audit', error);
+          }
+        }
+
+        return json({ ok: true, assignment: result, availabilityTracked, retainedConfirmationTracked });
       }
 
       if (action === 'set-assignment-responsible') {
