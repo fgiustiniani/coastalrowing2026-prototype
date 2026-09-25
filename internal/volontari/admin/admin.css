@@ -1135,6 +1135,11 @@ tr.is-busy button.is-busy {
   border-color: #d8bd65;
   background: #fffaf0;
 }
+.assignment-board__person.is-availability.is-released-confirmed {
+  border-style: solid;
+  border-color: #9ccbad;
+  background: var(--ok-bg);
+}
 .assignment-board__person.is-from-availability {
   background: #f2fafb;
 }
