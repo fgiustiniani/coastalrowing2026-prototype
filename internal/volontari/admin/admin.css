@@ -5036,3 +5036,41 @@ tr.is-busy button.is-busy {
 .assignment-board__person.is-availability {
   overflow: visible;
 }
+
+
+/* Vista schede: testata attività su due righe */
+.assignment-board__activity-head {
+  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 5px;
+  overflow: visible;
+}
+.assignment-board__activity-head > .assignment-board__activity-drag-handle {
+  grid-column: 1;
+  grid-row: 1;
+}
+.assignment-board__activity-toggle {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+.assignment-board__activity-head > .assignment-board__activity-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 700px) {
+  .assignment-board__activity-head {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+  .assignment-board__activity-head > .assignment-board__activity-actions {
+    max-width: none;
+  }
+}
