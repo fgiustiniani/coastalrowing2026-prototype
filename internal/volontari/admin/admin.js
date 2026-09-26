@@ -1284,8 +1284,12 @@
     const reportActivities = [...new Set(assignments.map((row) => displayActivity(row)).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'it'))
       .map((value) => ({ value, label: value }));
+    const reportAssignmentPersonIds = new Set([
+      ...assignments.map((row) => row.personId),
+      ...(snapshot?.historicalAssignments || []).map((row) => row.personId)
+    ].filter(Boolean));
     const reportPeople = [...new Map((snapshot?.people || [])
-      .filter((person) => person.latestSubmission || assignments.some((row) => row.personId === person.id))
+      .filter((person) => person.latestSubmission || reportAssignmentPersonIds.has(person.id))
       .map((person) => [person.id, { value: person.id, label: person.display_name }])).values()]
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
@@ -4079,17 +4083,20 @@
 
   function personReportRows() {
     const assignments = snapshot?.assignments || [];
+    const historicalAssignments = snapshot?.historicalAssignments || [];
     const peopleRows = snapshot?.people || [];
+    const historicalPersonIds = new Set(historicalAssignments.map((row) => row.personId).filter(Boolean));
     const byPerson = new Map();
 
     for (const person of peopleRows) {
-      if (person.latestSubmission) {
+      if (person.latestSubmission || historicalPersonIds.has(person.id)) {
         byPerson.set(person.id, {
           id: person.id,
           name: person.display_name,
           code: person.person_code || '',
           group: person.person_group || '',
-          rows: []
+          rows: [],
+          historicalRows: []
         });
       }
     }
@@ -4101,11 +4108,27 @@
           name: row.personName,
           code: row.personCode,
           group: row.personGroup || '',
-          rows: []
+          rows: [],
+          historicalRows: []
         });
       }
       if (!byPerson.get(row.personId).group && row.personGroup) byPerson.get(row.personId).group = row.personGroup;
       byPerson.get(row.personId).rows.push(row);
+    }
+
+    for (const row of historicalAssignments) {
+      if (!byPerson.has(row.personId)) {
+        byPerson.set(row.personId, {
+          id: row.personId,
+          name: row.personName,
+          code: row.personCode,
+          group: row.personGroup || '',
+          rows: [],
+          historicalRows: []
+        });
+      }
+      if (!byPerson.get(row.personId).group && row.personGroup) byPerson.get(row.personId).group = row.personGroup;
+      byPerson.get(row.personId).historicalRows.push(row);
     }
 
     const personById = new Map(peopleRows.map((row) => [row.id, row]));
@@ -4116,18 +4139,19 @@
         : 'Da rispondere';
 
     return [...byPerson.values()].map((item) => {
-      const confirmed = item.rows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
-      const declined = item.rows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
-      const pending = item.rows.length - confirmed - declined;
+      const reportRows = item.rows.length ? item.rows : (item.historicalRows || []);
+      const confirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
+      const declined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
+      const pending = reportRows.length - confirmed - declined;
       const person = personById.get(item.id) || null;
       const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
       const availability = person?.latestSubmission?.availability || [];
-      const notes = item.rows
+      const notes = reportRows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
-      const sortedRows = [...item.rows].sort((a, b) => {
+      const sortedRows = [...reportRows].sort((a, b) => {
         const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
         const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
@@ -4135,7 +4159,7 @@
       const activityRows = sortedRows.map((row) => {
         const response = effectiveAssignmentResponse(row) || 'pending';
         return {
-          label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}`,
+          label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
           response,
           responseLabel: responseLabel(response)
         };

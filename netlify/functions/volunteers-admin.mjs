@@ -276,6 +276,41 @@ async function adminSnapshot() {
     };
   });
 
+  const historicalSupersededIds = new Set(
+    assignmentHistoryRows
+      .map((assignment) => assignment.supersedes_assignment_id)
+      .filter(Boolean)
+  );
+  const hydratedHistoricalAssignments = assignmentHistoryRows
+    .filter((assignment) => assignment.active === false && !historicalSupersededIds.has(assignment.id))
+    .map((assignment) => {
+      const person = personById.get(assignment.person_id) || null;
+      const shift = shiftById.get(assignment.shift_id) || null;
+      const activity = activityById.get(assignment.activity_id) || null;
+      const current = latestResponseByAssignment.get(assignment.id) || null;
+      return {
+        id: assignment.id,
+        personId: assignment.person_id,
+        personCode: person?.person_code || '',
+        personName: person?.display_name || 'Persona non disponibile',
+        personGroup: person?.person_group || '',
+        shiftId: shift?.id || null,
+        day: shift?.day_label || assignment.raw_day || '',
+        shift: shift?.shift_label || assignment.raw_shift || '',
+        activityId: assignment.activity_id,
+        activity: activity?.name || 'Attività',
+        role: assignment.role || '',
+        note: assignment.note || '',
+        active: false,
+        historical: true,
+        supersedesAssignmentId: assignment.supersedes_assignment_id || null,
+        currentResponse: current?.response || null,
+        currentNote: current?.note || '',
+        currentResponseAt: current?.stamp || null,
+        currentActorName: current?.actorName || ''
+      };
+    });
+
   const peopleWithState = peopleRows.map((person) => {
     const latest = latestSubmissionByPerson.get(person.id) || null;
     const latestVolunteer = latestVolunteerSubmissionByPerson.get(person.id) || null;
@@ -696,6 +731,7 @@ async function adminSnapshot() {
     activityCatalog: activityRows,
     activityGroups: activityGroupRows,
     assignments: hydratedAssignments,
+    historicalAssignments: hydratedHistoricalAssignments,
     releasedConfirmedAvailability,
     declinedAssignmentResponses,
     declinedRemovals,
