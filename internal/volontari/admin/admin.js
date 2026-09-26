@@ -263,6 +263,7 @@
   function effectiveAssignmentResponse(row) {
     const current = row?.currentResponse || null;
     if (current === 'confirmed' || current === 'declined') return current;
+    if (row?.retainedConfirmation === true) return 'confirmed';
     if (row?.assignedFromAvailability === true) return 'confirmed';
     return current;
   }
@@ -2555,7 +2556,7 @@
       assignment
       && assignment.shiftId === targetShiftId
       && (
-        assignment.currentResponse === 'confirmed'
+        effectiveAssignmentResponse(assignment) === 'confirmed'
         || personDeclaredAvailabilityForShift(assignment.personId, targetShiftId)
       )
     );
@@ -2600,12 +2601,10 @@
       && row.activityId === requirement?.activityId
     );
     const present = allRows.filter((row) =>
-      row.currentResponse === 'confirmed'
-      || (row.assignedFromAvailability === true && row.currentResponse !== 'declined')
+      effectiveAssignmentResponse(row) === 'confirmed'
     ).length;
     const pending = allRows.filter((row) =>
-      row.assignedFromAvailability !== true
-      && !['confirmed', 'declined'].includes(String(row.currentResponse || ''))
+      !['confirmed', 'declined'].includes(String(effectiveAssignmentResponse(row) || ''))
     ).length;
     const required = Number(requirement?.requiredCount || 0);
     return {
@@ -3368,7 +3367,7 @@
     if (!assignment) return;
 
     const personName = assignment.personName || 'Persona';
-    const baseNote = assignment.currentResponse === 'confirmed'
+    const baseNote = effectiveAssignmentResponse(assignment) === 'confirmed'
       ? 'Rimossa dall’attività e riportata tra i disponibili mantenendo la risposta Confermata per questo turno.'
       : 'Rimossa dall’attività e riportata tra le disponibilità aggiuntive dichiarate per questo turno.';
     const declineNote = assignmentRemovalAuditNote(assignment);
@@ -3404,7 +3403,7 @@
       } else {
         setStatus(
           assignmentBoardStatus,
-          assignment.currentResponse === 'confirmed'
+          effectiveAssignmentResponse(assignment) === 'confirmed'
             ? `${personName} riportato tra i disponibili mantenendo lo stato Confermata.`
             : `${personName} riportato tra i disponibili da assegnare.`,
           'success'
@@ -3897,10 +3896,10 @@
 
   function assignmentRemovalAuditNote(assignment) {
     const volunteerNote = String(assignment?.currentNote || '').trim();
-    if (assignment?.currentResponse === 'confirmed') {
+    if (effectiveAssignmentResponse(assignment) === 'confirmed') {
       return `Rimossa dopo la risposta "Confermata"; la persona torna tra i disponibili del turno mantenendo la conferma.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
     }
-    if (assignment?.currentResponse === 'declined') {
+    if (effectiveAssignmentResponse(assignment) === 'declined') {
       return `Rimossa a seguito della risposta "Non può" del volontario per questa attività.${volunteerNote ? ` Nota volontario: ${volunteerNote}` : ''}`;
     }
     return null;
@@ -3908,10 +3907,10 @@
 
   function assignmentRemovalConfirmText(assignment) {
     const base = `Eliminare l’assegnazione “${displayActivity(assignment)}” di ${assignment.personName}? Verrà rimossa dalla vista operativa, mentre lo storico resterà disponibile.`;
-    if (assignment?.currentResponse === 'confirmed') {
+    if (effectiveAssignmentResponse(assignment) === 'confirmed') {
       return `${base} La persona tornerà tra i disponibili del turno mantenendo lo stato “Confermata”.`;
     }
-    if (assignment?.currentResponse === 'declined') {
+    if (effectiveAssignmentResponse(assignment) === 'declined') {
       return `${base} La rimozione verrà registrata come conseguenza della risposta “Non può”.`;
     }
     return base;
@@ -4232,15 +4231,15 @@
       .filter((row) => row.personId === personId);
     const adminConfirmedRows = activeRows.filter((row) =>
       row.assignedFromAvailability !== true
-      && row.currentResponse === 'confirmed'
+      && effectiveAssignmentResponse(row) === 'confirmed'
     );
     const adminPendingRows = activeRows.filter((row) =>
       row.assignedFromAvailability !== true
-      && !['confirmed', 'declined'].includes(String(row.currentResponse || ''))
+      && !['confirmed', 'declined'].includes(String(effectiveAssignmentResponse(row) || ''))
     );
     const fromAvailabilityRows = activeRows.filter((row) =>
       row.assignedFromAvailability === true
-      && row.currentResponse !== 'declined'
+      && effectiveAssignmentResponse(row) !== 'declined'
     );
     const adminDeclinedRows = (snapshot?.declinedAssignmentResponses || [])
       .filter((row) => row.personId === personId && row.assignedFromAvailability !== true);
