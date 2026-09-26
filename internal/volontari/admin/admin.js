@@ -260,6 +260,13 @@
     return '<span class="status-badge is-pending">Da rispondere</span>';
   }
 
+  function effectiveAssignmentResponse(row) {
+    const current = row?.currentResponse || null;
+    if (current === 'confirmed' || current === 'declined') return current;
+    if (row?.assignedFromAvailability === true) return 'confirmed';
+    return current;
+  }
+
   function responsibleBadge(label = 'Responsabile') {
     return `<span class="responsible-badge" title="Responsabile dell’attività in questo turno">${escapeHtml(label)}</span>`;
   }
@@ -350,7 +357,7 @@
     };
 
     const personAssignmentResponseHtml = (row) => {
-      const value = row?.currentResponse || 'pending';
+      const value = effectiveAssignmentResponse(row) || 'pending';
       const label = value === 'confirmed'
         ? 'Confermata'
         : value === 'declined'
@@ -1364,8 +1371,8 @@
       .map((row) => row.personId)).size;
     const respondedPeople = respondedAssignedPeople();
     const unassignedAvailability = unassignedAvailabilityRows();
-    const confirmed = assignments.filter((row) => row.currentResponse === 'confirmed').length;
-    const declined = assignments.filter((row) => row.currentResponse === 'declined').length;
+    const confirmed = assignments.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
+    const declined = assignments.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
     const pending = assignments.length - confirmed - declined;
     const planned = requirements().reduce((sum, row) => sum + Number(row.requiredCount || 0), 0);
     const uncovered = requirements().filter(requirementIsUncovered).length;
@@ -1421,7 +1428,7 @@
       if (row.isAvailability && coverageFilters.length) return false;
       if (responsibleFilters.length && (row.isAvailability || row.isResponsible !== true)) return false;
 
-      const rowResponse = row.currentResponse || 'pending';
+      const rowResponse = effectiveAssignmentResponse(row) || 'pending';
       const warnings = assignmentWarningDetails(row);
       const warningMatch = !warningFilters.length || warningFilters.some((warning) =>
         (warning === 'any' && warnings.length > 0)
@@ -1489,7 +1496,7 @@
       ? (row.isReleasedConfirmed
         ? `${responseBadge('confirmed')}<small>Disponibile dopo rimozione${row.currentResponseAt ? ` · ${escapeHtml(formatDateTime(row.currentResponseAt))}` : ''}</small>`
         : '<span class="status-badge is-availability">Disponibilità</span>')
-      : (isNew ? '—' : `${responseBadge(row.currentResponse)}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
+      : (isNew ? '—' : `${responseBadge(effectiveAssignmentResponse(row))}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
     const warnings = row ? assignmentWarningDetails(row) : [];
     const rowClass = [
       isNew ? 'is-new-row' : '',
@@ -1593,10 +1600,7 @@
   function boardEffectiveResponse(row) {
     if (row?.isAvailability && row?.currentResponse === 'confirmed') return 'confirmed';
     if (row?.isAvailability) return 'availability';
-    if (row?.currentResponse === 'confirmed') return 'confirmed';
-    if (row?.currentResponse === 'declined') return 'declined';
-    if (row?.assignedFromAvailability) return 'confirmed';
-    return 'pending';
+    return effectiveAssignmentResponse(row) || 'pending';
   }
 
   function boardResponseMeta(row) {
@@ -1761,8 +1765,9 @@
   }
 
   function swapResponseLabel(row) {
-    if (row?.currentResponse === 'confirmed') return 'Confermata';
-    if (row?.currentResponse === 'declined') return 'Non può';
+    const response = effectiveAssignmentResponse(row);
+    if (response === 'confirmed') return 'Confermata';
+    if (response === 'declined') return 'Non può';
     return 'Da rispondere';
   }
 
@@ -3649,14 +3654,14 @@
 
     let response = null;
     if (personId === source.personId) {
-      response = source.currentResponse || null;
+      response = effectiveAssignmentResponse(source);
     } else {
       const matching = (snapshot?.assignments || []).find((row) =>
         row.personId === personId
         && row.id !== source.id
         && assignmentRequirementId(row) === requirement.id
       );
-      response = matching?.currentResponse || null;
+      response = effectiveAssignmentResponse(matching);
     }
 
     if (response !== 'confirmed' && response !== 'declined') {
@@ -3717,7 +3722,7 @@
               <strong>${escapeHtml(displayActivity(row))}</strong>
               <div class="board-edit-person-activities__meta">
                 ${row.isResponsible ? responsibleBadge('Responsabile') : ''}
-                ${responseBadge(row.currentResponse)}
+                ${responseBadge(effectiveAssignmentResponse(row))}
               </div>
             </div>
           </div>`).join('')}
@@ -4111,8 +4116,8 @@
         : 'Da rispondere';
 
     return [...byPerson.values()].map((item) => {
-      const confirmed = item.rows.filter((row) => row.currentResponse === 'confirmed').length;
-      const declined = item.rows.filter((row) => row.currentResponse === 'declined').length;
+      const confirmed = item.rows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
+      const declined = item.rows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
       const pending = item.rows.length - confirmed - declined;
       const person = personById.get(item.id) || null;
       const latest = person?.latestVolunteerSubmission || null;
@@ -4128,7 +4133,7 @@
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
       const activityRows = sortedRows.map((row) => {
-        const response = row.currentResponse || 'pending';
+        const response = effectiveAssignmentResponse(row) || 'pending';
         return {
           label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}`,
           response,
@@ -4608,7 +4613,7 @@
         responsibleName: responsible?.name || '',
         peopleCount: people.length,
         peopleText: people.map((person) => `${person.isResponsible ? '★ ' : ''}${person.name}`).join('; '),
-        pending: item.rows.filter((row) => !row.currentResponse).length
+        pending: item.rows.filter((row) => !effectiveAssignmentResponse(row)).length
       };
     }).sort((a, b) =>
       assignmentShiftOrder(a) - assignmentShiftOrder(b)
@@ -5425,7 +5430,7 @@
       .sort((a, b) => `${a.day} ${a.shift} ${displayActivity(a)}`.localeCompare(`${b.day} ${b.shift} ${displayActivity(b)}`, 'it'));
     detailTitle.textContent = person ? `${person.display_name} · ${person.person_code || 'senza codice'}` : 'Attività della persona';
     detailContent.innerHTML = rows.length
-      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Attività</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${responseBadge(row.currentResponse)}</td></tr>`).join('')}</tbody></table>`
+      ? `<table class="detail-table"><thead><tr><th>Turno</th><th>Attività</th><th>Risposta</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</td><td>${escapeHtml(displayActivity(row))}</td><td>${responseBadge(effectiveAssignmentResponse(row))}</td></tr>`).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna attività assegnata.</p>';
     detailDialog.showModal();
   }
@@ -5518,7 +5523,7 @@
                   ${requirementOptions(assignmentRequirementId(row))}
                 </select>
               </td>
-              <td>${responseBadge(row.currentResponse)}</td>
+              <td>${responseBadge(effectiveAssignmentResponse(row))}</td>
               <td><input class="person-assignment-note-input" type="text" maxlength="1000" data-person-assignment-note value="${escapeHtml(row.note || '')}" placeholder="Nota facoltativa"></td>
               <td class="person-activity-warning" data-person-row-warning>${personActivityWarningHtml(row)}</td>
               <td><button class="table-link" type="button" data-person-move-assignment="${escapeHtml(row.id)}">Salva</button></td>
@@ -5847,7 +5852,7 @@
           const assignments = sortedAssignments(person);
           const assignmentsHtml = assignments.length
             ? `<div class="availability-report-list">${assignments.map((item) =>
-                `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(displayActivity(item))}</strong><small>${responseBadge(item.currentResponse)}${item.currentNote ? ` · ${escapeHtml(item.currentNote)}` : ''}</small></div>`
+                `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(displayActivity(item))}</strong><small>${responseBadge(effectiveAssignmentResponse(item))}${item.currentNote ? ` · ${escapeHtml(item.currentNote)}` : ''}</small></div>`
               ).join('')}</div>`
             : '—';
 
