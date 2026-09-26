@@ -1328,6 +1328,14 @@ export default async (request) => {
           if (!activity) throw new ApiError('Indica l’attività.', 400, 'ACTIVITY_REQUIRED');
         }
 
+        let confirmedAvailabilitySource = null;
+        if (!assignmentId && shiftId) {
+          const currentSnapshot = await adminSnapshot();
+          confirmedAvailabilitySource = (currentSnapshot.releasedConfirmedAvailability || []).find((item) =>
+            item.personId === personId && item.shiftId === shiftId
+          ) || null;
+        }
+
         const result = await rpc('admin_save_volunteer_assignment', {
           p_actor_name: actorName,
           p_assignment_id: assignmentId,
@@ -1366,7 +1374,7 @@ export default async (request) => {
           }
         }
 
-        if (body.fromConfirmedAvailability === true && isUuid(result?.id)) {
+        if (confirmedAvailabilitySource && isUuid(result?.id)) {
           try {
             const person = await activePerson(personId);
             await auditAdminChange({
@@ -1380,8 +1388,8 @@ export default async (request) => {
                 shiftId,
                 activity,
                 source: 'released_confirmation',
-                sourceAssignmentId: isUuid(clean(body.sourceConfirmedAssignmentId, 60))
-                  ? clean(body.sourceConfirmedAssignmentId, 60)
+                sourceAssignmentId: isUuid(confirmedAvailabilitySource.sourceAssignmentId)
+                  ? confirmedAvailabilitySource.sourceAssignmentId
                   : null
               },
               note: 'Assegnata mantenendo la conferma già espressa per il turno dopo la rimozione di una precedente attività.'

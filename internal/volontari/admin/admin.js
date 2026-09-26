@@ -1498,7 +1498,7 @@
     const selectedRequirement = requirementById(selectedRequirementId);
     const responseHtml = isAvailability
       ? (row.isReleasedConfirmed
-        ? `${responseBadge('confirmed')}<small>Disponibile dopo rimozione${row.currentResponseAt ? ` · ${escapeHtml(formatDateTime(row.currentResponseAt))}` : ''}</small>`
+        ? `${responseBadge('confirmed')}<small>Disponibile: aveva già confermato un’assegnazione in questo turno${row.currentResponseAt ? ` · ${escapeHtml(formatDateTime(row.currentResponseAt))}` : ''}</small>`
         : '<span class="status-badge is-availability">Disponibilità</span>')
       : (isNew ? '—' : `${responseBadge(effectiveAssignmentResponse(row))}${row.currentActorName ? `<small>da ${escapeHtml(row.currentActorName)} · ${escapeHtml(formatDateTime(row.currentResponseAt))}</small>` : ''}${row.currentNote ? `<small>Nota: ${escapeHtml(row.currentNote)}</small>` : ''}`);
     const warnings = row ? assignmentWarningDetails(row) : [];
@@ -1516,7 +1516,7 @@
     const requirementSelect = `<select class="inline-select inline-select--requirement" data-inline-requirement data-options-loaded="${(!isNew && !isAvailability) ? 'false' : 'true'}">${requirementOptionsHtml}</select>`;
 
     const shiftCell = isAvailability
-      ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">${row.isReleasedConfirmed ? 'Confermata · assegnazione rimossa' : 'Disponibilità indicata dal volontario'}</small>`
+      ? `<button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId)}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button><small class="availability-source-label">${row.isReleasedConfirmed ? 'Conferma precedente · ora disponibile' : 'Disponibilità indicata dal volontario'}</small>`
       : (isNew
         ? '<span class="muted-text">Seleziona la coppia →</span>'
         : `<div class="inline-display-row" data-requirement-display><button class="inline-shift-link" type="button" data-show-shift-activities="${escapeHtml(row.shiftId || '')}">${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</button></div>`);
@@ -1610,7 +1610,7 @@
   function boardResponseMeta(row) {
     const value = boardEffectiveResponse(row);
     if (value === 'availability') return { className: 'is-availability', label: 'Disponibile', mark: '+' };
-    if (value === 'confirmed') return { className: 'is-confirmed', label: row.isReleasedConfirmed ? 'Confermata · disponibile' : (row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata'), mark: '✓' };
+    if (value === 'confirmed') return { className: 'is-confirmed', label: row.isReleasedConfirmed ? 'Confermata in precedenza · disponibile' : (row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata'), mark: '✓' };
     if (value === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
@@ -1709,6 +1709,8 @@
             ${escapeHtml(row.personName)}
           </button>
           ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId) : ''}
+          ${row.isReleasedConfirmed ? '<span class="assignment-board__availability-origin" title="Disponibile perché aveva già confermato un’assegnazione precedente nello stesso turno">Conf. prec.</span>' : ''}
+          ${row.retainedConfirmation ? '<span class="assignment-board__availability-origin" title="Conferma mantenuta da una precedente assegnazione nello stesso turno">Conf. prec.</span>' : ''}
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
           ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
           ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="${row.isAvailability ? 'Nota disponibilità' : 'Nota assegnazione'}: ${escapeHtml(row.note)}">N</span>` : ''}
@@ -3021,7 +3023,7 @@
                 <span>
                   <strong>${escapeHtml(row.personName)}</strong>
                   ${row.personGroup ? `<small>${escapeHtml(row.personGroup)}</small>` : ''}
-                  ${row.isReleasedConfirmed ? '<small><strong>✓ Confermata · ora disponibile</strong></small>' : '<small>Disponibilità aggiuntiva</small>'}
+                  ${row.isReleasedConfirmed ? '<small><strong>✓ Aveva già confermato questo turno</strong></small>' : '<small>Disponibilità aggiuntiva</small>'}
                   ${row.note ? `<small>Nota: ${escapeHtml(row.note)}</small>` : ''}
                 </span>
               </label>`).join('')}
