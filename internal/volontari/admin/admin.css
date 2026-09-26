@@ -5192,10 +5192,11 @@ tr.is-busy button.is-busy {
   min-width: 0;
 }
 .assignment-board__copy-order-source {
-  width: 112px;
+  width: 104px;
   min-width: 0;
+  min-height: 25px;
   height: 25px;
-  padding: 2px 20px 2px 5px;
+  padding: 2px 18px 2px 5px;
   border: 1px solid #b9cdd2;
   border-radius: 7px;
   background: #fff;
@@ -5221,7 +5222,9 @@ tr.is-busy button.is-busy {
     font-size: .61rem;
   }
   .assignment-board__copy-order-source {
-    width: 104px;
+    width: 96px;
+    min-height: 25px;
+    height: 25px;
     font-size: .6rem;
   }
 }
