@@ -177,6 +177,35 @@
     );
   }
 
+  function groupItemsByTurn(items = []) {
+    const groups = new Map();
+    items.forEach((item) => {
+      const key = item.shiftId || `${item.day || ''}|${item.shift || ''}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          day: item.day || '',
+          shift: item.shift || '',
+          sortOrder: Number(item.sortOrder ?? 9999),
+          assignments: []
+        });
+      }
+      groups.get(key).assignments.push(item);
+    });
+    return [...groups.values()].sort((a, b) =>
+      a.sortOrder - b.sortOrder
+      || `${a.day} ${a.shift}`.localeCompare(`${b.day} ${b.shift}`, 'it')
+    );
+  }
+
+  function requestGroups() {
+    return groupItemsByTurn(newRequests());
+  }
+
+  function requestGroupByKey(key) {
+    return requestGroups().find((group) => group.key === key) || null;
+  }
+
   function confirmedAssignments() {
     return sortShiftsChronologically(
       (state.personState?.assignments || []).filter((assignment) =>
@@ -277,17 +306,19 @@
   }
 
   function answeredRequestCount() {
-    return newRequests().filter((assignment) => Boolean(state.responses.get(assignment.id)?.response)).length;
+    return requestGroups().filter((group) =>
+      group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
+    ).length;
   }
 
   function renderPersonIntro() {
-    const requests = newRequests();
+    const requests = requestGroups();
     const availability = originalUnusedAvailability();
     const name = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
 
     let message = '';
     if (requests.length) {
-      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo a quelle indicate qui sotto; le attività già confermate non richiedono alcuna azione.`;
+      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo ai turni indicati qui sotto; i turni già confermati non richiedono alcuna azione.`;
     } else if (availability.length) {
       message = 'Non hai nuove attività da confermare. Controlla soltanto che le disponibilità aggiuntive già comunicate siano ancora valide.';
     } else {
@@ -301,10 +332,10 @@
   }
 
   function renderAssignments() {
-    const assignments = newRequests();
-    requestSection.hidden = assignments.length === 0;
+    const groups = requestGroups();
+    requestSection.hidden = groups.length === 0;
 
-    if (!assignments.length) {
+    if (!groups.length) {
       assignmentList.innerHTML = '';
       if (requestProgress) requestProgress.textContent = '';
       setStatus(assignmentStatus, '');
@@ -312,37 +343,35 @@
     }
 
     const answered = answeredRequestCount();
-    requestProgress.textContent = `${answered} di ${assignments.length} completat${assignments.length === 1 ? 'a' : 'e'}`;
+    requestProgress.textContent = `${answered} di ${groups.length} completat${groups.length === 1 ? 'a' : 'e'}`;
 
-    assignmentList.innerHTML = assignments.map((assignment) => {
-      const saved = state.responses.get(assignment.id) || {};
+    assignmentList.innerHTML = groups.map((group) => {
+      const first = group.assignments[0];
+      const saved = first ? (state.responses.get(first.id) || {}) : {};
       return `
-        <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-assignment-id="${escapeHtml(assignment.id)}">
+        <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-request-key="${escapeHtml(group.key)}">
           <div class="assignment-card__head">
             <div>
-              <h3>${escapeHtml(displayActivityName(assignment.activity))}</h3>
+              <h3>${escapeHtml(group.day)}</h3>
               <div class="meta">
-                <span class="pill">${escapeHtml(assignment.day)}</span>
-                <span class="pill">${escapeHtml(assignment.shift)}</span>
-                ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
+                <span class="pill">${escapeHtml(group.shift)}</span>
               </div>
             </div>
           </div>
-          ${assignment.note ? `<p class="request-card__assignment-note">${escapeHtml(assignment.note)}</p>` : ''}
           <div class="response-options response-options--simple">
             <label class="response-choice response-choice--yes">
-              <input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}>
+              <input type="radio" name="response-${escapeHtml(group.key)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}>
               <span><strong>Confermo</strong></span>
             </label>
             <label class="response-choice response-choice--no">
-              <input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${saved.response === 'declined' ? 'checked' : ''}>
+              <input type="radio" name="response-${escapeHtml(group.key)}" value="declined" ${saved.response === 'declined' ? 'checked' : ''}>
               <span><strong>Non posso</strong></span>
             </label>
           </div>
           <details class="request-note">
             <summary>Aggiungi una nota <span>facoltativa</span></summary>
             <label class="field assignment-note">
-              <textarea maxlength="1000" data-assignment-note placeholder="Scrivi qui solo se vuoi aggiungere un’informazione utile">${escapeHtml(saved.note || '')}</textarea>
+              <textarea maxlength="1000" data-request-note placeholder="Scrivi qui solo se vuoi aggiungere un’informazione utile">${escapeHtml(saved.note || '')}</textarea>
             </label>
           </details>
         </article>
@@ -388,13 +417,11 @@
       || initialIds.some((id, index) => id !== currentIds[index]);
   }
 
-  function summaryAssignmentList(items, emptyText) {
-    if (!items.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
-    return `<ul class="summary-list">${items.map((item) => `
-      <li>
-        <strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
-        — ${escapeHtml(displayActivityName(item.activity))}
-      </li>
+  function summaryTurnList(items, emptyText) {
+    const groups = groupItemsByTurn(items);
+    if (!groups.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
+    return `<ul class="summary-list">${groups.map((group) => `
+      <li><strong>${escapeHtml(group.day)} · ${escapeHtml(group.shift)}</strong></li>
     `).join('')}</ul>`;
   }
 
@@ -405,33 +432,32 @@
     const newlyDeclined = requests.filter((assignment) => state.responses.get(assignment.id)?.response === 'declined');
     const activeAvailability = originalUnusedAvailability().filter((shift) => state.availability.has(shift.id));
 
-    const confirmedAll = [...alreadyConfirmed, ...newlyConfirmed];
-    const uniqueConfirmed = [...new Map(confirmedAll.map((item) => [item.id, item])).values()];
-
     summary.innerHTML = `
       <section class="summary-section">
-        <h3>Attività confermate</h3>
-        <p class="summary-help">Sono già definite: non devi fare altro.</p>
-        ${summaryAssignmentList(uniqueConfirmed, 'Nessuna attività confermata.')}
+        <h3>Turni confermati</h3>
+        <p class="summary-help">Sono già definiti: non devi fare altro.</p>
+        ${summaryTurnList([...alreadyConfirmed, ...newlyConfirmed], 'Nessun turno confermato.')}
       </section>
       <section class="summary-section">
         <h3>Disponibilità aggiuntive attive</h3>
         ${activeAvailability.length
-          ? `<ul class="summary-list">${activeAvailability.map((shift) => `<li><strong>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</strong></li>`).join('')}</ul>`
+          ? `<ul class="summary-list">${groupItemsByTurn(activeAvailability).map((group) => `<li><strong>${escapeHtml(group.day)} · ${escapeHtml(group.shift)}</strong></li>`).join('')}</ul>`
           : '<p class="summary-empty">Nessuna disponibilità aggiuntiva attiva.</p>'}
       </section>
       ${newlyDeclined.length ? `
         <section class="summary-section summary-section--declined">
           <h3>Hai indicato che non sei disponibile</h3>
-          ${summaryAssignmentList(newlyDeclined, 'Nessuna.')}
+          ${summaryTurnList(newlyDeclined, 'Nessuna.')}
         </section>
       ` : ''}
     `;
   }
 
   function validateRequests({ focus = false } = {}) {
-    const requests = newRequests();
-    const missing = requests.filter((assignment) => !state.responses.get(assignment.id)?.response);
+    const groups = requestGroups();
+    const missing = groups.filter((group) =>
+      !group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
+    );
 
     assignmentList?.querySelectorAll('.assignment-card.is-incomplete').forEach((card) => {
       card.classList.remove('is-incomplete');
@@ -447,8 +473,8 @@
       `Manca ${missing.length === 1 ? 'una risposta' : `${missing.length} risposte`}.`,
       'error'
     );
-    missing.forEach((assignment) => {
-      assignmentList?.querySelector(`[data-assignment-id="${CSS.escape(assignment.id)}"]`)?.classList.add('is-incomplete');
+    missing.forEach((group) => {
+      assignmentList?.querySelector(`[data-request-key="${CSS.escape(group.key)}"]`)?.classList.add('is-incomplete');
     });
     if (focus) {
       assignmentList?.querySelector('.assignment-card.is-incomplete')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -457,18 +483,20 @@
   }
 
   function updateSubmitState() {
-    const requests = newRequests();
-    const hasRequests = requests.length > 0;
+    const groups = requestGroups();
+    const hasRequests = groups.length > 0;
     const changedAvailability = availabilityHasChanges();
     const hasSomethingToSend = hasRequests || changedAvailability;
-    const complete = requests.every((assignment) => Boolean(state.responses.get(assignment.id)?.response));
+    const complete = groups.every((group) =>
+      group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
+    );
 
     submitButton.hidden = !hasSomethingToSend;
     noSubmit.hidden = hasSomethingToSend;
     submitButton.disabled = hasRequests && !complete;
 
     if (hasRequests) {
-      submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${requests.length})`;
+      submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${groups.length})`;
     } else if (changedAvailability) {
       submitButton.textContent = 'Salva modifica disponibilità';
     }
@@ -616,23 +644,29 @@
 
   assignmentList?.addEventListener('change', (event) => {
     if (!event.target.matches('input[type="radio"][name^="response-"]')) return;
-    const card = event.target.closest('[data-assignment-id]');
+    const card = event.target.closest('[data-request-key]');
     if (!card) return;
-    const assignmentId = card.dataset.assignmentId;
-    const current = state.responses.get(assignmentId) || {};
-    state.responses.set(assignmentId, { ...current, response: event.target.value });
+    const group = requestGroupByKey(card.dataset.requestKey);
+    if (!group) return;
+    group.assignments.forEach((assignment) => {
+      const current = state.responses.get(assignment.id) || {};
+      state.responses.set(assignment.id, { ...current, response: event.target.value });
+    });
     renderAssignments();
     renderSummary();
     updateSubmitState();
   });
 
   assignmentList?.addEventListener('input', (event) => {
-    if (!event.target.matches('[data-assignment-note]')) return;
-    const card = event.target.closest('[data-assignment-id]');
+    if (!event.target.matches('[data-request-note]')) return;
+    const card = event.target.closest('[data-request-key]');
     if (!card) return;
-    const assignmentId = card.dataset.assignmentId;
-    const current = state.responses.get(assignmentId) || {};
-    state.responses.set(assignmentId, { ...current, note: event.target.value });
+    const group = requestGroupByKey(card.dataset.requestKey);
+    if (!group) return;
+    group.assignments.forEach((assignment) => {
+      const current = state.responses.get(assignment.id) || {};
+      state.responses.set(assignment.id, { ...current, note: event.target.value });
+    });
   });
 
   availabilityList?.addEventListener('click', (event) => {
