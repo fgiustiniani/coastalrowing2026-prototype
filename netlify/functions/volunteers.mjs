@@ -19,6 +19,62 @@ import { sendVolunteerSummaryWhatsApp } from './_lib/volunteer-whatsapp.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
+function localDateKey(value) {
+  if (!value) return '';
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Rome',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date(value));
+    const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return map.year && map.month && map.day ? `${map.year}-${map.month}-${map.day}` : '';
+  } catch {
+    return '';
+  }
+}
+
+function localTimeMinutes(value) {
+  if (!value) return null;
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Rome',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(new Date(value));
+    const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const hour = Number(map.hour);
+    const minute = Number(map.minute);
+    return Number.isFinite(hour) && Number.isFinite(minute) ? (hour * 60) + minute : null;
+  } catch {
+    return null;
+  }
+}
+
+function raceTimeMinutes(value) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return (hour * 60) + minute;
+}
+
+function raceConflictsWithShiftRule(race, shift) {
+  if (!race?.race_date || !race?.race_time || !shift?.starts_at || !shift?.ends_at) return false;
+  if (String(race.race_date) !== localDateKey(shift.starts_at)) return false;
+
+  const raceMinutes = raceTimeMinutes(race.race_time);
+  const shiftStartMinutes = localTimeMinutes(shift.starts_at);
+  const shiftEndMinutes = localTimeMinutes(shift.ends_at);
+  if (![raceMinutes, shiftStartMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
+
+  if (raceMinutes <= 14 * 60) return shiftStartMinutes <= raceMinutes;
+  return shiftEndMinutes > 10 * 60;
+}
+
 async function readRequirementConfig() {
   try {
     const data = await supabaseRequest('volunteer_activity_requirements', {
@@ -139,7 +195,7 @@ async function personState(personId) {
   const person = rows(people)[0];
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
-  const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit] = await Promise.all([
+  const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit, raceProgram] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,supersedes_assignment_id,created_at,active', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
@@ -155,6 +211,14 @@ async function personState(personId) {
         order: 'created_at.desc',
         limit: 300
       }
+    }),
+    supabaseRequest('volunteer_race_program', {
+      query: {
+        select: 'id,race_date,race_time,crew_label',
+        person_id: `eq.${personId}`,
+        active: 'eq.true',
+        order: 'race_date.asc,race_time.asc'
+      }
     })
   ]);
 
@@ -166,6 +230,7 @@ async function personState(personId) {
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const requirementRows = rows(requirements?.data);
   const openRequestAuditRows = rows(openRequestAudit);
+  const raceRows = rows(raceProgram);
   const responseOpenByRequirement = new Map(
     requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
   );
@@ -499,7 +564,8 @@ async function personState(personId) {
       assigned: assignedShiftIds.has(shift.id),
       selected: availabilityByShift.has(shift.id),
       note: availabilityByShift.get(shift.id)?.note || '',
-      requestActivities: [...(confirmedOpenRequestActivitiesByShift.get(shift.id) || [])]
+      requestActivities: [...(confirmedOpenRequestActivitiesByShift.get(shift.id) || [])],
+      raceConflict: raceRows.some((race) => raceConflictsWithShiftRule(race, shift))
     }));
 
   return {
