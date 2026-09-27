@@ -668,10 +668,33 @@ export default async (request) => {
           if (!campaignRows.length) throw new ApiError('La campagna di questo link non è più attiva.', 410, 'CAMPAIGN_INACTIVE');
         }
 
-        return json({ ok: true, ...issueVolunteerSession(access.campaignId || '') });
+        return json({ ok: true, ...issueVolunteerSession(access.campaignId || '', access.mode || 'survey') });
       }
 
       const session = requireVolunteerSession(request);
+
+      if (action === 'email-assignment-summary') {
+        if (session.mode !== 'summary') {
+          throw new ApiError('Questo link non è abilitato al riepilogo in sola lettura.', 403, 'SUMMARY_LINK_REQUIRED');
+        }
+
+        const email = clean(body.email, 254);
+        const personId = clean(body.personId, 60);
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
+        }
+
+        const state = await personState(personId);
+        await sendVolunteerSummaryEmail({
+          email,
+          personState: state,
+          requestUrl: request.url,
+          assignmentsOnly: true
+        });
+
+        return json({ ok: true, sent: true });
+      }
 
       if (action === 'email-summary') {
         const email = clean(body.email, 254);
@@ -789,6 +812,9 @@ export default async (request) => {
       }
 
       if (action !== 'submit') throw new ApiError('Operazione non valida.', 400, 'INVALID_ACTION');
+      if (session.mode === 'summary') {
+        throw new ApiError('Il link riepilogo è in sola lettura.', 403, 'READ_ONLY_LINK');
+      }
       if (clean(body.website, 200)) return json({ ok: true });
 
       const actorName = clean(body.actorName, 120) || 'Non indicato';
