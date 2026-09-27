@@ -117,12 +117,13 @@ async function personState(personId) {
   const person = rows(people)[0];
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
-  const [assignments, assignmentHistory, activities, shifts, submissions] = await Promise.all([
+  const [assignments, assignmentHistory, activities, shifts, submissions, requirements] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,raw_day,raw_shift,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
-    supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } })
+    supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } }),
+    supabaseRequest('volunteer_activity_requirements', { query: { select: 'shift_id,activity_id,response_open,active', active: 'eq.true' } })
   ]);
 
   const assignmentRows = rows(assignments);
@@ -131,6 +132,9 @@ async function personState(personId) {
   const submissionRows = rows(submissions);
   const activityById = new Map(rows(activities).map((row) => [row.id, row]));
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
+  const responseOpenByRequirement = new Map(
+    rows(requirements).map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
+  );
   const submissionTime = new Map(submissionRows.map((row) => [row.id, row.created_at]));
   const assignmentIds = assignmentHistoryRows.map((row) => row.id);
   const submissionIds = submissionRows.map((row) => row.id);
@@ -276,6 +280,10 @@ async function personState(personId) {
       requestedProfile: assignment.requested_profile || '',
       note: assignment.note || '',
       assignedFromAvailability: assignmentComesFromAvailability(assignment),
+      responseOpen: Boolean(
+        assignment.shift_id
+        && responseOpenByRequirement.get(`${assignment.shift_id}|${assignment.activity_id}`)
+      ),
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
       currentResponseAt: current ? (submissionTime.get(current.submission_id) || current.created_at) : null
@@ -457,16 +465,57 @@ export default async (request) => {
         if (resolved.created) createdManualPerson = resolved.person;
       }
 
+      const currentState = await personState(resolvedPersonId);
+      const requestableAssignments = (currentState.assignments || []).filter((assignment) =>
+        assignment.responseOpen
+        && !assignment.currentResponse
+        && !assignment.assignedFromAvailability
+      );
+      const requestableIds = new Set(requestableAssignments.map((assignment) => assignment.id));
+      const normalizedResponses = responses.map((item) => ({
+        assignmentId: clean(item?.assignmentId, 60),
+        response: clean(item?.response, 20),
+        note: clean(item?.note, 1000)
+      }));
+      const responseIds = normalizedResponses.map((item) => item.assignmentId);
+      if (
+        normalizedResponses.length !== requestableIds.size
+        || new Set(responseIds).size !== responseIds.length
+        || normalizedResponses.some((item) =>
+          !requestableIds.has(item.assignmentId)
+          || !['confirmed', 'declined'].includes(item.response)
+        )
+      ) {
+        throw new ApiError('Completa tutte le nuove richieste prima dell’invio.', 400, 'VOLUNTEER_RESPONSES_INCOMPLETE');
+      }
+
+      const removableAvailabilityIds = new Set(
+        (currentState.availabilityShifts || [])
+          .filter((shift) => shift.selected && !shift.assigned)
+          .map((shift) => shift.id)
+      );
+      const normalizedAvailability = availability.map((item) => ({
+        shiftId: clean(item?.shiftId, 60),
+        note: clean(item?.note, 1000)
+      }));
+      const availabilityIds = normalizedAvailability.map((item) => item.shiftId);
+      if (
+        new Set(availabilityIds).size !== availabilityIds.length
+        || normalizedAvailability.some((item) => !removableAvailabilityIds.has(item.shiftId))
+      ) {
+        throw new ApiError('Le disponibilità possono solo essere mantenute o rimosse.', 400, 'INVALID_AVAILABILITY');
+      }
+
       let result;
       try {
-        result = await rpc('submit_volunteer_submission', {
+        result = await rpc('submit_volunteer_targeted_submission', {
           p_actor_name: actorName,
           p_person_id: resolvedPersonId,
           p_manual_person_name: null,
           p_client_submission_id: clientSubmissionId,
           p_session_id: clean(session.jti, 100),
-          p_responses: responses.map((item) => ({ assignmentId: clean(item?.assignmentId, 60), response: clean(item?.response, 20), note: clean(item?.note, 1000) })),
-          p_availability: availability.map((item) => ({ shiftId: clean(item?.shiftId, 60), note: clean(item?.note, 1000) }))
+          p_responses: normalizedResponses,
+          p_availability: normalizedAvailability
         });
       } catch (error) {
         if (createdManualPerson?.id) {
