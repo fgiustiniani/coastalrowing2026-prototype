@@ -39,6 +39,16 @@
         </div>
       </div>
 
+      <section class="campaign-monitor" data-campaign-monitor>
+        <label class="field compact-field campaign-monitor__field">
+          <span>Campagna risposte</span>
+          <select data-response-campaign-filter>
+            <option value="">Seleziona una campagna</option>
+          </select>
+        </label>
+        <p class="campaign-monitor__help">Il numero delle persone che hanno risposto viene calcolato solo sulla campagna selezionata.</p>
+      </section>
+
       <section class="kpi-grid" data-kpis></section>
 
       <section class="card admin-section">
@@ -232,6 +242,32 @@
           <div class="table-wrap" data-race-program></div>
         </div>
       </section>
+
+      <dialog class="audit-dialog campaign-dialog" data-campaign-dialog>
+        <form class="audit-dialog__content" data-campaign-form>
+          <div class="section-head">
+            <div><p class="eyebrow">Link volontari</p><h2>Campagna di invio</h2></div>
+            <button class="audit-close" type="button" data-campaign-close aria-label="Chiudi">×</button>
+          </div>
+          <p class="intro">Ogni link è associato a una campagna. Le risposte verranno conteggiate separatamente dalle campagne precedenti.</p>
+          <label class="field">
+            <span>Campagna</span>
+            <select data-campaign-link-select>
+              <option value="">Seleziona una campagna</option>
+              <option value="__new__">+ Nuova campagna</option>
+            </select>
+          </label>
+          <label class="field" data-campaign-new-field hidden>
+            <span>Nome nuova campagna</span>
+            <input type="text" maxlength="120" data-campaign-new-name placeholder="Es. Seconda campagna disponibilità">
+          </label>
+          <p class="status" data-campaign-status aria-live="polite"></p>
+          <div class="actions actions--end">
+            <button class="button button--secondary" type="button" data-campaign-close>Chiudi</button>
+            <button class="button button--primary" type="submit" data-campaign-generate>Genera e copia link</button>
+          </div>
+        </form>
+      </dialog>
 
       <dialog class="audit-dialog" data-detail-dialog>
         <div class="audit-dialog__content">
