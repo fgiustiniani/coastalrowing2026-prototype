@@ -199,7 +199,27 @@
   }
 
   function requestGroups() {
-    return groupItemsByTurn(newRequests());
+    const groups = new Map();
+    newRequests().forEach((assignment) => {
+      const label = String(assignment.responseLabel || '').trim() || 'Disponibilità';
+      const shiftKey = assignment.shiftId || `${assignment.day || ''}|${assignment.shift || ''}`;
+      const key = `${shiftKey}|${label.toLocaleLowerCase('it-IT')}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          label,
+          day: assignment.day || '',
+          shift: assignment.shift || '',
+          sortOrder: Number(assignment.sortOrder ?? 9999),
+          assignments: []
+        });
+      }
+      groups.get(key).assignments.push(assignment);
+    });
+    return [...groups.values()].sort((a, b) =>
+      a.sortOrder - b.sortOrder
+      || `${a.day} ${a.shift} ${a.label}`.localeCompare(`${b.day} ${b.shift} ${b.label}`, 'it')
+    );
   }
 
   function requestGroupByKey(key) {
@@ -352,8 +372,9 @@
         <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-request-key="${escapeHtml(group.key)}">
           <div class="assignment-card__head">
             <div>
-              <h3>${escapeHtml(group.day)}</h3>
+              <h3>${escapeHtml(group.label)}</h3>
               <div class="meta">
+                <span class="pill">${escapeHtml(group.day)}</span>
                 <span class="pill">${escapeHtml(group.shift)}</span>
               </div>
             </div>
