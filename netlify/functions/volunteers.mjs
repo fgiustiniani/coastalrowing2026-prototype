@@ -379,6 +379,7 @@ async function personState(personId) {
       latestOpenRequestResponseByKey.set(key, {
         shiftId,
         responseLabel,
+        submissionId: audit.submission_id || null,
         activities: Array.isArray(value.activities)
           ? value.activities.map((item) => clean(item, 240)).filter(Boolean)
           : [],
@@ -407,7 +408,27 @@ async function personState(personId) {
         activity: item.activities.length ? item.activities.join(' · ') : item.responseLabel,
         response: item.response,
         note: item.note || '',
-        responseAt: item.createdAt || null
+        responseAt: item.createdAt || null,
+        submissionId: item.submissionId || null
+      };
+    });
+
+  const openRequestResponses = [...latestOpenRequestResponseByKey.values()]
+    .map((item) => {
+      const shift = shiftById.get(item.shiftId) || null;
+      return {
+        shiftId: item.shiftId,
+        day: shift?.day_label || '',
+        shift: shift?.shift_label || '',
+        startsAt: shift?.starts_at || null,
+        endsAt: shift?.ends_at || null,
+        sortOrder: Number(shift?.sort_order ?? 9999),
+        responseLabel: item.responseLabel,
+        activities: item.activities,
+        response: item.response,
+        note: item.note || '',
+        responseAt: item.createdAt || null,
+        submissionId: item.submissionId || null
       };
     });
 
@@ -486,6 +507,7 @@ async function personState(personId) {
     assignments: hydratedAssignments,
     historicalResponses,
     historicalOpenRequestResponses,
+    openRequestResponses,
     openRequests,
     availabilityShifts,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
@@ -538,7 +560,12 @@ export default async (request) => {
         }
 
         const state = await personState(submission.person_id);
-        await sendVolunteerSummaryEmail({ email, personState: state, requestUrl: request.url });
+        await sendVolunteerSummaryEmail({
+          email,
+          personState: state,
+          requestUrl: request.url,
+          currentSubmissionId: submission.id
+        });
 
         try {
           await supabaseRequest('volunteer_audit_log', {
