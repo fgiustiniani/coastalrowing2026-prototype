@@ -9,10 +9,10 @@ import {
   issueVolunteerSession,
   json,
   parseJsonBody,
+  readVolunteerAccessToken,
   requireVolunteerSession,
   rpc,
-  supabaseRequest,
-  verifySharedAccessToken
+  supabaseRequest
 } from './_lib/volunteers-common.mjs';
 import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
 import { sendVolunteerSummaryWhatsApp } from './_lib/volunteer-whatsapp.mjs';
@@ -524,8 +524,22 @@ export default async (request) => {
 
       if (action === 'session') {
         if (clean(body.website, 200)) return json({ ok: true });
-        if (!verifySharedAccessToken(body.accessToken)) throw new ApiError('Link di accesso non valido.', 401, 'INVALID_ACCESS');
-        return json({ ok: true, ...issueVolunteerSession() });
+        const access = readVolunteerAccessToken(body.accessToken);
+        if (!access?.valid) throw new ApiError('Link di accesso non valido.', 401, 'INVALID_ACCESS');
+
+        if (access.campaignId) {
+          const campaignRows = rows(await supabaseRequest('volunteer_response_campaigns', {
+            query: {
+              select: 'id',
+              id: `eq.${access.campaignId}`,
+              active: 'eq.true',
+              limit: 1
+            }
+          }));
+          if (!campaignRows.length) throw new ApiError('La campagna di questo link non è più attiva.', 410, 'CAMPAIGN_INACTIVE');
+        }
+
+        return json({ ok: true, ...issueVolunteerSession(access.campaignId || '') });
       }
 
       const session = requireVolunteerSession(request);
@@ -732,6 +746,21 @@ export default async (request) => {
           throw new ApiError('Le disponibilità possono solo essere mantenute, rimosse o confermate da una richiesta aperta.', 400, 'INVALID_AVAILABILITY');
         }
 
+        const campaignId = isUuid(session?.campaignId) ? session.campaignId : null;
+        if (campaignId) {
+          const campaignRows = rows(await supabaseRequest('volunteer_response_campaigns', {
+            query: {
+              select: 'id',
+              id: `eq.${campaignId}`,
+              active: 'eq.true',
+              limit: 1
+            }
+          }));
+          if (!campaignRows.length) {
+            throw new ApiError('La campagna di questo link non è più attiva.', 410, 'CAMPAIGN_INACTIVE');
+          }
+        }
+
         result = await rpc('submit_volunteer_targeted_submission', {
           p_actor_name: actorName,
           p_person_id: resolvedPersonId,
@@ -741,6 +770,15 @@ export default async (request) => {
           p_responses: [],
           p_availability: normalizedAvailability
         });
+
+        if (campaignId && result?.id) {
+          await supabaseRequest('volunteer_submissions', {
+            method: 'PATCH',
+            query: { id: `eq.${result.id}` },
+            body: { campaign_id: campaignId },
+            prefer: 'return=minimal'
+          });
+        }
 
         const existingOpenRequestAudit = result?.id
           ? rows(await supabaseRequest('volunteer_audit_log', {
