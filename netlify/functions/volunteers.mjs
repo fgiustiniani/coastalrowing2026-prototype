@@ -553,7 +553,7 @@ export default async (request) => {
       const manualSurname = clean(body.manualSurname, 80) || null;
       const manualGivenName = clean(body.manualGivenName, 80) || null;
       const clientSubmissionId = clean(body.clientSubmissionId, 60);
-      const responses = Array.isArray(body.responses) ? body.responses.slice(0, 200) : [];
+      const openRequestResponses = Array.isArray(body.openRequestResponses) ? body.openRequestResponses.slice(0, 100) : [];
       const availability = Array.isArray(body.availability) ? body.availability.slice(0, 50) : [];
 
       if (actorName.length < 2) throw new ApiError('Inserisci nome e cognome di chi sta compilando.', 400, 'ACTOR_REQUIRED');
@@ -572,23 +572,28 @@ export default async (request) => {
       let result;
       try {
         const currentState = await personState(resolvedPersonId);
-        const requestableAssignments = (currentState.assignments || []).filter((assignment) =>
-          assignment.responseOpen
-          && !assignment.currentResponse
-          && !assignment.assignedFromAvailability
+        const requestableGroups = currentState.openRequests || [];
+        const requestableByKey = new Map(
+          requestableGroups.map((item) => [
+            `${item.shiftId}|${String(item.responseLabel || '').toLocaleLowerCase('it-IT')}`,
+            item
+          ])
         );
-        const requestableIds = new Set(requestableAssignments.map((assignment) => assignment.id));
-        const normalizedResponses = responses.map((item) => ({
-          assignmentId: clean(item?.assignmentId, 60),
+
+        const normalizedOpenRequestResponses = openRequestResponses.map((item) => ({
+          shiftId: clean(item?.shiftId, 60),
+          responseLabel: clean(item?.responseLabel, 160),
           response: clean(item?.response, 20),
           note: clean(item?.note, 1000)
         }));
-        const responseIds = normalizedResponses.map((item) => item.assignmentId);
+        const openRequestKeys = normalizedOpenRequestResponses.map((item) =>
+          `${item.shiftId}|${item.responseLabel.toLocaleLowerCase('it-IT')}`
+        );
         if (
-          normalizedResponses.length !== requestableIds.size
-          || new Set(responseIds).size !== responseIds.length
-          || normalizedResponses.some((item) =>
-            !requestableIds.has(item.assignmentId)
+          normalizedOpenRequestResponses.length !== requestableGroups.length
+          || new Set(openRequestKeys).size !== openRequestKeys.length
+          || normalizedOpenRequestResponses.some((item) =>
+            !requestableByKey.has(`${item.shiftId}|${item.responseLabel.toLocaleLowerCase('it-IT')}`)
             || !['confirmed', 'declined'].includes(item.response)
           )
         ) {
@@ -600,16 +605,31 @@ export default async (request) => {
             .filter((shift) => shift.selected && !shift.assigned)
             .map((shift) => shift.id)
         );
-        const normalizedAvailability = availability.map((item) => ({
-          shiftId: clean(item?.shiftId, 60),
-          note: clean(item?.note, 1000)
-        }));
+        const confirmedRequestShiftIds = new Set(
+          normalizedOpenRequestResponses
+            .filter((item) => item.response === 'confirmed')
+            .map((item) => item.shiftId)
+        );
+        const allowedAvailabilityIds = new Set([...removableAvailabilityIds, ...confirmedRequestShiftIds]);
+        const availabilityMap = new Map(
+          availability.map((item) => [
+            clean(item?.shiftId, 60),
+            { shiftId: clean(item?.shiftId, 60), note: clean(item?.note, 1000) }
+          ])
+        );
+        for (const item of normalizedOpenRequestResponses) {
+          if (item.response !== 'confirmed') continue;
+          if (!availabilityMap.has(item.shiftId)) {
+            availabilityMap.set(item.shiftId, { shiftId: item.shiftId, note: item.note || '' });
+          }
+        }
+        const normalizedAvailability = [...availabilityMap.values()].filter((item) => item.shiftId);
         const availabilityIds = normalizedAvailability.map((item) => item.shiftId);
         if (
           new Set(availabilityIds).size !== availabilityIds.length
-          || normalizedAvailability.some((item) => !removableAvailabilityIds.has(item.shiftId))
+          || normalizedAvailability.some((item) => !allowedAvailabilityIds.has(item.shiftId))
         ) {
-          throw new ApiError('Le disponibilità possono solo essere mantenute o rimosse.', 400, 'INVALID_AVAILABILITY');
+          throw new ApiError('Le disponibilità possono solo essere mantenute, rimosse o confermate da una richiesta aperta.', 400, 'INVALID_AVAILABILITY');
         }
 
         result = await rpc('submit_volunteer_targeted_submission', {
@@ -618,9 +638,56 @@ export default async (request) => {
           p_manual_person_name: null,
           p_client_submission_id: clientSubmissionId,
           p_session_id: clean(session.jti, 100),
-          p_responses: normalizedResponses,
+          p_responses: [],
           p_availability: normalizedAvailability
         });
+
+        const existingOpenRequestAudit = result?.id
+          ? rows(await supabaseRequest('volunteer_audit_log', {
+              query: {
+                select: 'id,new_value',
+                submission_id: `eq.${result.id}`,
+                action_type: 'eq.open_request_response',
+                entity_type: 'eq.open_request',
+                limit: 200
+              }
+            }))
+          : [];
+        const existingAuditKeys = new Set(existingOpenRequestAudit.map((row) => {
+          const value = row?.new_value || {};
+          return `${clean(value.shiftId, 60)}|${clean(value.responseLabel, 160).toLocaleLowerCase('it-IT')}`;
+        }));
+        const auditRows = normalizedOpenRequestResponses
+          .filter((item) => !existingAuditKeys.has(`${item.shiftId}|${item.responseLabel.toLocaleLowerCase('it-IT')}`))
+          .map((item) => {
+            const request = requestableByKey.get(`${item.shiftId}|${item.responseLabel.toLocaleLowerCase('it-IT')}`) || {};
+            return {
+              submission_id: result?.id || null,
+              actor_name: actorName,
+              person_id: resolvedPersonId,
+              person_code: currentState.person?.person_code || null,
+              action_type: 'open_request_response',
+              entity_type: 'open_request',
+              entity_id: request.requirementIds?.[0] || null,
+              new_value: {
+                shiftId: item.shiftId,
+                day: request.day || '',
+                shift: request.shift || '',
+                responseLabel: item.responseLabel,
+                requirementIds: request.requirementIds || [],
+                response: item.response,
+                note: item.note || null
+              },
+              note: item.note || null
+            };
+          });
+        if (auditRows.length) {
+          await supabaseRequest('volunteer_audit_log', {
+            method: 'POST',
+            body: auditRows,
+            prefer: 'return=minimal'
+          });
+        }
       } catch (error) {
         if (createdManualPerson?.id) {
           try {
