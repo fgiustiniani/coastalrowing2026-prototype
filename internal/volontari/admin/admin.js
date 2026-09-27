@@ -4307,6 +4307,47 @@
     assignmentTable.innerHTML = `<table class="admin-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persona</th><th>Responsabile</th><th>Warning</th><th>Risposta</th><th>Nota assegnazione</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
+  function campaignResponseRowsForPerson(personId) {
+    const campaignById = new Map(
+      (snapshot?.responseCampaigns || []).map((campaign) => [campaign.id, campaign])
+    );
+    const shiftById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift]));
+    const latestByKey = new Map();
+
+    const submissions = (snapshot?.campaignSubmissions || [])
+      .filter((submission) => submission.personId === personId)
+      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+
+    for (const submission of submissions) {
+      for (const response of submission.openRequestResponses || []) {
+        if (!['confirmed', 'declined'].includes(response.response)) continue;
+        const key = [
+          submission.campaignId || '',
+          response.shiftId || '',
+          String(response.responseLabel || '').toLocaleLowerCase('it-IT')
+        ].join('|');
+        const shift = shiftById.get(response.shiftId) || {};
+        latestByKey.set(key, {
+          ...response,
+          personId,
+          campaignId: submission.campaignId || null,
+          campaignName: campaignById.get(submission.campaignId)?.name || 'Campagna',
+          submissionId: submission.id,
+          submissionCreatedAt: submission.createdAt || null,
+          startsAt: shift.starts_at || null,
+          endsAt: shift.ends_at || null,
+          sortOrder: Number(shift.sort_order ?? 9999),
+          activity: response.responseLabel || 'Nuova richiesta'
+        });
+      }
+    }
+
+    return [...latestByKey.values()].sort((a, b) =>
+      Number(a.sortOrder ?? 9999) - Number(b.sortOrder ?? 9999)
+      || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+    );
+  }
+
   function personReportRows() {
     const assignments = snapshot?.assignments || [];
     const historicalAssignments = snapshot?.historicalAssignments || [];
@@ -4366,9 +4407,14 @@
 
     return [...byPerson.values()].map((item) => {
       const reportRows = item.rows.length ? item.rows : (item.historicalRows || []);
-      const confirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
-      const declined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
-      const pending = reportRows.length - confirmed - declined;
+      const campaignResponses = campaignResponseRowsForPerson(item.id);
+      const assignmentConfirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
+      const assignmentDeclined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
+      const campaignConfirmed = campaignResponses.filter((row) => row.response === 'confirmed').length;
+      const campaignDeclined = campaignResponses.filter((row) => row.response === 'declined').length;
+      const confirmed = assignmentConfirmed + campaignConfirmed;
+      const declined = assignmentDeclined + campaignDeclined;
+      const pending = reportRows.length - assignmentConfirmed - assignmentDeclined;
       const person = personById.get(item.id) || null;
       const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
@@ -4378,7 +4424,8 @@
         .filter((row) => row.personId === item.id);
       const statusKeys = [...new Set([
         ...reportRows.map((row) => assignmentStatusKey(row)),
-        ...freeAvailabilityRows.map((row) => assignmentStatusKey(row))
+        ...freeAvailabilityRows.map((row) => assignmentStatusKey(row)),
+        ...campaignResponses.map((row) => row.response === 'declined' ? 'declined' : 'confirmed')
       ])];
       const notes = reportRows
         .filter((row) => String(row.currentNote || '').trim())
@@ -4388,14 +4435,23 @@
         const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
         return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
-      const activityRows = sortedRows.map((row) => {
-        const response = effectiveAssignmentResponse(row) || 'pending';
-        return {
-          label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
-          response,
-          responseLabel: responseLabel(response)
-        };
-      });
+      const activityRows = [
+        ...sortedRows.map((row) => {
+          const response = effectiveAssignmentResponse(row) || 'pending';
+          return {
+            label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
+            response,
+            responseLabel: responseLabel(response),
+            sortOrder: Number((snapshot?.shifts || []).find((shift) => shift.id === row.shiftId)?.sort_order ?? 9999)
+          };
+        }),
+        ...campaignResponses.map((row) => ({
+          label: `${row.day}-${row.shift} ${row.activity} · ${row.campaignName}`,
+          response: row.response,
+          responseLabel: responseLabel(row.response),
+          sortOrder: Number(row.sortOrder ?? 9999)
+        }))
+      ].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, 'it'));
 
       let responseState = { key: 'pending', label: 'Non ha risposto' };
       if (answered && declined > 0 && confirmed > 0) responseState = { key: 'declined', label: 'Conferme + rifiuti' };
@@ -6436,6 +6492,21 @@
           type: nextResponse === 'declined' ? 'declined' : nextResponse === 'confirmed' ? 'confirmed' : 'pending',
           title: assignmentLabel,
           detail: parts.join(' · ') || `Risposta: ${responseLabel(nextResponse)}`
+        });
+      }
+
+      for (const event of events.filter((row) => row.action_type === 'open_request_response')) {
+        const value = event.new_value && typeof event.new_value === 'object' ? event.new_value : {};
+        const response = String(value.response || '');
+        const title = `${value.day || '—'} · ${value.shift || '—'} — ${value.responseLabel || 'Nuova richiesta'}`;
+        changes.push({
+          type: response === 'declined' ? 'declined' : response === 'confirmed' ? 'confirmed' : 'pending',
+          title,
+          detail: response === 'declined'
+            ? 'Scelta: Rifiutata'
+            : response === 'confirmed'
+              ? 'Scelta: Confermata'
+              : `Scelta: ${response || '—'}`
         });
       }
 
