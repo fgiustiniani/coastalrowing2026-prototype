@@ -610,14 +610,7 @@
   }
 
   async function continueWithActor() {
-    const actorName = String(actorNameInput?.value || '').replace(/\s+/g, ' ').trim();
-    if (actorName.length < 3 || actorName.split(' ').filter(Boolean).length < 2) {
-      setStatus(actorStatus, 'Inserisci nome e cognome di chi sta compilando.', 'error');
-      actorNameInput?.focus();
-      return;
-    }
-
-    state.actorName = actorName;
+    state.actorName = String(actorNameInput?.value || '').replace(/\s+/g, ' ').trim();
     setStatus(actorStatus, '');
 
     if (state.requestedPersonId) {
