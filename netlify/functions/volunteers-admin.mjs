@@ -824,7 +824,8 @@ async function adminSnapshot() {
         personId: submission.person_id,
         campaignId: submission.campaign_id || null,
         actorName: submission.actor_name || '',
-        createdAt: submission.created_at || null
+        createdAt: submission.created_at || null,
+        availability: availabilityBySubmission.get(submission.id) || []
       })),
     postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
