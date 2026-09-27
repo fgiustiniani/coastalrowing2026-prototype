@@ -5467,10 +5467,21 @@
         <td><input class="count-input" data-requirement-count type="number" min="1" max="999" step="1" value="${escapeHtml(row?.requiredCount || 1)}"></td>
         <td><span class="coverage-count ${uncovered ? 'is-uncovered' : 'is-covered'}">${escapeHtml(coverage)}</span></td>
         <td>
-          <label class="planning-request-toggle">
-            <input type="checkbox" data-requirement-response-open ${row?.responseOpen ? 'checked' : ''} ${isNew ? 'disabled' : ''}>
-            <span>${row?.responseOpen ? 'Aperta' : 'Chiusa'}</span>
-          </label>
+          <div class="planning-request-config">
+            <label class="planning-request-toggle">
+              <input type="checkbox" data-requirement-response-open ${row?.responseOpen ? 'checked' : ''} ${isNew ? 'disabled' : ''}>
+              <span>${row?.responseOpen ? 'Aperta' : 'Chiusa'}</span>
+            </label>
+            <input
+              class="planning-response-label"
+              type="text"
+              maxlength="160"
+              data-requirement-response-label
+              value="${escapeHtml(row?.responseLabel || '')}"
+              placeholder="${snapshot?.requirementResponseLabelAvailable ? 'Voce da mostrare nel link' : 'Campo non ancora attivo nel database'}"
+              ${!row?.responseOpen || !snapshot?.requirementResponseLabelAvailable || isNew ? 'disabled' : ''}
+            >
+          </div>
         </td>
         <td><div class="row-actions">
           <button type="button" data-save-requirement>Salva</button>
@@ -7953,6 +7964,11 @@
       const requirement = requirementById(requirementId);
       if (requirement) requirement.responseOpen = nextOpen;
       if (label) label.textContent = nextOpen ? 'Aperta' : 'Chiusa';
+      const responseLabelField = rowNode.querySelector('[data-requirement-response-label]');
+      if (responseLabelField) {
+        responseLabelField.disabled = !nextOpen || snapshot?.requirementResponseLabelAvailable !== true;
+        if (nextOpen && !responseLabelField.disabled) responseLabelField.focus();
+      }
       setStatus(
         requirementStatus,
         nextOpen
@@ -7966,6 +7982,45 @@
       setStatus(requirementStatus, error.message, 'error');
     } finally {
       toggle.disabled = false;
+    }
+  });
+
+  requirementCatalog?.addEventListener('change', async (event) => {
+    const field = event.target.closest('[data-requirement-response-label]');
+    if (!field) return;
+
+    const rowNode = field.closest('[data-requirement-row]');
+    const requirementId = rowNode?.dataset.requirementId || '';
+    if (!requirementId || snapshot?.requirementResponseLabelAvailable !== true) return;
+
+    const responseLabel = field.value.trim();
+    field.disabled = true;
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-requirement-response-label',
+          requirementId,
+          responseLabel
+        })
+      });
+      const requirement = requirementById(requirementId);
+      if (requirement) requirement.responseLabel = responseLabel;
+      setStatus(
+        requirementStatus,
+        responseLabel
+          ? 'Voce del link salvata.'
+          : 'Voce del link rimossa.',
+        'success'
+      );
+    } catch (error) {
+      const requirement = requirementById(requirementId);
+      field.value = requirement?.responseLabel || '';
+      setStatus(requirementStatus, error.message, 'error');
+    } finally {
+      const requirement = requirementById(requirementId);
+      field.disabled = !requirement?.responseOpen || snapshot?.requirementResponseLabelAvailable !== true;
     }
   });
 
