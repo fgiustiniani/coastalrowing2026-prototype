@@ -116,7 +116,7 @@ async function adminReadRequirements() {
 }
 
 async function adminSnapshot() {
-  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements] = await Promise.all([
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements, responseCampaigns] = await Promise.all([
     adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
@@ -155,7 +155,7 @@ async function adminSnapshot() {
       }
     }),
     adminRead('invii', 'volunteer_submissions', {
-      query: { select: 'id,session_id,actor_name,person_id,selected_person_name,person_code,created_at', order: 'created_at.desc' }
+      query: { select: 'id,session_id,actor_name,person_id,selected_person_name,person_code,campaign_id,created_at', order: 'created_at.desc' }
     }),
     adminRead('risposte', 'volunteer_assignment_responses', {
       query: {
@@ -189,7 +189,14 @@ async function adminSnapshot() {
         order: 'person_name.asc,crew_label.asc'
       }
     }),
-    adminReadRequirements()
+    adminReadRequirements(),
+    adminRead('campagne risposte', 'volunteer_response_campaigns', {
+      query: {
+        select: 'id,name,created_by,active,created_at,updated_at',
+        active: 'eq.true',
+        order: 'created_at.desc'
+      }
+    })
   ]);
 
   const peopleRows = rows(peopleResult?.data);
@@ -208,6 +215,7 @@ async function adminSnapshot() {
   const raceRows = rows(raceProgram);
   const requirementRows = rows(requirements?.data);
   const requirementResponseLabelAvailable = requirements?.responseLabelAvailable === true;
+  const responseCampaignRows = rows(responseCampaigns);
 
   const personById = new Map(peopleRows.map((row) => [row.id, row]));
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
@@ -802,6 +810,22 @@ async function adminSnapshot() {
     requirementsAvailable: requirements?.data !== null,
     requirementResponseLabelAvailable,
     requirements: hydratedRequirements,
+    responseCampaigns: responseCampaignRows.map((campaign) => ({
+      id: campaign.id,
+      name: campaign.name,
+      createdBy: campaign.created_by || '',
+      createdAt: campaign.created_at || null,
+      updatedAt: campaign.updated_at || null
+    })),
+    campaignSubmissions: submissionRows
+      .filter((submission) => !isAdminAvailabilitySubmission(submission))
+      .map((submission) => ({
+        id: submission.id,
+        personId: submission.person_id,
+        campaignId: submission.campaign_id || null,
+        actorName: submission.actor_name || '',
+        createdAt: submission.created_at || null
+      })),
     postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
     raceProgramAvailable: raceProgram !== null,
@@ -823,7 +847,7 @@ async function historyForPerson(personId) {
     }),
     supabaseRequest('volunteer_submissions', {
       query: {
-        select: 'id,actor_name,person_id,person_code,selected_person_name,created_at',
+        select: 'id,actor_name,person_id,person_code,selected_person_name,campaign_id,created_at',
         person_id: `eq.${personId}`,
         order: 'created_at.desc',
         limit: 200
@@ -956,9 +980,24 @@ export default async (request) => {
       if (view === 'snapshot') return json(await adminSnapshot());
       if (view === 'invite') {
         const origin = new URL(request.url).origin;
-        const invite = issueVolunteerInvite();
+        const campaignId = clean(url.searchParams.get('campaignId'), 60);
+        if (!isUuid(campaignId)) throw new ApiError('Seleziona una campagna prima di generare il link.', 400, 'CAMPAIGN_REQUIRED');
+
+        const campaigns = rows(await adminRead('campagna link volontari', 'volunteer_response_campaigns', {
+          query: {
+            select: 'id,name,active',
+            id: `eq.${campaignId}`,
+            active: 'eq.true',
+            limit: 1
+          }
+        }));
+        const campaign = campaigns[0] || null;
+        if (!campaign) throw new ApiError('Campagna non trovata o non attiva.', 404, 'CAMPAIGN_NOT_FOUND');
+
+        const invite = issueVolunteerInvite(campaign.id);
         return json({
           accessUrl: `${origin}/internal/volontari/#access=${encodeURIComponent(invite)}`,
+          campaign: { id: campaign.id, name: campaign.name },
           expiresAt: '2026-10-06T21:59:59.000Z'
         });
       }
@@ -973,6 +1012,40 @@ export default async (request) => {
       const body = await parseJsonBody(request);
       const action = clean(body.action, 40);
       const actorName = `admin:${clean(admin.username, 100)}`;
+
+      if (action === 'create-response-campaign') {
+        const name = clean(body.name, 120);
+        if (!name) throw new ApiError('Indica il nome della campagna.', 400, 'CAMPAIGN_NAME_REQUIRED');
+
+        const createdRows = rows(await supabaseRequest('volunteer_response_campaigns', {
+          method: 'POST',
+          body: {
+            name,
+            created_by: actorName,
+            active: true
+          },
+          prefer: 'return=representation'
+        }));
+        const campaign = createdRows[0] || null;
+        if (!campaign?.id) throw new ApiError('Campagna non creata.', 500, 'CAMPAIGN_CREATE_FAILED');
+
+        await auditAdminChange({
+          actorName,
+          actionType: 'response_campaign_created',
+          entityType: 'response_campaign',
+          entityId: campaign.id,
+          newValue: { id: campaign.id, name: campaign.name }
+        });
+
+        return json({
+          ok: true,
+          campaign: {
+            id: campaign.id,
+            name: campaign.name,
+            createdAt: campaign.created_at || null
+          }
+        });
+      }
 
       if (action === 'send-person-summary-email') {
         const personId = clean(body.personId, 60);
