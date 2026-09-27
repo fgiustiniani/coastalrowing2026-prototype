@@ -23,7 +23,7 @@ async function readRequirementConfig() {
   try {
     const data = await supabaseRequest('volunteer_activity_requirements', {
       query: {
-        select: 'shift_id,activity_id,response_open,response_label,active',
+        select: 'id,shift_id,activity_id,response_open,response_label,updated_at,active',
         active: 'eq.true'
       }
     });
@@ -33,7 +33,7 @@ async function readRequirementConfig() {
     if (!(error instanceof SupabaseError) || !['PGRST204', '42703'].includes(code)) throw error;
     const data = await supabaseRequest('volunteer_activity_requirements', {
       query: {
-        select: 'shift_id,activity_id,response_open,active',
+        select: 'id,shift_id,activity_id,response_open,updated_at,active',
         active: 'eq.true'
       }
     });
@@ -139,13 +139,23 @@ async function personState(personId) {
   const person = rows(people)[0];
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
-  const [assignments, assignmentHistory, activities, shifts, submissions, requirements] = await Promise.all([
+  const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,raw_day,raw_shift,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } }),
-    readRequirementConfig()
+    readRequirementConfig(),
+    supabaseRequest('volunteer_audit_log', {
+      query: {
+        select: 'id,submission_id,entity_id,new_value,created_at',
+        person_id: `eq.${personId}`,
+        action_type: 'eq.open_request_response',
+        entity_type: 'eq.open_request',
+        order: 'created_at.desc',
+        limit: 300
+      }
+    })
   ]);
 
   const assignmentRows = rows(assignments);
@@ -155,6 +165,7 @@ async function personState(personId) {
   const activityById = new Map(rows(activities).map((row) => [row.id, row]));
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const requirementRows = rows(requirements?.data);
+  const openRequestAuditRows = rows(openRequestAudit);
   const responseOpenByRequirement = new Map(
     requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
   );
@@ -326,6 +337,64 @@ async function personState(personId) {
   });
 
   const assignedShiftIds = new Set(hydratedAssignments.map((row) => row.shiftId).filter(Boolean));
+
+  const latestOpenRequestResponseByKey = new Map();
+  for (const audit of openRequestAuditRows) {
+    const value = audit?.new_value || {};
+    const shiftId = clean(value.shiftId, 60);
+    const responseLabel = clean(value.responseLabel, 160);
+    if (!shiftId || !responseLabel) continue;
+    const key = `${shiftId}|${responseLabel.toLocaleLowerCase('it-IT')}`;
+    if (!latestOpenRequestResponseByKey.has(key)) {
+      latestOpenRequestResponseByKey.set(key, {
+        response: clean(value.response, 20),
+        note: clean(value.note, 1000),
+        createdAt: audit.created_at || null
+      });
+    }
+  }
+
+  const openRequestGroups = new Map();
+  for (const requirement of requirementRows) {
+    if (requirement.response_open !== true || !requirement.shift_id) continue;
+    if (assignedShiftIds.has(requirement.shift_id)) continue;
+
+    const shift = shiftById.get(requirement.shift_id) || null;
+    if (!shift) continue;
+
+    const responseLabel = clean(requirement.response_label, 160) || 'Disponibilità';
+    const key = `${requirement.shift_id}|${responseLabel.toLocaleLowerCase('it-IT')}`;
+    if (!openRequestGroups.has(key)) {
+      openRequestGroups.set(key, {
+        key,
+        shiftId: requirement.shift_id,
+        day: shift.day_label || '',
+        shift: shift.shift_label || '',
+        startsAt: shift.starts_at || null,
+        endsAt: shift.ends_at || null,
+        sortOrder: Number(shift.sort_order ?? 9999),
+        responseLabel,
+        requirementIds: [],
+        openedAt: requirement.updated_at || null
+      });
+    }
+    const group = openRequestGroups.get(key);
+    if (requirement.id) group.requirementIds.push(requirement.id);
+    if (String(requirement.updated_at || '') > String(group.openedAt || '')) group.openedAt = requirement.updated_at || null;
+  }
+
+  const openRequests = [...openRequestGroups.values()]
+    .filter((group) => {
+      const previous = latestOpenRequestResponseByKey.get(group.key);
+      if (!previous) return true;
+      if (!group.openedAt) return false;
+      return String(previous.createdAt || '') < String(group.openedAt || '');
+    })
+    .sort((a, b) =>
+      a.sortOrder - b.sortOrder
+      || String(a.responseLabel || '').localeCompare(String(b.responseLabel || ''), 'it')
+    );
+
   const availabilityShifts = rows(shifts)
     .map((shift) => ({
       id: shift.id,
@@ -343,6 +412,7 @@ async function personState(personId) {
   return {
     person,
     assignments: hydratedAssignments,
+    openRequests,
     availabilityShifts,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
   };
