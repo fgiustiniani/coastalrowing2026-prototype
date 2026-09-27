@@ -163,48 +163,55 @@ export async function sendVolunteerSummaryEmail({
       raceConflict: shift.raceConflict === true
     }));
 
-  const rawSummaryRows = [
-    ...currentAssignments,
-    ...historicalResponses,
-    ...currentOpenResponses,
-    ...additionalAvailability
-  ];
+  const currentAssignmentShiftKeys = new Set(
+    currentAssignments.map((row) => row.shiftId || ((row.day || '') + '|' + (row.shift || '')))
+  );
 
-  const raceConflictRowsByShift = new Map();
-  for (const row of additionalAvailability) {
-    const shiftId = row.shiftId || row.id || '';
-    if (!shiftId || row.raceConflict !== true) continue;
-    if (!raceConflictRowsByShift.has(shiftId)) {
-      raceConflictRowsByShift.set(shiftId, {
-        ...row,
-        shiftId,
-        summaryActivity: '',
-        summaryStatus: '',
-        summaryKind: 'race-conflict',
-        summaryNew: false,
-        raceConflict: true
-      });
+  const stateTimestamp = (row) => {
+    const value = row?.summaryStateAt
+      || row?.stateAt
+      || row?.responseAt
+      || row?.currentResponseAt
+      || row?.createdAt
+      || row?.releasedAt
+      || '';
+    const stamp = Date.parse(value);
+    return Number.isFinite(stamp) ? stamp : 0;
+  };
+
+  const statePriority = (row) => {
+    if (row?.summaryKind === 'declined' || row?.summaryKind === 'confirmed') return 3;
+    if (row?.summaryKind === 'availability') return 2;
+    return 1;
+  };
+
+  const latestStateByShift = new Map();
+  for (const row of [...historicalResponses, ...currentOpenResponses, ...additionalAvailability]) {
+    const shiftKey = row.shiftId || ((row.day || '') + '|' + (row.shift || ''));
+    if (!shiftKey || currentAssignmentShiftKeys.has(shiftKey)) continue;
+
+    const current = latestStateByShift.get(shiftKey);
+    const rowTime = stateTimestamp(row);
+    const currentTime = current ? stateTimestamp(current) : -1;
+    if (!current || rowTime > currentTime || (rowTime === currentTime && statePriority(row) > statePriority(current))) {
+      latestStateByShift.set(shiftKey, row);
     }
   }
 
-  const raceConflictShiftIds = new Set(raceConflictRowsByShift.keys());
   const summaryRows = sortChronologically([
-    ...rawSummaryRows.filter((row) => {
-      const shiftId = row.shiftId || row.id || '';
-      return !raceConflictShiftIds.has(shiftId);
-    }),
-    ...raceConflictRowsByShift.values()
+    ...currentAssignments,
+    ...latestStateByShift.values()
   ]);
-
   const hasConfirmedActivity = summaryRows.some((row) => row.summaryKind === 'confirmed');
-  const hasAdditionalAvailability = additionalAvailability.some((row) => row.raceConflict !== true);
+  const hasAdditionalAvailability = summaryRows.some((row) => row.summaryKind === 'availability' && row.raceConflict !== true);
   const showThanks = hasConfirmedActivity || hasAdditionalAvailability;
   const availabilityFollowUp = 'Al più presto sarai contattato per condividere le attività da fare nei turni per i quali hai dato disponibilità';
   const thanksMessage = 'Grazie per la disponibilità mostrata!!';
 
   const rowText = summaryRows.length
     ? summaryRows.map((row) => {
-        if (row.raceConflict) {
+        const availabilityRaceConflict = row.summaryKind === 'availability' && row.raceConflict === true;
+        if (availabilityRaceConflict) {
           return `- ${row.day} · ${row.shift} — [Non assegnato per coincidenza gara]`;
         }
         const badges = row.summaryNew ? '[NUOVA]' : '';
@@ -240,7 +247,8 @@ export async function sendVolunteerSummaryEmail({
     ? summaryRows.map((row) => {
         const style = cardStyle[row.summaryKind] || cardStyle.availability;
         const activity = clean(row.summaryActivity, 500);
-        const badges = row.raceConflict
+        const availabilityRaceConflict = row.summaryKind === 'availability' && row.raceConflict === true;
+        const badges = availabilityRaceConflict
           ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#a43f2c;color:#ffffff;font-size:10px;line-height:1.15;font-weight:800;">Non assegnato per coincidenza gara</span>'
           : (row.summaryNew
             ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#0a6b7d;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.04em;">NUOVA</span>'
@@ -255,8 +263,8 @@ export async function sendVolunteerSummaryEmail({
                 <td align="right" style="padding-left:10px;">${badges}</td>
               </tr>
             </table>
-            ${!row.raceConflict && activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
-            ${!row.raceConflict && row.summaryStatus ? `
+            ${!availabilityRaceConflict && activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
+            ${!availabilityRaceConflict && row.summaryStatus ? `
               <div style="margin-top:5px;font-size:12px;line-height:1.3;font-weight:700;color:${style.status};">
                 ${escapeHtml(row.summaryStatus)}
               </div>` : ''}
