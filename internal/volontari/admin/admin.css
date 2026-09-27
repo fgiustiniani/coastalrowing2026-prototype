@@ -5339,3 +5339,24 @@ tr.is-busy button.is-busy {
 .planning-request-toggle input:disabled + span {
   opacity: .55;
 }
+
+
+/* Azioni massive richieste volontari */
+.planning-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+.planning-bulk-actions small {
+  color: var(--muted, #60757d);
+}
+@media (max-width: 700px) {
+  .planning-bulk-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .planning-bulk-actions .button {
+    width: 100%;
+  }
+}
