@@ -67,7 +67,13 @@ function availabilityActivityLabel(row) {
   return activities.length ? activities.join(' · ') : '';
 }
 
-export async function sendVolunteerSummaryEmail({ email, personState, requestUrl, accompanyingMessage = '' }) {
+export async function sendVolunteerSummaryEmail({
+  email,
+  personState,
+  requestUrl,
+  accompanyingMessage = '',
+  currentSubmissionId = null
+}) {
   const recipient = cleanHeader(email, 254);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
     throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
@@ -94,47 +100,138 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
 
   const personName = clean(personState?.person?.display_name || 'Volontario', 160);
   const message = clean(accompanyingMessage, 4000);
-  const assignments = sortChronologically(
-    Array.isArray(personState?.assignments) ? personState.assignments : []
-  );
-  const availability = sortChronologically(
-    (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
-      .filter((shift) => shift.selected && !shift.assigned)
+  const submissionId = clean(currentSubmissionId, 60);
+
+  const currentAssignments = (Array.isArray(personState?.assignments) ? personState.assignments : [])
+    .filter((row) =>
+      row.currentResponse === 'confirmed'
+      || row.currentResponse === 'declined'
+      || (row.assignedFromAvailability && row.currentResponse !== 'declined')
+    )
+    .map((row) => ({
+      ...row,
+      summaryActivity: activityLabel(row),
+      summaryStatus: row.currentResponse === 'declined' ? 'Non disponibile' : 'Confermata',
+      summaryKind: row.currentResponse === 'declined' ? 'declined' : 'confirmed',
+      summaryNew: false
+    }));
+
+  const historicalResponses = [
+    ...(Array.isArray(personState?.historicalResponses) ? personState.historicalResponses : []),
+    ...(Array.isArray(personState?.historicalOpenRequestResponses)
+      ? personState.historicalOpenRequestResponses.filter((row) => !submissionId || row.submissionId !== submissionId)
+      : [])
+  ].map((row) => ({
+    ...row,
+    summaryActivity: clean(row.activity, 500) || 'Attività',
+    summaryStatus: row.response === 'declined' ? 'Non disponibile' : 'Confermata',
+    summaryKind: row.response === 'declined' ? 'declined' : 'confirmed',
+    summaryNew: false
+  }));
+
+  const currentOpenResponses = (Array.isArray(personState?.openRequestResponses) ? personState.openRequestResponses : [])
+    .filter((row) =>
+      submissionId
+      && row.submissionId === submissionId
+      && ['confirmed', 'declined'].includes(row.response)
+    )
+    .map((row) => {
+      const activities = Array.isArray(row.activities)
+        ? row.activities.map((item) => clean(item, 240)).filter(Boolean)
+        : [];
+      const declinedActivity = activities.length
+        ? activities.join(' · ')
+        : clean(row.responseLabel, 240);
+      return {
+        ...row,
+        summaryActivity: row.response === 'confirmed' ? '' : declinedActivity,
+        summaryStatus: row.response === 'declined' ? 'Non disponibile' : 'Confermata',
+        summaryKind: row.response === 'declined' ? 'declined' : 'confirmed',
+        summaryNew: true
+      };
+    });
+
+  const newConfirmedShiftIds = new Set(
+    currentOpenResponses
+      .filter((row) => row.summaryKind === 'confirmed')
+      .map((row) => row.shiftId)
+      .filter(Boolean)
   );
 
-  const hasConfirmedActivity = assignments.some((row) => row.currentResponse === 'confirmed');
-  const hasAdditionalAvailability = availability.length > 0;
+  const additionalAvailability = (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
+    .filter((shift) => shift.selected && !shift.assigned && !newConfirmedShiftIds.has(shift.id))
+    .map((shift) => ({
+      ...shift,
+      summaryActivity: 'Disponibilità aggiuntiva',
+      summaryStatus: 'Disponibilità aggiuntiva',
+      summaryKind: 'availability',
+      summaryNew: false
+    }));
+
+  const summaryRows = sortChronologically([
+    ...currentAssignments,
+    ...historicalResponses,
+    ...currentOpenResponses,
+    ...additionalAvailability
+  ]);
+
+  const hasConfirmedActivity = summaryRows.some((row) => row.summaryKind === 'confirmed');
+  const hasAdditionalAvailability = additionalAvailability.length > 0;
   const showThanks = hasConfirmedActivity || hasAdditionalAvailability;
   const availabilityFollowUp = 'Al più presto sarai contattato per condividere le attività da fare nei turni per i quali hai dato disponibilità';
   const thanksMessage = 'Grazie per la disponibilità mostrata!!';
 
-  const assignmentText = assignments.length
-    ? assignments.map((row) => {
-        const note = clean(row.currentNote, 1000);
-        return `- ${row.day} · ${row.shift} — ${activityLabel(row)}: ${responseLabel(row.currentResponse)}${note ? ` — Nota: ${note}` : ''}`;
+  const rowText = summaryRows.length
+    ? summaryRows.map((row) => {
+        const badge = row.summaryNew ? ' [NUOVA]' : '';
+        const activity = clean(row.summaryActivity, 500);
+        return `- ${row.day} · ${row.shift} — ${row.summaryStatus}${badge}${activity ? ` — ${activity}` : ''}`;
       }).join('\n')
-    : '- Nessuna attività assegnata';
+    : '- Nessuna disponibilità da riepilogare';
 
-  const availabilityText = availability.length
-    ? availability.map((row) => {
-        const activity = availabilityActivityLabel(row);
-        return `- ${row.day} · ${row.shift}${activity ? ` — ${activity}` : ''}${row.note ? ` — Nota: ${clean(row.note, 1000)}` : ''}`;
-      }).join('\n')
-    : '- Nessuna disponibilità aggiuntiva indicata';
+  const cardStyle = {
+    confirmed: {
+      background: '#edf8f0',
+      border: '#a9d3b5',
+      status: '#2d6a3d'
+    },
+    declined: {
+      background: '#fff1ee',
+      border: '#e3b3aa',
+      status: '#a43f2c'
+    },
+    availability: {
+      background: '#fff7e7',
+      border: '#e5c58a',
+      status: '#9a6500'
+    }
+  };
 
-  const assignmentHtml = assignments.length
-    ? `<ul>${assignments.map((row) => {
-        const note = clean(row.currentNote, 1000);
-        return `<li><strong>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</strong> — ${escapeHtml(activityLabel(row))}: ${escapeHtml(responseLabel(row.currentResponse))}${note ? `<br><small>Nota: ${escapeHtml(note)}</small>` : ''}</li>`;
-      }).join('')}</ul>`
-    : '<p>Nessuna attività assegnata.</p>';
-
-  const availabilityHtml = availability.length
-    ? `<ul>${availability.map((row) => {
-        const activity = availabilityActivityLabel(row);
-        return `<li><strong>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</strong>${activity ? `<br><span>${escapeHtml(activity)}</span>` : ''}${row.note ? `<br><small>Nota: ${escapeHtml(clean(row.note, 1000))}</small>` : ''}</li>`;
-      }).join('')}</ul>`
-    : '<p>Nessuna disponibilità aggiuntiva indicata.</p>';
+  const summaryHtml = summaryRows.length
+    ? summaryRows.map((row) => {
+        const style = cardStyle[row.summaryKind] || cardStyle.availability;
+        const activity = clean(row.summaryActivity, 500);
+        const badge = row.summaryNew
+          ? '<span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#0a6b7d;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.04em;">NUOVA</span>'
+          : '';
+        return `
+          <div style="margin:0 0 10px 0;padding:12px 14px;border:1px solid ${style.border};border-radius:12px;background:${style.background};">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+              <tr>
+                <td style="font-size:15px;line-height:1.3;font-weight:700;color:#263f48;">
+                  ${escapeHtml(row.day)} · ${escapeHtml(row.shift)}
+                </td>
+                <td align="right" style="white-space:nowrap;padding-left:10px;">${badge}</td>
+              </tr>
+            </table>
+            ${activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
+            <div style="margin-top:5px;font-size:12px;line-height:1.3;font-weight:700;color:${style.status};">
+              ${escapeHtml(row.summaryStatus)}
+            </div>
+          </div>
+        `;
+      }).join('')
+    : '<p style="color:#60757d;font-style:italic;">Nessuna disponibilità da riepilogare.</p>';
 
   const prefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
   const subject = `${prefix}Riepilogo disponibilità volontario - Campionati Italiani Coastal Rowing 2026`;
@@ -143,11 +240,7 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
     `Riepilogo disponibilità di ${personName}`,
     '',
     ...(message ? [message, ''] : []),
-    'Attività assegnate:',
-    assignmentText,
-    '',
-    'Disponibilità aggiuntive:',
-    availabilityText,
+    rowText,
     '',
     'Questo messaggio riepiloga l’ultima compilazione registrata.',
     ...(hasAdditionalAvailability ? ['', availabilityFollowUp] : []),
@@ -155,16 +248,15 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
   ].join('\n');
 
   const html = `
-    <h2>Riepilogo disponibilità</h2>
-    <p><strong>${escapeHtml(personName)}</strong></p>
-    ${message ? `<p class="accompanying-message">${escapeHtml(message).replace(/\n/g, '<br>')}</p>` : ''}
-    <h3>Attività assegnate</h3>
-    ${assignmentHtml}
-    <h3>Disponibilità aggiuntive</h3>
-    ${availabilityHtml}
-    <p><small>Questo messaggio riepiloga l’ultima compilazione registrata.</small></p>
-    ${hasAdditionalAvailability ? `<p>${escapeHtml(availabilityFollowUp)}</p>` : ''}
-    ${showThanks ? `<p><strong>${escapeHtml(thanksMessage)}</strong></p>` : ''}
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#263f48;line-height:1.45;max-width:680px;margin:0 auto;">
+      <h2 style="margin:0 0 6px 0;font-size:22px;line-height:1.25;">Riepilogo disponibilità</h2>
+      <p style="margin:0 0 18px 0;"><strong>${escapeHtml(personName)}</strong></p>
+      ${message ? `<p style="margin:0 0 18px 0;">${escapeHtml(message).replace(/\n/g, '<br>')}</p>` : ''}
+      <div style="margin:0 0 18px 0;">${summaryHtml}</div>
+      <p style="margin:16px 0 0 0;color:#60757d;font-size:12px;">Questo messaggio riepiloga l’ultima compilazione registrata.</p>
+      ${hasAdditionalAvailability ? `<p style="margin:14px 0 0 0;">${escapeHtml(availabilityFollowUp)}</p>` : ''}
+      ${showThanks ? `<p style="margin:14px 0 0 0;"><strong>${escapeHtml(thanksMessage)}</strong></p>` : ''}
+    </div>
   `;
 
   const transporter = nodemailer.createTransport({
