@@ -1165,7 +1165,8 @@ export default async (request) => {
               ...item,
               selected: true,
               assigned: assignedShiftIds.has(item.shiftId),
-              raceConflict: raceConflictForShift(item.shiftId)
+              raceConflict: raceConflictForShift(item.shiftId),
+              stateAt: person.latestSubmission?.createdAt || null
             }
           ])
         );
@@ -1184,7 +1185,8 @@ export default async (request) => {
             selected: true,
             assigned: false,
             isReleasedConfirmed: true,
-            raceConflict: raceConflictForShift(released.shiftId)
+            raceConflict: raceConflictForShift(released.shiftId),
+            stateAt: released.releasedAt || released.currentResponseAt || null
           });
         }
         const availabilityShifts = [...availabilityByShift.values()];
