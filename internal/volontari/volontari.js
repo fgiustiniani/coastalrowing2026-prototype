@@ -335,7 +335,7 @@
     const hasNewRequests = requestGroups().length > 0;
     const message = hasNewRequests
       ? 'Qui trovi i turni per i quali è richiesto un ulteriore supporto e per i quali puoi confermare o meno la tua disponibilità, insieme a un riepilogo delle disponibilità già date in precedenza.'
-      : 'Hai già dato la tua disponibilità nei turni per i quali c\'è bisogno di ulteriore supporto, quindi non devi fare nulla. Qui trovi le disponibilità già confermate in precedenza. GRAZIE!!';
+      : 'Hai già dato la tua disponibilità nei turni per i quali c\'è bisogno di ulteriore supporto, quindi non devi fare nulla. Qui trovi le disponibilità dichiarate in precedenza. GRAZIE!!';
 
     personIntro.innerHTML = `
       <p class="volunteer-greeting">Ciao ${escapeHtml(firstName || 'volontario')},</p>
