@@ -5315,3 +5315,27 @@ tr.is-busy button.is-busy {
   }
 }
 
+
+
+/* Richieste visibili nel link volontari */
+.planning-request-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-weight: 800;
+  color: var(--muted, #60757d);
+}
+.planning-request-toggle input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--accent, #0a6b7d);
+}
+.planning-request-toggle input:checked + span {
+  color: var(--ok, #245f38);
+}
+.planning-request-toggle input:disabled + span {
+  opacity: .55;
+}
