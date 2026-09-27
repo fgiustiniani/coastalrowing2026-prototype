@@ -761,24 +761,16 @@ export default async (request) => {
           }
         }
 
-        result = await rpc('submit_volunteer_targeted_submission', {
+        result = await rpc('submit_volunteer_campaign_submission', {
           p_actor_name: actorName,
           p_person_id: resolvedPersonId,
           p_manual_person_name: null,
           p_client_submission_id: clientSubmissionId,
           p_session_id: clean(session.jti, 100),
           p_responses: [],
-          p_availability: normalizedAvailability
+          p_availability: normalizedAvailability,
+          p_campaign_id: campaignId
         });
-
-        if (campaignId && result?.id) {
-          await supabaseRequest('volunteer_submissions', {
-            method: 'PATCH',
-            query: { id: `eq.${result.id}` },
-            body: { campaign_id: campaignId },
-            prefer: 'return=minimal'
-          });
-        }
 
         const existingOpenRequestAudit = result?.id
           ? rows(await supabaseRequest('volunteer_audit_log', {
