@@ -673,6 +673,9 @@ async function adminSnapshot() {
         shiftId: shift.id,
         day: shift.day_label || assignment.raw_day || '',
         shift: shift.shift_label || assignment.raw_shift || '',
+        startsAt: shift.starts_at || null,
+        endsAt: shift.ends_at || null,
+        sortOrder: Number(shift.sort_order ?? 9999),
         sourceActivity: activity?.name || 'Attività',
         currentResponse: 'confirmed',
         currentNote: response.note || '',
@@ -1094,16 +1097,97 @@ export default async (request) => {
 
         const assignments = (snapshot.assignments || []).filter((item) => item.personId === personId);
         const assignedShiftIds = new Set(assignments.map((item) => item.shiftId).filter(Boolean));
-        const availabilityShifts = (person.latestSubmission?.availability || []).map((item) => ({
-          ...item,
-          selected: true,
-          assigned: assignedShiftIds.has(item.shiftId)
-        }));
+        const shiftById = new Map((snapshot.shifts || []).map((shift) => [shift.id, shift]));
+        const racesForPerson = (snapshot.raceProgram || []).filter((race) => race.personId === personId);
+
+        const localDateKey = (value) => {
+          if (!value) return '';
+          try {
+            const parts = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Europe/Rome',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            }).formatToParts(new Date(value));
+            const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+            return map.year && map.month && map.day ? `${map.year}-${map.month}-${map.day}` : '';
+          } catch {
+            return '';
+          }
+        };
+        const localTimeMinutes = (value) => {
+          if (!value) return null;
+          try {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+              timeZone: 'Europe/Rome',
+              hour: '2-digit',
+              minute: '2-digit',
+              hourCycle: 'h23'
+            }).formatToParts(new Date(value));
+            const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+            const hour = Number(map.hour);
+            const minute = Number(map.minute);
+            return Number.isFinite(hour) && Number.isFinite(minute) ? (hour * 60) + minute : null;
+          } catch {
+            return null;
+          }
+        };
+        const raceTimeMinutes = (value) => {
+          const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+          if (!match) return null;
+          const hour = Number(match[1]);
+          const minute = Number(match[2]);
+          return Number.isFinite(hour) && Number.isFinite(minute) ? (hour * 60) + minute : null;
+        };
+        const raceFallsInShift = (race, shift) => {
+          if (!race?.raceDate || !race?.raceTime || !shift?.starts_at || !shift?.ends_at) return false;
+          if (race.raceDate !== localDateKey(shift.starts_at)) return false;
+          const raceMinutes = raceTimeMinutes(race.raceTime);
+          const startMinutes = localTimeMinutes(shift.starts_at);
+          const endMinutes = localTimeMinutes(shift.ends_at);
+          return [raceMinutes, startMinutes, endMinutes].every(Number.isFinite)
+            && startMinutes <= raceMinutes
+            && raceMinutes < endMinutes;
+        };
+        const raceConflictForShift = (shiftId) => {
+          const shift = shiftById.get(shiftId) || null;
+          return Boolean(shift && racesForPerson.some((race) => raceFallsInShift(race, shift)));
+        };
+
+        const availabilityByShift = new Map(
+          (person.latestSubmission?.availability || []).map((item) => [
+            item.shiftId,
+            {
+              ...item,
+              selected: true,
+              assigned: assignedShiftIds.has(item.shiftId),
+              raceConflict: raceConflictForShift(item.shiftId)
+            }
+          ])
+        );
+
+        for (const released of (snapshot.releasedConfirmedAvailability || []).filter((item) => item.personId === personId)) {
+          if (availabilityByShift.has(released.shiftId)) continue;
+          availabilityByShift.set(released.shiftId, {
+            id: released.shiftId,
+            shiftId: released.shiftId,
+            day: released.day || '',
+            shift: released.shift || '',
+            startsAt: released.startsAt || shiftById.get(released.shiftId)?.starts_at || null,
+            endsAt: released.endsAt || shiftById.get(released.shiftId)?.ends_at || null,
+            sortOrder: Number(released.sortOrder ?? shiftById.get(released.shiftId)?.sort_order ?? 9999),
+            note: released.currentNote || '',
+            selected: true,
+            assigned: false,
+            isReleasedConfirmed: true,
+            raceConflict: raceConflictForShift(released.shiftId)
+          });
+        }
+        const availabilityShifts = [...availabilityByShift.values()];
 
         const campaignById = new Map(
           (snapshot.responseCampaigns || []).map((campaign) => [campaign.id, campaign])
         );
-        const shiftById = new Map((snapshot.shifts || []).map((shift) => [shift.id, shift]));
         const latestCampaignResponseByKey = new Map();
         const campaignSubmissions = (snapshot.campaignSubmissions || [])
           .filter((submission) => submission.personId === personId)
