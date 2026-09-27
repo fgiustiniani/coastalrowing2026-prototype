@@ -389,6 +389,28 @@ async function personState(personId) {
     }
   }
 
+  const historicalOpenRequestResponses = [...latestOpenRequestResponseByKey.values()]
+    .filter((item) => {
+      if (item.response === 'declined') return true;
+      if (item.response !== 'confirmed') return false;
+      return !assignedShiftIds.has(item.shiftId) && !availabilityByShift.has(item.shiftId);
+    })
+    .map((item) => {
+      const shift = shiftById.get(item.shiftId) || null;
+      return {
+        shiftId: item.shiftId,
+        day: shift?.day_label || '',
+        shift: shift?.shift_label || '',
+        startsAt: shift?.starts_at || null,
+        endsAt: shift?.ends_at || null,
+        sortOrder: Number(shift?.sort_order ?? 9999),
+        activity: item.activities.length ? item.activities.join(' · ') : item.responseLabel,
+        response: item.response,
+        note: item.note || '',
+        responseAt: item.createdAt || null
+      };
+    });
+
   const openRequestGroups = new Map();
   for (const requirement of requirementRows) {
     if (requirement.response_open !== true || !requirement.shift_id) continue;
@@ -463,6 +485,7 @@ async function personState(personId) {
     person,
     assignments: hydratedAssignments,
     historicalResponses,
+    historicalOpenRequestResponses,
     openRequests,
     availabilityShifts,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
