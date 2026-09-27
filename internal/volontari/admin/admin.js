@@ -6375,6 +6375,9 @@
     const responses = result.responses || [];
     const shifts = result.shifts || [];
     const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
+    const campaignById = new Map(
+      (snapshot?.responseCampaigns || []).map((campaign) => [campaign.id, campaign])
+    );
     const responseByKey = new Map(responses.map((row) => [`${row.submission_id}|${row.assignment_id}`, row]));
 
     const responseLabel = (value) => value === 'confirmed'
@@ -6493,10 +6496,14 @@
             </div>`).join('')}</div>`
         : '<p class="submission-history__no-change">Nessuna modifica rispetto alle scelte già registrate.</p>';
 
+      const campaignName = submission.campaign_id
+        ? (campaignById.get(submission.campaign_id)?.name || '')
+        : '';
+
       return `
         <article class="submission-history__card">
           <header class="submission-history__header">
-            <div><strong>Invio #${number}</strong><span>${escapeHtml(formatDateTime(submission.created_at))}</span></div>
+            <div><strong>Invio #${number}${campaignName ? ` · ${escapeHtml(campaignName)}` : ''}</strong><span>${escapeHtml(formatDateTime(submission.created_at))}</span></div>
             <small>Compilato da: ${escapeHtml(submission.actor_name || '—')}</small>
           </header>
           ${changesHtml}
