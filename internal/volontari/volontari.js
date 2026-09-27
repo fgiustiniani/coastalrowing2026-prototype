@@ -396,32 +396,19 @@
     }
 
     availabilityList.innerHTML = shifts.map((shift) => {
-      const active = state.availability.has(shift.id);
       const initial = state.initialAvailability.get(shift.id) || {};
       return `
-        <article class="availability-card availability-card--existing ${active ? 'is-active' : 'is-removed'}" data-shift-id="${escapeHtml(shift.id)}">
+        <article class="availability-card availability-card--existing is-active" data-shift-id="${escapeHtml(shift.id)}">
           <div class="availability-card__content">
             <div>
               <strong>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</strong>
-              <span class="availability-state ${active ? 'is-active' : 'is-removed'}">
-                ${active ? '✓ Disponibilità comunicata' : 'Disponibilità rimossa'}
-              </span>
+              <span class="availability-state is-active">✓ Disponibilità comunicata</span>
               ${initial.note ? `<small>Nota: ${escapeHtml(initial.note)}</small>` : ''}
             </div>
-            <button class="button button--secondary availability-toggle" type="button" data-toggle-availability>
-              ${active ? 'Togli disponibilità' : 'Ripristina'}
-            </button>
           </div>
         </article>
       `;
     }).join('');
-  }
-
-  function availabilityHasChanges() {
-    const initialIds = [...state.initialAvailability.keys()].sort();
-    const currentIds = [...state.availability.keys()].sort();
-    return initialIds.length !== currentIds.length
-      || initialIds.some((id, index) => id !== currentIds[index]);
   }
 
   function renderSummary() {
@@ -532,18 +519,14 @@
   function updateSubmitState() {
     const groups = requestGroups();
     const hasRequests = groups.length > 0;
-    const changedAvailability = availabilityHasChanges();
-    const hasSomethingToSend = hasRequests || changedAvailability;
     const complete = groups.every((group) => Boolean(state.responses.get(group.key)?.response));
 
     submitButton.hidden = false;
-    noSubmit.hidden = hasSomethingToSend;
+    noSubmit.hidden = hasRequests;
     submitButton.disabled = hasRequests && !complete;
 
     if (hasRequests) {
       submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${groups.length})`;
-    } else if (changedAvailability) {
-      submitButton.textContent = 'Salva modifica disponibilità';
     } else {
       submitButton.textContent = 'Continua';
     }
@@ -593,8 +576,7 @@
               note: value.note || ''
             };
           }),
-        availability: Array.from(state.availability.entries())
-          .map(([shiftId, value]) => ({ shiftId, note: value.note || '' }))
+        availability: []
       };
 
       const body = await apiRequest(api, {
@@ -727,24 +709,6 @@
     if (!group) return;
     const current = state.responses.get(group.key) || {};
     state.responses.set(group.key, { ...current, note: event.target.value });
-  });
-
-  availabilityList?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-toggle-availability]');
-    if (!button) return;
-    const card = button.closest('[data-shift-id]');
-    if (!card) return;
-    const shiftId = card.dataset.shiftId;
-
-    if (state.availability.has(shiftId)) {
-      state.availability.delete(shiftId);
-    } else {
-      const initial = state.initialAvailability.get(shiftId) || { selected: true, note: '' };
-      state.availability.set(shiftId, { ...initial, selected: true });
-    }
-
-    renderAvailability();
-    updateSubmitState();
   });
 
   submitButton?.addEventListener('click', submit);
