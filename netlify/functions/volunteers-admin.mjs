@@ -116,7 +116,7 @@ async function adminReadRequirements() {
 }
 
 async function adminSnapshot() {
-  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements, responseCampaigns] = await Promise.all([
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements, responseCampaigns, openRequestResponses] = await Promise.all([
     adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
@@ -196,6 +196,14 @@ async function adminSnapshot() {
         active: 'eq.true',
         order: 'created_at.desc'
       }
+    }),
+    adminRead('risposte richieste aperte', 'volunteer_audit_log', {
+      query: {
+        select: 'id,submission_id,person_id,new_value,created_at',
+        action_type: 'eq.open_request_response',
+        entity_type: 'eq.open_request',
+        order: 'created_at.asc'
+      }
     })
   ]);
 
@@ -216,6 +224,7 @@ async function adminSnapshot() {
   const requirementRows = rows(requirements?.data);
   const requirementResponseLabelAvailable = requirements?.responseLabelAvailable === true;
   const responseCampaignRows = rows(responseCampaigns);
+  const openRequestResponseRows = rows(openRequestResponses);
 
   const personById = new Map(peopleRows.map((row) => [row.id, row]));
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
@@ -291,6 +300,26 @@ async function adminSnapshot() {
       endsAt: shift?.ends_at || null,
       sortOrder: Number(shift?.sort_order ?? 9999),
       note: item.note || ''
+    });
+  }
+
+  const openRequestResponsesBySubmission = new Map();
+  for (const item of openRequestResponseRows) {
+    if (!item.submission_id) continue;
+    if (!openRequestResponsesBySubmission.has(item.submission_id)) {
+      openRequestResponsesBySubmission.set(item.submission_id, []);
+    }
+    const value = item.new_value && typeof item.new_value === 'object' ? item.new_value : {};
+    openRequestResponsesBySubmission.get(item.submission_id).push({
+      id: item.id,
+      shiftId: value.shiftId || null,
+      day: value.day || '',
+      shift: value.shift || '',
+      responseLabel: value.responseLabel || '',
+      activities: Array.isArray(value.activities) ? value.activities : [],
+      response: value.response || '',
+      note: value.note || '',
+      createdAt: item.created_at || null
     });
   }
 
@@ -825,7 +854,8 @@ async function adminSnapshot() {
         campaignId: submission.campaign_id || null,
         actorName: submission.actor_name || '',
         createdAt: submission.created_at || null,
-        availability: availabilityBySubmission.get(submission.id) || []
+        availability: availabilityBySubmission.get(submission.id) || [],
+        openRequestResponses: openRequestResponsesBySubmission.get(submission.id) || []
       })),
     postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
