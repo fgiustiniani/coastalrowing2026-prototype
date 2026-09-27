@@ -7985,6 +7985,14 @@
     }
   });
 
+  requirementCatalog?.addEventListener('input', (event) => {
+    const field = event.target.closest('[data-requirement-response-label]');
+    if (!field) return;
+    const rowNode = field.closest('[data-requirement-row]');
+    const requirement = requirementById(rowNode?.dataset.requirementId || '');
+    if (requirement) requirement.responseLabel = field.value;
+  });
+
   requirementCatalog?.addEventListener('change', async (event) => {
     const field = event.target.closest('[data-requirement-response-label]');
     if (!field) return;
@@ -7994,7 +8002,12 @@
     if (!requirementId || snapshot?.requirementResponseLabelAvailable !== true) return;
 
     const responseLabel = field.value.trim();
-    field.disabled = true;
+    const requirement = requirementById(requirementId);
+    if (requirement) requirement.responseLabel = responseLabel;
+
+    field.classList.add('is-saving');
+    field.setAttribute('aria-busy', 'true');
+
     try {
       await api(API, {
         method: 'POST',
@@ -8005,8 +8018,8 @@
           responseLabel
         })
       });
-      const requirement = requirementById(requirementId);
       if (requirement) requirement.responseLabel = responseLabel;
+      field.value = responseLabel;
       setStatus(
         requirementStatus,
         responseLabel
@@ -8015,11 +8028,15 @@
         'success'
       );
     } catch (error) {
-      const requirement = requirementById(requirementId);
-      field.value = requirement?.responseLabel || '';
-      setStatus(requirementStatus, error.message, 'error');
+      if (requirement) requirement.responseLabel = field.value;
+      setStatus(
+        requirementStatus,
+        `Voce non salvata: ${error.message}`,
+        'error'
+      );
     } finally {
-      const requirement = requirementById(requirementId);
+      field.classList.remove('is-saving');
+      field.removeAttribute('aria-busy');
       field.disabled = !requirement?.responseOpen || snapshot?.requirementResponseLabelAvailable !== true;
     }
   });
