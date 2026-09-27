@@ -366,6 +366,19 @@ async function adminSnapshot() {
       .filter(Boolean)
   );
 
+  const confirmedPersonShiftKeys = new Set();
+  for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
+    if (response?.response !== 'confirmed') continue;
+    const assignment = assignmentHistoryById.get(assignmentId) || null;
+    if (!assignment?.person_id || !assignment.shift_id) continue;
+    confirmedPersonShiftKeys.add(`${assignment.person_id}|${assignment.shift_id}`);
+  }
+  for (const assignmentId of retainedConfirmationMarkedAssignmentIds) {
+    const assignment = assignmentHistoryById.get(assignmentId) || null;
+    if (!assignment?.person_id || !assignment.shift_id) continue;
+    confirmedPersonShiftKeys.add(`${assignment.person_id}|${assignment.shift_id}`);
+  }
+
   const declinedRemovalMarker = 'Rimossa a seguito della risposta "Non può" del volontario per questa attività.';
   const declinedRemovals = assignmentDeactivationAuditRows
     .filter((event) => String(event.note || '').includes(declinedRemovalMarker))
@@ -456,7 +469,9 @@ async function adminSnapshot() {
   };
 
   const assignmentRetainsConfirmation = (assignment) => {
-    if (!assignment?.id || !assignment.shift_id) return false;
+    if (!assignment?.id || !assignment.person_id || !assignment.shift_id) return false;
+    if (confirmedPersonShiftKeys.has(`${assignment.person_id}|${assignment.shift_id}`)) return true;
+
     let current = assignment;
     const seen = new Set();
 
@@ -1352,9 +1367,26 @@ export default async (request) => {
         let confirmedAvailabilitySource = null;
         if (!assignmentId && shiftId) {
           const currentSnapshot = await adminSnapshot();
-          confirmedAvailabilitySource = (currentSnapshot.releasedConfirmedAvailability || []).find((item) =>
+          const releasedSource = (currentSnapshot.releasedConfirmedAvailability || []).find((item) =>
             item.personId === personId && item.shiftId === shiftId
           ) || null;
+          const activeConfirmedSource = (currentSnapshot.assignments || []).find((item) =>
+            item.personId === personId
+            && item.shiftId === shiftId
+            && item.currentResponse === 'confirmed'
+          ) || null;
+
+          confirmedAvailabilitySource = releasedSource
+            ? {
+                sourceAssignmentId: releasedSource.sourceAssignmentId || null,
+                source: 'released_confirmation'
+              }
+            : activeConfirmedSource
+              ? {
+                  sourceAssignmentId: activeConfirmedSource.id || null,
+                  source: 'same_shift_confirmation'
+                }
+              : null;
         }
 
         const result = await rpc('admin_save_volunteer_assignment', {
@@ -1408,12 +1440,12 @@ export default async (request) => {
                 assignmentId: result.id,
                 shiftId,
                 activity,
-                source: 'released_confirmation',
+                source: confirmedAvailabilitySource.source || 'same_shift_confirmation',
                 sourceAssignmentId: isUuid(confirmedAvailabilitySource.sourceAssignmentId)
                   ? confirmedAvailabilitySource.sourceAssignmentId
                   : null
               },
-              note: 'Assegnata mantenendo la conferma già espressa per il turno dopo la rimozione di una precedente attività.'
+              note: 'Assegnata mantenendo la conferma già espressa per lo stesso turno.'
             });
             retainedConfirmationTracked = true;
           } catch (error) {
