@@ -647,3 +647,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .previous-commitment--declined .previous-commitment__status {
   color: var(--no);
 }
+
+
+/* Link riepilogo attività in sola lettura */
+.volunteer-readonly-summary .summary-items {
+  margin-top: 16px;
+}
+.summary-item--pending {
+  border-color: #c8d4d9;
+  background: #f4f7f8;
+}
+.summary-item--pending .summary-item__status {
+  color: #60757d;
+}
+.readonly-summary-email {
+  margin-top: 20px;
+}
