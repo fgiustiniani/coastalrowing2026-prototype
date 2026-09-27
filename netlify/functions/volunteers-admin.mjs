@@ -1139,19 +1139,23 @@ export default async (request) => {
           const minute = Number(match[2]);
           return Number.isFinite(hour) && Number.isFinite(minute) ? (hour * 60) + minute : null;
         };
-        const raceFallsInShift = (race, shift) => {
+        const raceConflictsWithShift = (race, shift) => {
           if (!race?.raceDate || !race?.raceTime || !shift?.starts_at || !shift?.ends_at) return false;
           if (race.raceDate !== localDateKey(shift.starts_at)) return false;
+
           const raceMinutes = raceTimeMinutes(race.raceTime);
           const startMinutes = localTimeMinutes(shift.starts_at);
           const endMinutes = localTimeMinutes(shift.ends_at);
-          return [raceMinutes, startMinutes, endMinutes].every(Number.isFinite)
-            && startMinutes <= raceMinutes
-            && raceMinutes < endMinutes;
+          if (![raceMinutes, startMinutes, endMinutes].every(Number.isFinite)) return false;
+
+          if (raceMinutes <= 14 * 60) {
+            return startMinutes <= raceMinutes;
+          }
+          return endMinutes > 10 * 60;
         };
         const raceConflictForShift = (shiftId) => {
           const shift = shiftById.get(shiftId) || null;
-          return Boolean(shift && racesForPerson.some((race) => raceFallsInShift(race, shift)));
+          return Boolean(shift && racesForPerson.some((race) => raceConflictsWithShift(race, shift)));
         };
 
         const availabilityByShift = new Map(
