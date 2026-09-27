@@ -473,8 +473,8 @@
       .filter((shift) => state.availability.has(shift.id))
       .map((shift) => ({
         ...shift,
-        summaryActivity: 'Disponibilità aggiuntiva',
-        summaryStatus: 'Disponibilità aggiuntiva',
+        summaryActivity: 'Nessuna attività assegnata: sei libero',
+        summaryStatus: 'Disponibilità aggiuntiva dichiarata in precedenza',
         summaryKind: 'availability',
         summaryNew: false
       }));
