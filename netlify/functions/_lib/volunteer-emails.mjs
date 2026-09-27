@@ -154,8 +154,8 @@ export async function sendVolunteerSummaryEmail({
     .filter((shift) => shift.selected && !shift.assigned && !newConfirmedShiftIds.has(shift.id))
     .map((shift) => ({
       ...shift,
-      summaryActivity: 'Disponibilità aggiuntiva',
-      summaryStatus: 'Disponibilità aggiuntiva',
+      summaryActivity: 'Nessuna attività assegnata: sei libero',
+      summaryStatus: 'Disponibilità aggiuntiva dichiarata in precedenza',
       summaryKind: 'availability',
       summaryNew: false
     }));
