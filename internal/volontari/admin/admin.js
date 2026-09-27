@@ -7883,8 +7883,8 @@
 
     const responseOpen = requirementToggleAll.dataset.nextOpen !== 'false';
     const requirementIds = visibleRows.map((row) => row.id).filter(Boolean);
-    const actionLabel = responseOpen ? 'Selezione…' : 'Deselezione…';
-    const restore = setButtonBusy(requirementToggleAll, actionLabel);
+    requirementToggleAll.disabled = true;
+    requirementToggleAll.textContent = responseOpen ? 'Selezione…' : 'Deselezione…';
 
     try {
       await api(API, {
@@ -7913,7 +7913,8 @@
       setStatus(requirementStatus, error.message, 'error');
       syncRequirementToggleAll();
     } finally {
-      restore();
+      requirementToggleAll.disabled = false;
+      syncRequirementToggleAll();
     }
   });
 
