@@ -67,6 +67,7 @@
   const requirementToggleAll = document.querySelector('[data-toggle-all-requirement-response-open]');
   const requirementShiftFilter = document.querySelector('[data-requirement-shift-filter]');
   const requirementActivityFilter = document.querySelector('[data-requirement-activity-filter]');
+  const requirementUnderstaffedFilter = document.querySelector('[data-requirement-understaffed-filter]');
   const raceProgram = document.querySelector('[data-race-program]');
   const raceProgramStatus = document.querySelector('[data-race-program-status]');
   const racePersonFilter = document.querySelector('[data-race-person-filter]');
@@ -5502,9 +5503,11 @@
   function filteredRequirementsForCatalog() {
     const shiftIds = selectedFilterValues(requirementShiftFilter);
     const activityIds = selectedFilterValues(requirementActivityFilter);
+    const understaffedOnly = requirementUnderstaffedFilter?.checked === true;
     return requirements().filter((row) =>
       filterMatches(shiftIds, row.shiftId)
       && filterMatches(activityIds, row.activityId)
+      && (!understaffedOnly || Number(row.assignedCount || 0) < Number(row.requiredCount || 0))
     );
   }
 
@@ -5517,7 +5520,8 @@
     }
     const rows = filteredRequirementsForCatalog();
     const filtersActive = selectedFilterValues(requirementShiftFilter).length > 0
-      || selectedFilterValues(requirementActivityFilter).length > 0;
+      || selectedFilterValues(requirementActivityFilter).length > 0
+      || requirementUnderstaffedFilter?.checked === true;
     const body = [
       ...(newRequirementOpen ? [requirementRowHtml(null, true)] : []),
       ...rows.map((row) => requirementRowHtml(row, false))
@@ -6641,7 +6645,7 @@
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
-  [requirementShiftFilter, requirementActivityFilter]
+  [requirementShiftFilter, requirementActivityFilter, requirementUnderstaffedFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
   raceCrewFilter?.addEventListener('input', renderRaceProgram);
