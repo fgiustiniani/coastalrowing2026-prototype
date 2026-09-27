@@ -245,6 +245,29 @@
         </div>
       </section>
 
+      <dialog class="audit-dialog link-type-dialog" data-link-type-dialog>
+        <div class="audit-dialog__content">
+          <div class="section-head">
+            <div><p class="eyebrow">Link volontari</p><h2>Quale link vuoi generare?</h2></div>
+            <button class="audit-close" type="button" data-link-type-close aria-label="Chiudi">×</button>
+          </div>
+          <div class="link-type-options">
+            <button class="link-type-option" type="button" data-link-type-survey>
+              <strong>Link sondaggio</strong>
+              <span>Per chiedere nuove disponibilità. Verrà richiesta la campagna.</span>
+            </button>
+            <button class="link-type-option" type="button" data-link-type-summary>
+              <strong>Link riepilogo attività</strong>
+              <span>Solo consultazione delle attività assegnate, con possibilità di ricevere il riepilogo via email.</span>
+            </button>
+          </div>
+          <p class="status" data-link-type-status aria-live="polite"></p>
+          <div class="actions actions--end">
+            <button class="button button--secondary" type="button" data-link-type-close>Chiudi</button>
+          </div>
+        </div>
+      </dialog>
+
       <dialog class="audit-dialog campaign-dialog" data-campaign-dialog>
         <form class="audit-dialog__content" data-campaign-form>
           <div class="section-head">
