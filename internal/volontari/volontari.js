@@ -338,7 +338,7 @@
 
     let message = '';
     if (requests.length) {
-      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo ai turni indicati qui sotto; i turni già confermati non richiedono alcuna azione.`;
+      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo alle richieste indicate qui sotto; ciò che hai già confermato non richiede alcuna azione.`;
     } else if (availability.length) {
       message = 'Non hai nuove attività da confermare. Controlla soltanto che le disponibilità aggiuntive già comunicate siano ancora valide.';
     } else {
