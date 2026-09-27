@@ -4540,24 +4540,40 @@ tr.is-busy button.is-busy {
   display: grid;
   gap: 6px;
   padding: 0 7px 8px;
+  overflow: visible;
 }
 .assignment-board__unavailable-body[hidden] {
   display: none;
 }
 .assignment-board__unavailable-person {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   padding: 7px 8px;
   border: 1px solid #ecd0d0;
   border-radius: 8px;
   background: #fff;
+  overflow: visible;
 }
-.assignment-board__unavailable-person strong {
+.assignment-board__unavailable-person-main {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.assignment-board__unavailable-person-main > strong {
+  min-width: 0;
   color: #6f2929;
   font-size: .76rem;
   line-height: 1.2;
 }
-.assignment-board__unavailable-person span {
+.assignment-board__unavailable-person-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.assignment-board__unavailable-person-activity {
   color: var(--muted);
   font-size: .68rem;
   line-height: 1.25;
