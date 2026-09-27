@@ -128,6 +128,15 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function scrollStepIntoView(step) {
+    window.setTimeout(() => {
+      const node = document.querySelector(`[data-step="${step}"]:not([hidden])`);
+      if (!node) return;
+      const top = Math.max(0, window.scrollY + node.getBoundingClientRect().top - 12);
+      window.scrollTo({ top, behavior: 'smooth' });
+    }, 40);
+  }
+
   async function createSession(accessToken, website = '') {
     const response = await fetch(api, {
       method: 'POST',
@@ -446,12 +455,9 @@
       .filter((request) => ['confirmed', 'declined'].includes(state.responses.get(request.key)?.response))
       .map((request) => {
         const response = state.responses.get(request.key)?.response;
-        const activity = Array.isArray(request.activities) && request.activities.length
-          ? request.activities.join(' · ')
-          : request.label;
         return {
           ...request,
-          summaryActivity: activity,
+          summaryActivity: '',
           summaryStatus: response === 'declined' ? 'Non disponibile' : 'Confermata',
           summaryKind: response === 'declined' ? 'declined' : 'confirmed',
           summaryNew: true
@@ -488,7 +494,7 @@
               <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
               ${item.summaryNew ? '<span class="summary-new-badge">NUOVA</span>' : ''}
             </div>
-            <span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity || ''))}</span>
+            ${item.summaryActivity ? `<span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity))}</span>` : ''}
             <span class="summary-item__status">${escapeHtml(item.summaryStatus || '')}</span>
           </article>
         `).join('')}
@@ -530,7 +536,7 @@
     const hasSomethingToSend = hasRequests || changedAvailability;
     const complete = groups.every((group) => Boolean(state.responses.get(group.key)?.response));
 
-    submitButton.hidden = !hasSomethingToSend;
+    submitButton.hidden = false;
     noSubmit.hidden = hasSomethingToSend;
     submitButton.disabled = hasRequests && !complete;
 
@@ -538,6 +544,8 @@
       submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${groups.length})`;
     } else if (changedAvailability) {
       submitButton.textContent = 'Salva modifica disponibilità';
+    } else {
+      submitButton.textContent = 'Continua';
     }
   }
 
@@ -648,6 +656,7 @@
         const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(state.requestedPersonId)}`);
         if (detail?.person) {
           await selectPerson(detail.person, detail);
+          scrollStepIntoView(state.step);
           return;
         }
       } catch {
@@ -656,7 +665,8 @@
     }
 
     showStep(2);
-    personSearch?.focus();
+    try { personSearch?.focus({ preventScroll: true }); } catch { personSearch?.focus(); }
+    scrollStepIntoView(2);
   }
 
   let searchTimer = null;
