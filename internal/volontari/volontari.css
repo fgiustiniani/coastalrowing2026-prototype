@@ -364,9 +364,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   margin-left: auto;
 }
 .volunteer-no-submit {
-  margin: -8px 0 0;
+  margin: 14px 0 8px;
+  padding: 0 4px;
   text-align: center;
   font-weight: 750;
+  line-height: 1.45;
 }
 @media (max-width: 560px) {
   .volunteer-section__head,
@@ -478,4 +480,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   line-height: 1;
   font-weight: 900;
   letter-spacing: .04em;
+}
+
+@media (max-width: 560px) {
+  .volunteer-summary-step {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
 }
