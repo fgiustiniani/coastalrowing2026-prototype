@@ -113,6 +113,27 @@
         </div>
       </section>
 
+      <section class="card volunteer-readonly-summary" data-step="5" hidden>
+        <div class="volunteer-overview">
+          <p class="eyebrow">Riepilogo personale</p>
+          <h2>Attività assegnate</h2>
+          <p class="muted">Qui trovi la situazione aggiornata delle attività che ti sono state assegnate.</p>
+        </div>
+        <div data-readonly-summary></div>
+        <div class="success-delivery readonly-summary-email">
+          <h3>Vuoi ricevere il riepilogo?</h3>
+          <p class="muted">Puoi inviarlo al tuo indirizzo email.</p>
+          <form data-readonly-email-form>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" data-readonly-email autocomplete="email" maxlength="254" placeholder="nome@esempio.it" required>
+            </label>
+            <p class="status" data-readonly-email-status aria-live="polite"></p>
+            <button class="button button--secondary" type="submit" data-readonly-email-submit>Invia riepilogo via email</button>
+          </form>
+        </div>
+      </section>
+
       <section class="card success" data-success hidden>
         <div class="success-mark" aria-hidden="true">✓</div>
         <p class="eyebrow">Invio completato</p>
