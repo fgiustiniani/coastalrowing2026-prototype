@@ -82,14 +82,13 @@
           <p class="status" data-assignment-status aria-live="polite"></p>
         </section>
 
-        <section class="volunteer-section" data-availability-section>
-          <div class="volunteer-section__head">
-            <div>
-              <h2>Disponibilità già confermate in precedenza</h2>
-            </div>
-          </div>
-          <div class="availability-list" data-availability-list></div>
-        </section>
+        <details class="volunteer-section previous-commitments-panel" data-availability-section>
+          <summary class="previous-commitments-panel__summary">
+            <span>Disponibilità già confermate in precedenza</span>
+            <span class="previous-commitments-panel__count" data-availability-count></span>
+          </summary>
+          <div class="availability-list previous-commitments-panel__content" data-availability-list></div>
+        </details>
 
         <div class="actions volunteer-submit-actions">
           <button class="button button--primary" type="button" data-next-summary>Avanti</button>
