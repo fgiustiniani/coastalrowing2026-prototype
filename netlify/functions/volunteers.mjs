@@ -292,7 +292,6 @@ async function personState(personId) {
 
   const assignedShiftIds = new Set(hydratedAssignments.map((row) => row.shiftId).filter(Boolean));
   const availabilityShifts = rows(shifts)
-    .filter((shift) => shift.availability_selectable)
     .map((shift) => ({
       id: shift.id,
       code: shift.code,
