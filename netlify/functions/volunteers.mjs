@@ -297,6 +297,12 @@ async function personState(personId) {
   const availabilityMarkedAssignmentIds = new Set(
     assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
   );
+  const retainedConfirmationMarkedAssignmentIds = new Set(
+    assignmentAvailabilityAuditRows
+      .filter((row) => row.action_type === 'assignment_from_confirmed_availability')
+      .map((row) => row.entity_id)
+      .filter(Boolean)
+  );
   const confirmedShiftIds = new Set(
     assignmentHistoryRows
       .filter((row) => row.shift_id && latestResponse.get(row.id)?.response === 'confirmed')
@@ -422,15 +428,18 @@ async function personState(personId) {
       .filter(Boolean)
   );
   const historicalResponses = assignmentHistoryRows
-    .filter((assignment) =>
-      assignment.active === false
-      && !supersededAssignmentIds.has(assignment.id)
-      && ['confirmed', 'declined'].includes(latestResponse.get(assignment.id)?.response)
-    )
+    .filter((assignment) => {
+      if (assignment.active !== false || supersededAssignmentIds.has(assignment.id)) return false;
+      const response = responseForAssignment(assignment);
+      return ['confirmed', 'declined'].includes(response?.response)
+        || retainedConfirmationMarkedAssignmentIds.has(assignment.id);
+    })
     .map((assignment) => {
       const shift = shiftById.get(assignment.shift_id) || null;
       const activity = activityById.get(assignment.activity_id) || null;
-      const response = latestResponse.get(assignment.id) || null;
+      const response = responseForAssignment(assignment);
+      const retainedConfirmation = retainedConfirmationMarkedAssignmentIds.has(assignment.id);
+      const effectiveResponse = response?.response || (retainedConfirmation ? 'confirmed' : null);
       return {
         id: assignment.id,
         day: shift?.day_label || assignment.raw_day || '',
@@ -440,10 +449,11 @@ async function personState(personId) {
         endsAt: shift?.ends_at || null,
         sortOrder: Number(shift?.sort_order ?? 9999),
         activity: activity?.name || 'Attività',
-        response: response?.response || null,
+        response: effectiveResponse,
         note: response?.note || '',
         responseAt: response ? (submissionTime.get(response.submission_id) || response.created_at || null) : null,
-        releasedAt: assignment.updated_at || null
+        releasedAt: assignment.updated_at || null,
+        retainedConfirmation
       };
     });
 
