@@ -15,6 +15,10 @@
   const dashboard = document.querySelector('[data-dashboard]');
   const inviteStatus = document.querySelector('[data-invite-status]');
   const responseCampaignFilter = document.querySelector('[data-response-campaign-filter]');
+  const linkTypeDialog = document.querySelector('[data-link-type-dialog]');
+  const linkTypeStatus = document.querySelector('[data-link-type-status]');
+  const linkTypeSurvey = document.querySelector('[data-link-type-survey]');
+  const linkTypeSummary = document.querySelector('[data-link-type-summary]');
   const campaignDialog = document.querySelector('[data-campaign-dialog]');
   const campaignForm = document.querySelector('[data-campaign-form]');
   const campaignLinkSelect = document.querySelector('[data-campaign-link-select]');
@@ -6956,7 +6960,25 @@
   }
 
   function copyVolunteerLink() {
-    openCampaignDialog('');
+    setStatus(linkTypeStatus, '');
+    linkTypeDialog?.showModal();
+  }
+
+  async function copySummaryLink() {
+    if (!linkTypeSummary) return;
+    linkTypeSummary.disabled = true;
+    setStatus(linkTypeStatus, 'Generazione link…');
+    try {
+      const body = await api(`${API}?view=invite&mode=summary`);
+      if (!body.accessUrl) throw new Error('Link non disponibile.');
+      await writeClipboard(new URL(body.accessUrl, location.origin).toString());
+      setStatus(inviteStatus, 'Link riepilogo attività copiato.', 'success');
+      linkTypeDialog?.close();
+    } catch (error) {
+      setStatus(linkTypeStatus, error.message, 'error');
+    } finally {
+      linkTypeSummary.disabled = false;
+    }
   }
 
   async function submitCampaignLink(event) {
@@ -7123,6 +7145,14 @@
 
 
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
+  linkTypeSurvey?.addEventListener('click', () => {
+    linkTypeDialog?.close();
+    openCampaignDialog('');
+  });
+  linkTypeSummary?.addEventListener('click', copySummaryLink);
+  document.querySelectorAll('[data-link-type-close]').forEach((button) => {
+    button.addEventListener('click', () => linkTypeDialog?.close());
+  });
   responseCampaignFilter?.addEventListener('change', () => {
     renderKpis();
     setStatus(inviteStatus, '');
