@@ -72,7 +72,8 @@ export async function sendVolunteerSummaryEmail({
   personState,
   requestUrl,
   accompanyingMessage = '',
-  currentSubmissionId = null
+  currentSubmissionId = null,
+  assignmentsOnly = false
 }) {
   const recipient = cleanHeader(email, 254);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
@@ -103,20 +104,24 @@ export async function sendVolunteerSummaryEmail({
   const submissionId = clean(currentSubmissionId, 60);
 
   const currentAssignments = (Array.isArray(personState?.assignments) ? personState.assignments : [])
-    .filter((row) =>
-      row.currentResponse === 'confirmed'
+    .filter((row) => assignmentsOnly
+      || row.currentResponse === 'confirmed'
       || row.currentResponse === 'declined'
-      || (row.assignedFromAvailability && row.currentResponse !== 'declined')
-    )
-    .map((row) => ({
-      ...row,
-      summaryActivity: activityLabel(row),
-      summaryStatus: row.currentResponse === 'declined' ? 'Non disponibile' : 'Confermata',
-      summaryKind: row.currentResponse === 'declined' ? 'declined' : 'confirmed',
-      summaryNew: false
-    }));
+      || (row.assignedFromAvailability && row.currentResponse !== 'declined'))
+    .map((row) => {
+      const confirmed = row.currentResponse === 'confirmed'
+        || (row.assignedFromAvailability && row.currentResponse !== 'declined');
+      const declined = row.currentResponse === 'declined';
+      return {
+        ...row,
+        summaryActivity: activityLabel(row),
+        summaryStatus: declined ? 'Non disponibile' : confirmed ? 'Confermata' : 'Da rispondere',
+        summaryKind: declined ? 'declined' : confirmed ? 'confirmed' : 'pending',
+        summaryNew: false
+      };
+    });
 
-  const historicalResponses = [
+  const historicalResponses = assignmentsOnly ? [] : [
     ...(Array.isArray(personState?.historicalResponses) ? personState.historicalResponses : []),
     ...(Array.isArray(personState?.historicalOpenRequestResponses)
       ? personState.historicalOpenRequestResponses.filter((row) => !submissionId || row.submissionId !== submissionId)
@@ -129,7 +134,7 @@ export async function sendVolunteerSummaryEmail({
     summaryNew: false
   }));
 
-  const currentOpenResponses = (Array.isArray(personState?.openRequestResponses) ? personState.openRequestResponses : [])
+  const currentOpenResponses = assignmentsOnly ? [] : (Array.isArray(personState?.openRequestResponses) ? personState.openRequestResponses : [])
     .filter((row) =>
       submissionId
       && row.submissionId === submissionId
@@ -150,7 +155,7 @@ export async function sendVolunteerSummaryEmail({
       .filter(Boolean)
   );
 
-  const additionalAvailability = (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
+  const additionalAvailability = assignmentsOnly ? [] : (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
     .filter((shift) => shift.selected && !shift.assigned && !newConfirmedShiftIds.has(shift.id))
     .map((shift) => ({
       ...shift,
@@ -241,6 +246,11 @@ export async function sendVolunteerSummaryEmail({
       background: '#ffffff',
       border: '#e3b3aa',
       status: '#a43f2c'
+    },
+    pending: {
+      background: '#f4f7f8',
+      border: '#c8d4d9',
+      status: '#60757d'
     }
   };
 
@@ -275,10 +285,12 @@ export async function sendVolunteerSummaryEmail({
     : '<p style="color:#60757d;font-style:italic;">Nessuna disponibilità da riepilogare.</p>';
 
   const prefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
-  const subject = `${prefix}Riepilogo disponibilità volontario - Campionati Italiani Coastal Rowing 2026`;
+  const subject = assignmentsOnly
+    ? `${prefix}Riepilogo attività assegnate - Campionati Italiani Coastal Rowing 2026`
+    : `${prefix}Riepilogo disponibilità volontario - Campionati Italiani Coastal Rowing 2026`;
 
   const text = [
-    `Riepilogo disponibilità di ${personName}`,
+    assignmentsOnly ? `Riepilogo attività assegnate di ${personName}` : `Riepilogo disponibilità di ${personName}`,
     '',
     ...(message ? [message, ''] : []),
     rowText,
@@ -290,7 +302,7 @@ export async function sendVolunteerSummaryEmail({
 
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#263f48;line-height:1.45;max-width:680px;margin:0 auto;">
-      <h2 style="margin:0 0 6px 0;font-size:22px;line-height:1.25;">Riepilogo disponibilità</h2>
+      <h2 style="margin:0 0 6px 0;font-size:22px;line-height:1.25;">${assignmentsOnly ? 'Riepilogo attività assegnate' : 'Riepilogo disponibilità'}</h2>
       <p style="margin:0 0 18px 0;"><strong>${escapeHtml(personName)}</strong></p>
       ${message ? `<p style="margin:0 0 18px 0;">${escapeHtml(message).replace(/\n/g, '<br>')}</p>` : ''}
       <div style="margin:0 0 18px 0;">${summaryHtml}</div>
