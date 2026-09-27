@@ -493,6 +493,9 @@
             </div>
             ${item.summaryActivity ? `<span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity))}</span>` : ''}
             <span class="summary-item__status">${escapeHtml(item.summaryStatus || '')}</span>
+            ${item.summaryKind === 'availability' && item.raceConflict === true
+              ? '<span class="summary-race-conflict-badge">Non assegnato per concomitanza con la gara</span>'
+              : ''}
           </article>
         `).join('')}
       </div>
