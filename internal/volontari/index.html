@@ -91,7 +91,7 @@
               <h2>Disponibilità aggiuntive</h2>
             </div>
           </div>
-          <p class="muted">Queste disponibilità erano già state comunicate e non sono ancora state utilizzate per assegnarti un’attività. Restano valide e in questa pagina sono mostrate solo come riepilogo.</p>
+          <p class="muted">Queste disponibilità erano già state comunicate e non sono ancora state utilizzate per assegnarti un’attività. Se proprio non sei più disponibile, puoi toglierle.</p>
           <div class="availability-list" data-availability-list></div>
         </section>
 
@@ -99,6 +99,18 @@
           <button class="button button--primary" type="button" data-next-summary>Avanti</button>
         </div>
       </section>
+
+      <dialog class="availability-confirm-dialog" data-availability-confirm-dialog>
+        <div class="availability-confirm-dialog__content">
+          <p class="eyebrow">Conferma</p>
+          <h2>Proprio non puoi?</h2>
+          <p class="muted" data-availability-confirm-message>Sei sicuro di voler togliere questa disponibilità?</p>
+          <div class="actions availability-confirm-dialog__actions">
+            <button class="button button--secondary" type="button" data-availability-keep>Vabbè, posso</button>
+            <button class="button button--primary is-danger" type="button" data-availability-remove-confirm>Proprio non posso</button>
+          </div>
+        </div>
+      </dialog>
 
       <section class="card volunteer-summary-step" data-step="4" hidden>
         <p class="eyebrow">Situazione aggiornata</p>
