@@ -18,8 +18,7 @@
     initialAvailability: new Map(),
     clientSubmissionId: crypto.randomUUID(),
     latestSubmissionId: null,
-    requestedPersonId: '',
-    pendingAvailabilityRemovalId: ''
+    requestedPersonId: ''
   };
 
   const accessCard = document.querySelector('[data-access-card]');
@@ -41,15 +40,10 @@
   const continueManual = document.querySelector('[data-continue-manual]');
   const personIntro = document.querySelector('[data-person-intro]');
   const requestSection = document.querySelector('[data-request-section]');
-  const requestProgress = document.querySelector('[data-request-progress]');
   const assignmentList = document.querySelector('[data-assignment-list]');
   const assignmentStatus = document.querySelector('[data-assignment-status]');
   const availabilitySection = document.querySelector('[data-availability-section]');
   const availabilityList = document.querySelector('[data-availability-list]');
-  const availabilityConfirmDialog = document.querySelector('[data-availability-confirm-dialog]');
-  const availabilityConfirmMessage = document.querySelector('[data-availability-confirm-message]');
-  const availabilityKeep = document.querySelector('[data-availability-keep]');
-  const availabilityRemoveConfirm = document.querySelector('[data-availability-remove-confirm]');
   const summary = document.querySelector('[data-summary]');
   const submitStatus = document.querySelector('[data-submit-status]');
   const submitButton = document.querySelector('[data-submit]');
@@ -167,6 +161,15 @@
     const given = person?.given_name || '';
     if (surname || given) return `${surname} ${given}`.trim();
     return person?.display_name || '';
+  }
+
+  function personFirstName() {
+    const selectedGiven = String(state.selectedPerson?.given_name || '').trim();
+    if (selectedGiven) return selectedGiven;
+    const manualGiven = String(state.manualGivenName || '').trim();
+    if (manualGiven) return manualGiven;
+    const fallback = String(state.manualPersonName || state.selectedPerson?.display_name || '').trim();
+    return fallback.split(/\s+/).filter(Boolean).pop() || '';
   }
 
   function displayActivityName(value) {
@@ -327,22 +330,9 @@
   }
 
   function renderPersonIntro() {
-    const requests = requestGroups();
-    const availability = originalUnusedAvailability();
-    const name = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
-
-    let message = '';
-    if (requests.length) {
-      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo alle richieste indicate qui sotto; ciò che hai già confermato non richiede alcuna azione.`;
-    } else if (availability.length) {
-      message = 'Non hai nuove attività da confermare. Controlla soltanto che le disponibilità aggiuntive già comunicate siano ancora valide.';
-    } else {
-      message = 'È tutto aggiornato. Non hai nuove richieste e non devi fare nulla.';
-    }
-
+    const firstName = personFirstName();
     personIntro.innerHTML = `
-      <p class="eyebrow">Ciao ${escapeHtml(name)}</p>
-      <div class="volunteer-overview__message">${message}</div>
+      <p class="volunteer-greeting">Ciao ${escapeHtml(firstName || 'volontario')},</p>
     `;
   }
 
@@ -352,13 +342,9 @@
 
     if (!groups.length) {
       assignmentList.innerHTML = '';
-      if (requestProgress) requestProgress.textContent = '';
       setStatus(assignmentStatus, '');
       return;
     }
-
-    const answered = answeredRequestCount();
-    requestProgress.textContent = `${answered} di ${groups.length} completat${groups.length === 1 ? 'a' : 'e'}`;
 
     assignmentList.innerHTML = groups.map((group) => {
       const saved = state.responses.get(group.key) || {};
@@ -391,42 +377,42 @@
     }).join('');
   }
 
-  function renderAvailability() {
-    const shifts = originalUnusedAvailability();
-    availabilitySection.hidden = shifts.length === 0;
+  function previousConfirmedCommitments() {
+    const assigned = confirmedAssignments().map((assignment) => ({
+      ...assignment,
+      commitmentKind: 'assigned',
+      commitmentActivity: assignment.activity || 'Attività assegnata'
+    }));
+    const unassigned = originalUnusedAvailability().map((shift) => ({
+      ...shift,
+      commitmentKind: 'unassigned',
+      commitmentActivity: 'Attività da definire'
+    }));
+    return sortShiftsChronologically([...assigned, ...unassigned]);
+  }
 
-    if (!shifts.length) {
+  function renderAvailability() {
+    const commitments = previousConfirmedCommitments();
+    availabilitySection.hidden = commitments.length === 0;
+
+    if (!commitments.length) {
       availabilityList.innerHTML = '';
       return;
     }
 
-    availabilityList.innerHTML = shifts.map((shift) => {
-      const active = state.availability.has(shift.id);
-      const initial = state.initialAvailability.get(shift.id) || {};
+    availabilityList.innerHTML = commitments.map((item) => {
+      const assigned = item.commitmentKind === 'assigned';
       return `
-        <article class="availability-card availability-card--existing ${active ? 'is-active' : 'is-removed'}" data-shift-id="${escapeHtml(shift.id)}">
+        <article class="availability-card previous-commitment ${assigned ? 'previous-commitment--assigned' : 'previous-commitment--unassigned'}">
           <div class="availability-card__content">
             <div>
-              <strong>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</strong>
-              <span class="availability-state ${active ? 'is-active' : 'is-removed'}">
-                ${active ? '✓ Disponibilità comunicata' : 'Disponibilità rimossa'}
-              </span>
-              ${initial.note ? `<small>Nota: ${escapeHtml(initial.note)}</small>` : ''}
+              <strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+              <span class="previous-commitment__activity">${escapeHtml(displayActivityName(item.commitmentActivity))}</span>
             </div>
-            <button class="button button--secondary availability-toggle" type="button" data-toggle-availability>
-              ${active ? 'Togli disponibilità' : 'Ripristina'}
-            </button>
           </div>
         </article>
       `;
     }).join('');
-  }
-
-  function availabilityHasChanges() {
-    const initialIds = [...state.initialAvailability.keys()].sort();
-    const currentIds = [...state.availability.keys()].sort();
-    return initialIds.length !== currentIds.length
-      || initialIds.some((id, index) => id !== currentIds[index]);
   }
 
   function renderSummary() {
@@ -537,18 +523,14 @@
   function updateSubmitState() {
     const groups = requestGroups();
     const hasRequests = groups.length > 0;
-    const changedAvailability = availabilityHasChanges();
-    const hasSomethingToSend = hasRequests || changedAvailability;
     const complete = groups.every((group) => Boolean(state.responses.get(group.key)?.response));
 
     submitButton.hidden = false;
-    noSubmit.hidden = hasSomethingToSend;
+    noSubmit.hidden = hasRequests;
     submitButton.disabled = hasRequests && !complete;
 
     if (hasRequests) {
       submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${groups.length})`;
-    } else if (changedAvailability) {
-      submitButton.textContent = 'Salva modifica disponibilità';
     } else {
       submitButton.textContent = 'Continua';
     }
@@ -598,8 +580,7 @@
               note: value.note || ''
             };
           }),
-        availability: Array.from(state.availability.entries())
-          .map(([shiftId, value]) => ({ shiftId, note: value.note || '' }))
+        availability: []
       };
 
       const body = await apiRequest(api, {
@@ -732,49 +713,6 @@
     if (!group) return;
     const current = state.responses.get(group.key) || {};
     state.responses.set(group.key, { ...current, note: event.target.value });
-  });
-
-  availabilityList?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-toggle-availability]');
-    if (!button) return;
-    const card = button.closest('[data-shift-id]');
-    if (!card) return;
-    const shiftId = card.dataset.shiftId;
-
-    if (!state.availability.has(shiftId)) {
-      const initial = state.initialAvailability.get(shiftId) || { selected: true, note: '' };
-      state.availability.set(shiftId, { ...initial, selected: true });
-      renderAvailability();
-      updateSubmitState();
-      return;
-    }
-
-    state.pendingAvailabilityRemovalId = shiftId;
-    const shift = originalUnusedAvailability().find((item) => item.id === shiftId);
-    if (availabilityConfirmMessage) {
-      availabilityConfirmMessage.textContent = shift
-        ? `Sei sicuro di voler togliere la disponibilità per ${shift.day} · ${shift.shift}? Proprio non puoi?`
-        : 'Sei sicuro di voler togliere questa disponibilità? Proprio non puoi?';
-    }
-    availabilityConfirmDialog?.showModal();
-  });
-
-  availabilityRemoveConfirm?.addEventListener('click', () => {
-    const shiftId = state.pendingAvailabilityRemovalId;
-    if (shiftId) state.availability.delete(shiftId);
-    state.pendingAvailabilityRemovalId = '';
-    availabilityConfirmDialog?.close();
-    renderAvailability();
-    updateSubmitState();
-  });
-
-  availabilityKeep?.addEventListener('click', () => {
-    state.pendingAvailabilityRemovalId = '';
-    availabilityConfirmDialog?.close();
-  });
-
-  availabilityConfirmDialog?.addEventListener('close', () => {
-    state.pendingAvailabilityRemovalId = '';
   });
 
   submitButton?.addEventListener('click', submit);
