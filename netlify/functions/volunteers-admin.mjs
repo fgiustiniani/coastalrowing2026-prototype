@@ -90,6 +90,31 @@ async function adminReadPeople() {
   return { data: fallback, groupAvailable: false };
 }
 
+async function adminReadRequirements() {
+  const tableProbe = await adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
+    query: { select: 'id', limit: 1 }
+  });
+  if (tableProbe === null) return { data: null, responseLabelAvailable: false };
+
+  const withLabel = await adminReadOptionalColumn('esigenze attività con voce link', 'volunteer_activity_requirements', {
+    query: {
+      select: 'id,shift_id,activity_id,required_count,display_order,response_open,response_label,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'shift_id.asc,display_order.asc,created_at.asc'
+    }
+  });
+  if (withLabel !== null) return { data: withLabel, responseLabelAvailable: true };
+
+  const fallback = await adminRead('esigenze attività', 'volunteer_activity_requirements', {
+    query: {
+      select: 'id,shift_id,activity_id,required_count,display_order,response_open,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'shift_id.asc,display_order.asc,created_at.asc'
+    }
+  });
+  return { data: fallback, responseLabelAvailable: false };
+}
+
 async function adminSnapshot() {
   const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements] = await Promise.all([
     adminReadPeople(),
@@ -164,13 +189,7 @@ async function adminSnapshot() {
         order: 'person_name.asc,crew_label.asc'
       }
     }),
-    adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
-      query: {
-        select: 'id,shift_id,activity_id,required_count,display_order,response_open,active,created_at,updated_at',
-        active: 'eq.true',
-        order: 'shift_id.asc,display_order.asc,created_at.asc'
-      }
-    })
+    adminReadRequirements()
   ]);
 
   const peopleRows = rows(peopleResult?.data);
@@ -187,7 +206,8 @@ async function adminSnapshot() {
   const assignmentAvailabilityAuditRows = rows(assignmentAvailabilityAudit);
   const assignmentDeactivationAuditRows = rows(assignmentDeactivationAudit);
   const raceRows = rows(raceProgram);
-  const requirementRows = rows(requirements);
+  const requirementRows = rows(requirements?.data);
+  const requirementResponseLabelAvailable = requirements?.responseLabelAvailable === true;
 
   const personById = new Map(peopleRows.map((row) => [row.id, row]));
   const shiftById = new Map(shiftRows.map((row) => [row.id, row]));
@@ -730,6 +750,7 @@ async function adminSnapshot() {
       requiredCount: Number(requirement.required_count || 0),
       displayOrder: Number(requirement.display_order || 0),
       responseOpen: requirement.response_open === true,
+      responseLabel: requirement.response_label || '',
       assignedCount: assigned.length,
       confirmedCount,
       declinedCount,
@@ -772,7 +793,8 @@ async function adminSnapshot() {
     releasedConfirmedAvailability,
     declinedAssignmentResponses,
     declinedRemovals,
-    requirementsAvailable: requirements !== null,
+    requirementsAvailable: requirements?.data !== null,
+    requirementResponseLabelAvailable,
     requirements: hydratedRequirements,
     postConfirmationChanges,
     responsibilityAvailable: assignmentResponsibilities !== null,
@@ -1712,6 +1734,45 @@ export default async (request) => {
         });
 
         return json({ ok: true, requirementIds, responseOpen, count: requirementIds.length });
+      }
+
+      if (action === 'set-requirement-response-label') {
+        await requireRequirementsTable();
+        const requirementId = clean(body.requirementId, 60);
+        const responseLabel = clean(body.responseLabel, 160);
+        if (!isUuid(requirementId)) throw new ApiError('Abbinamento non valido.', 400, 'INVALID_REQUIREMENT');
+
+        const currentRows = await adminReadOptionalColumn('voce link esigenza', 'volunteer_activity_requirements', {
+          query: {
+            select: 'id,response_open,response_label,active',
+            id: `eq.${requirementId}`,
+            active: 'eq.true',
+            limit: 1
+          }
+        });
+        if (currentRows === null) {
+          throw new ApiError('Il campo Voce nel link non è ancora disponibile nel database condiviso.', 503, 'RESPONSE_LABEL_NOT_INITIALIZED');
+        }
+        const current = rows(currentRows)[0] || null;
+        if (!current) throw new ApiError('Abbinamento non trovato.', 404, 'REQUIREMENT_NOT_FOUND');
+
+        await supabaseRequest('volunteer_activity_requirements', {
+          method: 'PATCH',
+          query: { id: `eq.${requirementId}` },
+          body: { response_label: responseLabel || null, updated_at: new Date().toISOString() },
+          prefer: 'return=minimal'
+        });
+
+        await auditAdminChange({
+          actorName,
+          actionType: 'requirement_response_label_updated',
+          entityType: 'requirement',
+          entityId: requirementId,
+          previousValue: { responseLabel: current.response_label || '' },
+          newValue: { responseLabel }
+        });
+
+        return json({ ok: true, requirementId, responseLabel });
       }
 
       if (action === 'set-requirement-response-open') {
