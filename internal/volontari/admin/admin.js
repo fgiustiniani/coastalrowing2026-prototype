@@ -4348,6 +4348,91 @@
     );
   }
 
+  function shiftEndsWithinHourBeforeRace(race, shift) {
+    if (!race?.raceDate || !race?.raceTime || !shift?.starts_at || !shift?.ends_at) return false;
+    if (race.raceDate !== localDateKey(shift.starts_at)) return false;
+    const raceMs = Date.parse(`${race.raceDate}T${race.raceTime}:00+02:00`);
+    const endMs = Date.parse(shift.ends_at);
+    if (!Number.isFinite(raceMs) || !Number.isFinite(endMs)) return false;
+    const minutesBeforeRace = (raceMs - endMs) / 60000;
+    return minutesBeforeRace >= 0 && minutesBeforeRace <= 60;
+  }
+
+  function hideOpenRequestForRace(race, shift) {
+    return raceFallsInShift(race, shift) || shiftEndsWithinHourBeforeRace(race, shift);
+  }
+
+  function openRequestRowsForPerson(personId) {
+    if (!personId) return [];
+
+    const assignedShiftIds = new Set(
+      (snapshot?.assignments || [])
+        .filter((row) => row.personId === personId && row.shiftId)
+        .map((row) => row.shiftId)
+    );
+    const availableShiftIds = new Set(
+      unassignedAvailabilityRows()
+        .filter((row) => row.personId === personId && row.shiftId)
+        .map((row) => row.shiftId)
+    );
+    const races = snapshot?.raceProgramAvailable
+      ? (snapshot?.raceProgram || []).filter((race) => race.personId === personId)
+      : [];
+
+    const latestResponseByKey = new Map();
+    const submissions = (snapshot?.campaignSubmissions || [])
+      .filter((submission) => submission.personId === personId)
+      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+    for (const submission of submissions) {
+      for (const response of submission.openRequestResponses || []) {
+        if (!response.shiftId || !response.responseLabel) continue;
+        const key = `${response.shiftId}|${String(response.responseLabel).toLocaleLowerCase('it-IT')}`;
+        latestResponseByKey.set(key, {
+          response: response.response || '',
+          createdAt: response.createdAt || submission.createdAt || null
+        });
+      }
+    }
+
+    const groups = new Map();
+    for (const requirement of (snapshot?.requirements || [])) {
+      if (requirement.responseOpen !== true || !requirement.shiftId) continue;
+      if (assignedShiftIds.has(requirement.shiftId) || availableShiftIds.has(requirement.shiftId)) continue;
+
+      const shift = (snapshot?.shifts || []).find((item) => item.id === requirement.shiftId) || null;
+      if (!shift) continue;
+      if (races.some((race) => hideOpenRequestForRace(race, shift))) continue;
+
+      const responseLabelValue = String(requirement.responseLabel || 'Disponibilità').trim() || 'Disponibilità';
+      const key = `${requirement.shiftId}|${responseLabelValue.toLocaleLowerCase('it-IT')}`;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          shiftId: requirement.shiftId,
+          day: requirement.day || shift.day_label || '',
+          shift: requirement.shift || shift.shift_label || '',
+          activity: responseLabelValue,
+          sortOrder: Number(requirement.shiftSortOrder ?? shift.sort_order ?? 9999),
+          openedAt: requirement.updatedAt || null
+        });
+      } else if (String(requirement.updatedAt || '') > String(groups.get(key).openedAt || '')) {
+        groups.get(key).openedAt = requirement.updatedAt || null;
+      }
+    }
+
+    return [...groups.values()]
+      .filter((row) => {
+        const previous = latestResponseByKey.get(row.key);
+        if (!previous) return true;
+        if (!row.openedAt) return false;
+        return String(previous.createdAt || '') < String(row.openedAt || '');
+      })
+      .sort((a, b) =>
+        Number(a.sortOrder ?? 9999) - Number(b.sortOrder ?? 9999)
+        || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
+      );
+  }
+
   function personReportRows() {
     const assignments = snapshot?.assignments || [];
     const historicalAssignments = snapshot?.historicalAssignments || [];
@@ -4408,24 +4493,31 @@
     return [...byPerson.values()].map((item) => {
       const reportRows = item.rows.length ? item.rows : (item.historicalRows || []);
       const campaignResponses = campaignResponseRowsForPerson(item.id);
+      const openRequests = openRequestRowsForPerson(item.id);
       const assignmentConfirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
       const assignmentDeclined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
       const campaignConfirmed = campaignResponses.filter((row) => row.response === 'confirmed').length;
       const campaignDeclined = campaignResponses.filter((row) => row.response === 'declined').length;
       const confirmed = assignmentConfirmed + campaignConfirmed;
       const declined = assignmentDeclined + campaignDeclined;
-      const pending = reportRows.length - assignmentConfirmed - assignmentDeclined;
+      const pending = (reportRows.length - assignmentConfirmed - assignmentDeclined) + openRequests.length;
       const person = personById.get(item.id) || null;
       const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
-      const availability = person?.latestSubmission?.availability || [];
       const freeAvailabilityRows = unassignedAvailabilityRows()
         .filter((row) => row.personId === item.id);
+      const availability = freeAvailabilityRows.map((row) => ({
+        ...row,
+        availabilityLabel: row.isReleasedConfirmed === true
+          ? 'Conferma precedente libera'
+          : 'Disponibilità aggiuntiva non usata'
+      }));
       const statusKeys = [...new Set([
         ...reportRows.map((row) => assignmentStatusKey(row)),
         ...freeAvailabilityRows.map((row) => assignmentStatusKey(row)),
-        ...campaignResponses.map((row) => row.response === 'declined' ? 'declined' : 'confirmed')
+        ...campaignResponses.map((row) => row.response === 'declined' ? 'declined' : 'confirmed'),
+        ...openRequests.map(() => 'pending')
       ])];
       const notes = reportRows
         .filter((row) => String(row.currentNote || '').trim())
@@ -4449,6 +4541,12 @@
           label: `${row.day}-${row.shift} ${row.activity} · ${row.campaignName}`,
           response: row.response,
           responseLabel: responseLabel(row.response),
+          sortOrder: Number(row.sortOrder ?? 9999)
+        })),
+        ...openRequests.map((row) => ({
+          label: `${row.day}-${row.shift} ${row.activity} · nuova richiesta`,
+          response: 'pending',
+          responseLabel: 'Da rispondere',
           sortOrder: Number(row.sortOrder ?? 9999)
         }))
       ].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, 'it'));
@@ -4474,7 +4572,7 @@
         activityRows,
         activities: activityRows.map((row) => row.label),
         activitiesText: activityRows.map((row) => `${row.label} — ${row.responseLabel}`).join('\n'),
-        availabilityText: availability.map((a) => `${a.day} ${a.shift}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
+        availabilityText: availability.map((a) => `${a.day} ${a.shift} — ${a.availabilityLabel}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
         latest
       };
     }).sort((a, b) => a.name.localeCompare(b.name, 'it'));
@@ -4495,7 +4593,7 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità libere</th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       const submissionCount = Number(item.submissionCount || 0);
       const submissionCountHtml = submissionCount > 0
@@ -4510,7 +4608,7 @@
         <td><strong>${item.declined}</strong></td>
         <td class="person-report-submissions"><div class="person-report-submission-actions">${submissionCountHtml}${summaryEmailButton}</div>${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
         <td class="notes-cell person-report-notes-col">${item.notes ? `<button class="report-note-button" type="button" data-report-note-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Visualizza note di ${escapeHtml(item.name)}" title="Visualizza note">👁</button>` : '—'}</td>
-        <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
+        <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong><small>${escapeHtml(a.availabilityLabel || 'Disponibilità libera')}</small>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
       </tr>`;
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
