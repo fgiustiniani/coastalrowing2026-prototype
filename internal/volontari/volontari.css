@@ -621,3 +621,29 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .previous-commitment .summary-race-conflict-badge {
   margin-top: 4px;
 }
+
+
+/* Disponibilità dichiarate in precedenza: stato rifiutato */
+.previous-commitment--declined {
+  border-color: #e3b3aa;
+  background: #fff1ee;
+}
+.previous-commitment--declined .previous-commitment__activity {
+  color: var(--muted);
+}
+.previous-commitment__status {
+  display: block;
+  margin-top: 3px;
+  font-size: .78rem;
+  line-height: 1.3;
+  font-weight: 800;
+}
+.previous-commitment--assigned .previous-commitment__status {
+  color: var(--ok);
+}
+.previous-commitment--unassigned .previous-commitment__status {
+  color: #9a6500;
+}
+.previous-commitment--declined .previous-commitment__status {
+  color: var(--no);
+}
