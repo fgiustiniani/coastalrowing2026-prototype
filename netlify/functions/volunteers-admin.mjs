@@ -49,6 +49,27 @@ async function adminReadOptionalColumn(operation, path, options) {
   }
 }
 
+async function adminReadAll(operation, path, options = {}) {
+  const pageSize = 1000;
+  const collected = [];
+  let offset = 0;
+
+  while (true) {
+    const page = rows(await adminRead(operation, path, {
+      ...options,
+      query: {
+        ...(options.query || {}),
+        limit: pageSize,
+        offset
+      }
+    }));
+
+    collected.push(...page);
+    if (page.length < pageSize) return collected;
+    offset += page.length;
+  }
+}
+
 async function adminReadPeople() {
   const withGroup = await adminReadOptionalColumn('persone con gruppo', 'volunteer_people', {
     query: {
@@ -96,10 +117,10 @@ async function adminSnapshot() {
         order: 'created_at.asc'
       }
     }),
-    adminRead('storico assegnazioni', 'volunteer_assignments', {
+    adminReadAll('storico assegnazioni', 'volunteer_assignments', {
       query: {
         select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,source_type,source_row,active,supersedes_assignment_id,display_order,created_at,updated_at',
-        order: 'created_at.asc'
+        order: 'created_at.asc,id.asc'
       }
     }),
     adminReadOptionalColumn('responsabili assegnazioni', 'volunteer_assignments', {
