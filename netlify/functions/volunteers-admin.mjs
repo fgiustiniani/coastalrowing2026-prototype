@@ -1100,11 +1100,43 @@ export default async (request) => {
           assigned: assignedShiftIds.has(item.shiftId)
         }));
 
+        const campaignById = new Map(
+          (snapshot.responseCampaigns || []).map((campaign) => [campaign.id, campaign])
+        );
+        const shiftById = new Map((snapshot.shifts || []).map((shift) => [shift.id, shift]));
+        const latestCampaignResponseByKey = new Map();
+        const campaignSubmissions = (snapshot.campaignSubmissions || [])
+          .filter((submission) => submission.personId === personId)
+          .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+
+        for (const submission of campaignSubmissions) {
+          for (const response of submission.openRequestResponses || []) {
+            if (!['confirmed', 'declined'].includes(response.response)) continue;
+            const key = [
+              submission.campaignId || '',
+              response.shiftId || '',
+              String(response.responseLabel || '').toLocaleLowerCase('it-IT')
+            ].join('|');
+            const shift = shiftById.get(response.shiftId) || {};
+            latestCampaignResponseByKey.set(key, {
+              ...response,
+              activity: response.responseLabel || 'Nuova richiesta',
+              campaignName: campaignById.get(submission.campaignId)?.name || '',
+              submissionId: submission.id,
+              startsAt: shift.starts_at || null,
+              endsAt: shift.ends_at || null,
+              sortOrder: Number(shift.sort_order ?? 9999)
+            });
+          }
+        }
+        const historicalOpenRequestResponses = [...latestCampaignResponseByKey.values()];
+
         await sendVolunteerSummaryEmail({
           email,
           personState: {
             person,
             assignments,
+            historicalOpenRequestResponses,
             availabilityShifts,
             latestSubmission: person.latestSubmission || null
           },
