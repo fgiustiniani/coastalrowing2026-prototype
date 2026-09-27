@@ -5464,6 +5464,12 @@
         </td>
         <td><input class="count-input" data-requirement-count type="number" min="1" max="999" step="1" value="${escapeHtml(row?.requiredCount || 1)}"></td>
         <td><span class="coverage-count ${uncovered ? 'is-uncovered' : 'is-covered'}">${escapeHtml(coverage)}</span></td>
+        <td>
+          <label class="planning-request-toggle">
+            <input type="checkbox" data-requirement-response-open ${row?.responseOpen ? 'checked' : ''} ${isNew ? 'disabled' : ''}>
+            <span>${row?.responseOpen ? 'Aperta' : 'Chiusa'}</span>
+          </label>
+        </td>
         <td><div class="row-actions">
           <button type="button" data-save-requirement>Salva</button>
           ${isNew ? '<button type="button" data-cancel-new-requirement>Annulla</button>' : '<button class="is-danger" type="button" data-delete-requirement>Elimina abbinamento</button>'}
@@ -5516,7 +5522,7 @@
       ...rows.map((row) => requirementRowHtml(row, false))
     ].join('');
     requirementCatalog.innerHTML = body
-      ? `<table class="admin-table requirements-table planning-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
+      ? `<table class="admin-table requirements-table planning-table"><thead><tr><th>Turno</th><th>Attività</th><th>Persone previste</th><th>Assegnate / previste</th><th>Nel link volontari</th><th>Azioni</th></tr></thead><tbody>${body}</tbody></table>`
       : `<p class="empty-state">${filtersActive ? 'Nessun abbinamento corrisponde ai filtri selezionati.' : 'Nessun abbinamento attività-turno attivo.'}</p>`;
 
     requirementCatalog.querySelectorAll('[data-requirement-row]').forEach(refreshRequirementNewFields);
@@ -7860,9 +7866,51 @@
     }
   });
 
-  requirementCatalog?.addEventListener('change', (event) => {
-    if (!event.target.matches('[data-requirement-shift], [data-requirement-activity]')) return;
-    refreshRequirementNewFields(event.target.closest('[data-requirement-row]'));
+  requirementCatalog?.addEventListener('change', async (event) => {
+    if (event.target.matches('[data-requirement-shift], [data-requirement-activity]')) {
+      refreshRequirementNewFields(event.target.closest('[data-requirement-row]'));
+      return;
+    }
+
+    const toggle = event.target.closest('[data-requirement-response-open]');
+    if (!toggle) return;
+    const rowNode = toggle.closest('[data-requirement-row]');
+    const requirementId = rowNode?.dataset.requirementId || '';
+    if (!requirementId) return;
+
+    const nextOpen = toggle.checked;
+    const previousOpen = !nextOpen;
+    const label = toggle.closest('.planning-request-toggle')?.querySelector('span');
+    toggle.disabled = true;
+    if (label) label.textContent = 'Salvataggio…';
+
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-requirement-response-open',
+          requirementId,
+          responseOpen: nextOpen
+        })
+      });
+      const requirement = requirementById(requirementId);
+      if (requirement) requirement.responseOpen = nextOpen;
+      if (label) label.textContent = nextOpen ? 'Aperta' : 'Chiusa';
+      setStatus(
+        requirementStatus,
+        nextOpen
+          ? 'Richiesta aperta nel link volontari.'
+          : 'Richiesta chiusa nel link volontari.',
+        'success'
+      );
+    } catch (error) {
+      toggle.checked = previousOpen;
+      if (label) label.textContent = previousOpen ? 'Aperta' : 'Chiusa';
+      setStatus(requirementStatus, error.message, 'error');
+    } finally {
+      toggle.disabled = false;
+    }
   });
 
   requirementCatalog?.addEventListener('click', async (event) => {
