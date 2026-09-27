@@ -4491,7 +4491,32 @@
         : 'Da rispondere';
 
     return [...byPerson.values()].map((item) => {
-      const reportRows = item.rows.length ? item.rows : (item.historicalRows || []);
+      const activeShiftIds = new Set(
+        (item.rows || []).map((row) => row.shiftId).filter(Boolean)
+      );
+      const latestHistoricalByShift = new Map();
+
+      for (const row of item.historicalRows || []) {
+        const response = effectiveAssignmentResponse(row);
+        if (!['confirmed', 'declined'].includes(response)) continue;
+        const shiftKey = row.shiftId || `${row.day || ''}|${row.shift || ''}`;
+        if (!shiftKey || activeShiftIds.has(row.shiftId)) continue;
+
+        const stamp = Date.parse(row.currentResponseAt || row.updatedAt || row.createdAt || '') || 0;
+        const current = latestHistoricalByShift.get(shiftKey);
+        const currentStamp = current
+          ? (Date.parse(current.currentResponseAt || current.updatedAt || current.createdAt || '') || 0)
+          : -1;
+
+        if (!current || stamp > currentStamp) {
+          latestHistoricalByShift.set(shiftKey, row);
+        }
+      }
+
+      const reportRows = [
+        ...(item.rows || []),
+        ...latestHistoricalByShift.values()
+      ];
       const campaignResponses = campaignResponseRowsForPerson(item.id);
       const openRequests = openRequestRowsForPerson(item.id);
       const assignmentConfirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
