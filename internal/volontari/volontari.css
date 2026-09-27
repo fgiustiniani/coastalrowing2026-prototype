@@ -521,3 +521,37 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .availability-confirm-dialog__actions .button.is-danger:hover {
   filter: brightness(.96);
 }
+
+
+/* Quadro impegni già confermati */
+.volunteer-greeting {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.35;
+  font-weight: 850;
+  color: var(--accent-dark);
+}
+.previous-commitment {
+  padding: 14px 15px;
+}
+.previous-commitment--assigned {
+  border-color: #a9d3b5;
+  background: var(--ok-bg);
+}
+.previous-commitment--unassigned {
+  border-color: #e5c58a;
+  background: #fff7e7;
+}
+.previous-commitment__activity {
+  display: block;
+  margin-top: 2px;
+  font-size: .86rem;
+  line-height: 1.35;
+  font-weight: 750;
+}
+.previous-commitment--assigned .previous-commitment__activity {
+  color: var(--ok);
+}
+.previous-commitment--unassigned .previous-commitment__activity {
+  color: #9a6500;
+}
