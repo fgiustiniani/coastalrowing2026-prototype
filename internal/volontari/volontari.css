@@ -555,3 +555,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .previous-commitment--unassigned .previous-commitment__activity {
   color: #9a6500;
 }
+
+
+/* Badge conflitto gara nel riepilogo volontario */
+.summary-race-conflict-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border: 1px solid #d8a097;
+  border-radius: 999px;
+  background: #fff1ee;
+  color: #a43f2c;
+  font-size: .74rem;
+  line-height: 1.2;
+  font-weight: 850;
+}
