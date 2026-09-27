@@ -62,7 +62,7 @@ function raceTimeMinutes(value) {
   return (hour * 60) + minute;
 }
 
-function raceConflictsWithShiftRule(race, shift) {
+function raceFallsInShift(race, shift) {
   if (!race?.race_date || !race?.race_time || !shift?.starts_at || !shift?.ends_at) return false;
   if (String(race.race_date) !== localDateKey(shift.starts_at)) return false;
 
@@ -71,8 +71,23 @@ function raceConflictsWithShiftRule(race, shift) {
   const shiftEndMinutes = localTimeMinutes(shift.ends_at);
   if (![raceMinutes, shiftStartMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
 
-  if (raceMinutes <= 14 * 60) return shiftStartMinutes <= raceMinutes;
-  return shiftEndMinutes > 10 * 60;
+  return shiftStartMinutes <= raceMinutes && raceMinutes < shiftEndMinutes;
+}
+
+function shiftEndsWithinHourBeforeRace(race, shift) {
+  if (!race?.race_date || !race?.race_time || !shift?.starts_at || !shift?.ends_at) return false;
+  if (String(race.race_date) !== localDateKey(shift.starts_at)) return false;
+
+  const raceMinutes = raceTimeMinutes(race.race_time);
+  const shiftEndMinutes = localTimeMinutes(shift.ends_at);
+  if (![raceMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
+
+  const minutesBeforeRace = raceMinutes - shiftEndMinutes;
+  return minutesBeforeRace >= 0 && minutesBeforeRace <= 60;
+}
+
+function hideOpenRequestForRace(race, shift) {
+  return raceFallsInShift(race, shift) || shiftEndsWithinHourBeforeRace(race, shift);
 }
 
 async function readRequirementConfig() {
@@ -197,7 +212,7 @@ async function personState(personId) {
 
   const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit, raceProgram] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
-    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,supersedes_assignment_id,created_at,active', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
+    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,supersedes_assignment_id,created_at,updated_at,active', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } }),
@@ -427,7 +442,8 @@ async function personState(personId) {
         activity: activity?.name || 'Attività',
         response: response?.response || null,
         note: response?.note || '',
-        responseAt: response ? (submissionTime.get(response.submission_id) || response.created_at || null) : null
+        responseAt: response ? (submissionTime.get(response.submission_id) || response.created_at || null) : null,
+        releasedAt: assignment.updated_at || null
       };
     });
 
@@ -531,6 +547,9 @@ async function personState(personId) {
 
   const openRequests = [...openRequestGroups.values()]
     .filter((group) => {
+      const shift = shiftById.get(group.shiftId) || null;
+      if (shift && raceRows.some((race) => hideOpenRequestForRace(race, shift))) return false;
+
       const previous = latestOpenRequestResponseByKey.get(group.key);
       if (!previous) return true;
       if (!group.openedAt) return false;
@@ -552,21 +571,54 @@ async function personState(personId) {
     sourceActivities.filter(Boolean).forEach((activity) => target.add(activity));
   }
 
+  const activeAssignmentShiftIds = new Set(
+    hydratedAssignments.map((assignment) => assignment.shiftId).filter(Boolean)
+  );
+  const latestHistoricalStateByShift = new Map();
+  for (const row of historicalResponses) {
+    if (!row.shiftId || activeAssignmentShiftIds.has(row.shiftId)) continue;
+    const stamp = Date.parse(row.releasedAt || row.responseAt || '') || 0;
+    const current = latestHistoricalStateByShift.get(row.shiftId);
+    const currentStamp = current ? (Date.parse(current.releasedAt || current.responseAt || '') || 0) : -1;
+    if (!current || stamp > currentStamp) latestHistoricalStateByShift.set(row.shiftId, row);
+  }
+  const releasedConfirmedByShift = new Map(
+    [...latestHistoricalStateByShift.entries()]
+      .filter(([, row]) => row.response === 'confirmed')
+  );
+
   const availabilityShifts = rows(shifts)
-    .map((shift) => ({
-      id: shift.id,
-      code: shift.code,
-      day: shift.day_label,
-      shift: shift.shift_label,
-      startsAt: shift.starts_at,
-      endsAt: shift.ends_at,
-      sortOrder: Number(shift.sort_order ?? 9999),
-      assigned: assignedShiftIds.has(shift.id),
-      selected: availabilityByShift.has(shift.id),
-      note: availabilityByShift.get(shift.id)?.note || '',
-      requestActivities: [...(confirmedOpenRequestActivitiesByShift.get(shift.id) || [])],
-      raceConflict: raceRows.some((race) => raceConflictsWithShiftRule(race, shift))
-    }));
+    .map((shift) => {
+      const declaredAvailability = availabilityByShift.get(shift.id) || null;
+      const releasedConfirmation = releasedConfirmedByShift.get(shift.id) || null;
+      const declaredAt = declaredAvailability ? Date.parse(latestSubmission?.created_at || '') || 0 : -1;
+      const releasedAt = releasedConfirmation
+        ? Date.parse(releasedConfirmation.releasedAt || releasedConfirmation.responseAt || '') || 0
+        : -1;
+      const useReleasedConfirmation = Boolean(releasedConfirmation && releasedAt >= declaredAt);
+      const selected = Boolean(declaredAvailability || releasedConfirmation);
+      return {
+        id: shift.id,
+        code: shift.code,
+        day: shift.day_label,
+        shift: shift.shift_label,
+        startsAt: shift.starts_at,
+        endsAt: shift.ends_at,
+        sortOrder: Number(shift.sort_order ?? 9999),
+        assigned: assignedShiftIds.has(shift.id),
+        selected,
+        note: useReleasedConfirmation
+          ? (releasedConfirmation?.note || '')
+          : (declaredAvailability?.note || ''),
+        requestActivities: [...(confirmedOpenRequestActivitiesByShift.get(shift.id) || [])],
+        isReleasedConfirmed: useReleasedConfirmation,
+        stateAt: useReleasedConfirmation
+          ? (releasedConfirmation?.releasedAt || releasedConfirmation?.responseAt || null)
+          : (declaredAvailability ? latestSubmission?.created_at || null : null),
+        raceConflict: selected && !assignedShiftIds.has(shift.id)
+          && raceRows.some((race) => raceFallsInShift(race, shift))
+      };
+    });
 
   return {
     person,
