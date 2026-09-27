@@ -14,6 +14,14 @@
   const loginStatus = document.querySelector('[data-login-status]');
   const dashboard = document.querySelector('[data-dashboard]');
   const inviteStatus = document.querySelector('[data-invite-status]');
+  const responseCampaignFilter = document.querySelector('[data-response-campaign-filter]');
+  const campaignDialog = document.querySelector('[data-campaign-dialog]');
+  const campaignForm = document.querySelector('[data-campaign-form]');
+  const campaignLinkSelect = document.querySelector('[data-campaign-link-select]');
+  const campaignNewField = document.querySelector('[data-campaign-new-field]');
+  const campaignNewName = document.querySelector('[data-campaign-new-name]');
+  const campaignStatus = document.querySelector('[data-campaign-status]');
+  const campaignGenerate = document.querySelector('[data-campaign-generate]');
   const kpis = document.querySelector('[data-kpis]');
   const assignmentTable = document.querySelector('[data-assignment-table]');
   const assignmentBoard = document.querySelector('[data-assignment-board]');
@@ -134,6 +142,7 @@
   let copyRequirementContext = null;
   let boardSwapContext = null;
   let summaryEmailPersonId = null;
+  let pendingCampaignReviewPersonId = '';
   try {
     assignmentView = sessionStorage.getItem('coastal2026-admin-assignment-view') === 'board' ? 'board' : 'list';
   } catch {}
