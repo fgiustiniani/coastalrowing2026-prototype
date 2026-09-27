@@ -950,11 +950,32 @@
     );
     const rowsByKey = new Map();
 
+    const stateStamp = (value) => {
+      const stamp = Date.parse(value || '');
+      return Number.isFinite(stamp) ? stamp : 0;
+    };
+
+    const register = (key, row, stamp, priority = 0) => {
+      if (!key || assignedKeys.has(key)) return;
+      const current = rowsByKey.get(key);
+      if (
+        !current
+        || stamp > current.__stateStamp
+        || (stamp === current.__stateStamp && priority > current.__statePriority)
+      ) {
+        rowsByKey.set(key, {
+          ...row,
+          __stateStamp: stamp,
+          __statePriority: priority
+        });
+      }
+    };
+
     for (const item of snapshot?.releasedConfirmedAvailability || []) {
       if (!item.personId || !item.shiftId) continue;
       const key = `${item.personId}|${item.shiftId}`;
-      if (assignedKeys.has(key)) continue;
-      rowsByKey.set(key, {
+      const stamp = stateStamp(item.releasedAt || item.currentResponseAt);
+      register(key, {
         id: item.id || `released-confirmed:${item.personId}:${item.shiftId}`,
         isAvailability: true,
         availabilityKind: 'released-confirmed',
@@ -977,16 +998,16 @@
         currentResponseAt: item.currentResponseAt || null,
         currentActorName: item.currentActorName || '',
         releasedAt: item.releasedAt || null
-      });
+      }, stamp, 2);
     }
 
     for (const person of snapshot?.people || []) {
       const availability = person.latestSubmission?.availability || [];
+      const declaredAt = stateStamp(person.latestSubmission?.createdAt);
       for (const item of availability) {
         if (!item.shiftId) continue;
         const key = `${person.id}|${item.shiftId}`;
-        if (assignedKeys.has(key) || rowsByKey.has(key)) continue;
-        rowsByKey.set(key, {
+        register(key, {
           id: `availability:${person.id}:${item.shiftId}`,
           isAvailability: true,
           availabilityKind: 'additional',
@@ -1006,12 +1027,13 @@
           currentResponse: null,
           currentNote: '',
           currentResponseAt: null,
-          currentActorName: ''
-        });
+          currentActorName: '',
+          declaredAt: person.latestSubmission?.createdAt || null
+        }, declaredAt, 1);
       }
     }
 
-    const rows = [...rowsByKey.values()];
+    const rows = [...rowsByKey.values()].map(({ __stateStamp, __statePriority, ...row }) => row);
     const orderByShift = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift.sort_order ?? 9999]));
     return rows.sort((a, b) =>
       (orderByShift.get(a.shiftId) ?? 9999) - (orderByShift.get(b.shiftId) ?? 9999)
