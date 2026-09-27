@@ -1661,6 +1661,7 @@
     const personIds = selectedFilterValues(assignmentPersonFilter);
     const groups = selectedFilterValues(assignmentGroupFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
+    const statuses = selectedFilterValues(assignmentStatusFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
 
@@ -1670,6 +1671,7 @@
         if (personIds.length && !personIds.includes(row.personId)) return false;
         if (groups.length && !groups.includes(row.personGroup || '')) return false;
         if (warningFilters.length) return false;
+        if (!assignmentStatusMatches(statuses, row)) return false;
         if (responses.length) return row.isReleasedConfirmed === true && responses.includes('confirmed');
         return true;
       }
@@ -1680,6 +1682,7 @@
 
       const rowResponse = boardEffectiveResponse(row);
       if (selectedResponsesOnly && responses.length && !responses.includes(rowResponse)) return false;
+      if (!assignmentStatusMatches(statuses, row)) return false;
       const warnings = assignmentWarningDetails(row);
       if (warningFilters.length && !warningFilters.some((warning) =>
         (warning === 'any' && warnings.length > 0)
@@ -2777,11 +2780,19 @@
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const selectedGroups = selectedFilterValues(assignmentGroupFilter);
     const selectedResponses = selectedFilterValues(assignmentResponseFilter);
+    const selectedStatuses = selectedFilterValues(assignmentStatusFilter);
     const selectedShifts = selectedFilterValues(assignmentShiftFilter);
     const selectedActivities = selectedFilterValues(assignmentActivityFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
-    const shouldMatchAssignments = selectedPeople.length > 0 || selectedGroups.length > 0 || selectedResponses.length > 0 || responsibleFilters.length > 0;
+    const freeStatusValues = new Set(['additional-unused', 'released-confirmed-free']);
+    const selectedAssignmentStatuses = selectedStatuses.filter((status) => !freeStatusValues.has(status));
+    const onlyFreeStatuses = selectedStatuses.length > 0 && selectedAssignmentStatuses.length === 0;
+    const shouldMatchAssignments = selectedPeople.length > 0
+      || selectedGroups.length > 0
+      || selectedResponses.length > 0
+      || selectedAssignmentStatuses.length > 0
+      || responsibleFilters.length > 0;
     const matchingAssignments = shouldMatchAssignments
       ? filteredBoardAssignmentRows({
           selectedPeopleOnly: selectedPeople.length > 0,
@@ -2793,6 +2804,7 @@
       const shiftKey = `${requirement.day || ''}|||${requirement.shift || ''}`;
       if (selectedShifts.length && !selectedShifts.includes(shiftKey)) return false;
       if (selectedActivities.length && !selectedActivities.includes(prettifyActivityName(requirement.activity))) return false;
+      if (onlyFreeStatuses) return false;
       if (shouldMatchAssignments && !matchingAssignments.some((row) =>
         row.shiftId === requirement.shiftId && row.activityId === requirement.activityId
       )) return false;
@@ -2841,10 +2853,11 @@
     const selectedPeople = selectedFilterValues(assignmentPersonFilter);
     const selectedGroups = selectedFilterValues(assignmentGroupFilter);
     const selectedResponses = selectedFilterValues(assignmentResponseFilter);
-    const forceExpandedGroups = selectedResponses.length > 0;
+    const selectedStatuses = selectedFilterValues(assignmentStatusFilter);
+    const forceExpandedGroups = selectedResponses.length > 0 || selectedStatuses.length > 0;
     const visibleRequirements = filteredBoardRequirements();
     const visibleShiftIds = new Set(visibleRequirements.map((row) => row.shiftId));
-    if (selectedPeople.length || selectedGroups.length) {
+    if (selectedPeople.length || selectedGroups.length || selectedStatuses.length) {
       rows.filter((row) => row.isAvailability).forEach((row) => visibleShiftIds.add(row.shiftId));
     }
     const allShifts = [...(snapshot?.shifts || [])]
