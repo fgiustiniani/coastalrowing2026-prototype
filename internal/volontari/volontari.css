@@ -222,3 +222,169 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   }
 }
 
+
+
+/* UX richieste mirate volontari */
+.volunteer-workspace {
+  display: grid;
+  gap: 22px;
+}
+.volunteer-overview {
+  padding: 16px 18px;
+  border: 1px solid #b8dbe0;
+  border-radius: 16px;
+  background: #eef8fa;
+}
+.volunteer-overview .eyebrow {
+  margin-bottom: 4px;
+}
+.volunteer-overview__message {
+  color: var(--ink);
+  line-height: 1.5;
+}
+.volunteer-section {
+  padding-top: 2px;
+}
+.volunteer-section + .volunteer-section {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.volunteer-section__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.volunteer-section__head h2 {
+  margin-bottom: 0;
+}
+.request-progress {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
+.request-card.is-complete {
+  border-color: #a9d3b5;
+  box-shadow: inset 4px 0 0 var(--ok);
+}
+.request-card__assignment-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.response-options--simple .response-choice span {
+  min-height: 50px;
+}
+.request-note {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.request-note summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: .86rem;
+  font-weight: 800;
+}
+.request-note summary span {
+  color: var(--muted);
+  font-weight: 600;
+}
+.request-note .field {
+  margin-bottom: 0;
+}
+.availability-card--existing {
+  padding: 14px 15px;
+}
+.availability-card--existing.is-active {
+  border-color: #b7d9c0;
+  background: #f5fbf6;
+}
+.availability-card--existing.is-removed {
+  border-style: dashed;
+  background: var(--soft);
+}
+.availability-card__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.availability-card__content > div {
+  display: grid;
+  gap: 4px;
+}
+.availability-card__content small {
+  color: var(--muted);
+}
+.availability-state {
+  display: block;
+  font-size: .82rem;
+  font-weight: 800;
+}
+.availability-state.is-active {
+  color: var(--ok);
+}
+.availability-state.is-removed {
+  color: var(--no);
+}
+.availability-toggle {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+.volunteer-summary {
+  border-radius: 16px;
+  background: #f8fafb;
+  padding: 18px;
+}
+.summary-help {
+  margin: -3px 0 10px;
+  color: var(--muted);
+  font-size: .86rem;
+}
+.summary-section--declined h3 {
+  color: var(--no);
+}
+.volunteer-submit-actions {
+  position: sticky;
+  z-index: 15;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  margin: 0 -10px -10px;
+  padding: 12px 10px 10px;
+  border-top: 1px solid var(--line);
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px);
+}
+.volunteer-submit-actions .button--primary {
+  margin-left: auto;
+}
+.volunteer-no-submit {
+  margin: -8px 0 0;
+  text-align: center;
+  font-weight: 750;
+}
+@media (max-width: 560px) {
+  .volunteer-section__head,
+  .availability-card__content {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .request-progress {
+    width: fit-content;
+  }
+  .availability-toggle {
+    width: 100%;
+  }
+  .volunteer-submit-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .volunteer-submit-actions .button {
+    width: 100%;
+  }
+}
