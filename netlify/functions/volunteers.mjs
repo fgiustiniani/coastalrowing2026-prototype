@@ -153,7 +153,7 @@ async function personState(personId) {
           select: 'entity_id,action_type,created_at',
           person_id: `eq.${personId}`,
           entity_type: 'eq.assignment',
-          action_type: 'eq.assignment_from_availability',
+          action_type: 'in.(assignment_from_availability,assignment_from_confirmed_availability)',
           entity_id: `in.(${assignmentIds.join(',')})`,
           order: 'created_at.asc'
         }
@@ -179,6 +179,11 @@ async function personState(personId) {
 
   const availabilityMarkedAssignmentIds = new Set(
     assignmentAvailabilityAuditRows.map((row) => row.entity_id).filter(Boolean)
+  );
+  const confirmedShiftIds = new Set(
+    assignmentHistoryRows
+      .filter((row) => row.shift_id && latestResponse.get(row.id)?.response === 'confirmed')
+      .map((row) => row.shift_id)
   );
   const availabilityDeclaredAtByShift = new Map();
   for (const item of availabilityHistoryRows) {
@@ -235,6 +240,7 @@ async function personState(personId) {
 
   const assignmentComesFromAvailability = (assignment) => {
     if (!assignment?.shift_id) return false;
+    if (confirmedShiftIds.has(assignment.shift_id)) return true;
 
     let current = assignment;
     const seen = new Set();
