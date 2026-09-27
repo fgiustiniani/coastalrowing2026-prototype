@@ -72,10 +72,12 @@ function summaryPdfKey() {
   return createHash('sha256').update(`coastal-volunteers-summary-pdf|${accessSecret()}`).digest();
 }
 
-export function issueVolunteerInvite() {
+export function issueVolunteerInvite(campaignIdValue = '') {
+  const campaignId = clean(campaignIdValue, 60);
   const payload = {
-    v: 1,
+    v: 2,
     scope: 'volunteers',
+    campaignId: isUuid(campaignId) ? campaignId : null,
     exp: Math.floor(Date.parse('2026-10-06T21:59:59Z') / 1000)
   };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
@@ -83,26 +85,35 @@ export function issueVolunteerInvite() {
   return `${encoded}.${signature}`;
 }
 
-function verifyInviteToken(value) {
+function readInviteToken(value) {
   const [encoded, signature, extra] = String(value || '').split('.');
-  if (!encoded || !signature || extra) return false;
+  if (!encoded || !signature || extra) return null;
   const expected = createHmac('sha256', inviteKey()).update(encoded).digest('base64url');
-  if (!safeEqual(signature, expected)) return false;
+  if (!safeEqual(signature, expected)) return null;
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
     const now = Math.floor(Date.now() / 1000);
-    return payload?.v === 1 && payload?.scope === 'volunteers' && Number.isFinite(payload?.exp) && payload.exp > now;
+    const supportedVersion = payload?.v === 1 || payload?.v === 2;
+    if (!supportedVersion || payload?.scope !== 'volunteers' || !Number.isFinite(payload?.exp) || payload.exp <= now) {
+      return null;
+    }
+    const campaignId = isUuid(payload?.campaignId) ? payload.campaignId : null;
+    return { valid: true, campaignId };
   } catch {
-    return false;
+    return null;
   }
 }
 
-export function verifySharedAccessToken(value) {
+export function readVolunteerAccessToken(value) {
   const supplied = clean(value, 1000);
-  if (!supplied) return false;
+  if (!supplied) return null;
   const explicit = env('VOLUNTEER_ACCESS_TOKEN');
-  if (explicit && safeEqual(supplied, explicit)) return true;
-  return verifyInviteToken(supplied);
+  if (explicit && safeEqual(supplied, explicit)) return { valid: true, campaignId: null };
+  return readInviteToken(supplied);
+}
+
+export function verifySharedAccessToken(value) {
+  return Boolean(readVolunteerAccessToken(value));
 }
 
 export function issueVolunteerSummaryPdfToken(submissionIdValue, ttlSeconds = 3600) {
@@ -135,9 +146,15 @@ export function verifyVolunteerSummaryPdfToken(value) {
   }
 }
 
-export function issueVolunteerSession() {
+export function issueVolunteerSession(campaignIdValue = '') {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { iat: now, exp: now + (12 * 60 * 60), jti: randomBytes(18).toString('base64url') };
+  const campaignId = clean(campaignIdValue, 60);
+  const payload = {
+    iat: now,
+    exp: now + (12 * 60 * 60),
+    jti: randomBytes(18).toString('base64url'),
+    campaignId: isUuid(campaignId) ? campaignId : null
+  };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = createHmac('sha256', sessionKey()).update(encoded).digest('base64url');
   return { token: `${encoded}.${signature}`, expiresAt: new Date(payload.exp * 1000).toISOString() };
