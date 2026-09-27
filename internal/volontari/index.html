@@ -27,9 +27,23 @@
 
     <section data-app hidden>
       <section class="card step" data-step="1">
-        <p class="eyebrow">Identificazione</p>
-        <h2>Seleziona il tuo nominativo</h2>
-        <p class="muted">Cerca il tuo nome. Dopo la selezione vedrai soltanto le informazioni che ti riguardano.</p>
+        <p class="eyebrow">Chi compila</p>
+        <h2>Inserisci il tuo nome e cognome</h2>
+        <p class="muted">Serve per registrare chi effettua le modifiche e mantenere lo storico delle operazioni.</p>
+        <label class="field">
+          <span>Nome e cognome</span>
+          <input data-actor-name type="text" maxlength="120" autocomplete="name" placeholder="Es. Mario Rossi">
+        </label>
+        <p class="status" data-actor-status aria-live="polite"></p>
+        <div class="actions actions--end">
+          <button class="button button--primary" type="button" data-continue-actor>Continua</button>
+        </div>
+      </section>
+
+      <section class="card step" data-step="2" hidden>
+        <p class="eyebrow">Persona interessata</p>
+        <h2>Seleziona il nominativo</h2>
+        <p class="muted">Cerca la persona per cui vuoi controllare o aggiornare le disponibilità.</p>
         <label class="field">
           <span>Cerca per cognome o nome</span>
           <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
@@ -54,7 +68,7 @@
         <p class="status" data-person-selection aria-live="polite"></p>
       </section>
 
-      <section class="card volunteer-workspace" data-step="2" hidden>
+      <section class="card volunteer-workspace" data-step="3" hidden>
         <div class="volunteer-overview" data-person-intro></div>
 
         <section class="volunteer-section" data-request-section>
@@ -65,7 +79,7 @@
             </div>
             <span class="request-progress" data-request-progress></span>
           </div>
-          <p class="muted">Per ogni turno richiesto indica semplicemente se puoi esserci oppure no.</p>
+          <p class="muted">Per ogni richiesta indica semplicemente se puoi esserci oppure no.</p>
           <div class="assignment-list" data-assignment-list></div>
           <p class="status" data-assignment-status aria-live="polite"></p>
         </section>
