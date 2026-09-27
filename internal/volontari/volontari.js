@@ -609,6 +609,33 @@
     }
   }
 
+  async function continueWithActor() {
+    const actorName = String(actorNameInput?.value || '').replace(/\s+/g, ' ').trim();
+    if (actorName.length < 3 || actorName.split(' ').filter(Boolean).length < 2) {
+      setStatus(actorStatus, 'Inserisci nome e cognome di chi sta compilando.', 'error');
+      actorNameInput?.focus();
+      return;
+    }
+
+    state.actorName = actorName;
+    setStatus(actorStatus, '');
+
+    if (state.requestedPersonId) {
+      try {
+        const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(state.requestedPersonId)}`);
+        if (detail?.person) {
+          await selectPerson(detail.person, detail);
+          return;
+        }
+      } catch {
+        setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo manualmente.', 'error');
+      }
+    }
+
+    showStep(2);
+    personSearch?.focus();
+  }
+
   let searchTimer = null;
   personSearch?.addEventListener('input', () => {
     state.selectedPerson = null;
@@ -637,6 +664,12 @@
     if (!manualField.hidden) manualSurnameInput?.focus();
   });
 
+  continueActor?.addEventListener('click', continueWithActor);
+  actorNameInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    continueWithActor();
+  });
   continueManual?.addEventListener('click', continueWithManualPerson);
   backToPerson?.addEventListener('click', resetSelection);
 
@@ -702,6 +735,7 @@
     const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
     const access = hash.get('access');
     const requestedPersonId = new URLSearchParams(location.search).get('person') || '';
+    state.requestedPersonId = requestedPersonId;
 
     if (access) {
       try {
@@ -725,15 +759,8 @@
     try {
       await loadPeople();
       showApp();
-
-      if (requestedPersonId) {
-        try {
-          const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(requestedPersonId)}`);
-          if (detail?.person) await selectPerson(detail.person, detail);
-        } catch {
-          setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo manualmente.', 'error');
-        }
-      }
+      showStep(1);
+      actorNameInput?.focus();
     } catch (error) {
       if (error.status === 401) {
         clearSession();
