@@ -64,6 +64,7 @@
   const activityGroupStatus = document.querySelector('[data-activity-group-status]');
   const requirementCatalog = document.querySelector('[data-requirement-catalog]');
   const requirementStatus = document.querySelector('[data-requirement-status]');
+  const requirementToggleAll = document.querySelector('[data-toggle-all-requirement-response-open]');
   const requirementShiftFilter = document.querySelector('[data-requirement-shift-filter]');
   const requirementActivityFilter = document.querySelector('[data-requirement-activity-filter]');
   const raceProgram = document.querySelector('[data-race-program]');
@@ -5526,6 +5527,16 @@
       : `<p class="empty-state">${filtersActive ? 'Nessun abbinamento corrisponde ai filtri selezionati.' : 'Nessun abbinamento attività-turno attivo.'}</p>`;
 
     requirementCatalog.querySelectorAll('[data-requirement-row]').forEach(refreshRequirementNewFields);
+    syncRequirementToggleAll();
+  }
+
+  function syncRequirementToggleAll() {
+    if (!requirementToggleAll) return;
+    const rows = filteredRequirementsForCatalog();
+    const allOpen = rows.length > 0 && rows.every((row) => row.responseOpen === true);
+    requirementToggleAll.textContent = allOpen ? 'Deseleziona tutto' : 'Seleziona tutto';
+    requirementToggleAll.disabled = rows.length === 0;
+    requirementToggleAll.dataset.nextOpen = allOpen ? 'false' : 'true';
   }
 
 
@@ -7863,6 +7874,46 @@
         rowNode.remove();
         await loadSnapshot();
       } catch (error) { alert(error.message); }
+    }
+  });
+
+  requirementToggleAll?.addEventListener('click', async () => {
+    const visibleRows = filteredRequirementsForCatalog();
+    if (!visibleRows.length) return;
+
+    const responseOpen = requirementToggleAll.dataset.nextOpen !== 'false';
+    const requirementIds = visibleRows.map((row) => row.id).filter(Boolean);
+    const actionLabel = responseOpen ? 'Selezione…' : 'Deselezione…';
+    const restore = setButtonBusy(requirementToggleAll, actionLabel);
+
+    try {
+      await api(API, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'set-requirements-response-open',
+          requirementIds,
+          responseOpen
+        })
+      });
+
+      const selectedIds = new Set(requirementIds);
+      requirements().forEach((row) => {
+        if (selectedIds.has(row.id)) row.responseOpen = responseOpen;
+      });
+      renderRequirementCatalog();
+      setStatus(
+        requirementStatus,
+        responseOpen
+          ? `${requirementIds.length} richieste aperte nel link volontari.`
+          : `${requirementIds.length} richieste chiuse nel link volontari.`,
+        'success'
+      );
+    } catch (error) {
+      setStatus(requirementStatus, error.message, 'error');
+      syncRequirementToggleAll();
+    } finally {
+      restore();
     }
   });
 
