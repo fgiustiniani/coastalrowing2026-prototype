@@ -163,25 +163,51 @@ export async function sendVolunteerSummaryEmail({
       raceConflict: shift.raceConflict === true
     }));
 
-  const summaryRows = sortChronologically([
+  const rawSummaryRows = [
     ...currentAssignments,
     ...historicalResponses,
     ...currentOpenResponses,
     ...additionalAvailability
+  ];
+
+  const raceConflictRowsByShift = new Map();
+  for (const row of additionalAvailability) {
+    const shiftId = row.shiftId || row.id || '';
+    if (!shiftId || row.raceConflict !== true) continue;
+    if (!raceConflictRowsByShift.has(shiftId)) {
+      raceConflictRowsByShift.set(shiftId, {
+        ...row,
+        shiftId,
+        summaryActivity: '',
+        summaryStatus: '',
+        summaryKind: 'race-conflict',
+        summaryNew: false,
+        raceConflict: true
+      });
+    }
+  }
+
+  const raceConflictShiftIds = new Set(raceConflictRowsByShift.keys());
+  const summaryRows = sortChronologically([
+    ...rawSummaryRows.filter((row) => {
+      const shiftId = row.shiftId || row.id || '';
+      return !raceConflictShiftIds.has(shiftId);
+    }),
+    ...raceConflictRowsByShift.values()
   ]);
 
   const hasConfirmedActivity = summaryRows.some((row) => row.summaryKind === 'confirmed');
-  const hasAdditionalAvailability = additionalAvailability.length > 0;
+  const hasAdditionalAvailability = additionalAvailability.some((row) => row.raceConflict !== true);
   const showThanks = hasConfirmedActivity || hasAdditionalAvailability;
   const availabilityFollowUp = 'Al più presto sarai contattato per condividere le attività da fare nei turni per i quali hai dato disponibilità';
   const thanksMessage = 'Grazie per la disponibilità mostrata!!';
 
   const rowText = summaryRows.length
     ? summaryRows.map((row) => {
-        const badges = [
-          row.summaryNew ? '[NUOVA]' : '',
-          row.raceConflict ? '[Non assegnato per coincidenza gara]' : ''
-        ].filter(Boolean).join(' ');
+        if (row.raceConflict) {
+          return `- ${row.day} · ${row.shift} — [Non assegnato per coincidenza gara]`;
+        }
+        const badges = row.summaryNew ? '[NUOVA]' : '';
         const activity = clean(row.summaryActivity, 500);
         return `- ${row.day} · ${row.shift} — ${row.summaryStatus}${badges ? ` ${badges}` : ''}${activity ? ` — ${activity}` : ''}`;
       }).join('\n')
@@ -202,6 +228,11 @@ export async function sendVolunteerSummaryEmail({
       background: '#fff7e7',
       border: '#e5c58a',
       status: '#9a6500'
+    },
+    'race-conflict': {
+      background: '#ffffff',
+      border: '#e3b3aa',
+      status: '#a43f2c'
     }
   };
 
@@ -209,14 +240,11 @@ export async function sendVolunteerSummaryEmail({
     ? summaryRows.map((row) => {
         const style = cardStyle[row.summaryKind] || cardStyle.availability;
         const activity = clean(row.summaryActivity, 500);
-        const badges = [
-          row.summaryNew
+        const badges = row.raceConflict
+          ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#a43f2c;color:#ffffff;font-size:10px;line-height:1.15;font-weight:800;">Non assegnato per coincidenza gara</span>'
+          : (row.summaryNew
             ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#0a6b7d;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.04em;">NUOVA</span>'
-            : '',
-          row.raceConflict
-            ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#a43f2c;color:#ffffff;font-size:10px;line-height:1.15;font-weight:800;">Non assegnato per coincidenza gara</span>'
-            : ''
-        ].filter(Boolean).join('');
+            : '');
         return `
           <div style="margin:0 0 10px 0;padding:12px 14px;border:1px solid ${style.border};border-radius:12px;background:${style.background};">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -227,10 +255,11 @@ export async function sendVolunteerSummaryEmail({
                 <td align="right" style="padding-left:10px;">${badges}</td>
               </tr>
             </table>
-            ${activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
-            <div style="margin-top:5px;font-size:12px;line-height:1.3;font-weight:700;color:${style.status};">
-              ${escapeHtml(row.summaryStatus)}
-            </div>
+            ${!row.raceConflict && activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
+            ${!row.raceConflict && row.summaryStatus ? `
+              <div style="margin-top:5px;font-size:12px;line-height:1.3;font-weight:700;color:${style.status};">
+                ${escapeHtml(row.summaryStatus)}
+              </div>` : ''}
           </div>
         `;
       }).join('')
