@@ -1616,7 +1616,79 @@
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
 
-  function boardAvailabilityHoverBadgesHtml(personId) {
+  function localTimeMinutes(value) {
+    if (!value) return null;
+    try {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Rome',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+      }).formatToParts(new Date(value));
+      const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      const hour = Number(map.hour);
+      const minute = Number(map.minute);
+      return Number.isFinite(hour) && Number.isFinite(minute) ? (hour * 60) + minute : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function raceTimeMinutes(value) {
+    const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+    return (hour * 60) + minute;
+  }
+
+  function raceConflictsWithShiftRule(race, shift) {
+    if (!race?.raceDate || !race?.raceTime || !shift?.starts_at || !shift?.ends_at) return false;
+    if (race.raceDate !== localDateKey(shift.starts_at)) return false;
+
+    const raceMinutes = raceTimeMinutes(race.raceTime);
+    const shiftStartMinutes = localTimeMinutes(shift.starts_at);
+    const shiftEndMinutes = localTimeMinutes(shift.ends_at);
+    if (![raceMinutes, shiftStartMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
+
+    if (raceMinutes <= 14 * 60) {
+      return shiftStartMinutes < raceMinutes;
+    }
+
+    return shiftEndMinutes > 10 * 60;
+  }
+
+  function adjacentAssignedShiftLoad(personId, shiftId) {
+    const targetShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftId) || null;
+    if (!targetShift?.starts_at) return { before: [], after: [] };
+
+    const dateKey = localDateKey(targetShift.starts_at);
+    const dayShifts = (snapshot?.shifts || [])
+      .filter((shift) => localDateKey(shift.starts_at) === dateKey)
+      .sort((a, b) =>
+        Date.parse(a.starts_at || '') - Date.parse(b.starts_at || '')
+        || (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
+      );
+    const targetIndex = dayShifts.findIndex((shift) => shift.id === shiftId);
+    if (targetIndex < 0) return { before: [], after: [] };
+
+    const assignedShiftIds = new Set(
+      (snapshot?.assignments || [])
+        .filter((item) => item.personId === personId && item.shiftId)
+        .map((item) => item.shiftId)
+    );
+
+    const previous = dayShifts.slice(Math.max(0, targetIndex - 2), targetIndex);
+    const following = dayShifts.slice(targetIndex + 1, targetIndex + 3);
+
+    return {
+      before: previous.length === 2 && previous.every((shift) => assignedShiftIds.has(shift.id)) ? previous : [],
+      after: following.length === 2 && following.every((shift) => assignedShiftIds.has(shift.id)) ? following : []
+    };
+  }
+
+  function boardAvailabilityHoverBadgesHtml(personId, shiftId) {
     const assignmentRows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
@@ -1628,6 +1700,7 @@
           || displayActivity(a).localeCompare(displayActivity(b), 'it');
       });
 
+    const targetShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftId) || null;
     const raceRows = snapshot?.raceProgramAvailable
       ? (snapshot?.raceProgram || [])
           .filter((race) => race.personId === personId)
@@ -1637,6 +1710,13 @@
             || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
           )
       : [];
+    const conflictingRaceIds = new Set(
+      targetShift
+        ? raceRows.filter((race) => raceConflictsWithShiftRule(race, targetShift)).map((race) => race.id)
+        : []
+    );
+    const hasRaceConflict = conflictingRaceIds.size > 0;
+    const adjacentLoad = adjacentAssignedShiftLoad(personId, shiftId);
 
     const assignmentBadge = assignmentRows.length
       ? `<span class="assignment-board__availability-hover" tabindex="0" aria-label="${assignmentRows.length} attività già assegnate">
@@ -1653,12 +1733,13 @@
       : '';
 
     const raceBadge = snapshot?.raceProgramAvailable && raceRows.length
-      ? `<span class="assignment-board__availability-hover is-race" tabindex="0" aria-label="${raceRows.length} gare previste">
+      ? `<span class="assignment-board__availability-hover is-race ${hasRaceConflict ? 'is-conflict' : ''}" tabindex="0" aria-label="${hasRaceConflict ? 'Gara incompatibile con questo turno' : `${raceRows.length} gare previste`}">
           <span class="assignment-board__availability-hover-chip">G${raceRows.length}</span>
           <span class="assignment-board__availability-popover">
             <strong class="assignment-board__availability-popover-title">Gare previste</strong>
+            ${hasRaceConflict ? '<span class="assignment-board__availability-popover-warning">⚠ Questo turno non rispetta i vincoli gara.</span>' : ''}
             ${raceRows.map((race) => `
-              <span class="assignment-board__availability-popover-row">
+              <span class="assignment-board__availability-popover-row ${conflictingRaceIds.has(race.id) ? 'is-conflict' : ''}">
                 <b>${escapeHtml(formatRaceDateShort(race.raceDate))}${race.raceTime ? ` · ${escapeHtml(race.raceTime)}` : ' · orario da definire'}</b>
                 <span>${escapeHtml(race.crewLabel || 'Equipaggio non indicato')}</span>
               </span>`).join('')}
@@ -1666,7 +1747,37 @@
         </span>`
       : '';
 
-    return assignmentBadge + raceBadge;
+    const beforeLoadBadge = adjacentLoad.before.length
+      ? `<span class="assignment-board__availability-hover is-load" tabindex="0" aria-label="Due turni consecutivi già assegnati prima di questo turno">
+          <span class="assignment-board__availability-hover-chip">←2</span>
+          <span class="assignment-board__availability-popover">
+            <strong class="assignment-board__availability-popover-title">Carico turni</strong>
+            <span class="assignment-board__availability-popover-warning">Assegnandola qui arriverebbe a 3 turni consecutivi.</span>
+            ${adjacentLoad.before.map((shift) => `
+              <span class="assignment-board__availability-popover-row">
+                <b>${escapeHtml(shift.day_label || '—')} · ${escapeHtml(shift.shift_label || '—')}</b>
+                <span>Turno precedente già assegnato</span>
+              </span>`).join('')}
+          </span>
+        </span>`
+      : '';
+
+    const afterLoadBadge = adjacentLoad.after.length
+      ? `<span class="assignment-board__availability-hover is-load" tabindex="0" aria-label="Due turni consecutivi già assegnati dopo questo turno">
+          <span class="assignment-board__availability-hover-chip">2→</span>
+          <span class="assignment-board__availability-popover">
+            <strong class="assignment-board__availability-popover-title">Carico turni</strong>
+            <span class="assignment-board__availability-popover-warning">Assegnandola qui arriverebbe a 3 turni consecutivi.</span>
+            ${adjacentLoad.after.map((shift) => `
+              <span class="assignment-board__availability-popover-row">
+                <b>${escapeHtml(shift.day_label || '—')} · ${escapeHtml(shift.shift_label || '—')}</b>
+                <span>Turno successivo già assegnato</span>
+              </span>`).join('')}
+          </span>
+        </span>`
+      : '';
+
+    return assignmentBadge + raceBadge + beforeLoadBadge + afterLoadBadge;
   }
 
   function boardPersonCard(row) {
@@ -1709,11 +1820,12 @@
             title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
             ${escapeHtml(row.personName)}
           </button>
-          ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId) : ''}
-          ${row.isReleasedConfirmed ? '<span class="assignment-board__availability-origin" title="Disponibile perché aveva già confermato un’assegnazione precedente nello stesso turno">Conf. prec.</span>' : ''}
-          ${row.retainedConfirmation ? '<span class="assignment-board__availability-origin" title="Conferma mantenuta da una precedente assegnazione nello stesso turno">Conf. prec.</span>' : ''}
+          ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId) : ''}
+          ${(row.isReleasedConfirmed || row.retainedConfirmation) ? '<span class="assignment-board__status-icon is-retained" tabindex="0" data-tooltip="Conferma mantenuta da una precedente assegnazione nello stesso turno" aria-label="Conferma precedente mantenuta">↺</span>' : ''}
           ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
-          ${showResponseBadge ? `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>` : ''}
+          ${showResponseBadge ? (effectiveResponse === 'confirmed'
+            ? `<span class="assignment-board__status-icon is-confirmed" tabindex="0" data-tooltip="${escapeHtml(response.label || 'Confermata')}" aria-label="${escapeHtml(response.label || 'Confermata')}">✓</span>`
+            : `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>`) : ''}
           ${row.note ? `<span class="assignment-board__note" tabindex="0" data-tooltip="${escapeHtml(row.note)}" title="${escapeHtml(row.note)}" aria-label="${row.isAvailability ? 'Nota disponibilità' : 'Nota assegnazione'}: ${escapeHtml(row.note)}">N</span>` : ''}
           ${visibleWarnings.length ? `<span class="assignment-board__warning" tabindex="0" role="img" aria-label="Warning: ${escapeHtml(warningText)}" data-tooltip="${escapeHtml(warningText)}">⚠</span>` : ''}
           <button type="button"
