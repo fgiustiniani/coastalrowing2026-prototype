@@ -4484,41 +4484,79 @@
     }
 
     const personById = new Map(peopleRows.map((row) => [row.id, row]));
+    const shiftOrderById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
     const responseLabel = (value) => value === 'confirmed'
       ? 'Confermata'
       : value === 'declined'
         ? 'Non può'
         : 'Da rispondere';
 
+    const stateStamp = (row) => {
+      const value = row?.currentResponseAt
+        || row?.createdAt
+        || row?.submissionCreatedAt
+        || row?.responseAt
+        || '';
+      const stamp = Date.parse(value);
+      return Number.isFinite(stamp) ? stamp : 0;
+    };
+
     return [...byPerson.values()].map((item) => {
-      const activeShiftIds = new Set(
-        (item.rows || []).map((row) => row.shiftId).filter(Boolean)
-      );
-      const latestHistoricalByShift = new Map();
+      const activeRows = item.rows || [];
+      const activeShiftIds = new Set(activeRows.map((row) => row.shiftId).filter(Boolean));
+
+      const freeAvailabilityRows = unassignedAvailabilityRows()
+        .filter((row) => row.personId === item.id);
+      const freeShiftIds = new Set(freeAvailabilityRows.map((row) => row.shiftId).filter(Boolean));
+
+      const openRequests = openRequestRowsForPerson(item.id);
+      const openRequestShiftIds = new Set(openRequests.map((row) => row.shiftId).filter(Boolean));
+
+      const latestNonCurrentByShift = new Map();
+      const registerNonCurrent = (candidate) => {
+        const shiftId = candidate?.shiftId || '';
+        if (!shiftId || activeShiftIds.has(shiftId) || freeShiftIds.has(shiftId) || openRequestShiftIds.has(shiftId)) return;
+        const current = latestNonCurrentByShift.get(shiftId);
+        const candidateStamp = stateStamp(candidate);
+        const currentStamp = current ? stateStamp(current) : -1;
+        if (!current || candidateStamp > currentStamp || (candidateStamp === currentStamp && candidate.kind === 'campaign')) {
+          latestNonCurrentByShift.set(shiftId, candidate);
+        }
+      };
 
       for (const row of item.historicalRows || []) {
         const response = effectiveAssignmentResponse(row);
         if (!['confirmed', 'declined'].includes(response)) continue;
-        const shiftKey = row.shiftId || `${row.day || ''}|${row.shift || ''}`;
-        if (!shiftKey || activeShiftIds.has(row.shiftId)) continue;
-
-        const stamp = Date.parse(row.currentResponseAt || row.updatedAt || row.createdAt || '') || 0;
-        const current = latestHistoricalByShift.get(shiftKey);
-        const currentStamp = current
-          ? (Date.parse(current.currentResponseAt || current.updatedAt || current.createdAt || '') || 0)
-          : -1;
-
-        if (!current || stamp > currentStamp) {
-          latestHistoricalByShift.set(shiftKey, row);
-        }
+        registerNonCurrent({
+          kind: 'assignment',
+          shiftId: row.shiftId,
+          response,
+          row,
+          currentResponseAt: row.currentResponseAt || null
+        });
       }
 
-      const reportRows = [
-        ...(item.rows || []),
-        ...latestHistoricalByShift.values()
-      ];
-      const campaignResponses = campaignResponseRowsForPerson(item.id);
-      const openRequests = openRequestRowsForPerson(item.id);
+      for (const row of campaignResponseRowsForPerson(item.id)) {
+        if (!['confirmed', 'declined'].includes(row.response)) continue;
+        registerNonCurrent({
+          kind: 'campaign',
+          shiftId: row.shiftId,
+          response: row.response,
+          row,
+          createdAt: row.createdAt || row.submissionCreatedAt || null
+        });
+      }
+
+      const nonCurrentStates = [...latestNonCurrentByShift.values()];
+      const historicalRows = nonCurrentStates
+        .filter((itemState) => itemState.kind === 'assignment')
+        .map((itemState) => itemState.row);
+      const campaignResponses = nonCurrentStates
+        .filter((itemState) => itemState.kind === 'campaign')
+        .map((itemState) => itemState.row);
+
+      const reportRows = [...activeRows, ...historicalRows];
+
       const assignmentConfirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
       const assignmentDeclined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
       const campaignConfirmed = campaignResponses.filter((row) => row.response === 'confirmed').length;
@@ -4526,32 +4564,35 @@
       const confirmed = assignmentConfirmed + campaignConfirmed;
       const declined = assignmentDeclined + campaignDeclined;
       const pending = (reportRows.length - assignmentConfirmed - assignmentDeclined) + openRequests.length;
+
       const person = personById.get(item.id) || null;
       const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
-      const freeAvailabilityRows = unassignedAvailabilityRows()
-        .filter((row) => row.personId === item.id);
+
       const availability = freeAvailabilityRows.map((row) => ({
         ...row,
         availabilityLabel: row.isReleasedConfirmed === true
           ? 'Conferma precedente libera'
           : 'Disponibilità aggiuntiva non usata'
       }));
+
       const statusKeys = [...new Set([
         ...reportRows.map((row) => assignmentStatusKey(row)),
         ...freeAvailabilityRows.map((row) => assignmentStatusKey(row)),
         ...campaignResponses.map((row) => row.response === 'declined' ? 'declined' : 'confirmed'),
         ...openRequests.map(() => 'pending')
       ])];
+
       const notes = reportRows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
-      const sortedRows = [...reportRows].sort((a, b) => {
-        const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId)?.sort_order ?? 9999;
-        const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId)?.sort_order ?? 9999;
-        return shiftA - shiftB || displayActivity(a).localeCompare(displayActivity(b), 'it');
-      });
+
+      const sortedRows = [...reportRows].sort((a, b) =>
+        (shiftOrderById.get(a.shiftId) ?? 9999) - (shiftOrderById.get(b.shiftId) ?? 9999)
+        || displayActivity(a).localeCompare(displayActivity(b), 'it')
+      );
+
       const activityRows = [
         ...sortedRows.map((row) => {
           const response = effectiveAssignmentResponse(row) || 'pending';
@@ -4559,7 +4600,7 @@
             label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
             response,
             responseLabel: responseLabel(response),
-            sortOrder: Number((snapshot?.shifts || []).find((shift) => shift.id === row.shiftId)?.sort_order ?? 9999)
+            sortOrder: shiftOrderById.get(row.shiftId) ?? 9999
           };
         }),
         ...campaignResponses.map((row) => ({
