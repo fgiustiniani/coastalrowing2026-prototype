@@ -6210,6 +6210,21 @@
               ).join('')}</div>`
             : '—';
 
+          const campaignResponses = [...(person.campaignSubmission?.openRequestResponses || [])]
+            .sort(compareByShift);
+          const campaignResponsesHtml = campaignResponses.length
+            ? `<div class="availability-report-list">${campaignResponses.map((item) => {
+                const declined = item.response === 'declined';
+                const confirmed = item.response === 'confirmed';
+                const badge = declined
+                  ? '<span class="status-badge is-declined">Rifiutata</span>'
+                  : confirmed
+                    ? '<span class="status-badge is-confirmed">Confermata</span>'
+                    : '<span class="status-badge is-pending">Da rispondere</span>';
+                return `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(item.responseLabel || 'Nuova richiesta')}</strong><small>${badge}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</small></div>`;
+              }).join('')}<small class="campaign-response-time">Invio: ${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</small></div>`
+            : `<small>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</small>`;
+
           const availability = sortedAvailability(person);
           const availabilityHtml = availability.length
             ? `<div class="availability-report-list">${availability.map((item) =>
@@ -6217,7 +6232,7 @@
               ).join('')}</div>`
             : '—';
 
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}" data-campaign-submission-id="${escapeHtml(person.campaignSubmission?.id || '')}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}" data-campaign-submission-id="${escapeHtml(person.campaignSubmission?.id || '')}">${escapeHtml(person.display_name)}</button></td><td>${campaignResponsesHtml}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto a questa campagna.</p>';
     detailDialog.showModal();
