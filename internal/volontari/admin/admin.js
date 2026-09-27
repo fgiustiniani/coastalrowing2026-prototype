@@ -6489,35 +6489,131 @@
     if (!copied) throw new Error('Copia automatica non disponibile.');
   }
 
+  function campaignLinkOptions(selectedId = '') {
+    const campaigns = snapshot?.responseCampaigns || [];
+    return [
+      '<option value="">Seleziona una campagna</option>',
+      ...campaigns.map((campaign) =>
+        `<option value="${escapeHtml(campaign.id)}" ${campaign.id === selectedId ? 'selected' : ''}>${escapeHtml(campaign.name)}</option>`
+      ),
+      `<option value="__new__" ${selectedId === '__new__' ? 'selected' : ''}>+ Nuova campagna</option>`
+    ].join('');
+  }
+
+  function syncCampaignNewField() {
+    if (!campaignNewField || !campaignLinkSelect) return;
+    const isNew = campaignLinkSelect.value === '__new__';
+    campaignNewField.hidden = !isNew;
+    if (isNew) campaignNewName?.focus();
+  }
+
+  function openCampaignDialog(reviewPersonId = '') {
+    pendingCampaignReviewPersonId = reviewPersonId || '';
+    if (!campaignDialog || !campaignLinkSelect) return;
+
+    const selected = selectedResponseCampaignId();
+    const validSelected = selected && selected !== '__legacy__'
+      && (snapshot?.responseCampaigns || []).some((campaign) => campaign.id === selected);
+    const defaultValue = validSelected
+      ? selected
+      : ((snapshot?.responseCampaigns || []).length ? '' : '__new__');
+
+    campaignLinkSelect.innerHTML = campaignLinkOptions(defaultValue);
+    campaignLinkSelect.value = defaultValue;
+    if (campaignNewName) campaignNewName.value = '';
+    setStatus(campaignStatus, '');
+    syncCampaignNewField();
+    campaignDialog.showModal();
+  }
+
+  async function generateAndCopyCampaignLink(campaignId, reviewPersonId = '') {
+    const body = await api(`${API}?view=invite&campaignId=${encodeURIComponent(campaignId)}`);
+    if (!body.accessUrl) throw new Error('Link non disponibile.');
+
+    const targetUrl = new URL(body.accessUrl, location.origin);
+    if (reviewPersonId) targetUrl.searchParams.set('person', reviewPersonId);
+    await writeClipboard(targetUrl.toString());
+    return body.campaign || null;
+  }
+
   async function copyReviewLink(personId, button) {
+    const campaignId = selectedResponseCampaignId();
+    if (!campaignId || campaignId === '__legacy__') {
+      pendingCampaignReviewPersonId = personId;
+      openCampaignDialog(personId);
+      setStatus(campaignStatus, 'Seleziona o crea la campagna a cui attribuire questa risposta.');
+      return;
+    }
+
     await withButtonBusy(button, 'Copiando…', async () => {
       setStatus(confirmationLinkStatus, 'Generazione link…');
       try {
-        const body = await api(`${API}?view=invite`);
-        if (!body.accessUrl) throw new Error('Link non disponibile.');
-        const reviewUrl = new URL(body.accessUrl, location.origin);
-        reviewUrl.searchParams.set('person', personId);
-        await writeClipboard(reviewUrl.toString());
-        setStatus(confirmationLinkStatus, 'Link copiato. Puoi incollarlo nel messaggio WhatsApp.', 'success');
+        const campaign = await generateAndCopyCampaignLink(campaignId, personId);
+        setStatus(
+          confirmationLinkStatus,
+          `Link copiato · campagna: ${campaign?.name || responseCampaignName(campaignId)}.`,
+          'success'
+        );
       } catch (error) {
         setStatus(confirmationLinkStatus, error.message, 'error');
       }
     });
   }
 
-  async function copyVolunteerLink() {
-    const button = document.querySelector('[data-copy-volunteer-link]');
-    if (button) button.disabled = true;
-    setStatus(inviteStatus, 'Generazione link…');
+  function copyVolunteerLink() {
+    openCampaignDialog('');
+  }
+
+  async function submitCampaignLink(event) {
+    event.preventDefault();
+    if (!campaignLinkSelect) return;
+
+    let campaignId = campaignLinkSelect.value || '';
+    if (!campaignId) {
+      setStatus(campaignStatus, 'Seleziona una campagna o creane una nuova.', 'error');
+      campaignLinkSelect.focus();
+      return;
+    }
+
+    if (campaignGenerate) campaignGenerate.disabled = true;
+    setStatus(campaignStatus, 'Generazione link…');
+
     try {
-      const body = await api(`${API}?view=invite`);
-      if (!body.accessUrl) throw new Error('Link non disponibile.');
-      await writeClipboard(body.accessUrl);
-      setStatus(inviteStatus, 'Link volontari copiato negli appunti.', 'success');
+      if (campaignId === '__new__') {
+        const name = String(campaignNewName?.value || '').trim();
+        if (!name) {
+          setStatus(campaignStatus, 'Indica il nome della nuova campagna.', 'error');
+          campaignNewName?.focus();
+          return;
+        }
+
+        const created = await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'create-response-campaign', name })
+        });
+        campaignId = created?.campaign?.id || '';
+        if (!campaignId) throw new Error('Campagna non creata.');
+
+        await loadSnapshot();
+        if (responseCampaignFilter) {
+          responseCampaignFilter.value = campaignId;
+          renderKpis();
+        }
+      }
+
+      const campaign = await generateAndCopyCampaignLink(campaignId, pendingCampaignReviewPersonId);
+      const label = campaign?.name || responseCampaignName(campaignId);
+      setStatus(inviteStatus, `Link volontari copiato · campagna: ${label}.`, 'success');
+      if (pendingCampaignReviewPersonId) {
+        setStatus(confirmationLinkStatus, `Link copiato · campagna: ${label}.`, 'success');
+      }
+      campaignDialog?.close();
+      pendingCampaignReviewPersonId = '';
     } catch (error) {
-      setStatus(inviteStatus, error.message, 'error');
+      setStatus(campaignStatus, error.message, 'error');
     } finally {
-      if (button) button.disabled = false;
+      if (campaignGenerate) campaignGenerate.disabled = false;
     }
   }
 
@@ -6632,6 +6728,18 @@
 
 
   document.querySelector('[data-copy-volunteer-link]')?.addEventListener('click', copyVolunteerLink);
+  responseCampaignFilter?.addEventListener('change', () => {
+    renderKpis();
+    setStatus(inviteStatus, '');
+  });
+  campaignLinkSelect?.addEventListener('change', syncCampaignNewField);
+  campaignForm?.addEventListener('submit', submitCampaignLink);
+  document.querySelectorAll('[data-campaign-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      campaignDialog?.close();
+      pendingCampaignReviewPersonId = '';
+    });
+  });
   kpis?.addEventListener('click', (event) => {
     if (event.target.closest('[data-show-responded]')) {
       showRespondedPeople();
