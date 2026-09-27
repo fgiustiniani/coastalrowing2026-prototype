@@ -141,7 +141,7 @@ async function personState(personId) {
 
   const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
-    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,raw_day,raw_shift,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
+    supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,supersedes_assignment_id,created_at,active', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } }),
@@ -336,6 +336,36 @@ async function personState(personId) {
     };
   });
 
+  const supersededAssignmentIds = new Set(
+    assignmentHistoryRows
+      .map((row) => row.supersedes_assignment_id)
+      .filter(Boolean)
+  );
+  const historicalResponses = assignmentHistoryRows
+    .filter((assignment) =>
+      assignment.active === false
+      && !supersededAssignmentIds.has(assignment.id)
+      && ['confirmed', 'declined'].includes(latestResponse.get(assignment.id)?.response)
+    )
+    .map((assignment) => {
+      const shift = shiftById.get(assignment.shift_id) || null;
+      const activity = activityById.get(assignment.activity_id) || null;
+      const response = latestResponse.get(assignment.id) || null;
+      return {
+        id: assignment.id,
+        day: shift?.day_label || assignment.raw_day || '',
+        shift: shift?.shift_label || assignment.raw_shift || '',
+        shiftId: shift?.id || null,
+        startsAt: shift?.starts_at || null,
+        endsAt: shift?.ends_at || null,
+        sortOrder: Number(shift?.sort_order ?? 9999),
+        activity: activity?.name || 'Attività',
+        response: response?.response || null,
+        note: response?.note || '',
+        responseAt: response ? (submissionTime.get(response.submission_id) || response.created_at || null) : null
+      };
+    });
+
   const assignedShiftIds = new Set(hydratedAssignments.map((row) => row.shiftId).filter(Boolean));
 
   const latestOpenRequestResponseByKey = new Map();
@@ -432,6 +462,7 @@ async function personState(personId) {
   return {
     person,
     assignments: hydratedAssignments,
+    historicalResponses,
     openRequests,
     availabilityShifts,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
