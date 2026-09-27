@@ -1271,6 +1271,7 @@
   }
 
   function populateFilters() {
+    populateCampaignControls();
     const assignments = snapshot?.assignments || [];
     const assignmentRows = [...unassignedAvailabilityRows(), ...assignments];
     const people = [...new Map(assignmentRows.filter((row) => row.personId).map((row) => [row.personId, { value: row.personId, label: row.personName }])).values()]
@@ -1368,13 +1369,62 @@
     dashboard.hidden = false;
   }
 
-  function respondedAssignedPeople() {
-    const assignedIds = new Set((snapshot?.assignments || []).map((row) => row.personId));
-    return (snapshot?.people || [])
-      .filter((person) => assignedIds.has(person.id) && Number(person.submissionCount || 0) > 0)
+  function populateCampaignControls() {
+    if (!responseCampaignFilter) return;
+    const current = responseCampaignFilter.value || '';
+    const campaigns = snapshot?.responseCampaigns || [];
+    const validIds = new Set(campaigns.map((campaign) => campaign.id));
+
+    responseCampaignFilter.innerHTML = [
+      '<option value="">Seleziona una campagna</option>',
+      ...campaigns.map((campaign) =>
+        `<option value="${escapeHtml(campaign.id)}">${escapeHtml(campaign.name)}</option>`
+      ),
+      '<option value="__legacy__">Storico precedente / senza campagna</option>'
+    ].join('');
+
+    responseCampaignFilter.value = current === '__legacy__' || validIds.has(current) ? current : '';
+  }
+
+  function selectedResponseCampaignId() {
+    return responseCampaignFilter?.value || '';
+  }
+
+  function responseCampaignName(campaignId = selectedResponseCampaignId()) {
+    if (campaignId === '__legacy__') return 'Storico precedente / senza campagna';
+    return (snapshot?.responseCampaigns || []).find((campaign) => campaign.id === campaignId)?.name || '';
+  }
+
+  function campaignSubmissions(campaignId = selectedResponseCampaignId()) {
+    if (!campaignId) return [];
+    return (snapshot?.campaignSubmissions || []).filter((submission) =>
+      campaignId === '__legacy__'
+        ? !submission.campaignId
+        : submission.campaignId === campaignId
+    );
+  }
+
+  function respondedPeopleForCampaign(campaignId = selectedResponseCampaignId()) {
+    if (!campaignId) return [];
+    const latestByPerson = new Map();
+    for (const submission of campaignSubmissions(campaignId)) {
+      if (!submission.personId) continue;
+      const previous = latestByPerson.get(submission.personId);
+      const currentTime = Date.parse(submission.createdAt || '') || 0;
+      const previousTime = Date.parse(previous?.createdAt || '') || 0;
+      if (!previous || currentTime > previousTime) latestByPerson.set(submission.personId, submission);
+    }
+
+    const peopleById = new Map((snapshot?.people || []).map((person) => [person.id, person]));
+    return [...latestByPerson.entries()]
+      .map(([personId, submission]) => {
+        const person = peopleById.get(personId) || null;
+        return person ? { ...person, campaignSubmission: submission } : null;
+      })
+      .filter(Boolean)
       .sort((a, b) => {
-        const timeA = Date.parse(a.latestVolunteerSubmission?.createdAt || '') || 0;
-        const timeB = Date.parse(b.latestVolunteerSubmission?.createdAt || '') || 0;
+        const timeA = Date.parse(a.campaignSubmission?.createdAt || '') || 0;
+        const timeB = Date.parse(b.campaignSubmission?.createdAt || '') || 0;
         return timeB - timeA
           || String(a.display_name || '').localeCompare(String(b.display_name || ''), 'it');
       });
@@ -1385,19 +1435,24 @@
     const assignedPeople = new Set(assignments
       .filter((row) => !ASSIGNED_PEOPLE_EXCLUDED_GROUPS.has(personGroupKey(row.personGroup)))
       .map((row) => row.personId)).size;
-    const respondedPeople = respondedAssignedPeople();
+    const campaignId = selectedResponseCampaignId();
+    const respondedPeople = respondedPeopleForCampaign(campaignId);
     const unassignedAvailability = unassignedAvailabilityRows();
     const confirmed = assignments.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
     const declined = assignments.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
     const pending = assignments.length - confirmed - declined;
     const planned = requirements().reduce((sum, row) => sum + Number(row.requiredCount || 0), 0);
     const uncovered = requirements().filter(requirementIsUncovered).length;
+    const responseMetric = campaignId
+      ? `<span><button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</span>`
+      : '<span class="campaign-response-placeholder">Seleziona una campagna per vedere le risposte</span>';
+
     kpis.innerHTML = `
       <article class="kpi kpi--summary">
         <div class="kpi__line">
           <span class="kpi__metric"><strong>${assignedPeople}</strong> persone assegnate</span>
           <span class="kpi__separator">·</span>
-          <span><button type="button" class="kpi__link" data-show-responded>${respondedPeople.length}</button> hanno risposto</span>
+          ${responseMetric}
           <span class="kpi__separator">·</span>
           <span><button type="button" class="kpi__link" data-show-unassigned-availability>${new Set(unassignedAvailability.map((row) => row.personId)).size}</button> persone con ${unassignedAvailability.length} disponibilità da assegnare</span>
         </div>
