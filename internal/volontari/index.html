@@ -15,7 +15,7 @@
       <div>
         <p class="eyebrow">Area organizzazione</p>
         <h1>Disponibilità volontari</h1>
-        <p class="intro">Conferma le attività assegnate e indica eventuali ulteriori disponibilità.</p>
+        <p class="intro">Controlla le richieste che richiedono una risposta e le disponibilità che ci hai già comunicato.</p>
       </div>
     </header>
 
@@ -26,30 +26,10 @@
     </section>
 
     <section data-app hidden>
-      <nav class="stepper" aria-label="Avanzamento">
-        <button type="button" data-step-dot="1" aria-current="step"><span>1</span><small>Chi compila</small></button>
-        <button type="button" data-step-dot="2"><span>2</span><small>Persona</small></button>
-        <button type="button" data-step-dot="3"><span>3</span><small>Attività</small></button>
-        <button type="button" data-step-dot="4"><span>4</span><small>Disponibilità</small></button>
-        <button type="button" data-step-dot="5"><span>5</span><small>Riepilogo</small></button>
-      </nav>
-
       <section class="card step" data-step="1">
-        <p class="eyebrow">Passaggio 1 di 5</p>
-        <h2>Chi sta compilando?</h2>
-        <p class="muted">Serve solo per registrare chi ha effettuato la conferma o la modifica. Non è un’autenticazione.</p>
-        <label class="field">
-          <span>Nome e cognome</span>
-          <input data-actor-name maxlength="120" autocomplete="name" placeholder="Es. Mario Rossi" required>
-        </label>
-        <div class="actions actions--end">
-          <button class="button button--primary" type="button" data-next="2">Avanti</button>
-        </div>
-      </section>
-
-      <section class="card step" data-step="2" hidden>
-        <p class="eyebrow">Passaggio 2 di 5</p>
+        <p class="eyebrow">Identificazione</p>
         <h2>Seleziona il tuo nominativo</h2>
+        <p class="muted">Cerca il tuo nome. Dopo la selezione vedrai soltanto le informazioni che ti riguardano.</p>
         <label class="field">
           <span>Cerca per cognome o nome</span>
           <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
@@ -66,54 +46,65 @@
               <span>Nome</span>
               <input data-manual-given-name maxlength="80" autocomplete="given-name" placeholder="Es. Mario">
             </label>
+            <div class="actions actions--end">
+              <button class="button button--primary" type="button" data-continue-manual>Continua</button>
+            </div>
           </div>
         </div>
         <p class="status" data-person-selection aria-live="polite"></p>
-        <div class="actions">
-          <button class="button button--secondary" type="button" data-back="1">Indietro</button>
-          <button class="button button--primary" type="button" data-next="3">Avanti</button>
-        </div>
       </section>
 
-      <section class="card step" data-step="3" hidden>
-        <p class="eyebrow">Passaggio 3 di 5</p>
-        <h2>Conferma le attività proposte</h2>
-        <p class="muted">È necessario indicare una risposta per ogni attività.</p>
-        <div class="assignment-list" data-assignment-list></div>
-        <p class="status" data-assignment-status aria-live="polite"></p>
-        <div class="actions">
-          <button class="button button--secondary" type="button" data-back="2">Indietro</button>
-          <button class="button button--primary" type="button" data-next="4">Avanti</button>
-        </div>
-      </section>
+      <section class="card volunteer-workspace" data-step="2" hidden>
+        <div class="volunteer-overview" data-person-intro></div>
 
-      <section class="card step" data-step="4" hidden>
-        <p class="eyebrow">Passaggio 4 di 5</p>
-        <h2>Ulteriori disponibilità</h2>
-        <p class="muted">Se puoi essere disponibile anche in altri turni, selezionali. I turni in cui hai già un’attività sono evidenziati e non vanno selezionati di nuovo.</p>
-        <div class="availability-list" data-availability-list></div>
-        <div class="actions">
-          <button class="button button--secondary" type="button" data-back="3">Indietro</button>
-          <button class="button button--primary" type="button" data-next="5">Avanti</button>
-        </div>
-      </section>
+        <section class="volunteer-section" data-request-section>
+          <div class="volunteer-section__head">
+            <div>
+              <p class="eyebrow">Da fare</p>
+              <h2>Richieste a cui devi rispondere</h2>
+            </div>
+            <span class="request-progress" data-request-progress></span>
+          </div>
+          <p class="muted">Per ogni nuova richiesta indica semplicemente se puoi esserci oppure no.</p>
+          <div class="assignment-list" data-assignment-list></div>
+          <p class="status" data-assignment-status aria-live="polite"></p>
+        </section>
 
-      <section class="card step" data-step="5" hidden>
-        <p class="eyebrow">Passaggio 5 di 5</p>
-        <h2>Riepilogo</h2>
-        <div data-summary></div>
+        <section class="volunteer-section" data-availability-section>
+          <div class="volunteer-section__head">
+            <div>
+              <p class="eyebrow">Già comunicato</p>
+              <h2>Disponibilità aggiuntive</h2>
+            </div>
+          </div>
+          <p class="muted">Queste disponibilità erano già state comunicate e non sono ancora state utilizzate per assegnarti un’attività. Se una non è più valida, puoi toglierla.</p>
+          <div class="availability-list" data-availability-list></div>
+        </section>
+
+        <section class="volunteer-section volunteer-summary">
+          <div class="volunteer-section__head">
+            <div>
+              <p class="eyebrow">Situazione aggiornata</p>
+              <h2>Riepilogo</h2>
+            </div>
+          </div>
+          <div data-summary></div>
+        </section>
+
         <input class="hp" data-submit-website tabindex="-1" autocomplete="off" aria-hidden="true">
         <p class="status" data-submit-status aria-live="polite"></p>
-        <div class="actions">
-          <button class="button button--secondary" type="button" data-back="4">Indietro</button>
-          <button class="button button--primary" type="button" data-submit>Invia disponibilità</button>
+        <div class="actions volunteer-submit-actions">
+          <button class="button button--secondary" type="button" data-back-to-person>Cambia nominativo</button>
+          <button class="button button--primary" type="button" data-submit>Invia risposte</button>
         </div>
+        <p class="muted volunteer-no-submit" data-no-submit hidden>È tutto aggiornato: non devi inviare nulla.</p>
       </section>
 
       <section class="card success" data-success hidden>
         <div class="success-mark" aria-hidden="true">✓</div>
         <p class="eyebrow">Invio completato</p>
-        <h2>Grazie, disponibilità registrata</h2>
+        <h2>Grazie, le tue risposte sono state registrate</h2>
+        <p class="muted">Le attività già confermate restano invariate.</p>
         <div class="success-delivery">
           <h3>Vuoi ricevere il riepilogo?</h3>
           <p class="muted">Puoi riceverlo via email.</p>
