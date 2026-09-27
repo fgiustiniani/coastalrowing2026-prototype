@@ -1812,7 +1812,7 @@
     };
   }
 
-  function boardAvailabilityHoverBadgesHtml(personId, shiftId) {
+  function boardAvailabilityHoverBadgesHtml(personId, shiftId, { includeLoad = true } = {}) {
     const assignmentRows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
@@ -1901,7 +1901,7 @@
         </span>`
       : '';
 
-    return assignmentBadge + raceBadge + beforeLoadBadge + afterLoadBadge;
+    return assignmentBadge + raceBadge + (includeLoad ? beforeLoadBadge + afterLoadBadge : '');
   }
 
   function boardPersonCard(row) {
@@ -3207,8 +3207,13 @@
               ${unavailable.length
                 ? unavailable.map((row) => `
                     <div class="assignment-board__unavailable-person">
-                      <strong>${escapeHtml(row.personName || 'Persona')}</strong>
-                      <span>${escapeHtml(prettifyActivityName(row.activity || 'Attività'))}</span>
+                      <div class="assignment-board__unavailable-person-main">
+                        <strong>${escapeHtml(row.personName || 'Persona')}</strong>
+                        <span class="assignment-board__unavailable-person-badges">
+                          ${boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId, { includeLoad: false })}
+                        </span>
+                      </div>
+                      <span class="assignment-board__unavailable-person-activity">${escapeHtml(prettifyActivityName(row.activity || 'Attività'))}</span>
                     </div>`).join('')
                 : '<span class="assignment-board__unavailable-empty">Nessuna persona rimossa per indisponibilità</span>'}
             </div>
