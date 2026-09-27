@@ -41,6 +41,32 @@ function responseLabel(value) {
   return 'Da rispondere';
 }
 
+function sortChronologically(items = []) {
+  return [...items].sort((a, b) => {
+    const startA = Date.parse(a?.startsAt || '');
+    const startB = Date.parse(b?.startsAt || '');
+    if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
+
+    const orderA = Number(a?.sortOrder);
+    const orderB = Number(b?.sortOrder);
+    if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+
+    const whenA = `${a?.day || ''} ${a?.shift || ''}`;
+    const whenB = `${b?.day || ''} ${b?.shift || ''}`;
+    const whenCompare = whenA.localeCompare(whenB, 'it');
+    if (whenCompare !== 0) return whenCompare;
+
+    return activityLabel(a).localeCompare(activityLabel(b), 'it');
+  });
+}
+
+function availabilityActivityLabel(row) {
+  const activities = Array.isArray(row?.requestActivities)
+    ? row.requestActivities.map((item) => clean(item, 240)).filter(Boolean)
+    : [];
+  return activities.length ? activities.join(' · ') : '';
+}
+
 export async function sendVolunteerSummaryEmail({ email, personState, requestUrl, accompanyingMessage = '' }) {
   const recipient = cleanHeader(email, 254);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
@@ -68,9 +94,13 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
 
   const personName = clean(personState?.person?.display_name || 'Volontario', 160);
   const message = clean(accompanyingMessage, 4000);
-  const assignments = Array.isArray(personState?.assignments) ? personState.assignments : [];
-  const availability = (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
-    .filter((shift) => shift.selected && !shift.assigned);
+  const assignments = sortChronologically(
+    Array.isArray(personState?.assignments) ? personState.assignments : []
+  );
+  const availability = sortChronologically(
+    (Array.isArray(personState?.availabilityShifts) ? personState.availabilityShifts : [])
+      .filter((shift) => shift.selected && !shift.assigned)
+  );
 
   const hasConfirmedActivity = assignments.some((row) => row.currentResponse === 'confirmed');
   const hasAdditionalAvailability = availability.length > 0;
@@ -86,7 +116,10 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
     : '- Nessuna attività assegnata';
 
   const availabilityText = availability.length
-    ? availability.map((row) => `- ${row.day} · ${row.shift}${row.note ? ` — Nota: ${clean(row.note, 1000)}` : ''}`).join('\n')
+    ? availability.map((row) => {
+        const activity = availabilityActivityLabel(row);
+        return `- ${row.day} · ${row.shift}${activity ? ` — ${activity}` : ''}${row.note ? ` — Nota: ${clean(row.note, 1000)}` : ''}`;
+      }).join('\n')
     : '- Nessuna disponibilità aggiuntiva indicata';
 
   const assignmentHtml = assignments.length
@@ -97,7 +130,10 @@ export async function sendVolunteerSummaryEmail({ email, personState, requestUrl
     : '<p>Nessuna attività assegnata.</p>';
 
   const availabilityHtml = availability.length
-    ? `<ul>${availability.map((row) => `<li><strong>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</strong>${row.note ? `<br><small>Nota: ${escapeHtml(clean(row.note, 1000))}</small>` : ''}</li>`).join('')}</ul>`
+    ? `<ul>${availability.map((row) => {
+        const activity = availabilityActivityLabel(row);
+        return `<li><strong>${escapeHtml(row.day)} · ${escapeHtml(row.shift)}</strong>${activity ? `<br><span>${escapeHtml(activity)}</span>` : ''}${row.note ? `<br><small>Nota: ${escapeHtml(clean(row.note, 1000))}</small>` : ''}</li>`;
+      }).join('')}</ul>`
     : '<p>Nessuna disponibilità aggiuntiva indicata.</p>';
 
   const prefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
