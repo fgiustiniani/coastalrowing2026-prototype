@@ -166,7 +166,7 @@ async function adminSnapshot() {
     }),
     adminReadOptional('esigenze attività', 'volunteer_activity_requirements', {
       query: {
-        select: 'id,shift_id,activity_id,required_count,display_order,active,created_at,updated_at',
+        select: 'id,shift_id,activity_id,required_count,display_order,response_open,active,created_at,updated_at',
         active: 'eq.true',
         order: 'shift_id.asc,display_order.asc,created_at.asc'
       }
@@ -729,6 +729,7 @@ async function adminSnapshot() {
       activityGroupOrder: activity?.group_id ? Number(activityGroupById.get(activity.group_id)?.display_order || 0) : 999999,
       requiredCount: Number(requirement.required_count || 0),
       displayOrder: Number(requirement.display_order || 0),
+      responseOpen: requirement.response_open === true,
       assignedCount: assigned.length,
       confirmedCount,
       declinedCount,
@@ -1663,6 +1664,44 @@ export default async (request) => {
           p_requirement_ids: requirementIds
         });
         return json({ ok: true, order: result });
+      }
+
+      if (action === 'set-requirement-response-open') {
+        await requireRequirementsTable();
+        const requirementId = clean(body.requirementId, 60);
+        const responseOpen = body.responseOpen === true;
+        if (!isUuid(requirementId)) throw new ApiError('Abbinamento non valido.', 400, 'INVALID_REQUIREMENT');
+
+        const currentRows = await adminRead('esigenza attività', 'volunteer_activity_requirements', {
+          query: {
+            select: 'id,shift_id,activity_id,response_open,active',
+            id: `eq.${requirementId}`,
+            active: 'eq.true',
+            limit: 1
+          }
+        });
+        const current = rows(currentRows)[0] || null;
+        if (!current) throw new ApiError('Abbinamento non trovato.', 404, 'REQUIREMENT_NOT_FOUND');
+
+        const savedRows = await supabaseRequest('volunteer_activity_requirements', {
+          method: 'PATCH',
+          query: { id: `eq.${requirementId}` },
+          body: { response_open: responseOpen, updated_at: new Date().toISOString() },
+          prefer: 'return=representation'
+        });
+        const saved = rows(savedRows)[0] || null;
+        if (!saved) throw new ApiError('Impostazione non salvata.', 500, 'REQUIREMENT_RESPONSE_OPEN_SAVE_FAILED');
+
+        await auditAdminChange({
+          actorName,
+          actionType: responseOpen ? 'requirement_response_opened' : 'requirement_response_closed',
+          entityType: 'requirement',
+          entityId: requirementId,
+          previousValue: { responseOpen: current.response_open === true },
+          newValue: { responseOpen }
+        });
+
+        return json({ ok: true, requirementId, responseOpen });
       }
 
       if (action === 'save-requirement') {
