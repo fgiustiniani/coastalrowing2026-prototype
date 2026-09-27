@@ -464,49 +464,49 @@ export default async (request) => {
         if (resolved.created) createdManualPerson = resolved.person;
       }
 
-      const currentState = await personState(resolvedPersonId);
-      const requestableAssignments = (currentState.assignments || []).filter((assignment) =>
-        assignment.responseOpen
-        && !assignment.currentResponse
-        && !assignment.assignedFromAvailability
-      );
-      const requestableIds = new Set(requestableAssignments.map((assignment) => assignment.id));
-      const normalizedResponses = responses.map((item) => ({
-        assignmentId: clean(item?.assignmentId, 60),
-        response: clean(item?.response, 20),
-        note: clean(item?.note, 1000)
-      }));
-      const responseIds = normalizedResponses.map((item) => item.assignmentId);
-      if (
-        normalizedResponses.length !== requestableIds.size
-        || new Set(responseIds).size !== responseIds.length
-        || normalizedResponses.some((item) =>
-          !requestableIds.has(item.assignmentId)
-          || !['confirmed', 'declined'].includes(item.response)
-        )
-      ) {
-        throw new ApiError('Completa tutte le nuove richieste prima dell’invio.', 400, 'VOLUNTEER_RESPONSES_INCOMPLETE');
-      }
-
-      const removableAvailabilityIds = new Set(
-        (currentState.availabilityShifts || [])
-          .filter((shift) => shift.selected && !shift.assigned)
-          .map((shift) => shift.id)
-      );
-      const normalizedAvailability = availability.map((item) => ({
-        shiftId: clean(item?.shiftId, 60),
-        note: clean(item?.note, 1000)
-      }));
-      const availabilityIds = normalizedAvailability.map((item) => item.shiftId);
-      if (
-        new Set(availabilityIds).size !== availabilityIds.length
-        || normalizedAvailability.some((item) => !removableAvailabilityIds.has(item.shiftId))
-      ) {
-        throw new ApiError('Le disponibilità possono solo essere mantenute o rimosse.', 400, 'INVALID_AVAILABILITY');
-      }
-
       let result;
       try {
+        const currentState = await personState(resolvedPersonId);
+        const requestableAssignments = (currentState.assignments || []).filter((assignment) =>
+          assignment.responseOpen
+          && !assignment.currentResponse
+          && !assignment.assignedFromAvailability
+        );
+        const requestableIds = new Set(requestableAssignments.map((assignment) => assignment.id));
+        const normalizedResponses = responses.map((item) => ({
+          assignmentId: clean(item?.assignmentId, 60),
+          response: clean(item?.response, 20),
+          note: clean(item?.note, 1000)
+        }));
+        const responseIds = normalizedResponses.map((item) => item.assignmentId);
+        if (
+          normalizedResponses.length !== requestableIds.size
+          || new Set(responseIds).size !== responseIds.length
+          || normalizedResponses.some((item) =>
+            !requestableIds.has(item.assignmentId)
+            || !['confirmed', 'declined'].includes(item.response)
+          )
+        ) {
+          throw new ApiError('Completa tutte le nuove richieste prima dell’invio.', 400, 'VOLUNTEER_RESPONSES_INCOMPLETE');
+        }
+
+        const removableAvailabilityIds = new Set(
+          (currentState.availabilityShifts || [])
+            .filter((shift) => shift.selected && !shift.assigned)
+            .map((shift) => shift.id)
+        );
+        const normalizedAvailability = availability.map((item) => ({
+          shiftId: clean(item?.shiftId, 60),
+          note: clean(item?.note, 1000)
+        }));
+        const availabilityIds = normalizedAvailability.map((item) => item.shiftId);
+        if (
+          new Set(availabilityIds).size !== availabilityIds.length
+          || normalizedAvailability.some((item) => !removableAvailabilityIds.has(item.shiftId))
+        ) {
+          throw new ApiError('Le disponibilità possono solo essere mantenute o rimosse.', 400, 'INVALID_AVAILABILITY');
+        }
+
         result = await rpc('submit_volunteer_targeted_submission', {
           p_actor_name: actorName,
           p_person_id: resolvedPersonId,
