@@ -18,7 +18,8 @@
     initialAvailability: new Map(),
     clientSubmissionId: crypto.randomUUID(),
     latestSubmissionId: null,
-    requestedPersonId: ''
+    requestedPersonId: '',
+    mode: 'survey'
   };
 
   const accessCard = document.querySelector('[data-access-card]');
@@ -57,6 +58,11 @@
   const summaryEmailInput = document.querySelector('[data-summary-email]');
   const summaryEmailStatus = document.querySelector('[data-summary-email-status]');
   const summaryEmailSubmit = document.querySelector('[data-summary-email-submit]');
+  const readonlySummary = document.querySelector('[data-readonly-summary]');
+  const readonlyEmailForm = document.querySelector('[data-readonly-email-form]');
+  const readonlyEmailInput = document.querySelector('[data-readonly-email]');
+  const readonlyEmailStatus = document.querySelector('[data-readonly-email-status]');
+  const readonlyEmailSubmit = document.querySelector('[data-readonly-email-submit]');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -146,7 +152,8 @@
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok || !body.token) throw new Error(body.error || 'Codice di accesso non valido.');
-    saveSession({ token: body.token, expiresAt: body.expiresAt });
+    state.mode = body.mode === 'summary' ? 'summary' : 'survey';
+    saveSession({ token: body.token, expiresAt: body.expiresAt, mode: state.mode });
   }
 
   async function loadPeople(searchText = '') {
@@ -278,6 +285,37 @@
     });
   }
 
+  function renderReadOnlySummary() {
+    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
+    if (!readonlySummary) return;
+
+    if (!assignments.length) {
+      readonlySummary.innerHTML = '<p class="summary-empty">Non risultano attività assegnate.</p>';
+      return;
+    }
+
+    readonlySummary.innerHTML = `
+      <div class="summary-items summary-items--unified">
+        ${assignments.map((item) => {
+          const confirmed = item.currentResponse === 'confirmed'
+            || (item.assignedFromAvailability && item.currentResponse !== 'declined');
+          const declined = item.currentResponse === 'declined';
+          const kind = declined ? 'declined' : confirmed ? 'confirmed' : 'pending';
+          const status = declined ? 'Rifiutata' : confirmed ? 'Confermata' : 'Da rispondere';
+          return `
+            <article class="summary-item summary-item--${kind}">
+              <div class="summary-item__top">
+                <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+              </div>
+              <span class="summary-item__activity">${escapeHtml(displayActivityName(item.activity || 'Attività'))}</span>
+              <span class="summary-item__status">${escapeHtml(status)}</span>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   async function selectPerson(person, loadedDetail = null) {
     state.selectedPerson = person;
     state.manualPersonName = '';
@@ -297,14 +335,23 @@
       const detail = loadedDetail || await apiRequest(`${api}?view=person&id=${encodeURIComponent(person.id)}`);
       initializePersonState(detail);
       setStatus(personSelection, '');
-      renderWorkspace();
-      showStep(3);
+      if (state.mode === 'summary') {
+        renderReadOnlySummary();
+        showStep(5);
+      } else {
+        renderWorkspace();
+        showStep(3);
+      }
     } catch (error) {
       setStatus(personSelection, error.message, 'error');
     }
   }
 
   function continueWithManualPerson() {
+    if (state.mode === 'summary') {
+      setStatus(personSelection, 'Per il riepilogo seleziona un nominativo presente nell’elenco.', 'error');
+      return;
+    }
     state.manualSurname = String(manualSurnameInput?.value || '').trim();
     state.manualGivenName = String(manualGivenNameInput?.value || '').trim();
     if (state.manualSurname.length < 2 || state.manualGivenName.length < 2) {
@@ -776,6 +823,40 @@
     }
   }
 
+  async function sendReadOnlySummaryEmail(event) {
+    event.preventDefault();
+    const email = String(readonlyEmailInput?.value || '').trim();
+    const personId = state.selectedPerson?.id || '';
+    if (!personId) {
+      setStatus(readonlyEmailStatus, 'Seleziona prima il nominativo.', 'error');
+      return;
+    }
+
+    readonlyEmailSubmit.disabled = true;
+    const oldText = readonlyEmailSubmit.textContent;
+    readonlyEmailSubmit.textContent = 'Invio in corso…';
+    setStatus(readonlyEmailStatus, '');
+
+    try {
+      await apiRequest(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'email-assignment-summary',
+          personId,
+          email
+        })
+      });
+      setStatus(readonlyEmailStatus, 'Riepilogo inviato.', 'success');
+      readonlyEmailForm.reset();
+    } catch (error) {
+      setStatus(readonlyEmailStatus, error.message, 'error');
+    } finally {
+      readonlyEmailSubmit.disabled = false;
+      readonlyEmailSubmit.textContent = oldText;
+    }
+  }
+
   async function continueWithActor() {
     state.actorName = String(actorNameInput?.value || '').replace(/\s+/g, ' ').trim();
     setStatus(actorStatus, '');
@@ -794,6 +875,7 @@
     }
 
     showStep(2);
+    if (manualBox) manualBox.hidden = state.mode === 'summary';
     try { personSearch?.focus({ preventScroll: true }); } catch { personSearch?.focus(); }
     scrollStepIntoView(2);
   }
@@ -860,6 +942,7 @@
 
   submitButton?.addEventListener('click', submit);
   summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
+  readonlyEmailForm?.addEventListener('submit', sendReadOnlySummaryEmail);
 
   accessForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -891,7 +974,10 @@
       }
     } else {
       const saved = storedSession();
-      if (saved?.token) state.session = saved;
+      if (saved?.token) {
+        state.session = saved;
+        state.mode = saved.mode === 'summary' ? 'summary' : 'survey';
+      }
     }
 
     if (!state.session?.token) {
