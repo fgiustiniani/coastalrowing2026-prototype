@@ -430,6 +430,7 @@ async function personState(personId) {
   const historicalResponses = assignmentHistoryRows
     .filter((assignment) => {
       if (assignment.active !== false || supersededAssignmentIds.has(assignment.id)) return false;
+      if (!assignment.shift_id || !shiftById.has(assignment.shift_id)) return false;
       const response = responseForAssignment(assignment);
       return ['confirmed', 'declined'].includes(response?.response)
         || retainedConfirmationMarkedAssignmentIds.has(assignment.id);
@@ -496,6 +497,7 @@ async function personState(personId) {
 
   const historicalOpenRequestResponses = [...latestOpenRequestResponseByKey.values()]
     .filter((item) => {
+      if (!item.shiftId || !shiftById.has(item.shiftId)) return false;
       if (item.response === 'declined') return true;
       if (item.response !== 'confirmed') return false;
       return !assignedShiftIds.has(item.shiftId) && !availabilityByShift.has(item.shiftId);
