@@ -1833,7 +1833,7 @@
           </button>
           ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId) : ''}
           ${(row.isReleasedConfirmed || row.retainedConfirmation) ? '<span class="assignment-board__status-icon is-retained" tabindex="0" data-tooltip="Conferma mantenuta da una precedente assegnazione nello stesso turno" aria-label="Conferma precedente mantenuta">↺</span>' : ''}
-          ${row.assignedFromAvailability ? '<span class="assignment-board__availability-origin" title="Assegnato in seguito a disponibilità aggiuntiva">Disp. +</span>' : ''}
+          ${row.assignedFromAvailability ? '<span class="assignment-board__status-icon is-additional" tabindex="0" data-tooltip="Assegnato in seguito a disponibilità aggiuntiva" aria-label="Assegnato da disponibilità aggiuntiva">+</span>' : ''}
           ${showResponseBadge ? (effectiveResponse === 'confirmed'
             ? `<span class="assignment-board__status-icon is-confirmed" tabindex="0" data-tooltip="${escapeHtml(response.label || 'Confermata')}" aria-label="${escapeHtml(response.label || 'Confermata')}">✓</span>`
             : `<span class="assignment-board__response ${response.className}" title="${escapeHtml(response.label)}">${escapeHtml(response.mark)} ${escapeHtml(responseLabel)}</span>`) : ''}
