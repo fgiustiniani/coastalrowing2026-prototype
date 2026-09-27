@@ -50,7 +50,8 @@
   const submitButton = document.querySelector('[data-submit]');
   const submitWebsite = document.querySelector('[data-submit-website]');
   const noSubmit = document.querySelector('[data-no-submit]');
-  const backToPerson = document.querySelector('[data-back-to-person]');
+  const nextSummary = document.querySelector('[data-next-summary]');
+  const backToResponses = document.querySelector('[data-back-to-responses]');
   const success = document.querySelector('[data-success]');
   const summaryEmailForm = document.querySelector('[data-summary-email-form]');
   const summaryEmailInput = document.querySelector('[data-summary-email]');
@@ -349,13 +350,10 @@
       const saved = state.responses.get(group.key) || {};
       return `
         <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-request-key="${escapeHtml(group.key)}">
-          <div class="assignment-card__head">
+          <div class="assignment-card__head request-card__head">
             <div>
-              <h3>${escapeHtml(group.label)}</h3>
-              <div class="meta">
-                <span class="pill">${escapeHtml(group.day)}</span>
-                <span class="pill">${escapeHtml(group.shift)}</span>
-              </div>
+              <div class="request-card__when">${escapeHtml(group.day)} · ${escapeHtml(group.shift)}</div>
+              <div class="request-card__activity">${escapeHtml(group.label)}</div>
             </div>
           </div>
           <div class="response-options response-options--simple">
@@ -417,39 +415,52 @@
       || initialIds.some((id, index) => id !== currentIds[index]);
   }
 
-  function summaryTurnList(items, emptyText) {
-    const groups = groupItemsByTurn(items);
-    if (!groups.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
-    return `<ul class="summary-list">${groups.map((group) => `
-      <li><strong>${escapeHtml(group.day)} · ${escapeHtml(group.shift)}</strong></li>
-    `).join('')}</ul>`;
+  function summaryRowsHtml(items, emptyText, { status = false } = {}) {
+    const rows = sortShiftsChronologically(items);
+    if (!rows.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
+    return `<div class="summary-items">${rows.map((item) => {
+      const activity = item.summaryActivity || item.activity || item.label || item.responseLabel || 'Disponibilità aggiuntiva';
+      const stateLabel = item.summaryStatus || '';
+      return `
+        <article class="summary-item">
+          <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+          <span class="summary-item__activity">${escapeHtml(displayActivityName(activity))}</span>
+          ${status && stateLabel ? `<span class="summary-item__status">${escapeHtml(stateLabel)}</span>` : ''}
+        </article>`;
+    }).join('')}</div>`;
   }
 
   function renderSummary() {
-    const alreadyConfirmed = confirmedAssignments();
+    const currentAssignments = sortShiftsChronologically(state.personState?.assignments || []).map((assignment) => ({
+      ...assignment,
+      summaryActivity: assignment.activity || 'Attività',
+      summaryStatus: assignment.currentResponse === 'confirmed'
+        || (assignment.assignedFromAvailability && assignment.currentResponse !== 'declined')
+          ? 'Confermata'
+          : assignment.currentResponse === 'declined'
+            ? 'Non disponibile'
+            : 'Da rispondere'
+    }));
     const requests = requestGroups();
-    const newlyConfirmed = requests.filter((request) => state.responses.get(request.key)?.response === 'confirmed');
-    const newlyDeclined = requests.filter((request) => state.responses.get(request.key)?.response === 'declined');
-    const activeAvailability = originalUnusedAvailability().filter((shift) => state.availability.has(shift.id));
+    const newlyConfirmed = requests
+      .filter((request) => state.responses.get(request.key)?.response === 'confirmed')
+      .map((request) => ({ ...request, summaryActivity: request.label, summaryStatus: 'Confermata' }));
+    const newlyDeclined = requests
+      .filter((request) => state.responses.get(request.key)?.response === 'declined')
+      .map((request) => ({ ...request, summaryActivity: request.label, summaryStatus: 'Non disponibile' }));
+    const activeAvailability = originalUnusedAvailability()
+      .filter((shift) => state.availability.has(shift.id))
+      .map((shift) => ({ ...shift, summaryActivity: 'Disponibilità aggiuntiva' }));
 
     summary.innerHTML = `
       <section class="summary-section">
-        <h3>Turni e disponibilità confermate</h3>
-        <p class="summary-help">Sono già definite: non devi fare altro.</p>
-        ${summaryTurnList([...alreadyConfirmed, ...newlyConfirmed], 'Nessun turno confermato.')}
+        <h3>Attività e richieste</h3>
+        ${summaryRowsHtml([...currentAssignments, ...newlyConfirmed, ...newlyDeclined], 'Nessuna attività o richiesta.', { status: true })}
       </section>
       <section class="summary-section">
         <h3>Disponibilità aggiuntive attive</h3>
-        ${activeAvailability.length
-          ? `<ul class="summary-list">${groupItemsByTurn(activeAvailability).map((group) => `<li><strong>${escapeHtml(group.day)} · ${escapeHtml(group.shift)}</strong></li>`).join('')}</ul>`
-          : '<p class="summary-empty">Nessuna disponibilità aggiuntiva attiva.</p>'}
+        ${summaryRowsHtml(activeAvailability, 'Nessuna disponibilità aggiuntiva attiva.')}
       </section>
-      ${newlyDeclined.length ? `
-        <section class="summary-section summary-section--declined">
-          <h3>Hai indicato che non sei disponibile</h3>
-          ${summaryTurnList(newlyDeclined, 'Nessuna.')}
-        </section>
-      ` : ''}
     `;
   }
 
@@ -502,29 +513,16 @@
     renderPersonIntro();
     renderAssignments();
     renderAvailability();
-    renderSummary();
     updateSubmitState();
     setStatus(submitStatus, '');
   }
 
-  function resetSelection() {
-    state.selectedPerson = null;
-    state.manualPersonName = '';
-    state.manualSurname = '';
-    state.manualGivenName = '';
-    state.personState = null;
-    state.responses = new Map();
-    state.availability = new Map();
-    state.initialAvailability = new Map();
-    state.clientSubmissionId = crypto.randomUUID();
-    state.latestSubmissionId = null;
-    if (personSearch) personSearch.value = '';
-    if (manualSurnameInput) manualSurnameInput.value = '';
-    if (manualGivenNameInput) manualGivenNameInput.value = '';
-    if (manualField) manualField.hidden = true;
-    setStatus(personSelection, '');
-    loadPeople().catch(() => {});
-    showStep(2);
+  function goToSummary() {
+    if (!validateRequests({ focus: true })) return;
+    renderSummary();
+    updateSubmitState();
+    setStatus(submitStatus, '');
+    showStep(4);
   }
 
   async function submit() {
@@ -664,7 +662,8 @@
     continueWithActor();
   });
   continueManual?.addEventListener('click', continueWithManualPerson);
-  backToPerson?.addEventListener('click', resetSelection);
+  nextSummary?.addEventListener('click', goToSummary);
+  backToResponses?.addEventListener('click', () => showStep(3));
 
   assignmentList?.addEventListener('change', (event) => {
     if (!event.target.matches('input[type="radio"][name^="response-"]')) return;
@@ -675,7 +674,6 @@
     const current = state.responses.get(group.key) || {};
     state.responses.set(group.key, { ...current, response: event.target.value });
     renderAssignments();
-    renderSummary();
     updateSubmitState();
   });
 
@@ -704,7 +702,6 @@
     }
 
     renderAvailability();
-    renderSummary();
     updateSubmitState();
   });
 
