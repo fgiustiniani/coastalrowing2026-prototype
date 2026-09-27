@@ -17,7 +17,8 @@
     availability: new Map(),
     initialAvailability: new Map(),
     clientSubmissionId: crypto.randomUUID(),
-    latestSubmissionId: null
+    latestSubmissionId: null,
+    requestedPersonId: ''
   };
 
   const accessCard = document.querySelector('[data-access-card]');
@@ -25,6 +26,9 @@
   const accessTokenInput = document.querySelector('[data-access-token]');
   const accessStatus = document.querySelector('[data-access-status]');
   const app = document.querySelector('[data-app]');
+  const actorNameInput = document.querySelector('[data-actor-name]');
+  const actorStatus = document.querySelector('[data-actor-status]');
+  const continueActor = document.querySelector('[data-continue-actor]');
   const personSearch = document.querySelector('[data-person-search]');
   const personResults = document.querySelector('[data-person-results]');
   const personSelection = document.querySelector('[data-person-selection]');
@@ -168,13 +172,7 @@
   }
 
   function newRequests() {
-    return sortShiftsChronologically(
-      (state.personState?.assignments || []).filter((assignment) =>
-        assignment.responseOpen
-        && !assignment.currentResponse
-        && !assignment.assignedFromAvailability
-      )
-    );
+    return sortShiftsChronologically(state.personState?.openRequests || []);
   }
 
   function groupItemsByTurn(items = []) {
@@ -199,27 +197,11 @@
   }
 
   function requestGroups() {
-    const groups = new Map();
-    newRequests().forEach((assignment) => {
-      const label = String(assignment.responseLabel || '').trim() || 'Disponibilità';
-      const shiftKey = assignment.shiftId || `${assignment.day || ''}|${assignment.shift || ''}`;
-      const key = `${shiftKey}|${label.toLocaleLowerCase('it-IT')}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          key,
-          label,
-          day: assignment.day || '',
-          shift: assignment.shift || '',
-          sortOrder: Number(assignment.sortOrder ?? 9999),
-          assignments: []
-        });
-      }
-      groups.get(key).assignments.push(assignment);
-    });
-    return [...groups.values()].sort((a, b) =>
-      a.sortOrder - b.sortOrder
-      || `${a.day} ${a.shift} ${a.label}`.localeCompare(`${b.day} ${b.shift} ${b.label}`, 'it')
-    );
+    return newRequests().map((request) => ({
+      ...request,
+      key: request.key || `${request.shiftId}|${String(request.responseLabel || '').toLocaleLowerCase('it-IT')}`,
+      label: request.responseLabel || 'Disponibilità'
+    }));
   }
 
   function requestGroupByKey(key) {
@@ -282,7 +264,7 @@
     state.manualPersonName = '';
     state.manualSurname = '';
     state.manualGivenName = '';
-    state.actorName = sortLabel(person);
+    // Chi compila resta distinto dalla persona interessata.
     if (manualSurnameInput) manualSurnameInput.value = '';
     if (manualGivenNameInput) manualGivenNameInput.value = '';
     if (manualField) manualField.hidden = true;
@@ -297,7 +279,7 @@
       initializePersonState(detail);
       setStatus(personSelection, '');
       renderWorkspace();
-      showStep(2);
+      showStep(3);
     } catch (error) {
       setStatus(personSelection, error.message, 'error');
     }
@@ -313,22 +295,20 @@
     }
     state.selectedPerson = null;
     state.manualPersonName = `${state.manualSurname} ${state.manualGivenName}`.trim();
-    state.actorName = state.manualPersonName;
     initializePersonState({
       person: null,
       assignments: [],
+      openRequests: [],
       availabilityShifts: [],
       latestSubmission: null
     });
     setStatus(personSelection, '');
     renderWorkspace();
-    showStep(2);
+    showStep(3);
   }
 
   function answeredRequestCount() {
-    return requestGroups().filter((group) =>
-      group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
-    ).length;
+    return requestGroups().filter((group) => Boolean(state.responses.get(group.key)?.response)).length;
   }
 
   function renderPersonIntro() {
@@ -366,8 +346,7 @@
     requestProgress.textContent = `${answered} di ${groups.length} completat${groups.length === 1 ? 'a' : 'e'}`;
 
     assignmentList.innerHTML = groups.map((group) => {
-      const first = group.assignments[0];
-      const saved = first ? (state.responses.get(first.id) || {}) : {};
+      const saved = state.responses.get(group.key) || {};
       return `
         <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-request-key="${escapeHtml(group.key)}">
           <div class="assignment-card__head">
@@ -448,15 +427,15 @@
 
   function renderSummary() {
     const alreadyConfirmed = confirmedAssignments();
-    const requests = newRequests();
-    const newlyConfirmed = requests.filter((assignment) => state.responses.get(assignment.id)?.response === 'confirmed');
-    const newlyDeclined = requests.filter((assignment) => state.responses.get(assignment.id)?.response === 'declined');
+    const requests = requestGroups();
+    const newlyConfirmed = requests.filter((request) => state.responses.get(request.key)?.response === 'confirmed');
+    const newlyDeclined = requests.filter((request) => state.responses.get(request.key)?.response === 'declined');
     const activeAvailability = originalUnusedAvailability().filter((shift) => state.availability.has(shift.id));
 
     summary.innerHTML = `
       <section class="summary-section">
-        <h3>Turni confermati</h3>
-        <p class="summary-help">Sono già definiti: non devi fare altro.</p>
+        <h3>Turni e disponibilità confermate</h3>
+        <p class="summary-help">Sono già definite: non devi fare altro.</p>
         ${summaryTurnList([...alreadyConfirmed, ...newlyConfirmed], 'Nessun turno confermato.')}
       </section>
       <section class="summary-section">
@@ -476,9 +455,7 @@
 
   function validateRequests({ focus = false } = {}) {
     const groups = requestGroups();
-    const missing = groups.filter((group) =>
-      !group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
-    );
+    const missing = groups.filter((group) => !state.responses.get(group.key)?.response);
 
     assignmentList?.querySelectorAll('.assignment-card.is-incomplete').forEach((card) => {
       card.classList.remove('is-incomplete');
@@ -508,9 +485,7 @@
     const hasRequests = groups.length > 0;
     const changedAvailability = availabilityHasChanges();
     const hasSomethingToSend = hasRequests || changedAvailability;
-    const complete = groups.every((group) =>
-      group.assignments.every((assignment) => Boolean(state.responses.get(assignment.id)?.response))
-    );
+    const complete = groups.every((group) => Boolean(state.responses.get(group.key)?.response));
 
     submitButton.hidden = !hasSomethingToSend;
     noSubmit.hidden = hasSomethingToSend;
@@ -541,7 +516,6 @@
     state.responses = new Map();
     state.availability = new Map();
     state.initialAvailability = new Map();
-    state.actorName = '';
     state.clientSubmissionId = crypto.randomUUID();
     state.latestSubmissionId = null;
     if (personSearch) personSearch.value = '';
@@ -550,7 +524,7 @@
     if (manualField) manualField.hidden = true;
     setStatus(personSelection, '');
     loadPeople().catch(() => {});
-    showStep(1);
+    showStep(2);
   }
 
   async function submit() {
@@ -571,13 +545,16 @@
         manualGivenName: state.selectedPerson ? null : state.manualGivenName,
         clientSubmissionId: state.clientSubmissionId,
         website: submitWebsite?.value || '',
-        responses: Array.from(state.responses.entries())
-          .filter(([, value]) => Boolean(value.response))
-          .map(([assignmentId, value]) => ({
-            assignmentId,
-            response: value.response,
-            note: value.note || ''
-          })),
+        openRequestResponses: requestGroups()
+          .map((request) => {
+            const value = state.responses.get(request.key) || {};
+            return {
+              shiftId: request.shiftId,
+              responseLabel: request.responseLabel || request.label || '',
+              response: value.response || '',
+              note: value.note || ''
+            };
+          }),
         availability: Array.from(state.availability.entries())
           .map(([shiftId, value]) => ({ shiftId, note: value.note || '' }))
       };
@@ -669,10 +646,8 @@
     if (!card) return;
     const group = requestGroupByKey(card.dataset.requestKey);
     if (!group) return;
-    group.assignments.forEach((assignment) => {
-      const current = state.responses.get(assignment.id) || {};
-      state.responses.set(assignment.id, { ...current, response: event.target.value });
-    });
+    const current = state.responses.get(group.key) || {};
+    state.responses.set(group.key, { ...current, response: event.target.value });
     renderAssignments();
     renderSummary();
     updateSubmitState();
@@ -684,10 +659,8 @@
     if (!card) return;
     const group = requestGroupByKey(card.dataset.requestKey);
     if (!group) return;
-    group.assignments.forEach((assignment) => {
-      const current = state.responses.get(assignment.id) || {};
-      state.responses.set(assignment.id, { ...current, note: event.target.value });
-    });
+    const current = state.responses.get(group.key) || {};
+    state.responses.set(group.key, { ...current, note: event.target.value });
   });
 
   availabilityList?.addEventListener('click', (event) => {
