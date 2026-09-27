@@ -6067,7 +6067,14 @@
 
 
   function showRespondedPeople() {
-    const people = respondedAssignedPeople();
+    const campaignId = selectedResponseCampaignId();
+    if (!campaignId) {
+      setStatus(inviteStatus, 'Seleziona prima una campagna per vedere chi ha risposto.', 'error');
+      responseCampaignFilter?.focus();
+      return;
+    }
+
+    const people = respondedPeopleForCampaign(campaignId);
     const shiftById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, shift]));
 
     const compareByShift = (a, b) => {
@@ -6084,15 +6091,15 @@
       return `${a.day || ''} ${a.shift || ''}`.localeCompare(`${b.day || ''} ${b.shift || ''}`, 'it');
     };
 
-    const sortedAvailability = (person) => [...(person.latestSubmission?.availability || [])].sort(compareByShift);
+    const sortedAvailability = (person) => [...(person.campaignSubmission?.availability || [])].sort(compareByShift);
     const sortedAssignments = (person) => (snapshot?.assignments || [])
       .filter((row) => row.personId === person.id)
       .sort((a, b) => compareByShift(a, b) || displayActivity(a).localeCompare(displayActivity(b), 'it'));
 
     detailTargetRow = null;
-    detailTitle.textContent = `Persone che hanno risposto · ${people.length}`;
+    detailTitle.textContent = `${responseCampaignName(campaignId)} · ${people.length} ${people.length === 1 ? 'risposta' : 'risposte'}`;
     detailContent.innerHTML = people.length
-      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Ultima risposta</th><th>Attività assegnate / risposta</th><th>Disponibilità aggiuntive</th></tr></thead><tbody>${people.map((person) => {
+      ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Risposta campagna</th><th>Situazione attività attuale</th><th>Disponibilità inviate</th></tr></thead><tbody>${people.map((person) => {
           const assignments = sortedAssignments(person);
           const assignmentsHtml = assignments.length
             ? `<div class="availability-report-list">${assignments.map((item) =>
@@ -6107,9 +6114,9 @@
               ).join('')}</div>`
             : '—';
 
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.latestVolunteerSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
-      : '<p class="empty-state">Nessuna persona ha ancora risposto.</p>';
+      : '<p class="empty-state">Nessuna persona ha ancora risposto a questa campagna.</p>';
     detailDialog.showModal();
   }
 
