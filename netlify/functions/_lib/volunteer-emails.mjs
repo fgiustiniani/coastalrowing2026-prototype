@@ -135,21 +135,13 @@ export async function sendVolunteerSummaryEmail({
       && row.submissionId === submissionId
       && ['confirmed', 'declined'].includes(row.response)
     )
-    .map((row) => {
-      const activities = Array.isArray(row.activities)
-        ? row.activities.map((item) => clean(item, 240)).filter(Boolean)
-        : [];
-      const declinedActivity = activities.length
-        ? activities.join(' · ')
-        : clean(row.responseLabel, 240);
-      return {
-        ...row,
-        summaryActivity: row.response === 'confirmed' ? '' : declinedActivity,
-        summaryStatus: row.response === 'declined' ? 'Non disponibile' : 'Confermata',
-        summaryKind: row.response === 'declined' ? 'declined' : 'confirmed',
-        summaryNew: true
-      };
-    });
+    .map((row) => ({
+      ...row,
+      summaryActivity: '',
+      summaryStatus: row.response === 'declined' ? 'Non disponibile' : 'Confermata',
+      summaryKind: row.response === 'declined' ? 'declined' : 'confirmed',
+      summaryNew: true
+    }));
 
   const newConfirmedShiftIds = new Set(
     currentOpenResponses
