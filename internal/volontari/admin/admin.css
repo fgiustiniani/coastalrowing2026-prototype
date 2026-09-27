@@ -1207,6 +1207,11 @@ tr.is-busy button.is-busy {
   background: var(--ok-bg);
   color: var(--ok);
 }
+.assignment-board__status-icon.is-additional {
+  border: 1px solid #a9d3da;
+  background: #dff2f5;
+  color: #2d6f7a;
+}
 .assignment-board__status-icon::after {
   content: attr(data-tooltip);
   position: absolute;
