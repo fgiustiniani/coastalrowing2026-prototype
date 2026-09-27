@@ -1666,6 +1666,54 @@ export default async (request) => {
         return json({ ok: true, order: result });
       }
 
+      if (action === 'set-requirements-response-open') {
+        await requireRequirementsTable();
+        const requirementIds = Array.isArray(body.requirementIds)
+          ? [...new Set(body.requirementIds.map((value) => clean(value, 60)).filter(Boolean))]
+          : [];
+        const responseOpen = body.responseOpen === true;
+
+        if (!requirementIds.length || requirementIds.length > 500 || requirementIds.some((id) => !isUuid(id))) {
+          throw new ApiError('Elenco abbinamenti non valido.', 400, 'INVALID_REQUIREMENTS');
+        }
+
+        const currentRows = await adminRead('esigenze attività', 'volunteer_activity_requirements', {
+          query: {
+            select: 'id,response_open,active',
+            id: `in.(${requirementIds.join(',')})`,
+            active: 'eq.true'
+          }
+        });
+        const current = rows(currentRows);
+        if (current.length !== requirementIds.length) {
+          throw new ApiError('Uno o più abbinamenti non sono disponibili.', 404, 'REQUIREMENTS_NOT_FOUND');
+        }
+
+        await supabaseRequest('volunteer_activity_requirements', {
+          method: 'PATCH',
+          query: { id: `in.(${requirementIds.join(',')})`, active: 'eq.true' },
+          body: { response_open: responseOpen, updated_at: new Date().toISOString() },
+          prefer: 'return=minimal'
+        });
+
+        await auditAdminChange({
+          actorName,
+          actionType: responseOpen ? 'requirements_responses_bulk_opened' : 'requirements_responses_bulk_closed',
+          entityType: 'requirement_bulk',
+          entityId: null,
+          previousValue: {
+            requirements: current.map((row) => ({ id: row.id, responseOpen: row.response_open === true }))
+          },
+          newValue: {
+            requirementIds,
+            responseOpen
+          },
+          note: `Aggiornamento massivo di ${requirementIds.length} abbinamenti turno-attività.`
+        });
+
+        return json({ ok: true, requirementIds, responseOpen, count: requirementIds.length });
+      }
+
       if (action === 'set-requirement-response-open') {
         await requireRequirementsTable();
         const requirementId = clean(body.requirementId, 60);
