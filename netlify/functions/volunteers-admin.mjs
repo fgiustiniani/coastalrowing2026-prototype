@@ -279,6 +279,9 @@ async function adminSnapshot() {
       shiftId: item.shift_id,
       day: shift?.day_label || '',
       shift: shift?.shift_label || '',
+      startsAt: shift?.starts_at || null,
+      endsAt: shift?.ends_at || null,
+      sortOrder: Number(shift?.sort_order ?? 9999),
       note: item.note || ''
     });
   }
@@ -298,6 +301,9 @@ async function adminSnapshot() {
       shiftId: shift?.id || null,
       day: shift?.day_label || assignment.raw_day || '',
       shift: shift?.shift_label || assignment.raw_shift || '',
+      startsAt: shift?.starts_at || null,
+      endsAt: shift?.ends_at || null,
+      sortOrder: Number(shift?.sort_order ?? 9999),
       shiftMatched: Boolean(shift),
       activityId: assignment.activity_id,
       activity: activity?.name || 'Attività',
