@@ -5982,7 +5982,55 @@
       </section>`;
   }
 
-  function showPersonActivitiesPopup(personId, selectedAssignmentId = '') {
+  function personCampaignResponsesHtml(campaignSubmissionId = '') {
+    if (!campaignSubmissionId) return '';
+
+    const submission = (snapshot?.campaignSubmissions || [])
+      .find((item) => item.id === campaignSubmissionId) || null;
+    if (!submission) return '';
+
+    const campaign = (snapshot?.responseCampaigns || [])
+      .find((item) => item.id === submission.campaignId) || null;
+    const responses = [...(submission.openRequestResponses || [])]
+      .sort((a, b) => {
+        const shiftA = (snapshot?.shifts || []).find((shift) => shift.id === a.shiftId);
+        const shiftB = (snapshot?.shifts || []).find((shift) => shift.id === b.shiftId);
+        return Number(shiftA?.sort_order ?? 9999) - Number(shiftB?.sort_order ?? 9999)
+          || String(a.responseLabel || '').localeCompare(String(b.responseLabel || ''), 'it');
+      });
+
+    if (!responses.length) return '';
+
+    return `
+      <section class="person-campaign-responses">
+        <div class="person-campaign-responses__head">
+          <div>
+            <span class="eyebrow">Risposte campagna</span>
+            <strong>${escapeHtml(campaign?.name || 'Campagna')}</strong>
+          </div>
+          <span>${responses.length}</span>
+        </div>
+        <div class="person-campaign-responses__list">
+          ${responses.map((item) => {
+            const declined = item.response === 'declined';
+            const confirmed = item.response === 'confirmed';
+            const statusLabel = declined ? 'Rifiutata' : confirmed ? 'Confermata' : 'Da rispondere';
+            const statusClass = declined ? 'is-declined' : confirmed ? 'is-confirmed' : 'is-pending';
+            return `
+              <article class="person-campaign-response ${statusClass}">
+                <div>
+                  <strong>${escapeHtml(item.day || '—')} · ${escapeHtml(item.shift || '—')}</strong>
+                  <span>${escapeHtml(item.responseLabel || 'Nuova richiesta')}</span>
+                  ${item.note ? `<small>Nota: ${escapeHtml(item.note)}</small>` : ''}
+                </div>
+                <span class="status-badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+              </article>`;
+          }).join('')}
+        </div>
+      </section>`;
+  }
+
+  function showPersonActivitiesPopup(personId, selectedAssignmentId = '', campaignSubmissionId = '') {
     const person = (snapshot?.people || []).find((item) => item.id === personId);
     if (!person || !personActivitiesDialog) return;
     const assignments = (snapshot?.assignments || []).filter((item) => item.personId === personId);
@@ -6016,8 +6064,10 @@
     const selectedRequirementId = selected ? assignmentRequirementId(selected) : '';
     personActivitiesContent.dataset.personId = personId;
     personActivitiesContent.dataset.selectedAssignmentId = selectedAssignmentId || '';
+    personActivitiesContent.dataset.campaignSubmissionId = campaignSubmissionId || '';
     personActivitiesContent.innerHTML = `
       ${selectedControls}
+      ${personCampaignResponsesHtml(campaignSubmissionId)}
       <div class="person-activities-toolbar">
         <button class="button button--primary" type="button" data-person-add-activity-open>＋ Aggiungi un'altra attività</button>
       </div>
@@ -6167,7 +6217,7 @@
               ).join('')}</div>`
             : '—';
 
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}" data-campaign-submission-id="${escapeHtml(person.campaignSubmission?.id || '')}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto a questa campagna.</p>';
     detailDialog.showModal();
@@ -8541,7 +8591,11 @@
 
     const personLink = event.target.closest('[data-open-person-activities]');
     if (personLink) {
-      showPersonActivitiesPopup(personLink.dataset.openPersonActivities);
+      showPersonActivitiesPopup(
+        personLink.dataset.openPersonActivities,
+        '',
+        personLink.dataset.campaignSubmissionId || ''
+      );
       return;
     }
 
