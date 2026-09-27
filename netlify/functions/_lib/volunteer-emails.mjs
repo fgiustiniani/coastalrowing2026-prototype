@@ -155,9 +155,12 @@ export async function sendVolunteerSummaryEmail({
     .map((shift) => ({
       ...shift,
       summaryActivity: 'Nessuna attività assegnata: sei libero',
-      summaryStatus: 'Disponibilità aggiuntiva dichiarata in precedenza',
+      summaryStatus: shift.isReleasedConfirmed
+        ? 'Disponibilità già confermata in precedenza'
+        : 'Disponibilità aggiuntiva dichiarata in precedenza',
       summaryKind: 'availability',
-      summaryNew: false
+      summaryNew: false,
+      raceConflict: shift.raceConflict === true
     }));
 
   const summaryRows = sortChronologically([
@@ -175,9 +178,12 @@ export async function sendVolunteerSummaryEmail({
 
   const rowText = summaryRows.length
     ? summaryRows.map((row) => {
-        const badge = row.summaryNew ? ' [NUOVA]' : '';
+        const badges = [
+          row.summaryNew ? '[NUOVA]' : '',
+          row.raceConflict ? '[Non assegnato per coincidenza gara]' : ''
+        ].filter(Boolean).join(' ');
         const activity = clean(row.summaryActivity, 500);
-        return `- ${row.day} · ${row.shift} — ${row.summaryStatus}${badge}${activity ? ` — ${activity}` : ''}`;
+        return `- ${row.day} · ${row.shift} — ${row.summaryStatus}${badges ? ` ${badges}` : ''}${activity ? ` — ${activity}` : ''}`;
       }).join('\n')
     : '- Nessuna disponibilità da riepilogare';
 
@@ -203,9 +209,14 @@ export async function sendVolunteerSummaryEmail({
     ? summaryRows.map((row) => {
         const style = cardStyle[row.summaryKind] || cardStyle.availability;
         const activity = clean(row.summaryActivity, 500);
-        const badge = row.summaryNew
-          ? '<span style="display:inline-block;padding:3px 7px;border-radius:999px;background:#0a6b7d;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.04em;">NUOVA</span>'
-          : '';
+        const badges = [
+          row.summaryNew
+            ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#0a6b7d;color:#ffffff;font-size:10px;line-height:1;font-weight:800;letter-spacing:.04em;">NUOVA</span>'
+            : '',
+          row.raceConflict
+            ? '<span style="display:inline-block;margin-left:4px;padding:3px 7px;border-radius:999px;background:#a43f2c;color:#ffffff;font-size:10px;line-height:1.15;font-weight:800;">Non assegnato per coincidenza gara</span>'
+            : ''
+        ].filter(Boolean).join('');
         return `
           <div style="margin:0 0 10px 0;padding:12px 14px;border:1px solid ${style.border};border-radius:12px;background:${style.background};">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
@@ -213,7 +224,7 @@ export async function sendVolunteerSummaryEmail({
                 <td style="font-size:15px;line-height:1.3;font-weight:700;color:#263f48;">
                   ${escapeHtml(row.day)} · ${escapeHtml(row.shift)}
                 </td>
-                <td align="right" style="white-space:nowrap;padding-left:10px;">${badge}</td>
+                <td align="right" style="padding-left:10px;">${badges}</td>
               </tr>
             </table>
             ${activity ? `<div style="margin-top:5px;font-size:13px;line-height:1.35;color:#60757d;">${escapeHtml(activity)}</div>` : ''}
