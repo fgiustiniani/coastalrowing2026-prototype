@@ -1,6 +1,7 @@
 (() => {
   const api = '/api/volunteers';
   const SESSION_KEY = 'coastal2026-volunteer-session';
+
   const state = {
     session: null,
     step: 1,
@@ -14,6 +15,7 @@
     personState: null,
     responses: new Map(),
     availability: new Map(),
+    initialAvailability: new Map(),
     clientSubmissionId: crypto.randomUUID(),
     latestSubmissionId: null
   };
@@ -23,7 +25,6 @@
   const accessTokenInput = document.querySelector('[data-access-token]');
   const accessStatus = document.querySelector('[data-access-status]');
   const app = document.querySelector('[data-app]');
-  const actorInput = document.querySelector('[data-actor-name]');
   const personSearch = document.querySelector('[data-person-search]');
   const personResults = document.querySelector('[data-person-results]');
   const personSelection = document.querySelector('[data-person-selection]');
@@ -32,13 +33,20 @@
   const manualField = document.querySelector('[data-manual-field]');
   const manualSurnameInput = document.querySelector('[data-manual-surname]');
   const manualGivenNameInput = document.querySelector('[data-manual-given-name]');
+  const continueManual = document.querySelector('[data-continue-manual]');
+  const personIntro = document.querySelector('[data-person-intro]');
+  const requestSection = document.querySelector('[data-request-section]');
+  const requestProgress = document.querySelector('[data-request-progress]');
   const assignmentList = document.querySelector('[data-assignment-list]');
   const assignmentStatus = document.querySelector('[data-assignment-status]');
+  const availabilitySection = document.querySelector('[data-availability-section]');
   const availabilityList = document.querySelector('[data-availability-list]');
   const summary = document.querySelector('[data-summary]');
   const submitStatus = document.querySelector('[data-submit-status]');
   const submitButton = document.querySelector('[data-submit]');
   const submitWebsite = document.querySelector('[data-submit-website]');
+  const noSubmit = document.querySelector('[data-no-submit]');
+  const backToPerson = document.querySelector('[data-back-to-person]');
   const success = document.querySelector('[data-success]');
   const summaryEmailForm = document.querySelector('[data-summary-email-form]');
   const summaryEmailInput = document.querySelector('[data-summary-email]');
@@ -96,15 +104,23 @@
   }
 
   function showAccess(message = '') {
-    app.hidden = true;
-    accessCard.hidden = false;
+    if (app) app.hidden = true;
+    if (accessCard) accessCard.hidden = false;
     if (message) setStatus(accessStatus, message, 'error');
   }
 
   function showApp() {
-    accessCard.hidden = true;
-    app.hidden = false;
+    if (accessCard) accessCard.hidden = true;
+    if (app) app.hidden = false;
     showStep(state.step);
+  }
+
+  function showStep(step) {
+    state.step = step;
+    document.querySelectorAll('[data-step]').forEach((node) => {
+      node.hidden = Number(node.dataset.step) !== step;
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function createSession(accessToken, website = '') {
@@ -128,10 +144,52 @@
   }
 
   function sortLabel(person) {
-    const surname = person.surname || '';
-    const given = person.given_name || '';
+    const surname = person?.surname || '';
+    const given = person?.given_name || '';
     if (surname || given) return `${surname} ${given}`.trim();
-    return person.display_name || '';
+    return person?.display_name || '';
+  }
+
+  function displayActivityName(value) {
+    return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
+  }
+
+  function sortShiftsChronologically(items = []) {
+    return [...items].sort((a, b) => {
+      const orderA = Number(a?.sortOrder);
+      const orderB = Number(b?.sortOrder);
+      if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+      const startA = Date.parse(a?.startsAt || '');
+      const startB = Date.parse(b?.startsAt || '');
+      if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
+      return `${a?.day || ''} ${a?.shift || ''} ${a?.activity || ''}`
+        .localeCompare(`${b?.day || ''} ${b?.shift || ''} ${b?.activity || ''}`, 'it');
+    });
+  }
+
+  function newRequests() {
+    return sortShiftsChronologically(
+      (state.personState?.assignments || []).filter((assignment) =>
+        assignment.responseOpen
+        && !assignment.currentResponse
+        && !assignment.assignedFromAvailability
+      )
+    );
+  }
+
+  function confirmedAssignments() {
+    return sortShiftsChronologically(
+      (state.personState?.assignments || []).filter((assignment) =>
+        assignment.currentResponse === 'confirmed'
+        || (assignment.assignedFromAvailability && assignment.currentResponse !== 'declined')
+      )
+    );
+  }
+
+  function originalUnusedAvailability() {
+    return sortShiftsChronologically(
+      (state.personState?.availabilityShifts || []).filter((shift) => shift.selected && !shift.assigned)
+    );
   }
 
   function renderPeople() {
@@ -157,281 +215,303 @@
     `).join('');
   }
 
-  async function selectPerson(person) {
+  function initializePersonState(detail) {
+    state.personState = detail;
+    state.responses = new Map();
+    state.availability = new Map();
+    state.initialAvailability = new Map();
+
+    originalUnusedAvailability().forEach((shift) => {
+      const value = { selected: true, note: shift.note || '' };
+      state.availability.set(shift.id, value);
+      state.initialAvailability.set(shift.id, value);
+    });
+  }
+
+  async function selectPerson(person, loadedDetail = null) {
     state.selectedPerson = person;
     state.manualPersonName = '';
     state.manualSurname = '';
     state.manualGivenName = '';
+    state.actorName = sortLabel(person);
     if (manualSurnameInput) manualSurnameInput.value = '';
     if (manualGivenNameInput) manualGivenNameInput.value = '';
     if (manualField) manualField.hidden = true;
     if (manualBox) manualBox.hidden = true;
-    personSearch.value = sortLabel(person);
-    setStatus(personSelection, 'Nominativo selezionato.', 'success');
+    if (personSearch) personSearch.value = sortLabel(person);
     state.people = [];
     renderPeople();
-    setStatus(assignmentStatus, 'Caricamento attività…');
-    const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(person.id)}`);
-    state.personState = detail;
-    state.responses = new Map();
-    (detail.assignments || []).forEach((assignment) => {
-      if (assignment.currentResponse) {
-        state.responses.set(assignment.id, {
-          response: assignment.currentResponse,
-          note: assignment.currentNote || '',
-          previousResponse: assignment.currentResponse,
-          responseAt: assignment.currentResponseAt || null
-        });
-      } else if (assignment.assignedFromAvailability) {
-        state.responses.set(assignment.id, {
-          response: 'confirmed',
-          note: '',
-          previousResponse: null,
-          responseAt: null,
-          confirmedFromAvailability: true
-        });
-      }
-    });
-    state.availability = new Map();
-    (detail.availabilityShifts || []).forEach((shift) => {
-      if (shift.selected && !shift.assigned) state.availability.set(shift.id, { selected: true, note: shift.note || '' });
-    });
-    renderAssignments();
-    renderAvailability();
-    setStatus(assignmentStatus, '');
+    setStatus(personSelection, 'Caricamento…');
+
+    try {
+      const detail = loadedDetail || await apiRequest(`${api}?view=person&id=${encodeURIComponent(person.id)}`);
+      initializePersonState(detail);
+      setStatus(personSelection, '');
+      renderWorkspace();
+      showStep(2);
+    } catch (error) {
+      setStatus(personSelection, error.message, 'error');
+    }
   }
 
-  function useManualPerson() {
+  function continueWithManualPerson() {
+    state.manualSurname = String(manualSurnameInput?.value || '').trim();
+    state.manualGivenName = String(manualGivenNameInput?.value || '').trim();
+    if (state.manualSurname.length < 2 || state.manualGivenName.length < 2) {
+      setStatus(personSelection, 'Inserisci cognome e nome.', 'error');
+      (state.manualSurname.length < 2 ? manualSurnameInput : manualGivenNameInput)?.focus();
+      return;
+    }
     state.selectedPerson = null;
-    state.manualPersonName = '';
-    state.manualSurname = '';
-    state.manualGivenName = '';
-    state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
-    state.responses = new Map();
-    state.availability = new Map();
-    if (manualBox) manualBox.hidden = true;
-    if (manualField) manualField.hidden = false;
-    if (manualSurnameInput) manualSurnameInput.focus();
-    setStatus(personSelection, 'Inserisci cognome e nome e prosegui.', '');
-    renderAssignments();
-    renderAvailability();
-  }
-  function displayActivityName(value) {
-    return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
-  }
-
-  function formatPreviousResponseDate(value) {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'Europe/Rome'
-    }).format(date);
-  }
-
-  function sortShiftsChronologically(shifts = []) {
-    return [...shifts].sort((a, b) => {
-      const orderA = Number(a?.sortOrder);
-      const orderB = Number(b?.sortOrder);
-      const hasOrderA = Number.isFinite(orderA);
-      const hasOrderB = Number.isFinite(orderB);
-      if (hasOrderA && hasOrderB && orderA !== orderB) return orderA - orderB;
-      if (hasOrderA !== hasOrderB) return hasOrderA ? -1 : 1;
-
-      const startA = Date.parse(a?.startsAt || '');
-      const startB = Date.parse(b?.startsAt || '');
-      if (Number.isFinite(startA) && Number.isFinite(startB) && startA !== startB) return startA - startB;
-      if (Number.isFinite(startA) !== Number.isFinite(startB)) return Number.isFinite(startA) ? -1 : 1;
-
-      return `${a?.day || ''} ${a?.shift || ''}`.localeCompare(`${b?.day || ''} ${b?.shift || ''}`, 'it');
+    state.manualPersonName = `${state.manualSurname} ${state.manualGivenName}`.trim();
+    state.actorName = state.manualPersonName;
+    initializePersonState({
+      person: null,
+      assignments: [],
+      availabilityShifts: [],
+      latestSubmission: null
     });
+    setStatus(personSelection, '');
+    renderWorkspace();
+    showStep(2);
+  }
+
+  function answeredRequestCount() {
+    return newRequests().filter((assignment) => Boolean(state.responses.get(assignment.id)?.response)).length;
+  }
+
+  function renderPersonIntro() {
+    const requests = newRequests();
+    const availability = originalUnusedAvailability();
+    const name = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
+
+    let message = '';
+    if (requests.length) {
+      message = `Abbiamo <strong>${requests.length} ${requests.length === 1 ? 'nuova richiesta' : 'nuove richieste'}</strong> per te. Rispondi solo a quelle indicate qui sotto; le attività già confermate non richiedono alcuna azione.`;
+    } else if (availability.length) {
+      message = 'Non hai nuove attività da confermare. Controlla soltanto che le disponibilità aggiuntive già comunicate siano ancora valide.';
+    } else {
+      message = 'È tutto aggiornato. Non hai nuove richieste e non devi fare nulla.';
+    }
+
+    personIntro.innerHTML = `
+      <p class="eyebrow">Ciao ${escapeHtml(name)}</p>
+      <div class="volunteer-overview__message">${message}</div>
+    `;
   }
 
   function renderAssignments() {
-    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
+    const assignments = newRequests();
+    requestSection.hidden = assignments.length === 0;
+
     if (!assignments.length) {
-      assignmentList.innerHTML = '<div class="assignment-card"><strong>Nessuna attività proposta.</strong><p class="muted">Puoi proseguire e indicare eventuali disponibilità aggiuntive.</p></div>';
+      assignmentList.innerHTML = '';
+      if (requestProgress) requestProgress.textContent = '';
+      setStatus(assignmentStatus, '');
       return;
     }
+
+    const answered = answeredRequestCount();
+    requestProgress.textContent = `${answered} di ${assignments.length} completat${assignments.length === 1 ? 'a' : 'e'}`;
+
     assignmentList.innerHTML = assignments.map((assignment) => {
       const saved = state.responses.get(assignment.id) || {};
-      const previousResponse = assignment.currentResponse || saved.previousResponse || null;
-      const responseDate = formatPreviousResponseDate(assignment.currentResponseAt || saved.responseAt);
-      const confirmedFromAvailability = Boolean(assignment.assignedFromAvailability && !previousResponse);
-      const confirmedLabel = previousResponse === 'declined'
-        ? 'Ora posso'
-        : (previousResponse === 'confirmed' || confirmedFromAvailability ? 'Confermata' : 'Confermo');
-      const declinedLabel = previousResponse === 'declined'
-        ? 'Rifiutata'
-        : (previousResponse === 'confirmed' || confirmedFromAvailability ? 'Non posso più' : 'Non posso');
-      const confirmedDate = previousResponse === 'confirmed' && responseDate
-        ? `<small class="response-choice__date">${escapeHtml(responseDate)}</small>`
-        : '';
-      const declinedDate = previousResponse === 'declined' && responseDate
-        ? `<small class="response-choice__date">${escapeHtml(responseDate)}</small>`
-        : '';
-
       return `
-        <article class="assignment-card" data-assignment-id="${escapeHtml(assignment.id)}">
-          <div class="assignment-card__head"><div><h3>${escapeHtml(displayActivityName(assignment.activity))}</h3><div class="meta">
-            <span class="pill">${escapeHtml(assignment.day)}</span><span class="pill">${escapeHtml(assignment.shift)}</span>
-            ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
-            ${assignment.assignedFromAvailability ? '<span class="pill pill--availability-assigned">Attività assegnata a seguito di disponibilità aggiuntiva comunicata</span>' : ''}
-            ${!assignment.shiftMatched ? '<span class="pill pill--warn">Turno da verificare</span>' : ''}
-          </div></div></div>
-          ${assignment.note ? `<p class="muted">${escapeHtml(assignment.note)}</p>` : ''}
-          <div class="response-options">
-            <label class="response-choice response-choice--yes"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}><span><strong>${escapeHtml(confirmedLabel)}</strong>${confirmedDate}</span></label>
-            <label class="response-choice response-choice--no"><input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${saved.response === 'declined' ? 'checked' : ''}><span><strong>${escapeHtml(declinedLabel)}</strong>${declinedDate}</span></label>
+        <article class="assignment-card request-card ${saved.response ? 'is-complete' : ''}" data-assignment-id="${escapeHtml(assignment.id)}">
+          <div class="assignment-card__head">
+            <div>
+              <h3>${escapeHtml(displayActivityName(assignment.activity))}</h3>
+              <div class="meta">
+                <span class="pill">${escapeHtml(assignment.day)}</span>
+                <span class="pill">${escapeHtml(assignment.shift)}</span>
+                ${assignment.role ? `<span class="pill">${escapeHtml(assignment.role)}</span>` : ''}
+              </div>
+            </div>
           </div>
-          <label class="field assignment-note"><span>Nota facoltativa</span><textarea maxlength="1000" data-assignment-note placeholder="Se vuoi, aggiungi una nota utile per questa attività">${escapeHtml(saved.note || '')}</textarea></label>
-        </article>`;
+          ${assignment.note ? `<p class="request-card__assignment-note">${escapeHtml(assignment.note)}</p>` : ''}
+          <div class="response-options response-options--simple">
+            <label class="response-choice response-choice--yes">
+              <input type="radio" name="response-${escapeHtml(assignment.id)}" value="confirmed" ${saved.response === 'confirmed' ? 'checked' : ''}>
+              <span><strong>Confermo</strong></span>
+            </label>
+            <label class="response-choice response-choice--no">
+              <input type="radio" name="response-${escapeHtml(assignment.id)}" value="declined" ${saved.response === 'declined' ? 'checked' : ''}>
+              <span><strong>Non posso</strong></span>
+            </label>
+          </div>
+          <details class="request-note">
+            <summary>Aggiungi una nota <span>facoltativa</span></summary>
+            <label class="field assignment-note">
+              <textarea maxlength="1000" data-assignment-note placeholder="Scrivi qui solo se vuoi aggiungere un’informazione utile">${escapeHtml(saved.note || '')}</textarea>
+            </label>
+          </details>
+        </article>
+      `;
     }).join('');
   }
 
   function renderAvailability() {
-    const shifts = sortShiftsChronologically(
-      state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts
-    );
+    const shifts = originalUnusedAvailability();
+    availabilitySection.hidden = shifts.length === 0;
+
     if (!shifts.length) {
-      availabilityList.innerHTML = '<p class="muted">Nessun turno disponibile.</p>';
+      availabilityList.innerHTML = '';
       return;
     }
-    const groups = new Map();
-    for (const shift of shifts) {
-      if (!groups.has(shift.day)) groups.set(shift.day, []);
-      groups.get(shift.day).push(shift);
-    }
-    availabilityList.innerHTML = [...groups.entries()].map(([day, dayShifts]) => `
-      <section class="availability-day">
-        <h3 class="availability-day__title">${escapeHtml(day)}</h3>
-        <div class="availability-day__shifts">
-          ${dayShifts.map((shift) => {
-            const selected = state.availability.get(shift.id)?.selected || false;
-            const note = state.availability.get(shift.id)?.note || '';
-            return `
-              <article class="availability-card${shift.assigned ? ' is-assigned' : ''}" data-shift-id="${escapeHtml(shift.id)}">
-                <div class="availability-card__head"><div><h4>${escapeHtml(shift.shift)}</h4>${shift.assigned ? '<span class="pill">Già assegnato</span>' : ''}</div></div>
-                <label class="check check--only"><input type="checkbox" data-availability-check aria-label="Seleziona disponibilità per questo turno" ${selected ? 'checked' : ''} ${shift.assigned ? 'disabled' : ''}></label>
-                <label class="field availability-note" ${selected && !shift.assigned ? '' : 'hidden'}><span>Nota facoltativa</span><textarea maxlength="1000" data-availability-note placeholder="Es. disponibile solo per alcune attività">${escapeHtml(note)}</textarea></label>
-              </article>`;
-          }).join('')}
-        </div>
-      </section>`
-    ).join('');
+
+    availabilityList.innerHTML = shifts.map((shift) => {
+      const active = state.availability.has(shift.id);
+      const initial = state.initialAvailability.get(shift.id) || {};
+      return `
+        <article class="availability-card availability-card--existing ${active ? 'is-active' : 'is-removed'}" data-shift-id="${escapeHtml(shift.id)}">
+          <div class="availability-card__content">
+            <div>
+              <strong>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</strong>
+              <span class="availability-state ${active ? 'is-active' : 'is-removed'}">
+                ${active ? '✓ Disponibilità comunicata' : 'Disponibilità rimossa'}
+              </span>
+              ${initial.note ? `<small>Nota: ${escapeHtml(initial.note)}</small>` : ''}
+            </div>
+            <button class="button button--secondary availability-toggle" type="button" data-toggle-availability>
+              ${active ? 'Togli disponibilità' : 'Ripristina'}
+            </button>
+          </div>
+        </article>
+      `;
+    }).join('');
   }
 
-  function validateAssignments() {
-    const assignments = state.personState?.assignments || [];
-    const missing = assignments.filter((assignment) => !state.responses.get(assignment.id)?.response);
+  function availabilityHasChanges() {
+    const initialIds = [...state.initialAvailability.keys()].sort();
+    const currentIds = [...state.availability.keys()].sort();
+    return initialIds.length !== currentIds.length
+      || initialIds.some((id, index) => id !== currentIds[index]);
+  }
+
+  function summaryAssignmentList(items, emptyText) {
+    if (!items.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
+    return `<ul class="summary-list">${items.map((item) => `
+      <li>
+        <strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+        — ${escapeHtml(displayActivityName(item.activity))}
+      </li>
+    `).join('')}</ul>`;
+  }
+
+  function renderSummary() {
+    const alreadyConfirmed = confirmedAssignments();
+    const requests = newRequests();
+    const newlyConfirmed = requests.filter((assignment) => state.responses.get(assignment.id)?.response === 'confirmed');
+    const newlyDeclined = requests.filter((assignment) => state.responses.get(assignment.id)?.response === 'declined');
+    const activeAvailability = originalUnusedAvailability().filter((shift) => state.availability.has(shift.id));
+
+    const confirmedAll = [...alreadyConfirmed, ...newlyConfirmed];
+    const uniqueConfirmed = [...new Map(confirmedAll.map((item) => [item.id, item])).values()];
+
+    summary.innerHTML = `
+      <section class="summary-section">
+        <h3>Attività confermate</h3>
+        <p class="summary-help">Sono già definite: non devi fare altro.</p>
+        ${summaryAssignmentList(uniqueConfirmed, 'Nessuna attività confermata.')}
+      </section>
+      <section class="summary-section">
+        <h3>Disponibilità aggiuntive attive</h3>
+        ${activeAvailability.length
+          ? `<ul class="summary-list">${activeAvailability.map((shift) => `<li><strong>${escapeHtml(shift.day)} · ${escapeHtml(shift.shift)}</strong></li>`).join('')}</ul>`
+          : '<p class="summary-empty">Nessuna disponibilità aggiuntiva attiva.</p>'}
+      </section>
+      ${newlyDeclined.length ? `
+        <section class="summary-section summary-section--declined">
+          <h3>Hai indicato che non sei disponibile</h3>
+          ${summaryAssignmentList(newlyDeclined, 'Nessuna.')}
+        </section>
+      ` : ''}
+    `;
+  }
+
+  function validateRequests({ focus = false } = {}) {
+    const requests = newRequests();
+    const missing = requests.filter((assignment) => !state.responses.get(assignment.id)?.response);
 
     assignmentList?.querySelectorAll('.assignment-card.is-incomplete').forEach((card) => {
       card.classList.remove('is-incomplete');
     });
 
-    if (missing.length) {
-      setStatus(assignmentStatus, `Manca una risposta per ${missing.length} attività.`, 'error');
-      missing.forEach((assignment) => {
-        assignmentList?.querySelector(`[data-assignment-id="${CSS.escape(assignment.id)}"]`)?.classList.add('is-incomplete');
-      });
-      const firstMissing = assignmentList?.querySelector('.assignment-card.is-incomplete');
-      firstMissing?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return false;
+    if (!missing.length) {
+      setStatus(assignmentStatus, '');
+      return true;
     }
-    setStatus(assignmentStatus, '');
-    return true;
-  }
 
-  function renderSummary() {
-    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
-    const confirmed = assignments.filter((a) => state.responses.get(a.id)?.response === 'confirmed');
-    const declined = assignments.filter((a) => state.responses.get(a.id)?.response === 'declined');
-    const shifts = sortShiftsChronologically(
-      state.personState?.availabilityShifts?.length ? state.personState.availabilityShifts : state.cachedShifts
+    setStatus(
+      assignmentStatus,
+      `Manca ${missing.length === 1 ? 'una risposta' : `${missing.length} risposte`}.`,
+      'error'
     );
-    const extra = shifts.filter((s) => state.availability.get(s.id)?.selected && !s.assigned);
-    const selectedName = state.selectedPerson ? sortLabel(state.selectedPerson) : state.manualPersonName;
-    const listAssignments = (items) => items.length
-      ? `<ul class="summary-list">${items.map((a) => {
-          const response = state.responses.get(a.id) || {};
-          return `<li><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong> — ${escapeHtml(displayActivityName(a.activity))}${a.role ? ` · ${escapeHtml(a.role)}` : ''}${response.note ? `<br><small>Nota: ${escapeHtml(response.note)}</small>` : ''}</li>`;
-        }).join('')}</ul>`
-      : '<p class="summary-empty">Nessuna.</p>';
-
-    summary.innerHTML = `
-      <section class="summary-section"><h3>Compilato da</h3><p>${escapeHtml(state.actorName)}</p></section>
-      <section class="summary-section"><h3>Persona selezionata</h3><p><strong>${escapeHtml(selectedName)}</strong>${state.selectedPerson?.person_code ? ` · codice ${escapeHtml(state.selectedPerson.person_code)}` : ''}</p></section>
-      <section class="summary-section"><h3>Attività confermate</h3>${listAssignments(confirmed)}</section>
-      <section class="summary-section"><h3>Attività non disponibili</h3>${listAssignments(declined)}</section>
-      <section class="summary-section"><h3>Ulteriori disponibilità</h3>${extra.length ? `<ul class="summary-list">${extra.map((s) => { const note = state.availability.get(s.id)?.note || ''; return `<li><strong>${escapeHtml(s.day)} · ${escapeHtml(s.shift)}</strong>${note ? `<br><small>Nota: ${escapeHtml(note)}</small>` : ''}</li>`; }).join('')}</ul>` : '<p class="summary-empty">Nessuna ulteriore disponibilità indicata.</p>'}</section>`;
-  }
-
-  function syncFloatingPrimary() {
-    const activeStep = document.querySelector('[data-step]:not([hidden])');
-    document.querySelectorAll('[data-step] > .actions .button--primary').forEach((button) => {
-      if (!activeStep || !activeStep.contains(button)) button.classList.remove('is-floating-primary');
+    missing.forEach((assignment) => {
+      assignmentList?.querySelector(`[data-assignment-id="${CSS.escape(assignment.id)}"]`)?.classList.add('is-incomplete');
     });
-    if (!activeStep) return;
-
-    const actions = activeStep.querySelector(':scope > .actions');
-    const primary = actions?.querySelector('.button--primary');
-    if (!actions || !primary) return;
-
-    primary.classList.remove('is-floating-primary');
-    const rect = actions.getBoundingClientRect();
-    const actionsVisible = rect.bottom > 0 && rect.top < window.innerHeight;
-    primary.classList.toggle('is-floating-primary', !actionsVisible);
+    if (focus) {
+      assignmentList?.querySelector('.assignment-card.is-incomplete')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return false;
   }
 
-  function showStep(step) {
-    state.step = step;
-    document.querySelectorAll('[data-step]').forEach((node) => { node.hidden = Number(node.dataset.step) !== step; });
-    document.querySelectorAll('[data-step-dot]').forEach((node) => {
-      const n = Number(node.dataset.stepDot);
-      if (n === step) node.setAttribute('aria-current', 'step'); else node.removeAttribute('aria-current');
-      node.classList.toggle('is-complete', n < step);
-    });
-    if (step === 5) renderSummary();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    requestAnimationFrame(syncFloatingPrimary);
+  function updateSubmitState() {
+    const requests = newRequests();
+    const hasRequests = requests.length > 0;
+    const changedAvailability = availabilityHasChanges();
+    const hasSomethingToSend = hasRequests || changedAvailability;
+    const complete = requests.every((assignment) => Boolean(state.responses.get(assignment.id)?.response));
+
+    submitButton.hidden = !hasSomethingToSend;
+    noSubmit.hidden = hasSomethingToSend;
+    submitButton.disabled = hasRequests && !complete;
+
+    if (hasRequests) {
+      submitButton.textContent = complete ? 'Invia risposte' : `Completa le richieste (${answeredRequestCount()}/${requests.length})`;
+    } else if (changedAvailability) {
+      submitButton.textContent = 'Salva modifica disponibilità';
+    }
   }
 
-  function next(step) {
-    if (step === 2) {
-      state.actorName = String(actorInput.value || '').trim();
-      if (state.actorName.length < 2) {
-        actorInput.setCustomValidity('Inserisci nome e cognome.'); actorInput.reportValidity(); actorInput.setCustomValidity(''); actorInput.focus(); return;
-      }
-    }
-    if (step === 3) {
-      state.manualSurname = String(manualSurnameInput?.value || state.manualSurname || '').trim();
-      state.manualGivenName = String(manualGivenNameInput?.value || state.manualGivenName || '').trim();
-      state.manualPersonName = [state.manualSurname, state.manualGivenName].filter(Boolean).join(' ');
-      if (!state.selectedPerson && (state.manualSurname.length < 2 || state.manualGivenName.length < 2)) {
-        setStatus(personSelection, 'Inserisci cognome e nome.', 'error');
-        (state.manualSurname.length < 2 ? manualSurnameInput : manualGivenNameInput)?.focus();
-        return;
-      }
-      if (!state.selectedPerson) {
-        state.personState = { assignments: [], availabilityShifts: state.cachedShifts };
-        renderAssignments();
-        renderAvailability();
-      }
-      setStatus(personSelection, '');
-    }
-    if (step === 4 && !validateAssignments()) return;
-    showStep(step);
+  function renderWorkspace() {
+    renderPersonIntro();
+    renderAssignments();
+    renderAvailability();
+    renderSummary();
+    updateSubmitState();
+    setStatus(submitStatus, '');
+  }
+
+  function resetSelection() {
+    state.selectedPerson = null;
+    state.manualPersonName = '';
+    state.manualSurname = '';
+    state.manualGivenName = '';
+    state.personState = null;
+    state.responses = new Map();
+    state.availability = new Map();
+    state.initialAvailability = new Map();
+    state.actorName = '';
+    state.clientSubmissionId = crypto.randomUUID();
+    state.latestSubmissionId = null;
+    if (personSearch) personSearch.value = '';
+    if (manualSurnameInput) manualSurnameInput.value = '';
+    if (manualGivenNameInput) manualGivenNameInput.value = '';
+    if (manualField) manualField.hidden = true;
+    setStatus(personSelection, '');
+    loadPeople().catch(() => {});
+    showStep(1);
   }
 
   async function submit() {
-    if (!validateAssignments()) { showStep(3); return; }
-    const originalSubmitText = submitButton?.textContent || 'Invia disponibilità';
+    if (!validateRequests({ focus: true })) return;
+
+    const originalText = submitButton?.textContent || 'Invia risposte';
     submitButton.disabled = true;
     submitButton.textContent = 'Invio in corso…';
     setStatus(submitStatus, 'Invio in corso…');
+
     try {
       const payload = {
         action: 'submit',
@@ -441,41 +521,47 @@
         manualSurname: state.selectedPerson ? null : state.manualSurname,
         manualGivenName: state.selectedPerson ? null : state.manualGivenName,
         clientSubmissionId: state.clientSubmissionId,
-        website: submitWebsite.value || '',
-        responses: Array.from(state.responses.entries()).map(([assignmentId, value]) => ({ assignmentId, response: value.response, note: value.note || '' })),
-        availability: Array.from(state.availability.entries()).filter(([, value]) => value.selected).map(([shiftId, value]) => ({ shiftId, note: value.note || '' }))
+        website: submitWebsite?.value || '',
+        responses: Array.from(state.responses.entries())
+          .filter(([, value]) => Boolean(value.response))
+          .map(([assignmentId, value]) => ({
+            assignmentId,
+            response: value.response,
+            note: value.note || ''
+          })),
+        availability: Array.from(state.availability.entries())
+          .map(([shiftId, value]) => ({ shiftId, note: value.note || '' }))
       };
-      const body = await apiRequest(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      document.querySelectorAll('[data-step], .stepper').forEach((node) => { node.hidden = true; });
+
+      const body = await apiRequest(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
       state.latestSubmissionId = body.submission?.id || null;
-      success.hidden = false;
-      setStatus(summaryEmailStatus, '');
-      setStatus(submitStatus, '');
+      document.querySelectorAll('[data-step]').forEach((node) => { node.hidden = true; });
+      if (success) success.hidden = false;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); return; }
       setStatus(submitStatus, error.message, 'error');
-    } finally {
       submitButton.disabled = false;
-      if (!success || success.hidden) submitButton.textContent = originalSubmitText;
+      submitButton.textContent = originalText;
     }
   }
 
   async function sendSummaryEmail(event) {
     event.preventDefault();
-    if (!state.latestSubmissionId || !summaryEmailInput) return;
-    const email = String(summaryEmailInput.value || '').trim();
-    if (!summaryEmailInput.checkValidity()) {
-      summaryEmailInput.reportValidity();
+    const email = String(summaryEmailInput?.value || '').trim();
+    if (!state.latestSubmissionId) {
+      setStatus(summaryEmailStatus, 'Riepilogo non disponibile.', 'error');
       return;
     }
 
-    const originalText = summaryEmailSubmit?.textContent || 'Invia riepilogo';
-    if (summaryEmailSubmit) {
-      summaryEmailSubmit.disabled = true;
-      summaryEmailSubmit.textContent = 'Invio in corso…';
-    }
-    setStatus(summaryEmailStatus, 'Invio del riepilogo…');
+    summaryEmailSubmit.disabled = true;
+    const oldText = summaryEmailSubmit.textContent;
+    summaryEmailSubmit.textContent = 'Invio in corso…';
+    setStatus(summaryEmailStatus, '');
 
     try {
       await apiRequest(api, {
@@ -487,137 +573,146 @@
           email
         })
       });
-      setStatus(summaryEmailStatus, 'Riepilogo inviato all’indirizzo indicato.', 'success');
-      if (summaryEmailSubmit) summaryEmailSubmit.textContent = 'Riepilogo inviato';
-      if (summaryEmailInput) summaryEmailInput.disabled = true;
+      setStatus(summaryEmailStatus, 'Riepilogo inviato.', 'success');
+      summaryEmailForm.reset();
     } catch (error) {
-      if (error.status === 401) {
-        clearSession();
-        showAccess('La sessione è scaduta. Riapri il link ricevuto.');
-        return;
-      }
       setStatus(summaryEmailStatus, error.message, 'error');
-      if (summaryEmailSubmit) {
-        summaryEmailSubmit.disabled = false;
-        summaryEmailSubmit.textContent = originalText;
-      }
+    } finally {
+      summaryEmailSubmit.disabled = false;
+      summaryEmailSubmit.textContent = oldText;
     }
   }
 
-  let personSearchTimer = null;
+  let searchTimer = null;
   personSearch?.addEventListener('input', () => {
-    const query = personSearch.value.trim();
-    if (state.selectedPerson && query !== sortLabel(state.selectedPerson)) {
-      state.selectedPerson = null;
-      state.personState = null;
-      state.responses = new Map();
-      state.availability = new Map();
-      setStatus(personSelection, '');
-    }
-    state.manualPersonName = '';
-    state.manualSurname = '';
-    state.manualGivenName = '';
-    if (manualField) manualField.hidden = true;
-    if (manualSurnameInput) manualSurnameInput.value = '';
-    if (manualGivenNameInput) manualGivenNameInput.value = '';
-    clearTimeout(personSearchTimer);
+    state.selectedPerson = null;
+    clearTimeout(searchTimer);
+    const query = String(personSearch.value || '').trim();
     if (query.length < 2) {
       state.people = [];
       renderPeople();
       return;
     }
-    personResults.innerHTML = '<p class="muted person-search-empty">Ricerca…</p>';
-    personSearchTimer = setTimeout(() => {
+    searchTimer = setTimeout(() => {
       loadPeople(query).catch((error) => setStatus(personSelection, error.message, 'error'));
-    }, 180);
+    }, 150);
   });
+
   personResults?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-person-id]'); if (!button) return;
-    const person = state.people.find((row) => row.id === button.dataset.personId); if (!person) return;
-    selectPerson(person).catch((error) => { personSelection.textContent = error.message; });
+    const button = event.target.closest('[data-person-id]');
+    if (!button) return;
+    const person = state.people.find((item) => item.id === button.dataset.personId);
+    if (person) selectPerson(person);
   });
-  manualToggle?.addEventListener('click', useManualPerson);
-  const syncManualName = () => {
-    state.manualSurname = String(manualSurnameInput?.value || '').trim();
-    state.manualGivenName = String(manualGivenNameInput?.value || '').trim();
-    state.manualPersonName = [state.manualSurname, state.manualGivenName].filter(Boolean).join(' ');
-    const complete = state.manualSurname.length >= 2 && state.manualGivenName.length >= 2;
-    setStatus(personSelection, complete ? 'Nominativo inserito manualmente.' : '', complete ? 'success' : '');
-  };
-  manualSurnameInput?.addEventListener('input', syncManualName);
-  manualGivenNameInput?.addEventListener('input', syncManualName);
+
+  manualToggle?.addEventListener('click', () => {
+    if (!manualField) return;
+    manualField.hidden = !manualField.hidden;
+    if (!manualField.hidden) manualSurnameInput?.focus();
+  });
+
+  continueManual?.addEventListener('click', continueWithManualPerson);
+  backToPerson?.addEventListener('click', resetSelection);
 
   assignmentList?.addEventListener('change', (event) => {
-    const card = event.target.closest('[data-assignment-id]'); if (!card) return;
+    if (!event.target.matches('input[type="radio"][name^="response-"]')) return;
+    const card = event.target.closest('[data-assignment-id]');
+    if (!card) return;
     const assignmentId = card.dataset.assignmentId;
-    if (event.target.matches('input[type="radio"]')) {
-      const current = state.responses.get(assignmentId) || {};
-      state.responses.set(assignmentId, { ...current, response: event.target.value });
-      card.classList.remove('is-incomplete');
-      if (!(state.personState?.assignments || []).some((assignment) => !state.responses.get(assignment.id)?.response)) {
-        setStatus(assignmentStatus, '');
-      }
-    }
+    const current = state.responses.get(assignmentId) || {};
+    state.responses.set(assignmentId, { ...current, response: event.target.value });
+    renderAssignments();
+    renderSummary();
+    updateSubmitState();
   });
+
   assignmentList?.addEventListener('input', (event) => {
     if (!event.target.matches('[data-assignment-note]')) return;
     const card = event.target.closest('[data-assignment-id]');
+    if (!card) return;
     const assignmentId = card.dataset.assignmentId;
     const current = state.responses.get(assignmentId) || {};
     state.responses.set(assignmentId, { ...current, note: event.target.value });
   });
 
-  availabilityList?.addEventListener('change', (event) => {
-    if (!event.target.matches('[data-availability-check]')) return;
-    const card = event.target.closest('[data-shift-id]'); const shiftId = card.dataset.shiftId; const noteField = card.querySelector('.availability-note'); const selected = event.target.checked;
-    const current = state.availability.get(shiftId) || {}; state.availability.set(shiftId, { ...current, selected }); noteField.hidden = !selected;
-    if (!selected) { const area = card.querySelector('[data-availability-note]'); if (area) area.value = ''; state.availability.delete(shiftId); }
-  });
-  availabilityList?.addEventListener('input', (event) => {
-    if (!event.target.matches('[data-availability-note]')) return;
-    const card = event.target.closest('[data-shift-id]'); const shiftId = card.dataset.shiftId; const current = state.availability.get(shiftId) || { selected: true };
-    state.availability.set(shiftId, { ...current, note: event.target.value });
+  availabilityList?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-toggle-availability]');
+    if (!button) return;
+    const card = button.closest('[data-shift-id]');
+    if (!card) return;
+    const shiftId = card.dataset.shiftId;
+
+    if (state.availability.has(shiftId)) {
+      state.availability.delete(shiftId);
+    } else {
+      const initial = state.initialAvailability.get(shiftId) || { selected: true, note: '' };
+      state.availability.set(shiftId, { ...initial, selected: true });
+    }
+
+    renderAvailability();
+    renderSummary();
+    updateSubmitState();
   });
 
-  document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => next(Number(button.dataset.next))));
-  document.querySelectorAll('[data-back]').forEach((button) => button.addEventListener('click', () => showStep(Number(button.dataset.back))));
-  window.addEventListener('scroll', syncFloatingPrimary, { passive: true });
-  window.addEventListener('resize', syncFloatingPrimary);
   submitButton?.addEventListener('click', submit);
   summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
 
   accessForm?.addEventListener('submit', async (event) => {
-    event.preventDefault(); setStatus(accessStatus, 'Verifica accesso…');
-    try { await createSession(accessTokenInput.value, accessForm.elements.website?.value || ''); await loadPeople(); setStatus(accessStatus, ''); showApp(); }
-    catch (error) { setStatus(accessStatus, error.message, 'error'); }
+    event.preventDefault();
+    setStatus(accessStatus, 'Verifica accesso…');
+    try {
+      await createSession(accessTokenInput.value, accessForm.elements.website?.value || '');
+      await loadPeople();
+      setStatus(accessStatus, '');
+      showApp();
+    } catch (error) {
+      setStatus(accessStatus, error.message, 'error');
+    }
   });
 
   async function bootstrap() {
     const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
     const access = hash.get('access');
     const requestedPersonId = new URLSearchParams(location.search).get('person') || '';
+
     if (access) {
-      try { await createSession(access); history.replaceState(null, '', `${location.pathname}${location.search}`); }
-      catch (error) { clearSession(); showAccess(error.message); return; }
+      try {
+        await createSession(access);
+        history.replaceState(null, '', `${location.pathname}${location.search}`);
+      } catch (error) {
+        clearSession();
+        showAccess(error.message);
+        return;
+      }
     } else {
-      const saved = storedSession(); if (saved?.token) state.session = saved;
+      const saved = storedSession();
+      if (saved?.token) state.session = saved;
     }
-    if (!state.session?.token) { showAccess(); return; }
+
+    if (!state.session?.token) {
+      showAccess();
+      return;
+    }
+
     try {
       await loadPeople();
+      showApp();
+
       if (requestedPersonId) {
         try {
           const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(requestedPersonId)}`);
-          if (detail?.person) await selectPerson(detail.person);
+          if (detail?.person) await selectPerson(detail.person, detail);
         } catch {
           setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo manualmente.', 'error');
         }
       }
-      showApp();
-      requestAnimationFrame(syncFloatingPrimary);
     } catch (error) {
-      if (error.status === 401) { clearSession(); showAccess('La sessione è scaduta. Riapri il link ricevuto.'); }
-      else showAccess(error.message);
+      if (error.status === 401) {
+        clearSession();
+        showAccess('La sessione è scaduta. Riapri il link ricevuto.');
+      } else {
+        showAccess(error.message);
+      }
     }
   }
 
