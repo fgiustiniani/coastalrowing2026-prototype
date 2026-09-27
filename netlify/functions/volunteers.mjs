@@ -449,6 +449,19 @@ async function personState(personId) {
 
   const assignedShiftIds = new Set(hydratedAssignments.map((row) => row.shiftId).filter(Boolean));
 
+  const latestHistoricalStateByShift = new Map();
+  for (const row of historicalResponses) {
+    if (!row.shiftId || assignedShiftIds.has(row.shiftId)) continue;
+    const stamp = Date.parse(row.releasedAt || row.responseAt || '') || 0;
+    const current = latestHistoricalStateByShift.get(row.shiftId);
+    const currentStamp = current ? (Date.parse(current.releasedAt || current.responseAt || '') || 0) : -1;
+    if (!current || stamp > currentStamp) latestHistoricalStateByShift.set(row.shiftId, row);
+  }
+  const releasedConfirmedByShift = new Map(
+    [...latestHistoricalStateByShift.entries()]
+      .filter(([, row]) => row.response === 'confirmed')
+  );
+
   const latestOpenRequestResponseByKey = new Map();
   for (const audit of openRequestAuditRows) {
     const value = audit?.new_value || {};
@@ -517,6 +530,8 @@ async function personState(personId) {
   for (const requirement of requirementRows) {
     if (requirement.response_open !== true || !requirement.shift_id) continue;
     if (assignedShiftIds.has(requirement.shift_id)) continue;
+    if (availabilityByShift.has(requirement.shift_id)) continue;
+    if (releasedConfirmedByShift.has(requirement.shift_id)) continue;
 
     const shift = shiftById.get(requirement.shift_id) || null;
     if (!shift) continue;
@@ -570,22 +585,6 @@ async function personState(personId) {
     const sourceActivities = item.activities.length ? item.activities : [item.responseLabel];
     sourceActivities.filter(Boolean).forEach((activity) => target.add(activity));
   }
-
-  const activeAssignmentShiftIds = new Set(
-    hydratedAssignments.map((assignment) => assignment.shiftId).filter(Boolean)
-  );
-  const latestHistoricalStateByShift = new Map();
-  for (const row of historicalResponses) {
-    if (!row.shiftId || activeAssignmentShiftIds.has(row.shiftId)) continue;
-    const stamp = Date.parse(row.releasedAt || row.responseAt || '') || 0;
-    const current = latestHistoricalStateByShift.get(row.shiftId);
-    const currentStamp = current ? (Date.parse(current.releasedAt || current.responseAt || '') || 0) : -1;
-    if (!current || stamp > currentStamp) latestHistoricalStateByShift.set(row.shiftId, row);
-  }
-  const releasedConfirmedByShift = new Map(
-    [...latestHistoricalStateByShift.entries()]
-      .filter(([, row]) => row.response === 'confirmed')
-  );
 
   const availabilityShifts = rows(shifts)
     .map((shift) => {
