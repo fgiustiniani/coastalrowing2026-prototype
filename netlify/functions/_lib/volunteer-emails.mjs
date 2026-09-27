@@ -180,8 +180,9 @@ export async function sendVolunteerSummaryEmail({
   };
 
   const statePriority = (row) => {
-    if (row?.summaryKind === 'declined' || row?.summaryKind === 'confirmed') return 3;
-    if (row?.summaryKind === 'availability') return 2;
+    if (row?.summaryKind === 'availability') return 4;
+    if (row?.summaryKind === 'declined') return 3;
+    if (row?.summaryKind === 'confirmed') return 2;
     return 1;
   };
 
