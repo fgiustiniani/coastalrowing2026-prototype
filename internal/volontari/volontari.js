@@ -44,6 +44,7 @@
   const assignmentStatus = document.querySelector('[data-assignment-status]');
   const availabilitySection = document.querySelector('[data-availability-section]');
   const availabilityList = document.querySelector('[data-availability-list]');
+  const availabilityCount = document.querySelector('[data-availability-count]');
   const summary = document.querySelector('[data-summary]');
   const submitStatus = document.querySelector('[data-submit-status]');
   const submitButton = document.querySelector('[data-submit]');
@@ -400,6 +401,7 @@
   function renderAvailability() {
     const commitments = previousConfirmedCommitments();
     availabilitySection.hidden = commitments.length === 0;
+    if (availabilityCount) availabilityCount.textContent = commitments.length ? String(commitments.length) : '';
 
     if (!commitments.length) {
       availabilityList.innerHTML = '';
@@ -408,12 +410,15 @@
 
     availabilityList.innerHTML = commitments.map((item) => {
       const assigned = item.commitmentKind === 'assigned';
+      const raceConflict = !assigned && item.raceConflict === true;
       return `
         <article class="availability-card previous-commitment ${assigned ? 'previous-commitment--assigned' : 'previous-commitment--unassigned'}">
           <div class="availability-card__content">
             <div>
               <strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
-              <span class="previous-commitment__activity">${escapeHtml(displayActivityName(item.commitmentActivity))}</span>
+              ${raceConflict
+                ? '<span class="summary-race-conflict-badge">Non assegnato per coincidenza gara</span>'
+                : `<span class="previous-commitment__activity">${escapeHtml(displayActivityName(item.commitmentActivity))}</span>`}
             </div>
           </div>
         </article>
@@ -447,8 +452,7 @@
       summaryNew: false
     }));
 
-    const requests = requestGroups();
-    const newResponses = requests
+    const newResponses = requestGroups()
       .filter((request) => ['confirmed', 'declined'].includes(state.responses.get(request.key)?.response))
       .map((request) => {
         const response = state.responses.get(request.key)?.response;
@@ -462,20 +466,56 @@
       });
 
     const additionalAvailability = originalUnusedAvailability()
-      .filter((shift) => state.availability.has(shift.id))
       .map((shift) => ({
         ...shift,
         summaryActivity: 'Nessuna attività assegnata: sei libero',
-        summaryStatus: 'Disponibilità aggiuntiva dichiarata in precedenza',
+        summaryStatus: shift.isReleasedConfirmed
+          ? 'Disponibilità già confermata in precedenza'
+          : 'Disponibilità aggiuntiva dichiarata in precedenza',
         summaryKind: 'availability',
-        summaryNew: false
+        summaryNew: false,
+        raceConflict: shift.raceConflict === true
       }));
+
+    const currentAssignmentShiftKeys = new Set(
+      currentAssignments.map((row) => row.shiftId || `${row.day || ''}|${row.shift || ''}`)
+    );
+
+    const stateTimestamp = (row) => {
+      if (row?.summaryNew) return Number.MAX_SAFE_INTEGER;
+      const value = row?.summaryStateAt
+        || row?.stateAt
+        || row?.responseAt
+        || row?.currentResponseAt
+        || row?.createdAt
+        || row?.releasedAt
+        || '';
+      const stamp = Date.parse(value);
+      return Number.isFinite(stamp) ? stamp : 0;
+    };
+
+    const statePriority = (row) => {
+      if (row?.summaryKind === 'declined' || row?.summaryKind === 'confirmed') return 3;
+      if (row?.summaryKind === 'availability') return 2;
+      return 1;
+    };
+
+    const latestStateByShift = new Map();
+    for (const row of [...historicalResponses, ...newResponses, ...additionalAvailability]) {
+      const shiftKey = row.shiftId || `${row.day || ''}|${row.shift || ''}`;
+      if (!shiftKey || currentAssignmentShiftKeys.has(shiftKey)) continue;
+
+      const current = latestStateByShift.get(shiftKey);
+      const rowTime = stateTimestamp(row);
+      const currentTime = current ? stateTimestamp(current) : -1;
+      if (!current || rowTime > currentTime || (rowTime === currentTime && statePriority(row) > statePriority(current))) {
+        latestStateByShift.set(shiftKey, row);
+      }
+    }
 
     const rows = sortShiftsChronologically([
       ...currentAssignments,
-      ...historicalResponses,
-      ...newResponses,
-      ...additionalAvailability
+      ...latestStateByShift.values()
     ]);
 
     if (!rows.length) {
@@ -485,19 +525,25 @@
 
     summary.innerHTML = `
       <div class="summary-items summary-items--unified">
-        ${rows.map((item) => `
-          <article class="summary-item summary-item--${escapeHtml(item.summaryKind)}">
-            <div class="summary-item__top">
-              <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
-              ${item.summaryNew ? '<span class="summary-new-badge">NUOVA</span>' : ''}
-            </div>
-            ${item.summaryActivity ? `<span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity))}</span>` : ''}
-            <span class="summary-item__status">${escapeHtml(item.summaryStatus || '')}</span>
-            ${item.summaryKind === 'availability' && item.raceConflict === true
-              ? '<span class="summary-race-conflict-badge">Non assegnato per concomitanza con la gara</span>'
-              : ''}
-          </article>
-        `).join('')}
+        ${rows.map((item) => {
+          const availabilityRaceConflict = item.summaryKind === 'availability' && item.raceConflict === true;
+          return `
+            <article class="summary-item summary-item--${escapeHtml(item.summaryKind)}">
+              <div class="summary-item__top">
+                <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+                ${availabilityRaceConflict
+                  ? '<span class="summary-race-conflict-badge">Non assegnato per coincidenza gara</span>'
+                  : (item.summaryNew ? '<span class="summary-new-badge">NUOVA</span>' : '')}
+              </div>
+              ${!availabilityRaceConflict && item.summaryActivity
+                ? `<span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity))}</span>`
+                : ''}
+              ${!availabilityRaceConflict
+                ? `<span class="summary-item__status">${escapeHtml(item.summaryStatus || '')}</span>`
+                : ''}
+            </article>
+          `;
+        }).join('')}
       </div>
     `;
   }
