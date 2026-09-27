@@ -19,6 +19,28 @@ import { sendVolunteerSummaryWhatsApp } from './_lib/volunteer-whatsapp.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
 
+async function readRequirementConfig() {
+  try {
+    const data = await supabaseRequest('volunteer_activity_requirements', {
+      query: {
+        select: 'shift_id,activity_id,response_open,response_label,active',
+        active: 'eq.true'
+      }
+    });
+    return { data, responseLabelAvailable: true };
+  } catch (error) {
+    const code = clean(error?.payload?.code || '', 50);
+    if (!(error instanceof SupabaseError) || !['PGRST204', '42703'].includes(code)) throw error;
+    const data = await supabaseRequest('volunteer_activity_requirements', {
+      query: {
+        select: 'shift_id,activity_id,response_open,active',
+        active: 'eq.true'
+      }
+    });
+    return { data, responseLabelAvailable: false };
+  }
+}
+
 async function listPeople(searchText = '') {
   const query = clean(searchText, 120).trim().toLocaleLowerCase('it-IT');
   if (query.length < 2) return [];
@@ -123,7 +145,7 @@ async function personState(personId) {
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
     supabaseRequest('volunteer_shifts', { query: { select: 'id,code,day_label,shift_label,starts_at,ends_at,sort_order,availability_selectable', active: 'eq.true', order: 'sort_order.asc' } }),
     supabaseRequest('volunteer_submissions', { query: { select: 'id,actor_name,created_at', person_id: `eq.${personId}`, order: 'created_at.desc' } }),
-    supabaseRequest('volunteer_activity_requirements', { query: { select: 'shift_id,activity_id,response_open,active', active: 'eq.true' } })
+    readRequirementConfig()
   ]);
 
   const assignmentRows = rows(assignments);
@@ -132,8 +154,12 @@ async function personState(personId) {
   const submissionRows = rows(submissions);
   const activityById = new Map(rows(activities).map((row) => [row.id, row]));
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
+  const requirementRows = rows(requirements?.data);
   const responseOpenByRequirement = new Map(
-    rows(requirements).map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
+    requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
+  );
+  const responseLabelByRequirement = new Map(
+    requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_label || ''])
   );
   const submissionTime = new Map(submissionRows.map((row) => [row.id, row.created_at]));
   const assignmentIds = assignmentHistoryRows.map((row) => row.id);
@@ -290,6 +316,9 @@ async function personState(personId) {
         assignment.shift_id
         && responseOpenByRequirement.get(`${assignment.shift_id}|${assignment.activity_id}`)
       ),
+      responseLabel: assignment.shift_id
+        ? (responseLabelByRequirement.get(`${assignment.shift_id}|${assignment.activity_id}`) || '')
+        : '',
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
       currentResponseAt: current ? (submissionTime.get(current.submission_id) || current.created_at) : null
