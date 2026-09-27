@@ -384,22 +384,100 @@
     }).join('');
   }
 
-  function previousConfirmedCommitments() {
-    const assigned = confirmedAssignments().map((assignment) => ({
-      ...assignment,
-      commitmentKind: 'assigned',
-      commitmentActivity: assignment.activity || 'Attività assegnata'
-    }));
-    const unassigned = originalUnusedAvailability().map((shift) => ({
-      ...shift,
-      commitmentKind: 'unassigned',
-      commitmentActivity: 'Attività da definire'
-    }));
-    return sortShiftsChronologically([...assigned, ...unassigned]);
+  function previousDeclaredCommitments() {
+    const stateTimestamp = (row) => {
+      const value = row?.stateAt
+        || row?.currentResponseAt
+        || row?.responseAt
+        || row?.releasedAt
+        || row?.createdAt
+        || '';
+      const stamp = Date.parse(value);
+      return Number.isFinite(stamp) ? stamp : 0;
+    };
+
+    const latestByShift = new Map();
+    const currentShiftIds = new Set();
+
+    const currentAssignmentsByShift = new Map();
+    for (const assignment of state.personState?.assignments || []) {
+      const confirmed = assignment.currentResponse === 'confirmed'
+        || (assignment.assignedFromAvailability && assignment.currentResponse !== 'declined');
+      const declined = assignment.currentResponse === 'declined';
+      if (!confirmed && !declined) continue;
+
+      const shiftKey = assignment.shiftId || `${assignment.day || ''}|${assignment.shift || ''}`;
+      if (!currentAssignmentsByShift.has(shiftKey)) currentAssignmentsByShift.set(shiftKey, []);
+      currentAssignmentsByShift.get(shiftKey).push({ ...assignment, confirmed, declined });
+    }
+
+    for (const [shiftKey, assignments] of currentAssignmentsByShift.entries()) {
+      const confirmedRows = assignments.filter((row) => row.confirmed);
+      const declinedRows = assignments.filter((row) => row.declined);
+      const sourceRows = confirmedRows.length ? confirmedRows : declinedRows;
+      const first = sourceRows[0] || assignments[0];
+      const activities = [...new Set(sourceRows
+        .map((row) => displayActivityName(row.activity || 'Attività assegnata'))
+        .filter(Boolean))];
+      const latestAt = sourceRows.reduce((latest, row) => {
+        const stamp = stateTimestamp(row);
+        return stamp > latest ? stamp : latest;
+      }, 0);
+
+      latestByShift.set(shiftKey, {
+        ...first,
+        commitmentKind: confirmedRows.length ? 'assigned' : 'declined',
+        commitmentActivity: activities.join(' · ') || 'Attività assegnata',
+        commitmentStatus: confirmedRows.length ? 'Confermata' : 'Non posso',
+        stateAt: latestAt ? new Date(latestAt).toISOString() : null
+      });
+      currentShiftIds.add(shiftKey);
+    }
+
+    for (const shift of originalUnusedAvailability()) {
+      const shiftKey = shift.shiftId || shift.id || `${shift.day || ''}|${shift.shift || ''}`;
+      if (!shiftKey || currentShiftIds.has(shiftKey)) continue;
+
+      const candidate = {
+        ...shift,
+        commitmentKind: 'unassigned',
+        commitmentActivity: 'Attività da definire',
+        commitmentStatus: shift.isReleasedConfirmed
+          ? 'Disponibilità già confermata in precedenza'
+          : 'Disponibilità aggiuntiva dichiarata in precedenza'
+      };
+      const current = latestByShift.get(shiftKey);
+      if (!current || stateTimestamp(candidate) >= stateTimestamp(current)) {
+        latestByShift.set(shiftKey, candidate);
+      }
+    }
+
+    const historical = [
+      ...(state.personState?.historicalResponses || []),
+      ...(state.personState?.historicalOpenRequestResponses || [])
+    ];
+    for (const item of historical) {
+      if (!['confirmed', 'declined'].includes(item.response)) continue;
+      const shiftKey = item.shiftId || `${item.day || ''}|${item.shift || ''}`;
+      if (!shiftKey || currentShiftIds.has(shiftKey)) continue;
+
+      const candidate = {
+        ...item,
+        commitmentKind: item.response === 'declined' ? 'declined' : 'confirmed-history',
+        commitmentActivity: item.activity || 'Attività',
+        commitmentStatus: item.response === 'declined' ? 'Non posso' : 'Confermata'
+      };
+      const current = latestByShift.get(shiftKey);
+      if (!current || stateTimestamp(candidate) > stateTimestamp(current)) {
+        latestByShift.set(shiftKey, candidate);
+      }
+    }
+
+    return sortShiftsChronologically([...latestByShift.values()]);
   }
 
   function renderAvailability() {
-    const commitments = previousConfirmedCommitments();
+    const commitments = previousDeclaredCommitments();
     availabilitySection.hidden = commitments.length === 0;
     if (availabilityCount) availabilityCount.textContent = commitments.length ? String(commitments.length) : '';
 
@@ -409,16 +487,25 @@
     }
 
     availabilityList.innerHTML = commitments.map((item) => {
-      const assigned = item.commitmentKind === 'assigned';
-      const raceConflict = !assigned && item.raceConflict === true;
+      const assigned = item.commitmentKind === 'assigned' || item.commitmentKind === 'confirmed-history';
+      const declined = item.commitmentKind === 'declined';
+      const unassigned = item.commitmentKind === 'unassigned';
+      const raceConflict = unassigned && item.raceConflict === true;
+      const cardClass = declined
+        ? 'previous-commitment--declined'
+        : assigned
+          ? 'previous-commitment--assigned'
+          : 'previous-commitment--unassigned';
+
       return `
-        <article class="availability-card previous-commitment ${assigned ? 'previous-commitment--assigned' : 'previous-commitment--unassigned'}">
+        <article class="availability-card previous-commitment ${cardClass}">
           <div class="availability-card__content">
             <div>
               <strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
               ${raceConflict
                 ? '<span class="summary-race-conflict-badge">Non assegnato per coincidenza gara</span>'
-                : `<span class="previous-commitment__activity">${escapeHtml(displayActivityName(item.commitmentActivity))}</span>`}
+                : `<span class="previous-commitment__activity">${escapeHtml(displayActivityName(item.commitmentActivity))}</span>
+                   <span class="previous-commitment__status">${escapeHtml(item.commitmentStatus || '')}</span>`}
             </div>
           </div>
         </article>
