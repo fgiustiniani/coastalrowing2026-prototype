@@ -366,7 +366,12 @@ async function adminSnapshot() {
       .filter(Boolean)
   );
   const hydratedHistoricalAssignments = assignmentHistoryRows
-    .filter((assignment) => assignment.active === false && !historicalSupersededIds.has(assignment.id))
+    .filter((assignment) =>
+      assignment.active === false
+      && !historicalSupersededIds.has(assignment.id)
+      && assignment.shift_id
+      && shiftById.has(assignment.shift_id)
+    )
     .map((assignment) => {
       const person = personById.get(assignment.person_id) || null;
       const shift = shiftById.get(assignment.shift_id) || null;
@@ -1219,13 +1224,35 @@ export default async (request) => {
             });
           }
         }
-        const historicalOpenRequestResponses = [...latestCampaignResponseByKey.values()];
+        const historicalOpenRequestResponses = [...latestCampaignResponseByKey.values()]
+          .filter((row) => row.shiftId && shiftById.has(row.shiftId));
+
+        const historicalResponses = (snapshot.historicalAssignments || [])
+          .filter((row) =>
+            row.personId === personId
+            && row.shiftId
+            && shiftById.has(row.shiftId)
+            && ['confirmed', 'declined'].includes(row.currentResponse)
+          )
+          .map((row) => ({
+            shiftId: row.shiftId,
+            day: row.day || '',
+            shift: row.shift || '',
+            startsAt: shiftById.get(row.shiftId)?.starts_at || null,
+            endsAt: shiftById.get(row.shiftId)?.ends_at || null,
+            sortOrder: Number(shiftById.get(row.shiftId)?.sort_order ?? 9999),
+            activity: row.activity || 'Attività',
+            response: row.currentResponse,
+            note: row.currentNote || '',
+            responseAt: row.currentResponseAt || null
+          }));
 
         await sendVolunteerSummaryEmail({
           email,
           personState: {
             person,
             assignments,
+            historicalResponses,
             historicalOpenRequestResponses,
             availabilityShifts,
             latestSubmission: person.latestSubmission || null
