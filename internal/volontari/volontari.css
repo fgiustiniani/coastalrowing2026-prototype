@@ -571,3 +571,53 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   line-height: 1.2;
   font-weight: 850;
 }
+
+
+/* Disponibilità pregresse compresse */
+.previous-commitments-panel {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.previous-commitments-panel__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-weight: 850;
+  color: var(--ink);
+}
+.previous-commitments-panel__summary::-webkit-details-marker {
+  display: none;
+}
+.previous-commitments-panel__summary::before {
+  content: '▸';
+  flex: 0 0 auto;
+  color: var(--accent);
+  transition: transform .15s ease;
+}
+.previous-commitments-panel[open] > .previous-commitments-panel__summary::before {
+  transform: rotate(90deg);
+}
+.previous-commitments-panel__summary > span:first-child {
+  flex: 1 1 auto;
+}
+.previous-commitments-panel__count {
+  flex: 0 0 auto;
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: .76rem;
+  text-align: center;
+}
+.previous-commitments-panel__content {
+  margin-top: 12px;
+}
+.previous-commitment .summary-race-conflict-badge {
+  margin-top: 4px;
+}
