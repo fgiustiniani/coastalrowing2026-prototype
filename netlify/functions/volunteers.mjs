@@ -347,6 +347,11 @@ async function personState(personId) {
     const key = `${shiftId}|${responseLabel.toLocaleLowerCase('it-IT')}`;
     if (!latestOpenRequestResponseByKey.has(key)) {
       latestOpenRequestResponseByKey.set(key, {
+        shiftId,
+        responseLabel,
+        activities: Array.isArray(value.activities)
+          ? value.activities.map((item) => clean(item, 240)).filter(Boolean)
+          : [],
         response: clean(value.response, 20),
         note: clean(value.note, 1000),
         createdAt: audit.created_at || null
@@ -375,11 +380,14 @@ async function personState(personId) {
         sortOrder: Number(shift.sort_order ?? 9999),
         responseLabel,
         requirementIds: [],
+        activities: [],
         openedAt: requirement.updated_at || null
       });
     }
     const group = openRequestGroups.get(key);
     if (requirement.id) group.requirementIds.push(requirement.id);
+    const activityName = activityById.get(requirement.activity_id)?.name || '';
+    if (activityName && !group.activities.includes(activityName)) group.activities.push(activityName);
     if (String(requirement.updated_at || '') > String(group.openedAt || '')) group.openedAt = requirement.updated_at || null;
   }
 
@@ -395,6 +403,17 @@ async function personState(personId) {
       || String(a.responseLabel || '').localeCompare(String(b.responseLabel || ''), 'it')
     );
 
+  const confirmedOpenRequestActivitiesByShift = new Map();
+  for (const item of latestOpenRequestResponseByKey.values()) {
+    if (item.response !== 'confirmed' || !item.shiftId) continue;
+    if (!confirmedOpenRequestActivitiesByShift.has(item.shiftId)) {
+      confirmedOpenRequestActivitiesByShift.set(item.shiftId, new Set());
+    }
+    const target = confirmedOpenRequestActivitiesByShift.get(item.shiftId);
+    const sourceActivities = item.activities.length ? item.activities : [item.responseLabel];
+    sourceActivities.filter(Boolean).forEach((activity) => target.add(activity));
+  }
+
   const availabilityShifts = rows(shifts)
     .map((shift) => ({
       id: shift.id,
@@ -406,7 +425,8 @@ async function personState(personId) {
       sortOrder: Number(shift.sort_order ?? 9999),
       assigned: assignedShiftIds.has(shift.id),
       selected: availabilityByShift.has(shift.id),
-      note: availabilityByShift.get(shift.id)?.note || ''
+      note: availabilityByShift.get(shift.id)?.note || '',
+      requestActivities: [...(confirmedOpenRequestActivitiesByShift.get(shift.id) || [])]
     }));
 
   return {
@@ -674,6 +694,7 @@ export default async (request) => {
                 shift: request.shift || '',
                 responseLabel: item.responseLabel,
                 requirementIds: request.requirementIds || [],
+                activities: request.activities || [],
                 response: item.response,
                 note: item.note || null
               },
