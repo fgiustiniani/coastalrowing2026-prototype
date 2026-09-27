@@ -430,14 +430,16 @@
         summaryNew: false
       }));
 
-    const historicalResponses = (state.personState?.historicalResponses || [])
-      .map((item) => ({
-        ...item,
-        summaryActivity: item.activity || 'Attività',
-        summaryStatus: item.response === 'declined' ? 'Non disponibile' : 'Confermata',
-        summaryKind: item.response === 'declined' ? 'declined' : 'confirmed',
-        summaryNew: false
-      }));
+    const historicalResponses = [
+      ...(state.personState?.historicalResponses || []),
+      ...(state.personState?.historicalOpenRequestResponses || [])
+    ].map((item) => ({
+      ...item,
+      summaryActivity: item.activity || 'Attività',
+      summaryStatus: item.response === 'declined' ? 'Non disponibile' : 'Confermata',
+      summaryKind: item.response === 'declined' ? 'declined' : 'confirmed',
+      summaryNew: false
+    }));
 
     const requests = requestGroups();
     const newResponses = requests
