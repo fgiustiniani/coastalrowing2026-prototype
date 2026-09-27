@@ -40,6 +40,7 @@
   const assignmentShiftFilter = document.querySelector('[data-assignment-shift-filter]');
   const assignmentActivityFilter = document.querySelector('[data-assignment-activity-filter]');
   const assignmentResponseFilter = document.querySelector('[data-assignment-response-filter]');
+  const assignmentStatusFilter = document.querySelector('[data-assignment-status-filter]');
   const assignmentWarningFilter = document.querySelector('[data-assignment-warning-filter]');
   const assignmentCoverageFilter = document.querySelector('[data-assignment-coverage-filter]');
   const assignmentResponsibleFilter = document.querySelector('[data-assignment-responsible-filter]');
@@ -48,6 +49,7 @@
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
+  const personReportStatusFilter = document.querySelector('[data-person-report-status-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
   const personPathFilter = document.querySelector('[data-person-path-filter]');
   const personPathGroupFilter = document.querySelector('[data-person-path-group-filter]');
@@ -277,6 +279,24 @@
     if (row?.retainedConfirmation === true) return 'confirmed';
     if (row?.assignedFromAvailability === true) return 'confirmed';
     return current;
+  }
+
+  function assignmentStatusKey(row) {
+    if (row?.isAvailability) {
+      return row.isReleasedConfirmed === true
+        ? 'released-confirmed-free'
+        : 'additional-unused';
+    }
+
+    const response = effectiveAssignmentResponse(row) || 'pending';
+    if (response === 'declined') return 'declined';
+    if (row?.assignedFromAvailability === true) return 'from-additional';
+    if (response === 'confirmed') return 'confirmed';
+    return 'pending';
+  }
+
+  function assignmentStatusMatches(filters, row) {
+    return !filters.length || filters.includes(assignmentStatusKey(row));
   }
 
   function responsibleBadge(label = 'Responsabile') {
@@ -1480,6 +1500,7 @@
     const shifts = selectedFilterValues(assignmentShiftFilter);
     const activities = selectedFilterValues(assignmentActivityFilter);
     const responses = selectedFilterValues(assignmentResponseFilter);
+    const statuses = selectedFilterValues(assignmentStatusFilter);
     const warningFilters = selectedFilterValues(assignmentWarningFilter);
     const coverageFilters = selectedFilterValues(assignmentCoverageFilter);
     const responsibleFilters = selectedFilterValues(assignmentResponsibleFilter);
@@ -1514,11 +1535,12 @@
         && (!responses.length || (row.isAvailability
           ? (row.isReleasedConfirmed === true && responses.includes('confirmed'))
           : responses.includes(rowResponse)))
+        && assignmentStatusMatches(statuses, row)
         && warningMatch;
     });
 
     const gapRows = requirementGapRows().filter((row) => {
-      if (personIds.length || groups.length || responses.length || warningFilters.length || responsibleFilters.length) return false;
+      if (personIds.length || groups.length || responses.length || statuses.length || warningFilters.length || responsibleFilters.length) return false;
       const requirement = requirementById(row.requirementId);
       if (!coverageMatches(requirement)) return false;
       return filterMatches(shifts, shiftFilterKey(row))
@@ -4166,6 +4188,7 @@
       { label: 'Turno', select: assignmentShiftFilter },
       { label: 'Attività', select: assignmentActivityFilter },
       { label: 'Risposta', select: assignmentResponseFilter },
+      { label: 'Stato', select: assignmentStatusFilter },
       { label: 'Warning', select: assignmentWarningFilter },
       { label: 'Copertura', select: assignmentCoverageFilter },
       { label: 'Responsabile', select: assignmentResponsibleFilter }
@@ -4338,6 +4361,12 @@
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
       const availability = person?.latestSubmission?.availability || [];
+      const freeAvailabilityRows = unassignedAvailabilityRows()
+        .filter((row) => row.personId === item.id);
+      const statusKeys = [...new Set([
+        ...reportRows.map((row) => assignmentStatusKey(row)),
+        ...freeAvailabilityRows.map((row) => assignmentStatusKey(row))
+      ])];
       const notes = reportRows
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
@@ -4370,6 +4399,7 @@
         answered,
         submissionCount,
         responseState,
+        statusKeys,
         notes: notes.join('; '),
         availability,
         activityRows,
@@ -4385,10 +4415,12 @@
     const personIds = selectedFilterValues(personReportPersonFilter);
     const groups = selectedFilterValues(personReportGroupFilter);
     const answers = selectedFilterValues(personReportResponseFilter);
+    const statuses = selectedFilterValues(personReportStatusFilter);
     return personReportRows().filter((item) =>
       filterMatches(personIds, item.id)
       && filterMatches(groups, item.group || '')
       && filterMatches(answers, item.answered ? 'yes' : 'no')
+      && (!statuses.length || statuses.some((status) => item.statusKeys?.includes(status)))
     );
   }
 
@@ -6835,10 +6867,10 @@
     renderRaceProgram();
   });
 
-  [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
+  [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentStatusFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
-  [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter]
+  [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter, personReportStatusFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
