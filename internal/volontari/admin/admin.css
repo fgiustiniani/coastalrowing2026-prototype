@@ -5360,3 +5360,23 @@ tr.is-busy button.is-busy {
     width: 100%;
   }
 }
+
+
+/* Filtro pianificazione sottostaffata */
+.planning-understaffed-filter {
+  align-self: end;
+}
+.planning-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-weight: 800;
+}
+.planning-check input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--accent, #0a6b7d);
+}
