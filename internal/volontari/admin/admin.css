@@ -5380,3 +5380,25 @@ tr.is-busy button.is-busy {
   margin: 0;
   accent-color: var(--accent, #0a6b7d);
 }
+
+
+/* Voce personalizzata mostrata nel link volontari */
+.planning-request-config {
+  display: grid;
+  gap: 8px;
+  min-width: 230px;
+}
+.planning-response-label {
+  width: 100%;
+  min-width: 210px;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--line, #dbe5e8);
+  border-radius: 9px;
+  background: #fff;
+}
+.planning-response-label:disabled {
+  background: var(--soft, #f3f7f8);
+  color: var(--muted, #60757d);
+  opacity: .72;
+}
