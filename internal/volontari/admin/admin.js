@@ -4432,7 +4432,8 @@
     );
     const adminDeclinedRows = (snapshot?.declinedAssignmentResponses || [])
       .filter((row) => row.personId === personId && row.assignedFromAvailability !== true);
-    const availability = person?.latestSubmission?.availability || [];
+    const availability = unassignedAvailabilityRows()
+      .filter((row) => row.personId === personId);
     const races = snapshot?.raceProgramAvailable
       ? (snapshot?.raceProgram || [])
           .filter((race) => race.personId === personId)
@@ -4495,7 +4496,7 @@
       addToShiftMap(racesByShift, shift.id, race);
     }
 
-    const unusedAvailabilityLabel = 'Disp.+ non usata';
+    const unusedAvailabilityLabel = 'Disponibilità libera';
     const raceLabel = 'Gara';
     const left = 232;
     const right = 22;
@@ -4604,11 +4605,16 @@
       const unusedAvailability = unusedAvailabilityByShift.get(shift.id) || [];
       if (unusedAvailability.length) {
         const notes = unusedAvailability.map((item) => String(item.note || '').trim()).filter(Boolean);
+        const releasedConfirmed = unusedAvailability.some((item) => item.isReleasedConfirmed === true);
+        const availabilityDescription = releasedConfirmed
+          ? 'Conferma precedente: disponibile da assegnare'
+          : 'Disponibilità aggiuntiva non usata';
+        const availabilityMark = releasedConfirmed ? '↺' : '+';
         nodes.push(`
           <circle class="person-path-node is-unused-availability" cx="${x}" cy="${unusedAvailabilityY}" r="7">
-            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — Disponibilità aggiuntiva non usata${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
+            <title>${escapeHtml(`${shift.day_label} · ${shift.shift_label} — ${availabilityDescription}${notes.length ? ` · ${notes.join(' · ')}` : ''}`)}</title>
           </circle>
-          <text class="person-path-node-plus is-unused-availability" x="${x}" y="${unusedAvailabilityY + 4}" text-anchor="middle">+</text>`);
+          <text class="person-path-node-plus is-unused-availability" x="${x}" y="${unusedAvailabilityY + 4}" text-anchor="middle">${availabilityMark}</text>`);
       }
 
       const shiftRaces = racesByShift.get(shift.id) || [];
@@ -4635,7 +4641,7 @@
       adminPendingRows.length ? `${adminPendingRows.length} da rispondere` : '',
       adminDeclinedRows.length ? `${adminDeclinedRows.length} admin rifiutate` : '',
       fromAvailabilityRows.length ? `${fromAvailabilityRows.length} da Disp.+` : '',
-      unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} Disp.+ non usate` : '',
+      unusedAvailabilityByShift.size ? `${unusedAvailabilityByShift.size} disponibilità libere` : '',
       races.length ? `${races.length} ${races.length === 1 ? 'gara' : 'gare'}` : ''
     ].filter(Boolean);
     const hasData = summaryParts.length > 0;
@@ -4756,6 +4762,7 @@
         <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
         <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
         <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
+        <span><i class="person-path-dot is-unused-availability">↺</i>Conferma precedente libera</span>
         <span><i class="person-path-dot is-race">G</i>Gara</span>
       </div>
       <main class="person-path-pdf-list">${blocks}</main>
@@ -5920,6 +5927,7 @@
             <span><i class="person-path-dot is-admin-declined"></i>Admin rifiutata</span>
             <span><i class="person-path-dot is-from-availability">+</i>Assegnata da Disp.+</span>
             <span><i class="person-path-dot is-unused-availability">+</i>Disp.+ non usata</span>
+        <span><i class="person-path-dot is-unused-availability">↺</i>Conferma precedente libera</span>
             <span><i class="person-path-dot is-race">G</i>Gara</span>
           </div>
         </div>
