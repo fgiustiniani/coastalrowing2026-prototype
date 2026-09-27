@@ -444,10 +444,20 @@
     const requests = requestGroups();
     const newlyConfirmed = requests
       .filter((request) => state.responses.get(request.key)?.response === 'confirmed')
-      .map((request) => ({ ...request, summaryActivity: request.label, summaryStatus: 'Confermata' }));
+      .map((request) => {
+        const activity = Array.isArray(request.activities) && request.activities.length
+          ? request.activities.join(' · ')
+          : request.label;
+        return { ...request, activity, summaryActivity: activity, summaryStatus: 'Confermata' };
+      });
     const newlyDeclined = requests
       .filter((request) => state.responses.get(request.key)?.response === 'declined')
-      .map((request) => ({ ...request, summaryActivity: request.label, summaryStatus: 'Non disponibile' }));
+      .map((request) => {
+        const activity = Array.isArray(request.activities) && request.activities.length
+          ? request.activities.join(' · ')
+          : request.label;
+        return { ...request, activity, summaryActivity: activity, summaryStatus: 'Non disponibile' };
+      });
     const activeAvailability = originalUnusedAvailability()
       .filter((shift) => state.availability.has(shift.id))
       .map((shift) => ({ ...shift, summaryActivity: 'Disponibilità aggiuntiva' }));
