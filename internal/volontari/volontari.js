@@ -415,62 +415,82 @@
       || initialIds.some((id, index) => id !== currentIds[index]);
   }
 
-  function summaryRowsHtml(items, emptyText, { status = false } = {}) {
-    const rows = sortShiftsChronologically(items);
-    if (!rows.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
-    return `<div class="summary-items">${rows.map((item) => {
-      const activity = item.summaryActivity || item.activity || item.label || item.responseLabel || 'Disponibilità aggiuntiva';
-      const stateLabel = item.summaryStatus || '';
-      return `
-        <article class="summary-item">
-          <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
-          <span class="summary-item__activity">${escapeHtml(displayActivityName(activity))}</span>
-          ${status && stateLabel ? `<span class="summary-item__status">${escapeHtml(stateLabel)}</span>` : ''}
-        </article>`;
-    }).join('')}</div>`;
-  }
-
   function renderSummary() {
-    const currentAssignments = sortShiftsChronologically(state.personState?.assignments || []).map((assignment) => ({
-      ...assignment,
-      summaryActivity: assignment.activity || 'Attività',
-      summaryStatus: assignment.currentResponse === 'confirmed'
+    const currentAssignments = (state.personState?.assignments || [])
+      .filter((assignment) =>
+        assignment.currentResponse === 'confirmed'
+        || assignment.currentResponse === 'declined'
         || (assignment.assignedFromAvailability && assignment.currentResponse !== 'declined')
-          ? 'Confermata'
-          : assignment.currentResponse === 'declined'
-            ? 'Non disponibile'
-            : 'Da rispondere'
-    }));
+      )
+      .map((assignment) => ({
+        ...assignment,
+        summaryActivity: assignment.activity || 'Attività',
+        summaryStatus: assignment.currentResponse === 'declined' ? 'Non disponibile' : 'Confermata',
+        summaryKind: assignment.currentResponse === 'declined' ? 'declined' : 'confirmed',
+        summaryNew: false
+      }));
+
+    const historicalResponses = (state.personState?.historicalResponses || [])
+      .map((item) => ({
+        ...item,
+        summaryActivity: item.activity || 'Attività',
+        summaryStatus: item.response === 'declined' ? 'Non disponibile' : 'Confermata',
+        summaryKind: item.response === 'declined' ? 'declined' : 'confirmed',
+        summaryNew: false
+      }));
+
     const requests = requestGroups();
-    const newlyConfirmed = requests
-      .filter((request) => state.responses.get(request.key)?.response === 'confirmed')
+    const newResponses = requests
+      .filter((request) => ['confirmed', 'declined'].includes(state.responses.get(request.key)?.response))
       .map((request) => {
+        const response = state.responses.get(request.key)?.response;
         const activity = Array.isArray(request.activities) && request.activities.length
           ? request.activities.join(' · ')
           : request.label;
-        return { ...request, activity, summaryActivity: activity, summaryStatus: 'Confermata' };
+        return {
+          ...request,
+          summaryActivity: activity,
+          summaryStatus: response === 'declined' ? 'Non disponibile' : 'Confermata',
+          summaryKind: response === 'declined' ? 'declined' : 'confirmed',
+          summaryNew: true
+        };
       });
-    const newlyDeclined = requests
-      .filter((request) => state.responses.get(request.key)?.response === 'declined')
-      .map((request) => {
-        const activity = Array.isArray(request.activities) && request.activities.length
-          ? request.activities.join(' · ')
-          : request.label;
-        return { ...request, activity, summaryActivity: activity, summaryStatus: 'Non disponibile' };
-      });
-    const activeAvailability = originalUnusedAvailability()
+
+    const additionalAvailability = originalUnusedAvailability()
       .filter((shift) => state.availability.has(shift.id))
-      .map((shift) => ({ ...shift, summaryActivity: 'Disponibilità aggiuntiva' }));
+      .map((shift) => ({
+        ...shift,
+        summaryActivity: 'Disponibilità aggiuntiva',
+        summaryStatus: 'Disponibilità aggiuntiva',
+        summaryKind: 'availability',
+        summaryNew: false
+      }));
+
+    const rows = sortShiftsChronologically([
+      ...currentAssignments,
+      ...historicalResponses,
+      ...newResponses,
+      ...additionalAvailability
+    ]);
+
+    if (!rows.length) {
+      summary.innerHTML = '<p class="summary-empty">Nessuna disponibilità da riepilogare.</p>';
+      return;
+    }
 
     summary.innerHTML = `
-      <section class="summary-section">
-        <h3>Attività e richieste</h3>
-        ${summaryRowsHtml([...currentAssignments, ...newlyConfirmed, ...newlyDeclined], 'Nessuna attività o richiesta.', { status: true })}
-      </section>
-      <section class="summary-section">
-        <h3>Disponibilità aggiuntive attive</h3>
-        ${summaryRowsHtml(activeAvailability, 'Nessuna disponibilità aggiuntiva attiva.')}
-      </section>
+      <div class="summary-items summary-items--unified">
+        ${rows.map((item) => `
+          <article class="summary-item summary-item--${escapeHtml(item.summaryKind)}">
+            <div class="summary-item__top">
+              <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
+              ${item.summaryNew ? '<span class="summary-new-badge">NUOVA</span>' : ''}
+            </div>
+            <span class="summary-item__activity">${escapeHtml(displayActivityName(item.summaryActivity || ''))}</span>
+            <span class="summary-item__status">${escapeHtml(item.summaryStatus || '')}</span>
+          </article>
+        `).join('')}
+      </div>
     `;
   }
 
