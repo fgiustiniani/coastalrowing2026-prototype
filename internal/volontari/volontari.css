@@ -435,3 +435,47 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .volunteer-summary-step > h2 {
   margin-bottom: 6px;
 }
+
+
+/* Riepilogo unificato disponibilità */
+.summary-items--unified {
+  gap: 9px;
+}
+.summary-item__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.summary-item--confirmed {
+  border-color: #a9d3b5;
+  background: var(--ok-bg);
+}
+.summary-item--confirmed .summary-item__status {
+  color: var(--ok);
+}
+.summary-item--declined {
+  border-color: #e3b3aa;
+  background: var(--no-bg);
+}
+.summary-item--declined .summary-item__status {
+  color: var(--no);
+}
+.summary-item--availability {
+  border-color: #e5c58a;
+  background: #fff7e7;
+}
+.summary-item--availability .summary-item__status {
+  color: #9a6500;
+}
+.summary-new-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .68rem;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
