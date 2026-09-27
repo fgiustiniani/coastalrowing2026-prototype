@@ -1168,22 +1168,42 @@ export default async (request) => {
           return Boolean(shift && racesForPerson.some((race) => raceConflictsWithShift(race, shift)));
         };
 
-        const availabilityByShift = new Map(
-          (person.latestSubmission?.availability || []).map((item) => [
-            item.shiftId,
-            {
-              ...item,
-              selected: true,
-              assigned: assignedShiftIds.has(item.shiftId),
-              raceConflict: raceConflictForShift(item.shiftId),
-              stateAt: person.latestSubmission?.createdAt || null
-            }
-          ])
-        );
+        const availabilityByShift = new Map();
+        const availabilityStamp = (value) => {
+          const stamp = Date.parse(value || '');
+          return Number.isFinite(stamp) ? stamp : 0;
+        };
+        const registerAvailability = (shiftId, row, stamp, priority = 0) => {
+          if (!shiftId) return;
+          const current = availabilityByShift.get(shiftId);
+          if (
+            !current
+            || stamp > current.__stateStamp
+            || (stamp === current.__stateStamp && priority > current.__statePriority)
+          ) {
+            availabilityByShift.set(shiftId, {
+              ...row,
+              __stateStamp: stamp,
+              __statePriority: priority
+            });
+          }
+        };
+
+        for (const item of person.latestSubmission?.availability || []) {
+          const stateAt = person.latestSubmission?.createdAt || null;
+          registerAvailability(item.shiftId, {
+            ...item,
+            selected: true,
+            assigned: assignedShiftIds.has(item.shiftId),
+            isReleasedConfirmed: false,
+            raceConflict: raceConflictForShift(item.shiftId),
+            stateAt
+          }, availabilityStamp(stateAt), 1);
+        }
 
         for (const released of (snapshot.releasedConfirmedAvailability || []).filter((item) => item.personId === personId)) {
-          if (availabilityByShift.has(released.shiftId)) continue;
-          availabilityByShift.set(released.shiftId, {
+          const stateAt = released.releasedAt || released.currentResponseAt || null;
+          registerAvailability(released.shiftId, {
             id: released.shiftId,
             shiftId: released.shiftId,
             day: released.day || '',
@@ -1196,10 +1216,11 @@ export default async (request) => {
             assigned: false,
             isReleasedConfirmed: true,
             raceConflict: raceConflictForShift(released.shiftId),
-            stateAt: released.releasedAt || released.currentResponseAt || null
-          });
+            stateAt
+          }, availabilityStamp(stateAt), 2);
         }
-        const availabilityShifts = [...availabilityByShift.values()];
+        const availabilityShifts = [...availabilityByShift.values()]
+          .map(({ __stateStamp, __statePriority, ...row }) => row);
 
         const campaignById = new Map(
           (snapshot.responseCampaigns || []).map((campaign) => [campaign.id, campaign])
