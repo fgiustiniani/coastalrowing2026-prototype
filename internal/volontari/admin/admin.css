@@ -5447,3 +5447,73 @@ tr.is-busy button.is-busy {
     margin: 0;
   }
 }
+
+
+/* Risposte della campagna nel popup persona */
+.person-campaign-responses {
+  margin: 16px 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--soft);
+}
+.person-campaign-responses__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.person-campaign-responses__head > div {
+  display: grid;
+  gap: 2px;
+}
+.person-campaign-responses__head > span {
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--line);
+  text-align: center;
+  font-size: .78rem;
+  font-weight: 800;
+}
+.person-campaign-responses__list {
+  display: grid;
+  gap: 8px;
+}
+.person-campaign-response {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.person-campaign-response > div {
+  display: grid;
+  gap: 2px;
+}
+.person-campaign-response > div > span,
+.person-campaign-response > div > small {
+  color: var(--muted);
+}
+.person-campaign-response.is-confirmed {
+  border-color: #a9d3b5;
+  background: #edf8f0;
+}
+.person-campaign-response.is-declined {
+  border-color: #e3b3aa;
+  background: #fff1ee;
+}
+.person-campaign-response.is-pending {
+  background: #f4f7f8;
+}
+@media (max-width: 700px) {
+  .person-campaign-response {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
