@@ -5551,3 +5551,35 @@ tr.is-busy button.is-busy {
 .campaign-situation-line {
   background: #fbfdfe;
 }
+
+
+/* Scelta tipo link volontari */
+.link-type-options {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+.link-type-option {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.link-type-option:hover {
+  border-color: var(--accent);
+  background: var(--soft);
+}
+.link-type-option strong {
+  font-size: 1rem;
+  color: var(--ink);
+}
+.link-type-option span {
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.4;
+}
