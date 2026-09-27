@@ -1027,6 +1027,17 @@ export default async (request) => {
       if (view === 'snapshot') return json(await adminSnapshot());
       if (view === 'invite') {
         const origin = new URL(request.url).origin;
+        const mode = clean(url.searchParams.get('mode'), 20) === 'summary' ? 'summary' : 'survey';
+
+        if (mode === 'summary') {
+          const invite = issueVolunteerInvite('', 'summary');
+          return json({
+            accessUrl: `${origin}/internal/volontari/#access=${encodeURIComponent(invite)}`,
+            mode: 'summary',
+            expiresAt: '2026-10-06T21:59:59.000Z'
+          });
+        }
+
         const campaignId = clean(url.searchParams.get('campaignId'), 60);
         if (!isUuid(campaignId)) throw new ApiError('Seleziona una campagna prima di generare il link.', 400, 'CAMPAIGN_REQUIRED');
 
@@ -1041,9 +1052,10 @@ export default async (request) => {
         const campaign = campaigns[0] || null;
         if (!campaign) throw new ApiError('Campagna non trovata o non attiva.', 404, 'CAMPAIGN_NOT_FOUND');
 
-        const invite = issueVolunteerInvite(campaign.id);
+        const invite = issueVolunteerInvite(campaign.id, 'survey');
         return json({
           accessUrl: `${origin}/internal/volontari/#access=${encodeURIComponent(invite)}`,
+          mode: 'survey',
           campaign: { id: campaign.id, name: campaign.name },
           expiresAt: '2026-10-06T21:59:59.000Z'
         });
