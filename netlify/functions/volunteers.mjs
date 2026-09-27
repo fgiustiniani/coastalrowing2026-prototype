@@ -669,6 +669,7 @@ export default async (request) => {
       const manualGivenName = clean(body.manualGivenName, 80) || null;
       const clientSubmissionId = clean(body.clientSubmissionId, 60);
       const openRequestResponses = Array.isArray(body.openRequestResponses) ? body.openRequestResponses.slice(0, 100) : [];
+      const availability = Array.isArray(body.availability) ? body.availability.slice(0, 50) : [];
 
       if (!personId && ((!manualSurname || manualSurname.length < 2 || !manualGivenName || manualGivenName.length < 2) && (!manualPersonName || manualPersonName.length < 2))) throw new ApiError('Seleziona una persona o inserisci cognome e nome.', 400, 'PERSON_REQUIRED');
       if (personId && !isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
@@ -713,12 +714,21 @@ export default async (request) => {
           throw new ApiError('Completa tutte le nuove richieste prima dell’invio.', 400, 'VOLUNTEER_RESPONSES_INCOMPLETE');
         }
 
-        const existingAvailability = (currentState.availabilityShifts || [])
-          .filter((shift) => shift.selected && !shift.assigned);
+        const removableAvailabilityIds = new Set(
+          (currentState.availabilityShifts || [])
+            .filter((shift) => shift.selected && !shift.assigned)
+            .map((shift) => shift.id)
+        );
+        const confirmedRequestShiftIds = new Set(
+          normalizedOpenRequestResponses
+            .filter((item) => item.response === 'confirmed')
+            .map((item) => item.shiftId)
+        );
+        const allowedAvailabilityIds = new Set([...removableAvailabilityIds, ...confirmedRequestShiftIds]);
         const availabilityMap = new Map(
-          existingAvailability.map((shift) => [
-            shift.id,
-            { shiftId: shift.id, note: clean(shift.note, 1000) }
+          availability.map((item) => [
+            clean(item?.shiftId, 60),
+            { shiftId: clean(item?.shiftId, 60), note: clean(item?.note, 1000) }
           ])
         );
 
@@ -730,6 +740,13 @@ export default async (request) => {
         }
 
         const normalizedAvailability = [...availabilityMap.values()].filter((item) => item.shiftId);
+        const availabilityIds = normalizedAvailability.map((item) => item.shiftId);
+        if (
+          new Set(availabilityIds).size !== availabilityIds.length
+          || normalizedAvailability.some((item) => !allowedAvailabilityIds.has(item.shiftId))
+        ) {
+          throw new ApiError('Le disponibilità possono solo essere mantenute, rimosse o confermate da una richiesta aperta.', 400, 'INVALID_AVAILABILITY');
+        }
 
         const campaignId = isUuid(session?.campaignId) ? session.campaignId : null;
         if (campaignId) {
