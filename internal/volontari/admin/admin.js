@@ -6200,30 +6200,38 @@
       .sort((a, b) => compareByShift(a, b) || displayActivity(a).localeCompare(displayActivity(b), 'it'));
 
     detailTargetRow = null;
-    detailTitle.textContent = `${responseCampaignName(campaignId)} · ${people.length} ${people.length === 1 ? 'risposta' : 'risposte'}`;
+    const campaignName = responseCampaignName(campaignId);
+    detailTitle.textContent = `${campaignName} · ${people.length} ${people.length === 1 ? 'risposta' : 'risposte'}`;
     detailContent.innerHTML = people.length
       ? `<table class="detail-table"><thead><tr><th>Persona</th><th>Risposta campagna</th><th>Situazione attività attuale</th><th>Disponibilità inviate</th></tr></thead><tbody>${people.map((person) => {
-          const assignments = sortedAssignments(person);
-          const assignmentsHtml = assignments.length
-            ? `<div class="availability-report-list">${assignments.map((item) =>
-                `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(displayActivity(item))}</strong><small>${responseBadge(effectiveAssignmentResponse(item))}${item.currentNote ? ` · ${escapeHtml(item.currentNote)}` : ''}</small></div>`
-              ).join('')}</div>`
-            : '—';
+          const assignmentItems = sortedAssignments(person).map((item) => ({
+            ...item,
+            itemType: 'assignment'
+          }));
+          const campaignItems = [...(person.campaignSubmission?.openRequestResponses || [])].map((item) => ({
+            ...item,
+            itemType: 'campaign'
+          }));
+          const situationItems = [...assignmentItems, ...campaignItems]
+            .sort((a, b) => compareByShift(a, b)
+              || String(a.itemType || '').localeCompare(String(b.itemType || ''))
+              || String(a.responseLabel || displayActivity(a) || '').localeCompare(String(b.responseLabel || displayActivity(b) || ''), 'it'));
 
-          const campaignResponses = [...(person.campaignSubmission?.openRequestResponses || [])]
-            .sort(compareByShift);
-          const campaignResponsesHtml = campaignResponses.length
-            ? `<div class="availability-report-list">${campaignResponses.map((item) => {
-                const declined = item.response === 'declined';
-                const confirmed = item.response === 'confirmed';
-                const badge = declined
-                  ? '<span class="status-badge is-declined">Rifiutata</span>'
-                  : confirmed
-                    ? '<span class="status-badge is-confirmed">Confermata</span>'
-                    : '<span class="status-badge is-pending">Da rispondere</span>';
-                return `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(item.responseLabel || 'Nuova richiesta')}</strong><small>${badge}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</small></div>`;
-              }).join('')}<small class="campaign-response-time">Invio: ${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</small></div>`
-            : `<small>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</small>`;
+          const assignmentsHtml = situationItems.length
+            ? `<div class="availability-report-list">${situationItems.map((item) => {
+                if (item.itemType === 'campaign') {
+                  const declined = item.response === 'declined';
+                  const confirmed = item.response === 'confirmed';
+                  const status = declined
+                    ? '<span class="status-badge is-declined">Rifiutata</span>'
+                    : confirmed
+                      ? '<span class="status-badge is-confirmed">Confermata</span>'
+                      : '<span class="status-badge is-pending">Da rispondere</span>';
+                  return `<div class="availability-report-line campaign-situation-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(item.responseLabel || 'Nuova richiesta')}</strong><small><span class="campaign-inline-badge">${escapeHtml(campaignName)}</span> ${status}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</small></div>`;
+                }
+                return `<div class="availability-report-line"><strong>${escapeHtml(item.day)} · ${escapeHtml(item.shift)} — ${escapeHtml(displayActivity(item))}</strong><small>${responseBadge(effectiveAssignmentResponse(item))}${item.currentNote ? ` · ${escapeHtml(item.currentNote)}` : ''}</small></div>`;
+              }).join('')}</div>`
+            : '—';
 
           const availability = sortedAvailability(person);
           const availabilityHtml = availability.length
@@ -6232,7 +6240,7 @@
               ).join('')}</div>`
             : '—';
 
-          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}" data-campaign-submission-id="${escapeHtml(person.campaignSubmission?.id || '')}">${escapeHtml(person.display_name)}</button></td><td>${campaignResponsesHtml}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
+          return `<tr><td><button class="inline-name-link" type="button" data-open-person-activities="${escapeHtml(person.id)}" data-campaign-submission-id="${escapeHtml(person.campaignSubmission?.id || '')}">${escapeHtml(person.display_name)}</button></td><td>${escapeHtml(formatDateTime(person.campaignSubmission?.createdAt))}</td><td>${assignmentsHtml}</td><td>${availabilityHtml}</td></tr>`;
         }).join('')}</tbody></table>`
       : '<p class="empty-state">Nessuna persona ha ancora risposto a questa campagna.</p>';
     detailDialog.showModal();
@@ -6459,7 +6467,7 @@
             changes.push({
               type: 'declined',
               title: shiftLabel(shiftId),
-              detail: 'Disponibilità rimossa'
+              detail: 'Disponibilità rifiutata'
             });
           }
         }
