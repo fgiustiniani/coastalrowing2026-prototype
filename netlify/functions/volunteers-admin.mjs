@@ -1161,10 +1161,7 @@ export default async (request) => {
           const endMinutes = localTimeMinutes(shift.ends_at);
           if (![raceMinutes, startMinutes, endMinutes].every(Number.isFinite)) return false;
 
-          if (raceMinutes <= 14 * 60) {
-            return startMinutes <= raceMinutes;
-          }
-          return endMinutes > 10 * 60;
+          return startMinutes <= raceMinutes && raceMinutes < endMinutes;
         };
         const raceConflictForShift = (shiftId) => {
           const shift = shiftById.get(shiftId) || null;
