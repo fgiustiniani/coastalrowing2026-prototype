@@ -72,12 +72,14 @@ function summaryPdfKey() {
   return createHash('sha256').update(`coastal-volunteers-summary-pdf|${accessSecret()}`).digest();
 }
 
-export function issueVolunteerInvite(campaignIdValue = '') {
+export function issueVolunteerInvite(campaignIdValue = '', modeValue = 'survey') {
   const campaignId = clean(campaignIdValue, 60);
+  const mode = clean(modeValue, 20) === 'summary' ? 'summary' : 'survey';
   const payload = {
-    v: 2,
+    v: 3,
     scope: 'volunteers',
-    campaignId: isUuid(campaignId) ? campaignId : null,
+    mode,
+    campaignId: mode === 'survey' && isUuid(campaignId) ? campaignId : null,
     exp: Math.floor(Date.parse('2026-10-06T21:59:59Z') / 1000)
   };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
@@ -93,12 +95,13 @@ function readInviteToken(value) {
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
     const now = Math.floor(Date.now() / 1000);
-    const supportedVersion = payload?.v === 1 || payload?.v === 2;
+    const supportedVersion = payload?.v === 1 || payload?.v === 2 || payload?.v === 3;
     if (!supportedVersion || payload?.scope !== 'volunteers' || !Number.isFinite(payload?.exp) || payload.exp <= now) {
       return null;
     }
-    const campaignId = isUuid(payload?.campaignId) ? payload.campaignId : null;
-    return { valid: true, campaignId };
+    const mode = payload?.v === 3 && payload?.mode === 'summary' ? 'summary' : 'survey';
+    const campaignId = mode === 'survey' && isUuid(payload?.campaignId) ? payload.campaignId : null;
+    return { valid: true, campaignId, mode };
   } catch {
     return null;
   }
@@ -108,7 +111,7 @@ export function readVolunteerAccessToken(value) {
   const supplied = clean(value, 1000);
   if (!supplied) return null;
   const explicit = env('VOLUNTEER_ACCESS_TOKEN');
-  if (explicit && safeEqual(supplied, explicit)) return { valid: true, campaignId: null };
+  if (explicit && safeEqual(supplied, explicit)) return { valid: true, campaignId: null, mode: 'survey' };
   return readInviteToken(supplied);
 }
 
@@ -146,18 +149,24 @@ export function verifyVolunteerSummaryPdfToken(value) {
   }
 }
 
-export function issueVolunteerSession(campaignIdValue = '') {
+export function issueVolunteerSession(campaignIdValue = '', modeValue = 'survey') {
   const now = Math.floor(Date.now() / 1000);
   const campaignId = clean(campaignIdValue, 60);
+  const mode = clean(modeValue, 20) === 'summary' ? 'summary' : 'survey';
   const payload = {
     iat: now,
     exp: now + (12 * 60 * 60),
     jti: randomBytes(18).toString('base64url'),
-    campaignId: isUuid(campaignId) ? campaignId : null
+    mode,
+    campaignId: mode === 'survey' && isUuid(campaignId) ? campaignId : null
   };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = createHmac('sha256', sessionKey()).update(encoded).digest('base64url');
-  return { token: `${encoded}.${signature}`, expiresAt: new Date(payload.exp * 1000).toISOString() };
+  return {
+    token: `${encoded}.${signature}`,
+    expiresAt: new Date(payload.exp * 1000).toISOString(),
+    mode
+  };
 }
 
 export function requireVolunteerSession(request) {
