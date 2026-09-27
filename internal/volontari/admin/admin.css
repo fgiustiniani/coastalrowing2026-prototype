@@ -5402,3 +5402,48 @@ tr.is-busy button.is-busy {
   color: var(--muted, #60757d);
   opacity: .72;
 }
+
+
+/* Campagne di raccolta risposte */
+.campaign-monitor {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  margin: 14px 0 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--soft);
+}
+.campaign-monitor__field {
+  min-width: min(360px, 100%);
+  margin: 0;
+}
+.campaign-monitor__help {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+.campaign-response-placeholder {
+  color: var(--muted);
+  font-weight: 750;
+}
+.campaign-dialog .audit-dialog__content {
+  max-width: 560px;
+}
+
+@media (max-width: 700px) {
+  .campaign-monitor {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .campaign-monitor__field {
+    min-width: 0;
+    width: 100%;
+  }
+  .campaign-monitor__help {
+    margin: 0;
+  }
+}
