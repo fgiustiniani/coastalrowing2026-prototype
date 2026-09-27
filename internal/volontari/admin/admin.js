@@ -1653,7 +1653,7 @@
     if (![raceMinutes, shiftStartMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
 
     if (raceMinutes <= 14 * 60) {
-      return shiftStartMinutes < raceMinutes;
+      return shiftStartMinutes <= raceMinutes;
     }
 
     return shiftEndMinutes > 10 * 60;
@@ -1661,17 +1661,21 @@
 
   function adjacentAssignedShiftLoad(personId, shiftId) {
     const targetShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftId) || null;
-    if (!targetShift?.starts_at) return { before: [], after: [] };
+    if (!targetShift?.starts_at || !targetShift?.ends_at) return { before: [], after: [] };
 
     const dateKey = localDateKey(targetShift.starts_at);
+    const targetStartMs = Date.parse(targetShift.starts_at);
+    const targetEndMs = Date.parse(targetShift.ends_at);
+    if (!Number.isFinite(targetStartMs) || !Number.isFinite(targetEndMs)) return { before: [], after: [] };
+
     const dayShifts = (snapshot?.shifts || [])
       .filter((shift) => localDateKey(shift.starts_at) === dateKey)
-      .sort((a, b) =>
-        Date.parse(a.starts_at || '') - Date.parse(b.starts_at || '')
-        || (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
-      );
-    const targetIndex = dayShifts.findIndex((shift) => shift.id === shiftId);
-    if (targetIndex < 0) return { before: [], after: [] };
+      .map((shift) => ({
+        ...shift,
+        startMs: Date.parse(shift.starts_at || ''),
+        endMs: Date.parse(shift.ends_at || '')
+      }))
+      .filter((shift) => Number.isFinite(shift.startMs) && Number.isFinite(shift.endMs));
 
     const assignedShiftIds = new Set(
       (snapshot?.assignments || [])
@@ -1679,8 +1683,15 @@
         .map((item) => item.shiftId)
     );
 
-    const previous = dayShifts.slice(Math.max(0, targetIndex - 2), targetIndex);
-    const following = dayShifts.slice(targetIndex + 1, targetIndex + 3);
+    const previous = dayShifts
+      .filter((shift) => shift.id !== shiftId && shift.endMs <= targetStartMs)
+      .sort((a, b) => b.endMs - a.endMs || b.startMs - a.startMs)
+      .slice(0, 2)
+      .reverse();
+    const following = dayShifts
+      .filter((shift) => shift.id !== shiftId && shift.startMs >= targetEndMs)
+      .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
+      .slice(0, 2);
 
     return {
       before: previous.length === 2 && previous.every((shift) => assignedShiftIds.has(shift.id)) ? previous : [],
