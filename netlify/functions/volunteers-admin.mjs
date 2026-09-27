@@ -376,7 +376,7 @@ async function adminSnapshot() {
       const person = personById.get(assignment.person_id) || null;
       const shift = shiftById.get(assignment.shift_id) || null;
       const activity = activityById.get(assignment.activity_id) || null;
-      const current = latestResponseByAssignment.get(assignment.id) || null;
+      const current = responseForAssignment(assignment);
       return {
         id: assignment.id,
         personId: assignment.person_id,
@@ -646,18 +646,26 @@ async function adminSnapshot() {
       .map((row) => `${row.person_id}|${row.shift_id}`)
   );
   const latestReleasedResponseByPersonShift = new Map();
-  for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
-    const assignment = assignmentHistoryById.get(assignmentId) || null;
-    if (!assignment?.person_id || !assignment.shift_id) continue;
-    if (activeDescendantByAncestor.has(assignmentId)) continue;
+  for (const assignment of assignmentHistoryRows) {
+    if (assignment.active !== false || !assignment?.person_id || !assignment.shift_id) continue;
+    if (!shiftById.has(assignment.shift_id)) continue;
+    if (activeDescendantByAncestor.has(assignment.id)) continue;
 
     const key = `${assignment.person_id}|${assignment.shift_id}`;
     if (activePersonShiftKeys.has(key)) continue;
 
-    const stamp = response?.stamp || response?.created_at || '';
+    const response = responseForAssignment(assignment);
+    if (!['confirmed', 'declined'].includes(response?.response)) continue;
+
+    const responseStamp = response?.stamp || response?.created_at || '';
+    const releasedStamp = assignment.updated_at || assignment.created_at || '';
+    const stateStamp = String(releasedStamp).localeCompare(String(responseStamp)) >= 0
+      ? releasedStamp
+      : responseStamp;
+
     const current = latestReleasedResponseByPersonShift.get(key);
-    if (!current || String(stamp).localeCompare(String(current.stamp || '')) > 0) {
-      latestReleasedResponseByPersonShift.set(key, { assignment, response, stamp });
+    if (!current || String(stateStamp).localeCompare(String(current.stamp || '')) > 0) {
+      latestReleasedResponseByPersonShift.set(key, { assignment, response, stamp: stateStamp });
     }
   }
 
