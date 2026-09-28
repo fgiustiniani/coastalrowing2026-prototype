@@ -5283,12 +5283,44 @@
     });
   }
 
+  function shiftBoardPersonState(row) {
+    const response = effectiveAssignmentResponse(row);
+    if (response === 'declined') {
+      return { key: 'declined', label: 'Non può', fromAvailability: false };
+    }
+    if (row?.assignedFromAvailability === true) {
+      return { key: 'confirmed', label: 'Confermata', fromAvailability: true };
+    }
+    if (response === 'confirmed') {
+      return { key: 'confirmed', label: 'Confermata', fromAvailability: false };
+    }
+    return { key: 'pending', label: 'Da rispondere', fromAvailability: false };
+  }
+
   function shiftBoardGroups() {
     const personIds = selectedFilterValues(shiftBoardPersonFilter);
     const activities = selectedFilterValues(shiftBoardActivityFilter);
     const shiftIds = selectedFilterValues(shiftBoardShiftFilter);
     const rows = reportAssignmentRows({ personIds, activities, shiftIds });
     const byShift = new Map();
+
+    const visibleShifts = [...(snapshot?.shifts || [])]
+      .filter((shift) => shift.active !== false && filterMatches(shiftIds, shift.id))
+      .sort((a, b) =>
+        Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)
+        || String(a.day_label || '').localeCompare(String(b.day_label || ''), 'it')
+        || String(a.shift_label || '').localeCompare(String(b.shift_label || ''), 'it')
+      );
+
+    for (const shift of visibleShifts) {
+      byShift.set(shift.id, {
+        shiftId: shift.id,
+        day: shift.day_label || '',
+        shift: shift.shift_label || '',
+        sortOrder: Number(shift.sort_order ?? 9999),
+        activities: new Map()
+      });
+    }
 
     for (const row of rows) {
       const key = row.shiftId || shiftFilterKey(row);
@@ -5297,6 +5329,7 @@
           shiftId: row.shiftId || '',
           day: row.day,
           shift: row.shift,
+          sortOrder: assignmentShiftOrder(row),
           activities: new Map()
         });
       }
@@ -5304,8 +5337,18 @@
       const label = displayActivity(row);
       if (!group.activities.has(label)) group.activities.set(label, new Map());
       const peopleMap = group.activities.get(label);
-      const current = peopleMap.get(row.personId) || { name: row.personName, isResponsible: false };
+      const state = shiftBoardPersonState(row);
+      const current = peopleMap.get(row.personId) || {
+        name: row.personName,
+        isResponsible: false,
+        statusKey: state.key,
+        statusLabel: state.label,
+        fromAvailability: state.fromAvailability
+      };
       current.isResponsible = current.isResponsible || row.isResponsible === true;
+      current.statusKey = state.key;
+      current.statusLabel = state.label;
+      current.fromAvailability = current.fromAvailability || state.fromAvailability;
       peopleMap.set(row.personId, current);
     }
 
@@ -5315,28 +5358,39 @@
         activities: [...group.activities.entries()]
           .map(([activityName, peopleMap]) => ({
             activity: activityName,
-            people: [...peopleMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'))
+            people: [...peopleMap.values()].sort((a, b) =>
+              Number(b.isResponsible === true) - Number(a.isResponsible === true)
+              || a.name.localeCompare(b.name, 'it')
+            )
           }))
           .sort((a, b) => a.activity.localeCompare(b.activity, 'it'))
       }))
-      .sort((a, b) => assignmentShiftOrder(a) - assignmentShiftOrder(b));
+      .sort((a, b) => Number(a.sortOrder ?? 9999) - Number(b.sortOrder ?? 9999));
   }
 
   function renderShiftBoardReport() {
+    if (!shiftBoardReport) return;
     const groups = shiftBoardGroups();
     shiftBoardReport.innerHTML = groups.length
-      ? `<div class="shift-board">${groups.map((group) => `
+      ? `<div class="shift-board shift-status-board">${groups.map((group) => `
           <article class="shift-board__column">
             <header class="shift-board__header">
               <strong>${escapeHtml(group.day)}</strong>
               <span>${escapeHtml(group.shift)}</span>
             </header>
             <div class="shift-board__activities">
-              ${group.activities.map((item) => `
+              ${group.activities.length ? group.activities.map((item) => `
                 <section class="shift-board__activity">
                   <strong>${escapeHtml(item.activity)}</strong>
-                  <div class="shift-board__people">${item.people.map((person) => `<span class="${person.isResponsible ? 'is-responsible' : ''}">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>`).join('')}</div>
-                </section>`).join('')}
+                  <div class="shift-board__people shift-status-people">${item.people.map((person) => `
+                    <span class="shift-status-person ${person.isResponsible ? 'is-responsible' : ''}">
+                      <span class="shift-status-person__name">${person.isResponsible ? '★ ' : ''}${escapeHtml(person.name)}${person.isResponsible ? ' · Responsabile' : ''}</span>
+                      <span class="shift-status-person__badges">
+                        <span class="status-badge is-${escapeHtml(person.statusKey)}">${escapeHtml(person.statusLabel)}</span>
+                        ${person.fromAvailability ? '<span class="status-badge is-availability">Disp.+</span>' : ''}
+                      </span>
+                    </span>`).join('')}</div>
+                </section>`).join('') : '<p class="shift-status-empty">Nessuna persona assegnata.</p>'}
             </div>
           </article>`).join('')}</div>`
       : '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>';
@@ -5593,7 +5647,9 @@
       groups.forEach((group, index) => {
         const item = group.activities[rowIndex];
         row[`shift${index}`] = item
-          ? `${item.activity}\n${item.people.map((person) => `${person.isResponsible ? '★ ' : ''}${person.name}`).join('; ')}`
+          ? `${item.activity}\n${item.people.map((person) =>
+              `${person.isResponsible ? '★ ' : ''}${person.name} — ${person.statusLabel}${person.fromAvailability ? ' · Disp.+' : ''}`
+            ).join('\n')}`
           : '';
       });
       return row;
@@ -5604,6 +5660,7 @@
   function exportShiftBoardPdfByDay(groups = shiftBoardGroups(), options = {}) {
     const title = options.title || 'Report volontari - vista per turni';
     const showGroups = options.showGroups === true;
+    const showStatuses = options.showStatuses === true;
     const singleTurnPerPage = options.singleTurnPerPage === true;
     const pageSize = options.pageSize || 'A3 landscape';
     if (!groups.length) {
@@ -5624,9 +5681,13 @@
     }
 
     const renderPdfPeople = (item) => item.people.length
-      ? item.people.map((person) =>
-          `<span class="${person.isResponsible ? 'responsible' : ''}">${escapeHtml(person.name)}</span>`
-        ).join('')
+      ? item.people.map((person) => {
+          const name = `${person.isResponsible ? '★ ' : ''}${person.name}`;
+          const status = showStatuses
+            ? `<em class="pdf-status is-${escapeHtml(person.statusKey || 'pending')}">${escapeHtml(person.statusLabel || 'Da rispondere')}</em>${person.fromAvailability ? '<em class="pdf-status is-availability">Disp.+</em>' : ''}`
+            : '';
+          return `<span class="pdf-person ${person.isResponsible ? 'responsible' : ''}"><b>${escapeHtml(name)}</b>${status}</span>`;
+        }).join('')
       : '<span class="empty-people">Nessuno assegnato</span>';
 
     const renderPdfActivity = (item) => `
@@ -5704,9 +5765,15 @@
       .staffing-badge.is-covered { border-color: #87b99a; background: #e9f6ed; color: #255f38; }
       .staffing-badge.is-understaffed { border-color: #df9d96; background: #fdeceb; color: #8d3028; }
       .people-list { font-size: ${showGroups ? '11pt' : '6.2px'}; line-height: 1.45; }
-      .people-list span { display: inline; }
-      .people-list span + span::before { content: "; "; color: #60757d; font-weight: 400; }
-      .people-list .responsible, .pdf-legend .responsible { display: inline-block; margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
+      .people-list { display: grid; gap: 3px; }
+      .people-list .pdf-person { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+      .people-list .pdf-person + .pdf-person::before { content: none; }
+      .people-list .responsible, .pdf-legend .responsible { margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
+      .pdf-status { display: inline-block; padding: 1px 4px; border-radius: 999px; font-style: normal; font-weight: 800; font-size: .9em; }
+      .pdf-status.is-confirmed { background: #e9f6ed; color: #255f38; }
+      .pdf-status.is-pending { background: #edf1f2; color: #607078; }
+      .pdf-status.is-declined { background: #fdeceb; color: #8d3028; }
+      .pdf-status.is-availability { background: #fff2c9; color: #745a00; }
       .empty-people { color: #7b8a8e; font-style: italic; }
     </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
@@ -5719,9 +5786,13 @@
       return;
     }
     if (kind === 'excel') {
-      exportExcel('report-volontari-vista-turni.xls', 'Vista turni', columns, rows);
+      exportExcel('report-volontari-per-giorno-turno.xls', 'Per giorno e turno', columns, rows);
     } else {
-      exportShiftBoardPdfByDay();
+      exportShiftBoardPdfByDay(shiftBoardGroups(), {
+        title: 'Report volontari - per giorno e turno',
+        showStatuses: true,
+        pageSize: 'A4 landscape'
+      });
     }
   }
 
@@ -6878,6 +6949,7 @@
   function renderExpandedAdminSections() {
     if (!document.getElementById('confirmation-changes-content')?.hidden) renderConfirmationChanges();
     if (!document.getElementById('person-report-content')?.hidden) renderPersonReport();
+    if (!document.getElementById('shift-board-report-content')?.hidden) renderShiftBoardReport();
     if (!document.getElementById('person-path-content')?.hidden) renderPersonPathChart();
     if (!document.getElementById('volunteer-matrix-content')?.hidden) renderVolunteerMatrixReport();
     if (!document.getElementById('person-catalog-content')?.hidden) renderPersonCatalog();
@@ -7542,6 +7614,10 @@
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
   [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportResponseFilter, personReportStatusFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
+  [shiftBoardPersonFilter, shiftBoardActivityFilter, shiftBoardShiftFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
+  document.querySelector('[data-shift-board-export-pdf]')?.addEventListener('click', () => exportShiftBoardReport('pdf'));
+  document.querySelector('[data-shift-board-export-excel]')?.addEventListener('click', () => exportShiftBoardReport('excel'));
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
@@ -7566,6 +7642,7 @@
       if (!collapsed) {
         if (target.id === 'confirmation-changes-content') renderConfirmationChanges();
         else if (target.id === 'person-report-content') renderPersonReport();
+        else if (target.id === 'shift-board-report-content') renderShiftBoardReport();
         else if (target.id === 'person-path-content') renderPersonPathChart();
         else if (target.id === 'volunteer-matrix-content') renderVolunteerMatrixReport();
         else if (target.id === 'person-catalog-content') renderPersonCatalog();
