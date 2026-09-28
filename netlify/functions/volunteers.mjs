@@ -263,7 +263,7 @@ async function personState(personId) {
   const person = personResult.person;
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
-  const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit, raceProgram] = await Promise.all([
+  const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit, manualConfirmationAudit, raceProgram] = await Promise.all([
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,role,requested_profile,note,supersedes_assignment_id,created_at', person_id: `eq.${personId}`, active: 'eq.true', order: 'created_at.asc' } }),
     supabaseRequest('volunteer_assignments', { query: { select: 'id,shift_id,activity_id,raw_day,raw_shift,supersedes_assignment_id,created_at,updated_at,active', person_id: `eq.${personId}`, order: 'created_at.asc' } }),
     supabaseRequest('volunteer_activities', { query: { select: 'id,name,active', order: 'name.asc' } }),
@@ -280,6 +280,16 @@ async function personState(personId) {
         limit: 300
       }
     }),
+    supabaseRequest('volunteer_audit_log', {
+      query: {
+        select: 'id,actor_name,person_id,entity_id,new_value,note,created_at',
+        person_id: `eq.${personId}`,
+        action_type: 'eq.assignment_manual_confirmation',
+        entity_type: 'eq.assignment',
+        order: 'created_at.asc',
+        limit: 300
+      }
+    }),
     supabaseRequest('volunteer_race_program', {
       query: {
         select: 'id,race_date,race_time,crew_label',
@@ -293,11 +303,24 @@ async function personState(personId) {
   const assignmentRows = rows(assignments);
   const assignmentHistoryRows = rows(assignmentHistory);
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+  const latestManualConfirmationByAssignment = new Map();
+  const manuallyConfirmedShiftIds = new Set();
+  for (const event of manualConfirmationAuditRows) {
+    if (!event?.entity_id) continue;
+    const current = latestManualConfirmationByAssignment.get(event.entity_id);
+    if (!current || String(event.created_at || '').localeCompare(String(current.created_at || '')) > 0) {
+      latestManualConfirmationByAssignment.set(event.entity_id, event);
+    }
+    const assignment = assignmentHistoryById.get(event.entity_id) || null;
+    const shiftId = event?.new_value?.shiftId || assignment?.shift_id || null;
+    if (shiftId) manuallyConfirmedShiftIds.add(shiftId);
+  }
   const submissionRows = rows(submissions);
   const activityById = new Map(rows(activities).map((row) => [row.id, row]));
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const requirementRows = rows(requirements?.data);
   const openRequestAuditRows = rows(openRequestAudit);
+  const manualConfirmationAuditRows = rows(manualConfirmationAudit);
   const raceRows = rows(raceProgram);
   const responseOpenByRequirement = new Map(
     requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
@@ -356,11 +379,12 @@ async function personState(personId) {
       .map((row) => row.entity_id)
       .filter(Boolean)
   );
-  const confirmedShiftIds = new Set(
-    assignmentHistoryRows
+  const confirmedShiftIds = new Set([
+    ...manuallyConfirmedShiftIds,
+    ...assignmentHistoryRows
       .filter((row) => row.shift_id && latestResponse.get(row.id)?.response === 'confirmed')
       .map((row) => row.shift_id)
-  );
+  ]);
   const availabilityDeclaredAtByShift = new Map();
   for (const item of availabilityHistoryRows) {
     if (!item.shift_id) continue;
@@ -394,6 +418,50 @@ async function personState(personId) {
       current = previous;
     }
     return null;
+  };
+
+  const manualConfirmationForAssignment = (assignment) => {
+    if (!assignment?.id) return null;
+    let current = assignment;
+    const seen = new Set();
+    let latest = null;
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      const event = latestManualConfirmationByAssignment.get(current.id) || null;
+      if (event && (!latest || String(event.created_at || '').localeCompare(String(latest.created_at || '')) > 0)) {
+        latest = event;
+      }
+      if (!current.supersedes_assignment_id) break;
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      current = previous;
+    }
+    return latest;
+  };
+
+  const currentStateForAssignment = (assignment) => {
+    const response = responseForAssignment(assignment);
+    const manual = manualConfirmationForAssignment(assignment);
+    const responseAt = response ? (submissionTime.get(response.submission_id) || response.created_at || '') : '';
+    const manualAt = manual?.created_at || '';
+
+    if (manual && (!response || String(manualAt).localeCompare(String(responseAt)) > 0)) {
+      return {
+        response: 'confirmed',
+        note: manual.note || manual?.new_value?.note || '',
+        stamp: manualAt,
+        actorName: manual.actor_name || '',
+        source: 'admin_manual'
+      };
+    }
+    if (!response) return null;
+    return {
+      ...response,
+      stamp: responseAt,
+      actorName: '',
+      source: 'volunteer'
+    };
   };
 
   const assignmentEnteredCurrentShiftAt = (assignment) => {
@@ -447,7 +515,7 @@ async function personState(personId) {
   const hydratedAssignments = assignmentRows.map((assignment) => {
     const shift = shiftById.get(assignment.shift_id) || null;
     const activity = activityById.get(assignment.activity_id) || null;
-    const current = responseForAssignment(assignment);
+    const current = currentStateForAssignment(assignment);
     return {
       id: assignment.id,
       day: shift?.day_label || assignment.raw_day || '',
@@ -471,7 +539,8 @@ async function personState(personId) {
         : '',
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
-      currentResponseAt: current ? (submissionTime.get(current.submission_id) || current.created_at) : null
+      currentResponseAt: current?.stamp || null,
+      currentResponseSource: current?.source || null
     };
   });
 
@@ -484,14 +553,14 @@ async function personState(personId) {
     .filter((assignment) => {
       if (assignment.active !== false || supersededAssignmentIds.has(assignment.id)) return false;
       if (!assignment.shift_id || !shiftById.has(assignment.shift_id)) return false;
-      const response = responseForAssignment(assignment);
+      const response = currentStateForAssignment(assignment);
       return ['confirmed', 'declined'].includes(response?.response)
         || retainedConfirmationMarkedAssignmentIds.has(assignment.id);
     })
     .map((assignment) => {
       const shift = shiftById.get(assignment.shift_id) || null;
       const activity = activityById.get(assignment.activity_id) || null;
-      const response = responseForAssignment(assignment);
+      const response = currentStateForAssignment(assignment);
       const retainedConfirmation = retainedConfirmationMarkedAssignmentIds.has(assignment.id);
       const effectiveResponse = response?.response || (retainedConfirmation ? 'confirmed' : null);
       return {
@@ -505,7 +574,7 @@ async function personState(personId) {
         activity: activity?.name || 'Attività',
         response: effectiveResponse,
         note: response?.note || '',
-        responseAt: response ? (submissionTime.get(response.submission_id) || response.created_at || null) : null,
+        responseAt: response?.stamp || null,
         releasedAt: assignment.updated_at || null,
         retainedConfirmation
       };
