@@ -339,3 +339,88 @@ export async function sendVolunteerSummaryEmail({
 
   return { sent: true };
 }
+
+export async function sendVolunteerProgramEmail({
+  email,
+  personState,
+  requestUrl,
+  programUrl,
+  pdfBytes,
+  filename = 'programma-attivita.pdf'
+}) {
+  const recipient = cleanHeader(email, 254);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+    throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
+  }
+
+  const smtpHost = env('SMTP_HOST');
+  const smtpUser = env('SMTP_USER');
+  const smtpPass = env('SMTP_PASS');
+  const smtpPort = Number(env('SMTP_PORT') || 465);
+  const smtpSecure = String(env('SMTP_SECURE') || (smtpPort === 465)) === 'true';
+  const fromEmail = cleanHeader(
+    env('BOOKING_FROM_EMAIL') || env('CONTACT_FROM_EMAIL') || env('PARTNERSHIP_FROM_EMAIL') || smtpUser,
+    254
+  );
+  const fromName = cleanHeader(
+    env('BOOKING_FROM_NAME') || env('CONTACT_FROM_NAME') || env('PARTNERSHIP_FROM_NAME') || 'Campionati Italiani Coastal Rowing 2026',
+    160
+  );
+  const replyTo = cleanHeader(env('BOOKING_NOTIFICATION_RECIPIENT') || fromEmail, 254);
+
+  if (!smtpHost || !smtpUser || !smtpPass || !fromEmail) {
+    throw new ApiError('Il servizio email non è configurato.', 503, 'EMAIL_NOT_CONFIGURED');
+  }
+
+  const personName = clean(personState?.person?.display_name || 'Volontario', 160);
+  const link = clean(programUrl, 2000);
+  const prefix = isDeployPreview(requestUrl) ? 'TEST - ' : '';
+  const subject = `${prefix}Il programma delle tue attività - Campionati Italiani Coastal Rowing 2026`;
+  const text = [
+    `Ciao ${personName},`,
+    '',
+    'in allegato trovi il PDF con il programma aggiornato delle tue attività di supporto e delle tue gare.',
+    '',
+    ...(link ? [`Situazione aggiornata: ${link}`, ''] : []),
+    'Verifica sempre gli orari delle gare nel sito ufficiale della FIC: https://www.canottaggio.org/'
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#263f48;line-height:1.5;max-width:680px;margin:0 auto;">
+      <h2 style="margin:0 0 10px;font-size:22px;">Il programma delle tue attività</h2>
+      <p>Ciao <strong>${escapeHtml(personName)}</strong>,</p>
+      <p>in allegato trovi il PDF con il programma aggiornato delle tue attività di supporto e delle tue gare.</p>
+      ${link ? `<p>La situazione aggiornata è sempre disponibile qui: <a href="${escapeHtml(link)}">Le mie attività</a>.</p>` : ''}
+      <p>Verifica sempre gli orari delle gare nel <a href="https://www.canottaggio.org/">sito ufficiale della FIC</a>.</p>
+    </div>
+  `;
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: { user: smtpUser, pass: smtpPass }
+  });
+
+  try {
+    await transporter.sendMail({
+      from: { name: fromName, address: fromEmail },
+      envelope: { from: smtpUser, to: recipient },
+      to: recipient,
+      replyTo: replyTo || fromEmail,
+      subject,
+      text,
+      html,
+      attachments: [{
+        filename: cleanHeader(filename, 180) || 'programma-attivita.pdf',
+        content: Buffer.from(pdfBytes),
+        contentType: 'application/pdf'
+      }]
+    });
+  } catch (error) {
+    console.error('Invio programma volontario fallito:', error);
+    throw new ApiError('Non è stato possibile inviare il PDF. Riprova tra poco.', 502, 'EMAIL_DELIVERY_FAILED');
+  }
+
+  return { sent: true };
+}
