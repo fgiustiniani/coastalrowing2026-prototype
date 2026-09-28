@@ -5297,50 +5297,36 @@
       : '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>';
   }
 
-  function volunteerMatrixActivityMeta(value) {
-    const key = prettifyActivityName(value || '').trim();
-    const normalized = key.toLocaleLowerCase('it-IT');
-
-    if (normalized.startsWith('responsabile c1x')) return { key, label: 'Responsabile C1x', rank: 10 };
-    if (normalized.startsWith('tutor c1x')) return { key, label: 'Tutor C1x', rank: 20 };
-    if (normalized.startsWith('movimentazione c1x')) return { key, label: 'Movimentazione C1x', rank: 30 };
-    if (normalized.startsWith('responsabile c2x')) return { key, label: 'Responsabile C2x', rank: 40 };
-    if (normalized.startsWith('tutor c2x')) return { key, label: 'Tutor C2x', rank: 50 };
-    if (normalized.startsWith('movimentazione c2x')) return { key, label: 'Movimentazione C2x', rank: 60 };
-    if (normalized.startsWith('responsabile c4x')) return { key, label: 'Responsabile C4x+', rank: 70 };
-    if (normalized.startsWith('tutor c4x')) return { key, label: 'Tutor C4x+', rank: 80 };
-    if (normalized.startsWith('movimentazione c4x')) return { key, label: 'Movimentazione C4x', rank: 90 };
-    if (normalized.includes('addetti ai rientri')) return { key, label: 'Addetti ai rientri', rank: 100 };
-    return null;
+  function volunteerMatrixActivityKey(value) {
+    return prettifyActivityName(value || '')
+      .trim()
+      .toLocaleLowerCase('it-IT');
   }
 
   function volunteerMatrixActivityCatalog() {
     const byKey = new Map();
-    const activityValues = [
+
+    for (const activity of snapshot?.activities || []) {
+      const label = prettifyActivityName(activity.name || '').trim();
+      if (!label) continue;
+      const key = volunteerMatrixActivityKey(label);
+      if (!key || byKey.has(key)) continue;
+      byKey.set(key, { key, label });
+    }
+
+    for (const value of [
       ...requirements().map((row) => row.activity),
       ...(snapshot?.assignments || []).map((row) => displayActivity(row))
-    ];
-
-    for (const value of activityValues) {
-      const meta = volunteerMatrixActivityMeta(value);
-      if (!meta || byKey.has(meta.key)) continue;
-      byKey.set(meta.key, meta);
+    ]) {
+      const label = prettifyActivityName(value || '').trim();
+      const key = volunteerMatrixActivityKey(label);
+      if (!key || byKey.has(key)) continue;
+      byKey.set(key, { key, label });
     }
 
     return [...byKey.values()].sort((a, b) =>
-      a.rank - b.rank || a.label.localeCompare(b.label, 'it')
+      a.label.localeCompare(b.label, 'it')
     );
-  }
-
-  function volunteerMatrixRelevantShiftIds() {
-    const shiftIds = new Set();
-    for (const row of requirements()) {
-      if (row.shiftId && volunteerMatrixActivityMeta(row.activity)) shiftIds.add(row.shiftId);
-    }
-    for (const row of snapshot?.assignments || []) {
-      if (row.shiftId && volunteerMatrixActivityMeta(displayActivity(row))) shiftIds.add(row.shiftId);
-    }
-    return shiftIds;
   }
 
   function volunteerMatrixData() {
@@ -5359,13 +5345,14 @@
       .filter((item) => filterMatches(selectedActivities, item.key));
 
     const peopleByCell = new Map();
+    const visibleActivityKeys = new Set(activities.map((item) => item.key));
+    const visibleShiftIds = new Set(shifts.map((shift) => shift.id));
     for (const row of snapshot?.assignments || []) {
-      const meta = volunteerMatrixActivityMeta(displayActivity(row));
-      if (!meta || !row.shiftId) continue;
-      if (!shifts.some((shift) => shift.id === row.shiftId)) continue;
-      if (!activities.some((item) => item.key === meta.key)) continue;
+      if (!row.shiftId || !visibleShiftIds.has(row.shiftId)) continue;
+      const activityKey = volunteerMatrixActivityKey(displayActivity(row));
+      if (!activityKey || !visibleActivityKeys.has(activityKey)) continue;
 
-      const cellKey = `${meta.key}|||${row.shiftId}`;
+      const cellKey = `${activityKey}|||${row.shiftId}`;
       if (!peopleByCell.has(cellKey)) peopleByCell.set(cellKey, new Map());
       peopleByCell.get(cellKey).set(row.personId || row.personName, row.personName || '—');
     }
