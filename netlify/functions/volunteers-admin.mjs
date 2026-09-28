@@ -1865,6 +1865,68 @@ export default async (request) => {
         return json({ ok: true, assignment: result, availabilityTracked, retainedConfirmationTracked });
       }
 
+      if (action === 'confirm-assignment-manually') {
+        const assignmentId = clean(body.assignmentId, 60);
+        const note = clean(body.note, 1000);
+        if (!isUuid(assignmentId)) throw new ApiError('Assegnazione non valida.', 400, 'INVALID_ASSIGNMENT');
+        if (note.length < 2) throw new ApiError('Inserisci una nota per la conferma manuale.', 400, 'CONFIRMATION_NOTE_REQUIRED');
+
+        const assignmentRows = await adminRead('assegnazione da confermare manualmente', 'volunteer_assignments', {
+          query: {
+            select: 'id,person_id,shift_id,activity_id,raw_day,raw_shift,role,active',
+            id: `eq.${assignmentId}`,
+            active: 'eq.true',
+            limit: 1
+          }
+        });
+        const assignment = rows(assignmentRows)[0] || null;
+        if (!assignment) throw new ApiError('Assegnazione non trovata o non più attiva.', 404, 'ASSIGNMENT_NOT_FOUND');
+
+        const [person, shiftRows, activityRows, currentSnapshot] = await Promise.all([
+          activePerson(assignment.person_id),
+          assignment.shift_id
+            ? adminRead('turno conferma manuale', 'volunteer_shifts', {
+                query: { select: 'id,day_label,shift_label', id: `eq.${assignment.shift_id}`, limit: 1 }
+              })
+            : Promise.resolve([]),
+          adminRead('attività conferma manuale', 'volunteer_activities', {
+            query: { select: 'id,name', id: `eq.${assignment.activity_id}`, limit: 1 }
+          }),
+          adminSnapshot()
+        ]);
+
+        const shift = rows(shiftRows)[0] || null;
+        const activity = rows(activityRows)[0] || null;
+        const current = (currentSnapshot.assignments || []).find((row) => row.id === assignmentId) || null;
+
+        await auditAdminChange({
+          actorName,
+          actionType: 'assignment_manual_confirmation',
+          entityType: 'assignment',
+          entityId: assignment.id,
+          person,
+          previousValue: {
+            response: current?.currentResponse || null,
+            responseSource: current?.currentResponseSource || null,
+            note: current?.currentNote || null
+          },
+          newValue: {
+            response: 'confirmed',
+            source: 'admin_manual',
+            assignmentId: assignment.id,
+            shiftId: assignment.shift_id || null,
+            day: shift?.day_label || assignment.raw_day || '',
+            shift: shift?.shift_label || assignment.raw_shift || '',
+            activity: activity?.name || 'Attività',
+            role: assignment.role || null,
+            note
+          },
+          note
+        });
+
+        return json({ ok: true, confirmed: true, assignmentId: assignment.id });
+      }
+
       if (action === 'set-assignment-responsible') {
         const assignmentId = clean(body.assignmentId, 60);
         if (!isUuid(assignmentId)) throw new ApiError('Assegnazione non valida.', 400, 'INVALID_ASSIGNMENT');
