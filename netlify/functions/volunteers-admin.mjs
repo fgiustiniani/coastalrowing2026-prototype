@@ -464,7 +464,7 @@ async function adminSnapshot() {
       const person = personById.get(assignment.person_id) || null;
       const shift = shiftById.get(assignment.shift_id) || null;
       const activity = activityById.get(assignment.activity_id) || null;
-      const current = responseForAssignment(assignment);
+      const current = currentStateForAssignment(assignment);
       return {
         id: assignment.id,
         personId: assignment.person_id,
@@ -742,7 +742,7 @@ async function adminSnapshot() {
     const key = `${assignment.person_id}|${assignment.shift_id}`;
     if (activePersonShiftKeys.has(key)) continue;
 
-    const response = responseForAssignment(assignment);
+    const response = currentStateForAssignment(assignment);
     if (!['confirmed', 'declined'].includes(response?.response)) continue;
 
     const responseStamp = response?.stamp || response?.created_at || '';
