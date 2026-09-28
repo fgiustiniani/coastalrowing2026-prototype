@@ -71,6 +71,17 @@ async function adminReadAll(operation, path, options = {}) {
 }
 
 async function adminReadPeople() {
+  const withGroupAndTshirt = await adminReadOptionalColumn('persone con gruppo e taglia T-shirt', 'volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,person_group,tshirt_size,source_type,selectable,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'surname.asc,given_name.asc,display_name.asc'
+    }
+  });
+  if (withGroupAndTshirt !== null) {
+    return { data: withGroupAndTshirt, groupAvailable: true, tshirtSizeAvailable: true };
+  }
+
   const withGroup = await adminReadOptionalColumn('persone con gruppo', 'volunteer_people', {
     query: {
       select: 'id,person_code,display_name,surname,given_name,person_group,source_type,selectable,active,created_at,updated_at',
@@ -78,7 +89,20 @@ async function adminReadPeople() {
       order: 'surname.asc,given_name.asc,display_name.asc'
     }
   });
-  if (withGroup !== null) return { data: withGroup, groupAvailable: true };
+  if (withGroup !== null) {
+    return { data: withGroup, groupAvailable: true, tshirtSizeAvailable: false };
+  }
+
+  const withTshirt = await adminReadOptionalColumn('persone con taglia T-shirt', 'volunteer_people', {
+    query: {
+      select: 'id,person_code,display_name,surname,given_name,tshirt_size,source_type,selectable,active,created_at,updated_at',
+      active: 'eq.true',
+      order: 'surname.asc,given_name.asc,display_name.asc'
+    }
+  });
+  if (withTshirt !== null) {
+    return { data: withTshirt, groupAvailable: false, tshirtSizeAvailable: true };
+  }
 
   const fallback = await adminRead('persone', 'volunteer_people', {
     query: {
@@ -87,7 +111,7 @@ async function adminReadPeople() {
       order: 'surname.asc,given_name.asc,display_name.asc'
     }
   });
-  return { data: fallback, groupAvailable: false };
+  return { data: fallback, groupAvailable: false, tshirtSizeAvailable: false };
 }
 
 async function adminReadRequirements() {
@@ -209,6 +233,7 @@ async function adminSnapshot() {
 
   const peopleRows = rows(peopleResult?.data);
   const personGroupsAvailable = peopleResult?.groupAvailable === true;
+  const tshirtSizeAvailable = peopleResult?.tshirtSizeAvailable === true;
   const shiftRows = rows(shifts);
   const activityRows = rows(activities);
   const activityGroupRows = rows(activityGroups);
@@ -843,6 +868,7 @@ async function adminSnapshot() {
     generatedAt: new Date().toISOString(),
     people: peopleWithState,
     personGroupsAvailable,
+    tshirtSizeAvailable,
     shifts: shiftRows,
     activities: activityRows.filter((row) => row.active),
     activityCatalog: activityRows,
