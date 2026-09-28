@@ -6,6 +6,7 @@ import {
   formatApiError,
   isSameOrigin,
   isUuid,
+  issueVolunteerInvite,
   issueVolunteerSession,
   json,
   parseJsonBody,
@@ -14,7 +15,8 @@ import {
   rpc,
   supabaseRequest
 } from './_lib/volunteers-common.mjs';
-import { sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
+import { sendVolunteerProgramEmail, sendVolunteerSummaryEmail } from './_lib/volunteer-emails.mjs';
+import { buildVolunteerProgramPdf } from './_lib/volunteer-program-pdf.mjs';
 import { sendVolunteerSummaryWhatsApp } from './_lib/volunteer-whatsapp.mjs';
 
 const rows = (value) => Array.isArray(value) ? value : [];
@@ -112,9 +114,9 @@ async function readRequirementConfig() {
   }
 }
 
-async function listPeople(searchText = '') {
+async function listPeople(searchText = '', includeAll = false) {
   const query = clean(searchText, 120).trim().toLocaleLowerCase('it-IT');
-  if (query.length < 2) return [];
+  if (!includeAll && query.length < 2) return [];
   const people = await supabaseRequest('volunteer_people', {
     query: {
       select: 'id,person_code,display_name,surname,given_name,source_type',
@@ -123,12 +125,13 @@ async function listPeople(searchText = '') {
       order: 'surname.asc,given_name.asc,display_name.asc'
     }
   });
-  return rows(people)
+  const result = rows(people)
     .filter((person) => {
+      if (includeAll && !query) return true;
       const haystack = `${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_code || ''}`.toLocaleLowerCase('it-IT');
       return haystack.includes(query);
-    })
-    .slice(0, 12);
+    });
+  return includeAll ? result : result.slice(0, 12);
 }
 
 function normalizePersonName(value, maxLength = 160) {
@@ -525,6 +528,7 @@ async function personState(personId) {
       startsAt: shift?.starts_at || null,
       endsAt: shift?.ends_at || null,
       sortOrder: Number(shift?.sort_order ?? 9999),
+      activityId: assignment.activity_id || null,
       activity: activity?.name || 'Attività',
       role: assignment.role || '',
       requestedProfile: assignment.requested_profile || '',
@@ -753,6 +757,115 @@ async function personState(personId) {
       };
     });
 
+  const [allActiveAssignmentsResult, allPeopleResult, allRaceCrewResult] = await Promise.all([
+    supabaseRequest('volunteer_assignments', {
+      query: { select: 'person_id,shift_id,activity_id', active: 'eq.true' }
+    }),
+    supabaseRequest('volunteer_people', {
+      query: { select: 'id,display_name', active: 'eq.true' }
+    }),
+    raceRows.length
+      ? supabaseRequest('volunteer_race_program', {
+          query: { select: 'race_date,race_time,crew_label,person_name', active: 'eq.true' }
+        })
+      : Promise.resolve([])
+  ]);
+
+  const allActiveAssignments = rows(allActiveAssignmentsResult);
+  const activePersonNameById = new Map(rows(allPeopleResult).map((row) => [row.id, row.display_name || '']));
+  const allRaceCrewRows = rows(allRaceCrewResult);
+
+  const shiftRows = [...shiftById.values()]
+    .filter((shift) => shift?.id)
+    .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999));
+
+  const shiftsByDay = new Map();
+  for (const shift of shiftRows) {
+    const key = shift.day_label || '';
+    if (!shiftsByDay.has(key)) shiftsByDay.set(key, []);
+    shiftsByDay.get(key).push(shift);
+  }
+
+  const shiftEndLabel = (shift) => {
+    const match = String(shift?.shift_label || '').match(/[–-]\s*(\d{1,2}:\d{2})\s*$/);
+    return match ? match[1] : '';
+  };
+
+  const isHandoverPauseBoundary = (shift) => {
+    const day = String(shift?.day_label || '');
+    const end = shiftEndLabel(shift);
+    if (day.startsWith('Sabato') && ['13:00', '17:00'].includes(end)) return true;
+    if (day.startsWith('Domenica') && end === '13:00') return true;
+    return false;
+  };
+
+  const assignmentsByShiftActivity = new Map();
+  for (const row of allActiveAssignments) {
+    const key = `${row.shift_id || ''}|${row.activity_id || ''}`;
+    if (!assignmentsByShiftActivity.has(key)) assignmentsByShiftActivity.set(key, []);
+    assignmentsByShiftActivity.get(key).push(row);
+  }
+
+  const handovers = [];
+  for (const assignment of assignmentRows) {
+    const currentShift = shiftById.get(assignment.shift_id) || null;
+    if (!currentShift || !assignment.activity_id || isHandoverPauseBoundary(currentShift)) continue;
+
+    const dayShifts = shiftsByDay.get(currentShift.day_label || '') || [];
+    const laterActivityShifts = dayShifts.filter((candidate) =>
+      Number(candidate.sort_order ?? 9999) > Number(currentShift.sort_order ?? 9999)
+      && (assignmentsByShiftActivity.get(`${candidate.id}|${assignment.activity_id}`) || []).length > 0
+    );
+    const nextShift = laterActivityShifts[0] || null;
+    if (!nextShift) continue;
+
+    const nextRows = assignmentsByShiftActivity.get(`${nextShift.id}|${assignment.activity_id}`) || [];
+    const samePersonContinues = nextRows.some((row) => row.person_id === personId);
+    if (samePersonContinues) continue;
+
+    const successors = [...new Set(
+      nextRows
+        .map((row) => activePersonNameById.get(row.person_id) || '')
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'it'));
+
+    if (!successors.length) continue;
+    handovers.push({
+      assignmentId: assignment.id,
+      activityId: assignment.activity_id,
+      fromShiftId: currentShift.id,
+      toShiftId: nextShift.id,
+      day: currentShift.day_label || '',
+      fromShift: currentShift.shift_label || '',
+      toShift: nextShift.shift_label || '',
+      successors
+    });
+  }
+
+  const races = raceRows.map((race) => {
+    const keyDate = String(race.race_date || '');
+    const keyTime = String(race.race_time || '').slice(0, 5);
+    const keyCrew = String(race.crew_label || '');
+    const crewMembers = [...new Set(
+      allRaceCrewRows
+        .filter((row) =>
+          String(row.race_date || '') === keyDate
+          && String(row.race_time || '').slice(0, 5) === keyTime
+          && String(row.crew_label || '') === keyCrew
+        )
+        .map((row) => String(row.person_name || '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'it'));
+
+    return {
+      id: race.id,
+      raceDate: keyDate,
+      raceTime: keyTime,
+      crewLabel: keyCrew,
+      crewMembers
+    };
+  });
+
   return {
     person,
     assignments: hydratedAssignments,
@@ -761,9 +874,30 @@ async function personState(personId) {
     openRequestResponses,
     openRequests,
     availabilityShifts,
+    races,
+    handovers,
     tshirtSizeAvailable: personResult.tshirtSizeAvailable,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
   };
+}
+
+function volunteerProgramUrl(requestUrl, personId) {
+  const origin = new URL(requestUrl).origin;
+  const invite = issueVolunteerInvite('', 'summary');
+  const url = new URL('/internal/volontari/', origin);
+  url.searchParams.set('person', personId);
+  url.hash = `access=${encodeURIComponent(invite)}`;
+  return url.toString();
+}
+
+function volunteerProgramFilename(personState) {
+  const name = clean(personState?.person?.display_name || 'volontario', 160)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase() || 'volontario';
+  return `programma-attivita-${name}.pdf`;
 }
 
 export default async (request) => {
@@ -795,6 +929,62 @@ export default async (request) => {
       }
 
       const session = requireVolunteerSession(request);
+
+      if (action === 'download-program-pdf') {
+        if (session.mode !== 'summary') {
+          throw new ApiError('Questo link non è abilitato al programma attività.', 403, 'SUMMARY_LINK_REQUIRED');
+        }
+        const personId = clean(body.personId, 60);
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+
+        const state = await personState(personId);
+        const programUrl = volunteerProgramUrl(request.url, personId);
+        const pdfBytes = await buildVolunteerProgramPdf({
+          personState: state,
+          programUrl,
+          ficUrl: 'https://www.canottaggio.org/'
+        });
+
+        return new Response(Buffer.from(pdfBytes), {
+          status: 200,
+          headers: {
+            'content-type': 'application/pdf',
+            'content-disposition': `attachment; filename="${volunteerProgramFilename(state)}"`,
+            'cache-control': 'no-store, max-age=0'
+          }
+        });
+      }
+
+      if (action === 'email-program-pdf') {
+        if (session.mode !== 'summary') {
+          throw new ApiError('Questo link non è abilitato al programma attività.', 403, 'SUMMARY_LINK_REQUIRED');
+        }
+
+        const email = clean(body.email, 254);
+        const personId = clean(body.personId, 60);
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          throw new ApiError('Inserisci un indirizzo email valido.', 400, 'INVALID_EMAIL');
+        }
+
+        const state = await personState(personId);
+        const programUrl = volunteerProgramUrl(request.url, personId);
+        const pdfBytes = await buildVolunteerProgramPdf({
+          personState: state,
+          programUrl,
+          ficUrl: 'https://www.canottaggio.org/'
+        });
+        await sendVolunteerProgramEmail({
+          email,
+          personState: state,
+          requestUrl: request.url,
+          programUrl,
+          pdfBytes,
+          filename: volunteerProgramFilename(state)
+        });
+
+        return json({ ok: true, sent: true });
+      }
 
       if (action === 'save-tshirt-size') {
         if (session.mode !== 'summary') {
@@ -1160,13 +1350,13 @@ export default async (request) => {
     }
 
     if (request.method === 'GET') {
-      requireVolunteerSession(request);
+      const session = requireVolunteerSession(request);
       const url = new URL(request.url);
       const view = clean(url.searchParams.get('view') || 'people', 30);
       if (view === 'people') {
         const query = clean(url.searchParams.get('q'), 120);
         const [people, shifts, tshirtSizeAvailable] = await Promise.all([
-          listPeople(query),
+          listPeople(query, session.mode === 'summary'),
           listSelectableShifts(),
           readTshirtSizeCapability()
         ]);
