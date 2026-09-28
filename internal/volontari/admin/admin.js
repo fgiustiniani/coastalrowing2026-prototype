@@ -5285,16 +5285,35 @@
 
   function shiftBoardPersonState(row) {
     const response = effectiveAssignmentResponse(row);
+    const fromAvailability = row?.assignedFromAvailability === true;
+    const retainedConfirmation = row?.retainedConfirmation === true;
+    const currentResponse = row?.currentResponse || null;
+
     if (response === 'declined') {
-      return { key: 'declined', label: 'Non può', fromAvailability: false };
-    }
-    if (row?.assignedFromAvailability === true) {
-      return { key: 'confirmed', label: 'Confermata', fromAvailability: true };
+      return {
+        key: 'declined',
+        label: 'Non può',
+        fromAvailability,
+        retainedConfirmation,
+        currentResponse
+      };
     }
     if (response === 'confirmed') {
-      return { key: 'confirmed', label: 'Confermata', fromAvailability: false };
+      return {
+        key: 'confirmed',
+        label: 'Confermata',
+        fromAvailability,
+        retainedConfirmation,
+        currentResponse
+      };
     }
-    return { key: 'pending', label: 'Da rispondere', fromAvailability: false };
+    return {
+      key: 'pending',
+      label: 'Da rispondere',
+      fromAvailability,
+      retainedConfirmation,
+      currentResponse
+    };
   }
 
   function shiftBoardGroups() {
@@ -5343,12 +5362,16 @@
         isResponsible: false,
         statusKey: state.key,
         statusLabel: state.label,
-        fromAvailability: state.fromAvailability
+        fromAvailability: state.fromAvailability,
+        retainedConfirmation: state.retainedConfirmation,
+        currentResponse: state.currentResponse
       };
       current.isResponsible = current.isResponsible || row.isResponsible === true;
       current.statusKey = state.key;
       current.statusLabel = state.label;
       current.fromAvailability = current.fromAvailability || state.fromAvailability;
+      current.retainedConfirmation = current.retainedConfirmation || state.retainedConfirmation;
+      current.currentResponse = state.currentResponse || current.currentResponse || null;
       peopleMap.set(row.personId, current);
     }
 
@@ -5661,6 +5684,7 @@
     const title = options.title || 'Report volontari - vista per turni';
     const showGroups = options.showGroups === true;
     const showStatuses = options.showStatuses === true;
+    const showStaffing = options.showStaffing === true;
     const singleTurnPerPage = options.singleTurnPerPage === true;
     const pageSize = options.pageSize || 'A3 landscape';
     if (!groups.length) {
@@ -5680,24 +5704,54 @@
       byDay.get(group.day).push(group);
     }
 
+    const renderPdfStatus = (person) => {
+      if (!showStatuses) return '';
+
+      const icons = [];
+      if (person.retainedConfirmation) {
+        icons.push('<em class="pdf-status-icon is-retained" title="Conferma mantenuta da una precedente assegnazione nello stesso turno">↺</em>');
+      }
+      if (person.fromAvailability) {
+        icons.push('<em class="pdf-status-icon is-availability" title="Assegnato da disponibilità aggiuntiva">+</em>');
+      }
+
+      const showResponseIcon = !(person.fromAvailability && !person.currentResponse);
+      if (showResponseIcon) {
+        if (person.statusKey === 'confirmed') {
+          icons.push('<em class="pdf-status-icon is-confirmed" title="Confermata">✓</em>');
+        } else if (person.statusKey === 'declined') {
+          icons.push('<em class="pdf-status-icon is-declined" title="Non può">×</em><span class="pdf-status-text">Non può</span>');
+        } else {
+          icons.push('<em class="pdf-status-icon is-pending" title="Da rispondere">•</em><span class="pdf-status-text">Da risp.</span>');
+        }
+      }
+
+      return `<span class="pdf-status-icons">${icons.join('')}</span>`;
+    };
+
     const renderPdfPeople = (item) => item.people.length
       ? item.people.map((person) => {
           const name = `${person.isResponsible ? '★ ' : ''}${person.name}`;
-          const status = showStatuses
-            ? `<em class="pdf-status is-${escapeHtml(person.statusKey || 'pending')}">${escapeHtml(person.statusLabel || 'Da rispondere')}</em>${person.fromAvailability ? '<em class="pdf-status is-availability">Disp.+</em>' : ''}`
-            : '';
-          return `<span class="pdf-person ${person.isResponsible ? 'responsible' : ''}"><b>${escapeHtml(name)}</b>${status}</span>`;
+          return `<span class="pdf-person ${person.isResponsible ? 'responsible' : ''}"><b>${escapeHtml(name)}</b>${renderPdfStatus(person)}</span>`;
         }).join('')
       : '<span class="empty-people">Nessuno assegnato</span>';
 
-    const renderPdfActivity = (item) => `
-      <section class="activity-block">
-        <div class="activity-title-row">
-          <strong>${escapeHtml(item.activity)}</strong>
-          <span class="staffing-badge ${item.uncovered ? 'is-understaffed' : 'is-covered'}">${item.assignedCount}/${item.requiredCount} assegnati · ${item.uncovered ? 'SOTTO STAFFATA' : 'COPERTA'}</span>
-        </div>
-        <div class="people-list">${renderPdfPeople(item)}</div>
-      </section>`;
+    const renderPdfActivity = (item) => {
+      const staffing = showStaffing
+        && Number.isFinite(Number(item.assignedCount))
+        && Number.isFinite(Number(item.requiredCount))
+        ? `<span class="staffing-badge ${item.uncovered ? 'is-understaffed' : 'is-covered'}">${Number(item.assignedCount)}/${Number(item.requiredCount)} assegnati · ${item.uncovered ? 'SOTTO STAFFATA' : 'COPERTA'}</span>`
+        : '';
+
+      return `
+        <section class="activity-block">
+          <div class="activity-title-row ${staffing ? '' : 'without-staffing'}">
+            <strong>${escapeHtml(item.activity)}</strong>
+            ${staffing}
+          </div>
+          <div class="people-list">${renderPdfPeople(item)}</div>
+        </section>`;
+    };
 
     const renderPdfActivities = (activities) => {
       if (!showGroups) return activities.map(renderPdfActivity).join('');
@@ -5725,7 +5779,15 @@
           </div>
           <span>Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</span>
         </header>
-        ${showGroups ? `<div class="pdf-legend"><span class="responsible legend-sample">Nome persona</span><span>= responsabile</span><span class="staffing-badge is-covered">3/3 assegnati · COPERTA</span><span class="staffing-badge is-understaffed">2/3 assegnati · SOTTO STAFFATA</span></div>` : ''}
+        ${showGroups ? `<div class="pdf-legend"><span class="responsible legend-sample">Nome persona</span><span>= responsabile</span>${showStaffing ? '<span class="staffing-badge is-covered">3/3 assegnati · COPERTA</span><span class="staffing-badge is-understaffed">2/3 assegnati · SOTTO STAFFATA</span>' : ''}</div>` : ''}
+        ${showStatuses ? `<div class="pdf-status-legend">
+          <span><i class="pdf-status-icon is-confirmed">✓</i> Confermata</span>
+          <span><i class="pdf-status-icon is-availability">+</i> Da disponibilità aggiuntiva</span>
+          <span><i class="pdf-status-icon is-retained">↺</i> Conferma precedente mantenuta</span>
+          <span><i class="pdf-status-icon is-declined">×</i> Non può</span>
+          <span><i class="pdf-status-icon is-pending">•</i> Da rispondere</span>
+          <span><b>★</b> Responsabile</span>
+        </div>` : ''}
         <div class="turn-grid" style="grid-template-columns:repeat(${dayGroups.length},minmax(0,1fr))">
           ${dayGroups.map((group) => `
             <article class="turn-column">
@@ -5769,11 +5831,17 @@
       .people-list .pdf-person { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
       .people-list .pdf-person + .pdf-person::before { content: none; }
       .people-list .responsible, .pdf-legend .responsible { margin: 1px 0; padding: 1px 4px; border: 1px solid #d0aa35; border-radius: 4px; background: #fff1b8; color: #5b4300; font-weight: 800; }
-      .pdf-status { display: inline-block; padding: 1px 4px; border-radius: 999px; font-style: normal; font-weight: 800; font-size: .9em; }
-      .pdf-status.is-confirmed { background: #e9f6ed; color: #255f38; }
-      .pdf-status.is-pending { background: #edf1f2; color: #607078; }
-      .pdf-status.is-declined { background: #fdeceb; color: #8d3028; }
-      .pdf-status.is-availability { background: #fff2c9; color: #745a00; }
+      .activity-title-row.without-staffing { justify-content: flex-start; }
+      .pdf-status-icons { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+      .pdf-status-icon { display: inline-grid; place-items: center; min-width: 15px; height: 15px; padding: 0 3px; border: 1px solid; border-radius: 999px; font-style: normal; font-size: 9px; line-height: 1; font-weight: 900; }
+      .pdf-status-icon.is-confirmed { border-color: #78aa88; background: #e9f6ed; color: #255f38; }
+      .pdf-status-icon.is-availability { border-color: #d6b74e; background: #fff2c9; color: #745a00; }
+      .pdf-status-icon.is-retained { border-color: #7ea3ad; background: #eef5f6; color: #315e69; }
+      .pdf-status-icon.is-declined { border-color: #df9d96; background: #fdeceb; color: #8d3028; }
+      .pdf-status-icon.is-pending { border-color: #b4c0c4; background: #edf1f2; color: #607078; }
+      .pdf-status-text { font-size: .92em; color: #526870; white-space: nowrap; }
+      .pdf-status-legend { display: flex; align-items: center; gap: 5px 11px; flex-wrap: wrap; margin: 0 0 8px; padding: 5px 7px; border: 1px solid #d6e1e3; border-radius: 6px; background: #f8fbfb; font-size: 6.6px; color: #526870; }
+      .pdf-status-legend span { display: inline-flex; align-items: center; gap: 3px; }
       .empty-people { color: #7b8a8e; font-style: italic; }
     </style></head><body>${pages}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
@@ -5791,6 +5859,7 @@
       exportShiftBoardPdfByDay(shiftBoardGroups(), {
         title: 'Report volontari - per giorno e turno',
         showStatuses: true,
+        showStaffing: false,
         pageSize: 'A4 landscape'
       });
     }
@@ -7575,6 +7644,7 @@
     exportShiftBoardPdfByDay(assignmentBoardPdfGroups(), {
       title: 'Report volontari - gestione a schede',
       showGroups: true,
+      showStaffing: true,
       singleTurnPerPage: true,
       pageSize: 'A4 landscape'
     });
