@@ -335,7 +335,7 @@
 
   function renderPeople() {
     const query = String(personSearch?.value || '').trim();
-    if (manualBox) manualBox.hidden = query.length < 2 || Boolean(state.selectedPerson) || state.people.length > 0;
+    if (manualBox) manualBox.hidden = state.mode === 'summary' || query.length < 2 || Boolean(state.selectedPerson) || state.people.length > 0;
     if (state.selectedPerson && query === sortLabel(state.selectedPerson)) {
       personResults.innerHTML = '';
       return;
