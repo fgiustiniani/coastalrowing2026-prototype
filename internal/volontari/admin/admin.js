@@ -148,6 +148,8 @@
   let boardCollapsedActivities = new Set();
   let boardCollapsedAvailability = new Set();
   let boardCollapsedUnavailable = new Set();
+  let volunteerMatrixActivityOrder = [];
+  let volunteerMatrixDragKey = '';
   let boardDragEndedAt = 0;
   let boardEditContext = null;
   let copyRequirementContext = null;
@@ -173,6 +175,12 @@
   try {
     const storedUnavailable = JSON.parse(localStorage.getItem('coastal2026-admin-board-collapsed-unavailable') || '[]');
     boardCollapsedUnavailable = new Set(Array.isArray(storedUnavailable) ? storedUnavailable : []);
+  } catch {}
+  try {
+    const storedMatrixOrder = JSON.parse(localStorage.getItem('coastal2026-admin-volunteer-matrix-activity-order') || '[]');
+    volunteerMatrixActivityOrder = Array.isArray(storedMatrixOrder)
+      ? storedMatrixOrder.filter((value) => typeof value === 'string' && value)
+      : [];
   } catch {}
 
   const escapeHtml = (value) => String(value ?? '')
@@ -5425,7 +5433,16 @@
       .toLocaleLowerCase('it-IT');
   }
 
-  function volunteerMatrixActivityCatalog() {
+  function saveVolunteerMatrixActivityOrder() {
+    try {
+      localStorage.setItem(
+        'coastal2026-admin-volunteer-matrix-activity-order',
+        JSON.stringify(volunteerMatrixActivityOrder)
+      );
+    } catch {}
+  }
+
+  function volunteerMatrixBaseActivityCatalog() {
     const byKey = new Map();
 
     for (const activity of snapshot?.activities || []) {
@@ -5448,6 +5465,71 @@
 
     return [...byKey.values()].sort((a, b) =>
       a.label.localeCompare(b.label, 'it')
+    );
+  }
+
+  function volunteerMatrixActivityCatalog() {
+    const base = volunteerMatrixBaseActivityCatalog();
+    const byKey = new Map(base.map((item) => [item.key, item]));
+    const ordered = [];
+    const seen = new Set();
+
+    for (const key of volunteerMatrixActivityOrder) {
+      const item = byKey.get(key);
+      if (!item || seen.has(key)) continue;
+      ordered.push(item);
+      seen.add(key);
+    }
+    for (const item of base) {
+      if (seen.has(item.key)) continue;
+      ordered.push(item);
+      seen.add(item.key);
+    }
+
+    const normalizedOrder = ordered.map((item) => item.key);
+    if (
+      normalizedOrder.length !== volunteerMatrixActivityOrder.length
+      || normalizedOrder.some((key, index) => key !== volunteerMatrixActivityOrder[index])
+    ) {
+      volunteerMatrixActivityOrder = normalizedOrder;
+      saveVolunteerMatrixActivityOrder();
+    }
+
+    return ordered;
+  }
+
+  function reorderVolunteerMatrixActivity(sourceKey, targetKey, placeAfter = false) {
+    if (!sourceKey || !targetKey || sourceKey === targetKey) return;
+
+    const keys = volunteerMatrixActivityCatalog().map((item) => item.key);
+    const sourceIndex = keys.indexOf(sourceKey);
+    const targetIndex = keys.indexOf(targetKey);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    keys.splice(sourceIndex, 1);
+    let insertAt = keys.indexOf(targetKey);
+    if (insertAt < 0) return;
+    if (placeAfter) insertAt += 1;
+    keys.splice(insertAt, 0, sourceKey);
+
+    volunteerMatrixActivityOrder = keys;
+    saveVolunteerMatrixActivityOrder();
+    renderVolunteerMatrixReport();
+  }
+
+  function moveVolunteerMatrixActivity(activityKey, direction) {
+    const visibleRows = volunteerMatrixData().rows;
+    const index = visibleRows.findIndex((row) => row.key === activityKey);
+    if (index < 0) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const target = visibleRows[targetIndex];
+    if (!target) return;
+
+    reorderVolunteerMatrixActivity(
+      activityKey,
+      target.key,
+      direction === 'down'
     );
   }
 
@@ -5506,9 +5588,33 @@
 
     volunteerMatrixReport.innerHTML = `<table class="admin-table volunteer-matrix-table">
       <thead><tr><th class="volunteer-matrix-activity-head">Attività</th>${head}</tr></thead>
-      <tbody>${rows.map((row) => `
-        <tr>
-          <th scope="row" class="volunteer-matrix-activity-cell">${escapeHtml(row.label)}</th>
+      <tbody>${rows.map((row, rowIndex) => `
+        <tr class="volunteer-matrix-row" data-volunteer-matrix-row="${escapeHtml(row.key)}">
+          <th scope="row" class="volunteer-matrix-activity-cell">
+            <div class="volunteer-matrix-activity-layout">
+              <button type="button"
+                class="volunteer-matrix-drag-handle"
+                draggable="true"
+                data-volunteer-matrix-drag="${escapeHtml(row.key)}"
+                title="Trascina per riordinare"
+                aria-label="Trascina ${escapeHtml(row.label)} per riordinare">⋮⋮</button>
+              <span class="volunteer-matrix-activity-label">${escapeHtml(row.label)}</span>
+              <span class="volunteer-matrix-order-buttons">
+                <button type="button"
+                  data-volunteer-matrix-move="up"
+                  data-volunteer-matrix-key="${escapeHtml(row.key)}"
+                  aria-label="Sposta ${escapeHtml(row.label)} in alto"
+                  title="Sposta in alto"
+                  ${rowIndex === 0 ? 'disabled' : ''}>↑</button>
+                <button type="button"
+                  data-volunteer-matrix-move="down"
+                  data-volunteer-matrix-key="${escapeHtml(row.key)}"
+                  aria-label="Sposta ${escapeHtml(row.label)} in basso"
+                  title="Sposta in basso"
+                  ${rowIndex === rows.length - 1 ? 'disabled' : ''}>↓</button>
+              </span>
+            </div>
+          </th>
           ${shifts.map((shift) => {
             const people = row.peopleByShift.get(shift.id) || [];
             return `<td class="volunteer-matrix-people-cell ${people.length ? '' : 'is-empty'}">${people.length
@@ -7694,6 +7800,59 @@
   [volunteerMatrixShiftFilter, volunteerMatrixActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderVolunteerMatrixReport));
   volunteerMatrixExportPdf?.addEventListener('click', exportVolunteerMatrixPdf);
+
+  volunteerMatrixReport?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-volunteer-matrix-move]');
+    if (!button) return;
+    const key = button.dataset.volunteerMatrixKey || '';
+    const direction = button.dataset.volunteerMatrixMove || '';
+    if (!key || !['up', 'down'].includes(direction)) return;
+    moveVolunteerMatrixActivity(key, direction);
+  });
+
+  volunteerMatrixReport?.addEventListener('dragstart', (event) => {
+    const handle = event.target.closest('[data-volunteer-matrix-drag]');
+    if (!handle) return;
+    volunteerMatrixDragKey = handle.dataset.volunteerMatrixDrag || '';
+    const row = handle.closest('[data-volunteer-matrix-row]');
+    row?.classList.add('is-dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', volunteerMatrixDragKey);
+  });
+
+  volunteerMatrixReport?.addEventListener('dragover', (event) => {
+    if (!volunteerMatrixDragKey) return;
+    const targetRow = event.target.closest('[data-volunteer-matrix-row]');
+    const targetKey = targetRow?.dataset.volunteerMatrixRow || '';
+    if (!targetRow || !targetKey || targetKey === volunteerMatrixDragKey) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    volunteerMatrixReport.querySelectorAll('.is-drop-before, .is-drop-after')
+      .forEach((node) => node.classList.remove('is-drop-before', 'is-drop-after'));
+
+    const rect = targetRow.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+    targetRow.classList.add(placeAfter ? 'is-drop-after' : 'is-drop-before');
+  });
+
+  volunteerMatrixReport?.addEventListener('drop', (event) => {
+    if (!volunteerMatrixDragKey) return;
+    const targetRow = event.target.closest('[data-volunteer-matrix-row]');
+    const targetKey = targetRow?.dataset.volunteerMatrixRow || '';
+    if (!targetRow || !targetKey || targetKey === volunteerMatrixDragKey) return;
+
+    event.preventDefault();
+    const rect = targetRow.getBoundingClientRect();
+    const placeAfter = event.clientY > rect.top + rect.height / 2;
+    reorderVolunteerMatrixActivity(volunteerMatrixDragKey, targetKey, placeAfter);
+  });
+
+  volunteerMatrixReport?.addEventListener('dragend', () => {
+    volunteerMatrixDragKey = '';
+    volunteerMatrixReport.querySelectorAll('.is-dragging, .is-drop-before, .is-drop-after')
+      .forEach((node) => node.classList.remove('is-dragging', 'is-drop-before', 'is-drop-after'));
+  });
   [requirementShiftFilter, requirementActivityFilter, requirementUnderstaffedFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
