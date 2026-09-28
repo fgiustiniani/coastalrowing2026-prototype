@@ -484,6 +484,11 @@
     }
 
     readonlySummary.innerHTML = `
+      <aside class="volunteer-program__remember volunteer-program__remember--top">
+        <strong>Ricorda</strong>
+        <span>Questa pagina mostra la situazione aggiornata. Nel PDF troverai anche i riferimenti per tornare sempre a <strong>Le mie attività</strong>.</span>
+        <span>Verifica sempre gli orari delle gare nel <a href="https://www.canottaggio.org/" target="_blank" rel="noopener">sito ufficiale della FIC</a>.</span>
+      </aside>
       <div class="volunteer-program__days">
         ${days.map((day) => `
           <section class="volunteer-program__day">
@@ -516,11 +521,6 @@
           </section>
         `).join('')}
       </div>
-      <aside class="volunteer-program__remember">
-        <strong>Ricorda</strong>
-        <span>Questa pagina mostra la situazione aggiornata. Nel PDF troverai anche i riferimenti per tornare sempre a <strong>Le mie attività</strong>.</span>
-        <span>Verifica sempre gli orari delle gare nel <a href="https://www.canottaggio.org/" target="_blank" rel="noopener">sito ufficiale della FIC</a>.</span>
-      </aside>
     `;
   }
 
@@ -1311,7 +1311,6 @@
     try {
       await loadPeople();
       configureSummaryModeUi();
-      showApp();
 
       if (state.mode === 'summary') {
         if (state.requestedPersonId) {
@@ -1331,12 +1330,15 @@
           }
         } else {
           showStep(2);
-          personSearch?.focus();
         }
       } else {
         showStep(1);
-        actorNameInput?.focus();
       }
+
+      // Rendiamo visibile l'app solo quando lo step corretto è già stato risolto.
+      showApp();
+      if (state.mode === 'summary' && state.step === 2) personSearch?.focus();
+      if (state.mode !== 'summary' && state.step === 1) actorNameInput?.focus();
     } catch (error) {
       if (error.status === 401) {
         clearSession();
