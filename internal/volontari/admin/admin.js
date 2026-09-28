@@ -287,6 +287,21 @@
     return match ? `${match[3]}/${match[2]}` : String(value || '—');
   };
 
+  const formatRaceDayShort = (value) => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return String(value || '—');
+    try {
+      const date = new Date(`${value}T12:00:00Z`);
+      const weekday = new Intl.DateTimeFormat('it-IT', {
+        weekday: 'short',
+        timeZone: 'Europe/Rome'
+      }).format(date).replace('.', '');
+      return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${match[3]}/${match[2]}`;
+    } catch {
+      return `${match[3]}/${match[2]}`;
+    }
+  };
+
   function responseBadge(value) {
     if (value === 'confirmed') return '<span class="status-badge is-confirmed">Confermata</span>';
     if (value === 'declined') return '<span class="status-badge is-declined">Non può</span>';
@@ -4662,6 +4677,22 @@
       const latest = person?.latestVolunteerSubmission || null;
       const submissionCount = Number(person?.submissionCount || 0);
       const answered = submissionCount > 0;
+      const raceRows = snapshot?.raceProgramAvailable
+        ? (snapshot?.raceProgram || [])
+            .filter((race) => race.personId === item.id)
+            .sort((a, b) =>
+              String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+              || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+              || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+            )
+            .map((race) => ({
+              date: race.raceDate || '',
+              time: race.raceTime || '',
+              crewLabel: race.crewLabel || '',
+              when: `${formatRaceDayShort(race.raceDate)} · ${race.raceTime || 'orario da definire'}`,
+              label: `${formatRaceDayShort(race.raceDate)} · ${race.raceTime || 'orario da definire'}${race.crewLabel ? ` — ${race.crewLabel}` : ''}`
+            }))
+        : [];
 
       const availability = freeAvailabilityRows.map((row) => ({
         ...row,
@@ -4749,6 +4780,8 @@
         noteRows,
         availability,
         activityRows,
+        raceRows,
+        racesText: raceRows.map((row) => row.label).join('\n'),
         activities: activityRows.map((row) => row.label),
         activitiesText: activityRows.map((row) => `${row.label} — ${row.responseLabel}`).join('\n'),
         availabilityText: availability.map((a) => `${a.day} ${a.shift} — ${a.availabilityLabel}${a.note ? ` - ${a.note}` : ''}`).join('\n'),
@@ -4832,7 +4865,7 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Taglia T-shirt</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità libere</th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Taglia T-shirt</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità libere</th><th>Gare</th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       const submissionCount = Number(item.submissionCount || 0);
       const submissionCountHtml = submissionCount > 0
@@ -4849,6 +4882,7 @@
         <td class="person-report-submissions"><div class="person-report-submission-actions">${submissionCountHtml}${summaryEmailButton}</div>${item.latest ? `<small>ultimo: ${escapeHtml(formatDateTime(item.latest.createdAt))}</small>` : '<small>Nessun invio</small>'}</td>
         <td class="notes-cell person-report-notes-col">${item.notes ? `<button class="report-note-button" type="button" data-report-note-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Visualizza note di ${escapeHtml(item.name)}" title="Visualizza note">👁</button>` : '—'}</td>
         <td class="availability-report-cell">${availability.length ? `<div class="availability-report-list">${availability.map((a) => `<div class="availability-report-line"><strong>${escapeHtml(a.day)} · ${escapeHtml(a.shift)}</strong><small>${escapeHtml(a.availabilityLabel || 'Disponibilità libera')}</small>${a.note ? `<small>${escapeHtml(a.note)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
+        <td class="person-report-races-cell">${item.raceRows?.length ? `<div class="person-report-race-list">${item.raceRows.map((race) => `<div class="person-report-race-line"><strong>${escapeHtml(race.when)}</strong>${race.crewLabel ? `<small>${escapeHtml(race.crewLabel)}</small>` : ''}</div>`).join('')}</div>` : '—'}</td>
       </tr>`;
     }).join('')}</tbody></table>` : '<p class="empty-state">Nessuna persona corrisponde ai filtri.</p>';
   }
@@ -5810,7 +5844,8 @@
       nonPuo: String(item.declined),
       invii: String(item.submissionCount || 0),
       note: item.notes || '',
-      disponibilita: item.availabilityText || ''
+      disponibilita: item.availabilityText || '',
+      gare: item.racesText || ''
     }));
     const commonColumns = [
       { key: 'persona', label: 'Persona' },
@@ -5819,7 +5854,8 @@
       { key: 'attivita', label: 'Attività', multiline: true },
       { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
       { key: 'invii', label: 'Invii' }, { key: 'note', label: 'Note' },
-      { key: 'disponibilita', label: 'Disponibilità aggiuntive' }
+      { key: 'disponibilita', label: 'Disponibilità aggiuntive' },
+      { key: 'gare', label: 'Gare', multiline: true }
     ];
     if (kind === 'excel') {
       exportExcel('report-volontari-per-persona.xls', 'Per persona', [
