@@ -156,6 +156,24 @@
           </div>
         </article>
 
+        <article class="card admin-section volunteer-matrix-section" data-volunteer-matrix-section>
+          <div class="section-head">
+            <div><p class="eyebrow">Report</p><h2>Matrice turni e attività</h2></div>
+            <div class="section-actions">
+              <button class="button button--secondary" type="button" data-volunteer-matrix-export-pdf>PDF</button>
+              <button class="button button--secondary collapse-button" type="button" data-collapse-target="volunteer-matrix-content" aria-expanded="false">Espandi</button>
+            </div>
+          </div>
+          <div id="volunteer-matrix-content" data-collapsible-content hidden>
+            <p class="intro">Righe per Responsabili, Tutor, Movimentazione e Addetti ai rientri; colonne per turno. Le celle mostrano le persone attualmente assegnate.</p>
+            <div class="filter-grid filter-grid--report volunteer-matrix-filters">
+              <label class="field compact-field"><span>Turno</span><select data-volunteer-matrix-shift-filter multiple><option value="">Tutti</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-volunteer-matrix-activity-filter multiple><option value="">Tutte</option></select></label>
+            </div>
+            <div class="table-wrap volunteer-matrix-wrap" data-volunteer-matrix-report></div>
+          </div>
+        </article>
+
       </section>
 
       <section class="card admin-section">
