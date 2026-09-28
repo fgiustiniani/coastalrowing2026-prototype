@@ -135,6 +135,61 @@ function normalizePersonName(value, maxLength = 160) {
   return clean(value, maxLength).replace(/\s+/g, ' ').trim();
 }
 
+const TSHIRT_SIZES = new Set(['S', 'M', 'L', 'XL']);
+
+function normalizeTshirtSize(value, required = false) {
+  const size = clean(value, 4).trim().toUpperCase();
+  if (!size && !required) return '';
+  if (!TSHIRT_SIZES.has(size)) {
+    throw new ApiError('Seleziona una taglia T-shirt valida: S, M, L oppure XL.', 400, 'INVALID_TSHIRT_SIZE');
+  }
+  return size;
+}
+
+function isMissingColumnError(error) {
+  const code = clean(error?.payload?.code || '', 50);
+  return error instanceof SupabaseError && ['PGRST204', '42703'].includes(code);
+}
+
+async function readPersonRecord(personId) {
+  try {
+    const people = await supabaseRequest('volunteer_people', {
+      query: {
+        select: 'id,person_code,display_name,surname,given_name,tshirt_size',
+        id: `eq.${personId}`,
+        active: 'eq.true',
+        selectable: 'eq.true',
+        limit: 1
+      }
+    });
+    return { person: rows(people)[0] || null, tshirtSizeAvailable: true };
+  } catch (error) {
+    if (!isMissingColumnError(error)) throw error;
+    const people = await supabaseRequest('volunteer_people', {
+      query: {
+        select: 'id,person_code,display_name,surname,given_name',
+        id: `eq.${personId}`,
+        active: 'eq.true',
+        selectable: 'eq.true',
+        limit: 1
+      }
+    });
+    return { person: rows(people)[0] || null, tshirtSizeAvailable: false };
+  }
+}
+
+async function readTshirtSizeCapability() {
+  try {
+    await supabaseRequest('volunteer_people', {
+      query: { select: 'id,tshirt_size', limit: 1 }
+    });
+    return true;
+  } catch (error) {
+    if (isMissingColumnError(error)) return false;
+    throw error;
+  }
+}
+
 async function resolveManualPerson(surnameValue, givenNameValue, legacyDisplayName = '') {
   const surname = normalizePersonName(surnameValue, 80);
   const givenName = normalizePersonName(givenNameValue, 80);
@@ -204,10 +259,8 @@ async function listSelectableShifts() {
 }
 
 async function personState(personId) {
-  const people = await supabaseRequest('volunteer_people', {
-    query: { select: 'id,person_code,display_name,surname,given_name', id: `eq.${personId}`, active: 'eq.true', selectable: 'eq.true', limit: 1 }
-  });
-  const person = rows(people)[0];
+  const personResult = await readPersonRecord(personId);
+  const person = personResult.person;
   if (!person) throw new ApiError('Persona non trovata.', 404, 'PERSON_NOT_FOUND');
 
   const [assignments, assignmentHistory, activities, shifts, submissions, requirements, openRequestAudit, raceProgram] = await Promise.all([
@@ -639,6 +692,7 @@ async function personState(personId) {
     openRequestResponses,
     openRequests,
     availabilityShifts,
+    tshirtSizeAvailable: personResult.tshirtSizeAvailable,
     latestSubmission: latestSubmission ? { id: latestSubmission.id, actorName: latestSubmission.actor_name, createdAt: latestSubmission.created_at } : null
   };
 }
@@ -840,6 +894,7 @@ export default async (request) => {
       let result;
       try {
         const currentState = await personState(resolvedPersonId);
+        const tshirtSize = normalizeTshirtSize(body.tshirtSize, currentState.tshirtSizeAvailable === true);
         const requestableGroups = currentState.openRequests || [];
         const requestableByKey = new Map(
           requestableGroups.map((item) => [
@@ -866,6 +921,16 @@ export default async (request) => {
           )
         ) {
           throw new ApiError('Completa tutte le nuove richieste prima dell’invio.', 400, 'VOLUNTEER_RESPONSES_INCOMPLETE');
+        }
+
+        if (currentState.tshirtSizeAvailable === true) {
+          await supabaseRequest('volunteer_people', {
+            method: 'PATCH',
+            query: { id: `eq.${resolvedPersonId}` },
+            body: { tshirt_size: tshirtSize },
+            prefer: 'return=minimal'
+          });
+          currentState.person.tshirt_size = tshirtSize;
         }
 
         const availabilityMap = new Map(
@@ -1007,8 +1072,12 @@ export default async (request) => {
       const view = clean(url.searchParams.get('view') || 'people', 30);
       if (view === 'people') {
         const query = clean(url.searchParams.get('q'), 120);
-        const [people, shifts] = await Promise.all([listPeople(query), listSelectableShifts()]);
-        return json({ people, shifts });
+        const [people, shifts, tshirtSizeAvailable] = await Promise.all([
+          listPeople(query),
+          listSelectableShifts(),
+          readTshirtSizeCapability()
+        ]);
+        return json({ people, shifts, tshirtSizeAvailable });
       }
       if (view === 'person') {
         const personId = clean(url.searchParams.get('id'), 60);
