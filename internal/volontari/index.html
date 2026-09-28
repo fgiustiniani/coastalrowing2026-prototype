@@ -133,6 +133,26 @@
         </div>
       </section>
 
+      <section class="card volunteer-tshirt-step" data-step="6" hidden>
+        <p class="eyebrow">T-shirt staff</p>
+        <h2>Indica la tua taglia</h2>
+        <p class="muted">Seleziona la misura della T-shirt dello staff. La scelta è obbligatoria.</p>
+        <label class="field">
+          <span>Misura</span>
+          <select data-readonly-tshirt-size required>
+            <option value="">Seleziona la misura</option>
+            <option value="S">S</option>
+            <option value="M">M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+          </select>
+        </label>
+        <p class="status" data-readonly-tshirt-status aria-live="polite"></p>
+        <div class="actions actions--end">
+          <button class="button button--primary" type="button" data-save-readonly-tshirt>Salva e continua</button>
+        </div>
+      </section>
+
       <section class="card volunteer-readonly-summary" data-step="5" hidden>
         <div class="volunteer-overview">
           <p class="eyebrow">Riepilogo personale</p>
