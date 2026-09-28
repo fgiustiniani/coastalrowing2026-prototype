@@ -5719,7 +5719,7 @@ tr.is-busy button.is-busy {
 /* Report per persona: layout leggibile desktop */
 #person-report-content .person-report-filters {
   width: 100%;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
   gap: 12px;
 }
 
