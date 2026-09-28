@@ -7629,7 +7629,7 @@
       const body = await api(`${API}?view=invite&mode=summary`);
       if (!body.accessUrl) throw new Error('Link non disponibile.');
       await writeClipboard(new URL(body.accessUrl, location.origin).toString());
-      setStatus(inviteStatus, 'Link riepilogo attività copiato.', 'success');
+      setStatus(inviteStatus, 'Link “Le mie attività” copiato.', 'success');
       linkTypeDialog?.close();
     } catch (error) {
       setStatus(linkTypeStatus, error.message, 'error');
