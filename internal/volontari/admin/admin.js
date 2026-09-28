@@ -6068,6 +6068,37 @@
     warningNode.innerHTML = personActivityWarningHtml(personMoveCandidate(rowNode, row));
   }
 
+  function personAssignmentResponseControlsHtml(row) {
+    const response = effectiveAssignmentResponse(row);
+    const isManualConfirmation = response === 'confirmed' && row.currentResponseSource === 'admin_manual';
+
+    if (isManualConfirmation) {
+      return `
+        <div class="person-response-stack">
+          ${responseBadge('confirmed')}
+          <span class="manual-confirmation-badge" title="${escapeHtml(row.currentNote || 'Conferma inserita manualmente dall’admin')}">Manuale</span>
+          ${row.currentNote ? `<small class="manual-confirmation-note">${escapeHtml(row.currentNote)}</small>` : ''}
+        </div>`;
+    }
+
+    if (response === 'confirmed') return responseBadge('confirmed');
+
+    return `
+      <div class="person-response-stack">
+        ${responseBadge(response)}
+        <button class="table-link person-manual-confirm-open" type="button"
+          data-person-manual-confirm-open="${escapeHtml(row.id)}">Conferma manualmente</button>
+        <div class="person-manual-confirm-form" data-person-manual-confirm-form="${escapeHtml(row.id)}" hidden>
+          <input type="text" maxlength="1000" data-person-manual-confirm-note
+            placeholder="Nota obbligatoria, es. confermato telefonicamente">
+          <div class="person-manual-confirm-actions">
+            <button class="table-link" type="button" data-person-manual-confirm-save="${escapeHtml(row.id)}">Conferma</button>
+            <button class="table-link is-muted" type="button" data-person-manual-confirm-cancel="${escapeHtml(row.id)}">Annulla</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function personActivitiesHtml(personId, selectedAssignmentId = '') {
     const rows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
@@ -6088,7 +6119,7 @@
                   ${requirementOptions(assignmentRequirementId(row))}
                 </select>
               </td>
-              <td>${responseBadge(effectiveAssignmentResponse(row))}</td>
+              <td>${personAssignmentResponseControlsHtml(row)}</td>
               <td><input class="person-assignment-note-input" type="text" maxlength="1000" data-person-assignment-note value="${escapeHtml(row.note || '')}" placeholder="Nota facoltativa"></td>
               <td class="person-activity-warning" data-person-row-warning>${personActivityWarningHtml(row)}</td>
               <td><button class="table-link" type="button" data-person-move-assignment="${escapeHtml(row.id)}">Salva</button></td>
