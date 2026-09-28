@@ -306,6 +306,7 @@ async function personState(personId) {
   const assignmentRows = rows(assignments);
   const assignmentHistoryRows = rows(assignmentHistory);
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+  const manualConfirmationAuditRows = rows(manualConfirmationAudit);
   const latestManualConfirmationByAssignment = new Map();
   const manuallyConfirmedShiftIds = new Set();
   for (const event of manualConfirmationAuditRows) {
@@ -323,7 +324,6 @@ async function personState(personId) {
   const shiftById = new Map(rows(shifts).map((row) => [row.id, row]));
   const requirementRows = rows(requirements?.data);
   const openRequestAuditRows = rows(openRequestAudit);
-  const manualConfirmationAuditRows = rows(manualConfirmationAudit);
   const raceRows = rows(raceProgram);
   const responseOpenByRequirement = new Map(
     requirementRows.map((row) => [`${row.shift_id}|${row.activity_id}`, row.response_open === true])
