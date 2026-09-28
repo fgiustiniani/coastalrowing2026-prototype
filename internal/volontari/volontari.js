@@ -229,6 +229,12 @@
     return match ? `${match[1].padStart(2, '0')}:${match[2]}` : 'orario da definire';
   }
 
+  function programTimeMinutes(value) {
+    const match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+    if (!match) return 9999;
+    return (Number(match[1]) * 60) + Number(match[2]);
+  }
+
   function configureSummaryModeUi() {
     const isSummary = state.mode === 'summary';
     if (summaryPersonPicker) summaryPersonPicker.hidden = !isSummary;
@@ -441,13 +447,9 @@
         || 'Le mie attività';
     }
 
-    const handoverByAssignment = new Map(
-      (state.personState?.handovers || []).map((row) => [row.assignmentId, row])
-    );
-
     const byDay = new Map();
     const ensureDay = (day, order) => {
-      if (!byDay.has(day)) byDay.set(day, { day, order, assignments: [], races: [] });
+      if (!byDay.has(day)) byDay.set(day, { day, order, items: [] });
       const current = byDay.get(day);
       if (Number(order) < Number(current.order)) current.order = order;
       return current;
@@ -455,13 +457,21 @@
 
     assignments.forEach((row) => {
       const day = row.day || 'Giorno da definire';
-      ensureDay(day, Number(row.sortOrder ?? 9999)).assignments.push(row);
+      ensureDay(day, Number(row.sortOrder ?? 9999)).items.push({
+        kind: 'assignment',
+        timeMinutes: programTimeMinutes(row.shift),
+        row
+      });
     });
 
     races.forEach((race) => {
       const day = formatProgramRaceDay(race.raceDate);
       const raceStamp = Date.parse(`${race.raceDate || ''}T${formatProgramRaceTime(race.raceTime)}:00`);
-      ensureDay(day, Number.isFinite(raceStamp) ? raceStamp : 9999999999999).races.push(race);
+      ensureDay(day, Number.isFinite(raceStamp) ? raceStamp : 9999999999999).items.push({
+        kind: 'race',
+        timeMinutes: programTimeMinutes(race.raceTime),
+        row: race
+      });
     });
 
     const days = [...byDay.values()].sort((a, b) => Number(a.order) - Number(b.order)
@@ -478,30 +488,29 @@
           <section class="volunteer-program__day">
             <h3>${escapeHtml(day.day)}</h3>
             <div class="volunteer-program__items">
-              ${day.assignments.map((item) => {
-                const handover = handoverByAssignment.get(item.id) || null;
-                return `
-                  <article class="volunteer-program__item is-assignment">
-                    <span class="volunteer-program__kind">Attività di supporto</span>
-                    <strong class="volunteer-program__time">${escapeHtml(item.shift || '')}</strong>
-                    <span class="volunteer-program__activity">${escapeHtml(displayActivityName(item.activity || 'Attività'))}</span>
-                    ${handover?.successors?.length ? `
-                      <div class="volunteer-program__handover">
-                        <strong>Chi viene dopo di me · ${escapeHtml(handover.toShift || '')}</strong>
-                        <span>${escapeHtml(handover.successors.join(', '))}</span>
-                      </div>` : ''}
-                  </article>`;
-              }).join('')}
-              ${day.races.map((race) => `
-                <article class="volunteer-program__item is-race">
-                  <span class="volunteer-program__kind">Gara</span>
-                  <strong class="volunteer-program__time">${escapeHtml(formatProgramRaceTime(race.raceTime))}</strong>
-                  <span class="volunteer-program__activity">${escapeHtml(race.crewLabel || 'Gara')}</span>
-                  ${race.crewMembers?.length ? `
-                    <span class="volunteer-program__crew"><strong>Equipaggio:</strong> ${escapeHtml(race.crewMembers.join(', '))}</span>
-                  ` : ''}
-                </article>
-              `).join('')}
+              ${[...day.items]
+                .sort((a, b) => a.timeMinutes - b.timeMinutes || (a.kind === 'race' ? 1 : -1))
+                .map((entry) => {
+                  if (entry.kind === 'assignment') {
+                    const item = entry.row;
+                    return `
+                      <article class="volunteer-program__item is-assignment">
+                        <span class="volunteer-program__kind">Attività di supporto</span>
+                        <strong class="volunteer-program__time">${escapeHtml(item.shift || '')}</strong>
+                        <span class="volunteer-program__activity">${escapeHtml(displayActivityName(item.activity || 'Attività'))}</span>
+                      </article>`;
+                  }
+                  const race = entry.row;
+                  return `
+                    <article class="volunteer-program__item is-race">
+                      <span class="volunteer-program__kind">Gara</span>
+                      <strong class="volunteer-program__time">${escapeHtml(formatProgramRaceTime(race.raceTime))}</strong>
+                      <span class="volunteer-program__activity">${escapeHtml(race.crewLabel || 'Gara')}</span>
+                      ${race.crewMembers?.length ? `
+                        <span class="volunteer-program__crew"><strong>Equipaggio:</strong> ${escapeHtml(race.crewMembers.join(', '))}</span>
+                      ` : ''}
+                    </article>`;
+                }).join('')}
             </div>
           </section>
         `).join('')}
