@@ -65,6 +65,12 @@ function formatRaceTime(value) {
   return match ? match[1].padStart(2, '0') + ':' + match[2] : 'orario da definire';
 }
 
+function timeMinutes(value) {
+  const match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+  if (!match) return 9999;
+  return (Number(match[1]) * 60) + Number(match[2]);
+}
+
 function daySortKey(label, assignments, races) {
   const assignment = assignments.find((row) => row.day === label && row.startsAt);
   if (assignment) {
@@ -435,10 +441,19 @@ export async function buildVolunteerProgramPdf({
   } else {
     for (const day of dayLabels) {
       drawDayTitle(day);
-      const dayAssignments = assignments.filter((row) => safeText(row.day) === day);
-      const dayRaces = races.filter((row) => formatRaceDay(row.raceDate) === day);
-      for (const assignment of dayAssignments) drawAssignment(assignment);
-      for (const race of dayRaces) drawRace(race);
+      const dayItems = [
+        ...assignments
+          .filter((row) => safeText(row.day) === day)
+          .map((row) => ({ kind: 'assignment', time: timeMinutes(row.shift), row })),
+        ...races
+          .filter((row) => formatRaceDay(row.raceDate) === day)
+          .map((row) => ({ kind: 'race', time: timeMinutes(row.raceTime), row }))
+      ].sort((a, b) => a.time - b.time || (a.kind === 'race' ? 1 : -1));
+
+      for (const item of dayItems) {
+        if (item.kind === 'assignment') drawAssignment(item.row);
+        else drawRace(item.row);
+      }
       y -= 5;
     }
   }
