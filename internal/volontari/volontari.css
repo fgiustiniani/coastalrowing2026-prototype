@@ -649,6 +649,142 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 }
 
 
+/* Programma personale attività e gare */
+.volunteer-program__head h2 {
+  margin: 2px 0 6px;
+  font-size: clamp(1.65rem, 5vw, 2.25rem);
+  line-height: 1.12;
+}
+.volunteer-program__days {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+.volunteer-program__day {
+  display: grid;
+  gap: 10px;
+}
+.volunteer-program__day > h3 {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+.volunteer-program__items {
+  display: grid;
+  gap: 10px;
+}
+.volunteer-program__item {
+  display: grid;
+  gap: 4px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+}
+.volunteer-program__item.is-assignment {
+  border-color: #bad9df;
+  background: #eef8fa;
+}
+.volunteer-program__item.is-race {
+  border-color: #e5c58a;
+  background: #fff7e7;
+}
+.volunteer-program__kind {
+  width: fit-content;
+  font-size: .7rem;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+}
+.volunteer-program__item.is-race .volunteer-program__kind {
+  color: #946300;
+}
+.volunteer-program__time {
+  margin-top: 2px;
+  font-size: 1.08rem;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.volunteer-program__activity {
+  font-size: .9rem;
+  line-height: 1.35;
+  font-weight: 750;
+  color: var(--ink);
+}
+.volunteer-program__crew {
+  margin-top: 3px;
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.volunteer-program__handover {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid #9fcbd3;
+  border-radius: 10px;
+  background: #fff;
+  font-size: .8rem;
+  line-height: 1.4;
+}
+.volunteer-program__handover strong {
+  color: var(--accent-dark);
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.volunteer-program__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.volunteer-program__remember {
+  display: grid;
+  gap: 5px;
+  margin-top: 20px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+  color: var(--ink);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.volunteer-program__remember > strong {
+  color: var(--accent-dark);
+  text-transform: uppercase;
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
+.volunteer-program__remember a {
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+[data-summary-person-picker] .field {
+  margin-bottom: 8px;
+}
+[data-summary-person-select] {
+  font-size: 1rem;
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .volunteer-program__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .volunteer-program__actions .button {
+    width: 100%;
+  }
+}
+
 /* Link riepilogo attività in sola lettura */
 .volunteer-readonly-summary .summary-items {
   margin-top: 16px;
