@@ -54,6 +54,7 @@
   const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
   const personReportShiftFilter = document.querySelector('[data-person-report-shift-filter]');
   const personReportActivityFilter = document.querySelector('[data-person-report-activity-filter]');
+  const personReportAssignmentScopeFilter = document.querySelector('[data-person-report-assignment-scope-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const personReportStatusFilter = document.querySelector('[data-person-report-status-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
@@ -4644,7 +4645,10 @@
         .filter((itemState) => itemState.kind === 'campaign')
         .map((itemState) => itemState.row);
 
-      const reportRows = [...activeRows, ...historicalRows];
+      const reportRows = [
+        ...activeRows.map((row) => ({ ...row, reportScope: 'active' })),
+        ...historicalRows.map((row) => ({ ...row, reportScope: 'history' }))
+      ];
 
       const assignmentConfirmed = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'confirmed').length;
       const assignmentDeclined = reportRows.filter((row) => effectiveAssignmentResponse(row) === 'declined').length;
@@ -4678,6 +4682,7 @@
         .map((row) => ({
           shiftId: row.shiftId || '',
           activity: displayActivity(row),
+          assignmentScope: row.reportScope || 'active',
           text: `${displayActivity(row)}: ${String(row.currentNote).trim()}`
         }));
       const notes = noteRows.map((row) => row.text);
@@ -4693,7 +4698,8 @@
           return {
             shiftId: row.shiftId || '',
             activity: displayActivity(row),
-            label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
+            label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.reportScope === 'history' ? ' · storico' : ''}`,
+            assignmentScope: row.reportScope || 'active',
             response,
             statusKey: assignmentStatusKey(row),
             responseLabel: responseLabel(response),
@@ -4704,6 +4710,7 @@
           shiftId: row.shiftId || '',
           activity: prettifyActivityName(row.activity || ''),
           label: `${row.day}-${row.shift} ${row.activity} · ${row.campaignName}`,
+          assignmentScope: 'history',
           response: row.response,
           statusKey: row.response === 'declined' ? 'declined' : 'confirmed',
           responseLabel: responseLabel(row.response),
@@ -4713,6 +4720,7 @@
           shiftId: row.shiftId || '',
           activity: prettifyActivityName(row.activity || ''),
           label: `${row.day}-${row.shift} ${row.activity} · nuova richiesta`,
+          assignmentScope: 'open',
           response: 'pending',
           statusKey: 'pending',
           responseLabel: 'Da rispondere',
@@ -4754,6 +4762,7 @@
     const groups = selectedFilterValues(personReportGroupFilter);
     const shiftIds = selectedFilterValues(personReportShiftFilter);
     const activities = selectedFilterValues(personReportActivityFilter);
+    const assignmentScopes = selectedFilterValues(personReportAssignmentScopeFilter);
     const answers = selectedFilterValues(personReportResponseFilter);
     const statuses = selectedFilterValues(personReportStatusFilter);
 
@@ -4761,12 +4770,13 @@
       .map((item) => {
         const activityRows = (item.activityRows || [])
           .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId))
-          .filter((row) => !activities.length || activities.includes(String(row.activity || '')));
+          .filter((row) => !activities.length || activities.includes(String(row.activity || '')))
+          .filter((row) => !assignmentScopes.length || assignmentScopes.includes(row.assignmentScope || 'active'));
 
         const availability = (item.availability || [])
           .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId));
 
-        if (activities.length) {
+        if (activities.length || assignmentScopes.length) {
           if (!activityRows.length) return null;
         } else if (shiftIds.length && !activityRows.length && !availability.length) {
           return null;
@@ -4778,7 +4788,8 @@
 
         const noteRows = (item.noteRows || [])
           .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId))
-          .filter((row) => !activities.length || activities.includes(String(row.activity || '')));
+          .filter((row) => !activities.length || activities.includes(String(row.activity || '')))
+          .filter((row) => !assignmentScopes.length || assignmentScopes.includes(row.assignmentScope || 'active'));
 
         const statusKeys = [...new Set([
           ...activityRows.map((row) => row.statusKey || row.response || 'pending'),
@@ -7866,7 +7877,7 @@
   [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentStatusFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
-  [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportActivityFilter, personReportResponseFilter, personReportStatusFilter]
+  [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportActivityFilter, personReportAssignmentScopeFilter, personReportResponseFilter, personReportStatusFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   [shiftBoardPersonFilter, shiftBoardActivityFilter, shiftBoardShiftFilter]
     .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
