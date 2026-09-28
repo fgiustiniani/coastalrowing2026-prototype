@@ -4664,6 +4664,7 @@
         submissionCount,
         responseState,
         statusKeys,
+        tshirtSize: String(person?.tshirt_size || '').trim().toUpperCase(),
         notes: notes.join('; '),
         availability,
         activityRows,
@@ -4690,7 +4691,7 @@
 
   function renderPersonReport() {
     const report = filteredPersonReportRows();
-    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità libere</th></tr></thead><tbody>${report.map((item) => {
+    personReport.innerHTML = report.length ? `<table class="admin-table person-report-table"><thead><tr><th>Persona</th><th>Taglia T-shirt</th><th>Stato</th><th>Attività</th><th>Confermate</th><th>Non può</th><th>Invii</th><th class="person-report-notes-col">Note</th><th>Disponibilità libere</th></tr></thead><tbody>${report.map((item) => {
       const availability = item.availability || [];
       const submissionCount = Number(item.submissionCount || 0);
       const submissionCountHtml = submissionCount > 0
@@ -4699,6 +4700,7 @@
       const summaryEmailButton = `<button class="report-email-button" type="button" data-send-summary-email-person="${item.id}" data-person-name="${escapeHtml(item.name)}" aria-label="Invia riepilogo email a ${escapeHtml(item.name)}" title="Invia riepilogo email">✉</button>`;
       return `<tr class="person-report-row is-${escapeHtml(item.responseState.key)}">
         <td><strong>${escapeHtml(item.name)}</strong></td>
+        <td><strong>${escapeHtml(item.tshirtSize || '—')}</strong></td>
         <td><span class="status-badge is-${escapeHtml(item.responseState.key)}">${escapeHtml(item.responseState.label)}</span></td>
         <td class="people-cell">${item.activityRows?.length ? `<div class="activity-report-list">${item.activityRows.map((activity) => `<div class="activity-report-line person-report-activity"><span>${escapeHtml(activity.label)}</span><span class="status-badge is-${escapeHtml(activity.response)}">${escapeHtml(activity.responseLabel)}</span></div>`).join('')}</div>` : '—'}</td>
         <td><strong>${item.confirmed}</strong></td>
@@ -5322,6 +5324,7 @@
     const rows = filteredPersonReportRows().map((item) => ({
       persona: item.name,
       codice: item.code || '',
+      taglia: item.tshirtSize || '',
       attivita: item.activitiesText || '',
       stato: item.responseState?.label || (item.answered ? 'Ha risposto' : 'Non ha risposto'),
       confermate: String(item.confirmed),
@@ -5332,6 +5335,7 @@
     }));
     const commonColumns = [
       { key: 'persona', label: 'Persona' },
+      { key: 'taglia', label: 'Taglia T-shirt' },
       { key: 'stato', label: 'Stato' },
       { key: 'attivita', label: 'Attività', multiline: true },
       { key: 'confermate', label: 'Confermate' }, { key: 'nonPuo', label: 'Non può' },
