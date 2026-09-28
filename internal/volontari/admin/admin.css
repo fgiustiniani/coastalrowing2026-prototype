@@ -5634,3 +5634,83 @@ tr.is-busy button.is-busy {
   font-size: .86rem;
   line-height: 1.4;
 }
+
+
+/* Report matrice turni / attività */
+.volunteer-matrix-section {
+  grid-column: 1 / -1;
+}
+.volunteer-matrix-filters {
+  margin-bottom: 12px;
+}
+.volunteer-matrix-wrap {
+  overflow-x: auto;
+}
+.volunteer-matrix-table {
+  min-width: 980px;
+  table-layout: fixed;
+}
+.volunteer-matrix-table th,
+.volunteer-matrix-table td {
+  vertical-align: top;
+}
+.volunteer-matrix-activity-head,
+.volunteer-matrix-activity-cell {
+  width: 185px;
+  min-width: 185px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f4f8f9;
+}
+.volunteer-matrix-table thead .volunteer-matrix-activity-head {
+  z-index: 4;
+}
+.volunteer-matrix-activity-cell {
+  color: var(--accent-dark);
+  font-size: .8rem;
+  font-weight: 850;
+}
+.volunteer-matrix-shift-head {
+  min-width: 155px;
+}
+.volunteer-matrix-shift-head strong,
+.volunteer-matrix-shift-head span {
+  display: block;
+}
+.volunteer-matrix-shift-head span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: .72rem;
+}
+.volunteer-matrix-people-cell {
+  min-width: 155px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.volunteer-matrix-people-cell > span {
+  display: block;
+  padding: 2px 0;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.volunteer-matrix-people-cell.is-empty {
+  background: #fafcfc;
+}
+.volunteer-matrix-empty {
+  color: #9aa9ad;
+}
+@media (max-width: 700px) {
+  .volunteer-matrix-table {
+    min-width: 860px;
+  }
+  .volunteer-matrix-activity-head,
+  .volunteer-matrix-activity-cell {
+    width: 155px;
+    min-width: 155px;
+  }
+  .volunteer-matrix-shift-head,
+  .volunteer-matrix-people-cell {
+    min-width: 140px;
+  }
+}
