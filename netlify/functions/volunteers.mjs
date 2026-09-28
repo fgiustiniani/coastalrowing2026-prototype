@@ -116,7 +116,9 @@ async function readRequirementConfig() {
 
 async function listPeople(searchText = '', includeAll = false) {
   const query = clean(searchText, 120).trim().toLocaleLowerCase('it-IT');
-  if (!includeAll && query.length < 2) return [];
+  // Anche il link di riepilogo richiede almeno due caratteri: una richiesta vuota
+  // non deve mai restituire l'intera anagrafica.
+  if (query.length < 2) return [];
   const people = await supabaseRequest('volunteer_people', {
     query: {
       select: 'id,person_code,display_name,surname,given_name,source_type',
@@ -127,11 +129,10 @@ async function listPeople(searchText = '', includeAll = false) {
   });
   const result = rows(people)
     .filter((person) => {
-      if (includeAll && !query) return true;
       const haystack = `${person.surname || ''} ${person.given_name || ''} ${person.display_name || ''} ${person.person_code || ''}`.toLocaleLowerCase('it-IT');
       return haystack.includes(query);
     });
-  return includeAll ? result : result.slice(0, 12);
+  return result.slice(0, 12);
 }
 
 function normalizePersonName(value, maxLength = 160) {
