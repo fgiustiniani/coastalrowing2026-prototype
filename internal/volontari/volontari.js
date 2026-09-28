@@ -19,7 +19,9 @@
     clientSubmissionId: crypto.randomUUID(),
     latestSubmissionId: null,
     requestedPersonId: '',
-    mode: 'survey'
+    mode: 'survey',
+    tshirtSize: '',
+    tshirtSizeAvailable: false
   };
 
   const accessCard = document.querySelector('[data-access-card]');
@@ -63,6 +65,9 @@
   const readonlyEmailInput = document.querySelector('[data-readonly-email]');
   const readonlyEmailStatus = document.querySelector('[data-readonly-email-status]');
   const readonlyEmailSubmit = document.querySelector('[data-readonly-email-submit]');
+  const tshirtSection = document.querySelector('[data-tshirt-section]');
+  const tshirtSizeInput = document.querySelector('[data-tshirt-size]');
+  const tshirtStatus = document.querySelector('[data-tshirt-status]');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -161,6 +166,9 @@
     const body = await apiRequest(`${api}?view=people&q=${encodeURIComponent(query)}`);
     state.people = Array.isArray(body.people) ? body.people : [];
     state.cachedShifts = Array.isArray(body.shifts) ? body.shifts : [];
+    if (typeof body.tshirtSizeAvailable === 'boolean') {
+      state.tshirtSizeAvailable = body.tshirtSizeAvailable;
+    }
     renderPeople();
   }
 
@@ -277,6 +285,9 @@
     state.responses = new Map();
     state.availability = new Map();
     state.initialAvailability = new Map();
+    state.tshirtSizeAvailable = detail?.tshirtSizeAvailable !== false;
+    state.tshirtSize = String(detail?.person?.tshirt_size || '').trim().toUpperCase();
+    if (!['S', 'M', 'L', 'XL'].includes(state.tshirtSize)) state.tshirtSize = '';
 
     originalUnusedAvailability().forEach((shift) => {
       const value = { selected: true, note: shift.note || '' };
@@ -285,16 +296,27 @@
     });
   }
 
+  function tshirtSummaryHtml() {
+    if (!state.tshirtSizeAvailable || !state.tshirtSize) return '';
+    return `
+      <div class="summary-tshirt">
+        <strong>Taglia T-shirt</strong>
+        <span>${escapeHtml(state.tshirtSize)}</span>
+      </div>
+    `;
+  }
+
   function renderReadOnlySummary() {
     const assignments = sortShiftsChronologically(state.personState?.assignments || []);
     if (!readonlySummary) return;
 
     if (!assignments.length) {
-      readonlySummary.innerHTML = '<p class="summary-empty">Non risultano attività assegnate.</p>';
+      readonlySummary.innerHTML = `${tshirtSummaryHtml()}<p class="summary-empty">Non risultano attività assegnate.</p>`;
       return;
     }
 
     readonlySummary.innerHTML = `
+      ${tshirtSummaryHtml()}
       <div class="summary-items summary-items--unified">
         ${assignments.map((item) => {
           const confirmed = item.currentResponse === 'confirmed'
@@ -366,7 +388,8 @@
       assignments: [],
       openRequests: [],
       availabilityShifts: [],
-      latestSubmission: null
+      latestSubmission: null,
+      tshirtSizeAvailable: state.tshirtSizeAvailable
     });
     setStatus(personSelection, '');
     renderWorkspace();
@@ -654,11 +677,12 @@
     ]);
 
     if (!rows.length) {
-      summary.innerHTML = '<p class="summary-empty">Nessuna disponibilità da riepilogare.</p>';
+      summary.innerHTML = `${tshirtSummaryHtml()}<p class="summary-empty">Nessuna disponibilità da riepilogare.</p>`;
       return;
     }
 
     summary.innerHTML = `
+      ${tshirtSummaryHtml()}
       <div class="summary-items summary-items--unified">
         ${rows.map((item) => {
           const availabilityRaceConflict = item.summaryKind === 'availability' && item.raceConflict === true;
@@ -681,6 +705,26 @@
         }).join('')}
       </div>
     `;
+  }
+
+  function validateTshirt({ focus = false } = {}) {
+    if (!state.tshirtSizeAvailable) {
+      setStatus(tshirtStatus, '');
+      return true;
+    }
+    const value = String(state.tshirtSize || '').trim().toUpperCase();
+    if (['S', 'M', 'L', 'XL'].includes(value)) {
+      state.tshirtSize = value;
+      if (tshirtSizeInput) tshirtSizeInput.value = value;
+      setStatus(tshirtStatus, '');
+      return true;
+    }
+    setStatus(tshirtStatus, 'Seleziona la taglia della T-shirt.', 'error');
+    if (focus) {
+      tshirtSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      tshirtSizeInput?.focus();
+    }
+    return false;
   }
 
   function validateRequests({ focus = false } = {}) {
@@ -728,6 +772,9 @@
 
   function renderWorkspace() {
     renderPersonIntro();
+    if (tshirtSection) tshirtSection.hidden = !state.tshirtSizeAvailable;
+    if (tshirtSizeInput) tshirtSizeInput.value = state.tshirtSize || '';
+    setStatus(tshirtStatus, '');
     renderAssignments();
     renderAvailability();
     updateSubmitState();
@@ -735,6 +782,7 @@
   }
 
   function goToSummary() {
+    if (!validateTshirt({ focus: true })) return;
     if (!validateRequests({ focus: true })) return;
     renderSummary();
     updateSubmitState();
@@ -743,6 +791,7 @@
   }
 
   async function submit() {
+    if (!validateTshirt({ focus: true })) return;
     if (!validateRequests({ focus: true })) return;
 
     const originalText = submitButton?.textContent || 'Invia risposte';
@@ -758,6 +807,7 @@
         manualPersonName: state.selectedPerson ? null : state.manualPersonName,
         manualSurname: state.selectedPerson ? null : state.manualSurname,
         manualGivenName: state.selectedPerson ? null : state.manualGivenName,
+        tshirtSize: state.tshirtSizeAvailable ? state.tshirtSize : null,
         clientSubmissionId: state.clientSubmissionId,
         website: submitWebsite?.value || '',
         openRequestResponses: requestGroups()
@@ -915,6 +965,10 @@
     continueWithActor();
   });
   continueManual?.addEventListener('click', continueWithManualPerson);
+  tshirtSizeInput?.addEventListener('change', () => {
+    state.tshirtSize = String(tshirtSizeInput.value || '').trim().toUpperCase();
+    setStatus(tshirtStatus, '');
+  });
   nextSummary?.addEventListener('click', goToSummary);
   backToResponses?.addEventListener('click', () => showStep(3));
 
