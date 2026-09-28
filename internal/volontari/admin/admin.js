@@ -66,6 +66,10 @@
   const shiftBoardPersonFilter = document.querySelector('[data-shift-board-person-filter]');
   const shiftBoardActivityFilter = document.querySelector('[data-shift-board-activity-filter]');
   const shiftBoardShiftFilter = document.querySelector('[data-shift-board-shift-filter]');
+  const volunteerMatrixReport = document.querySelector('[data-volunteer-matrix-report]');
+  const volunteerMatrixShiftFilter = document.querySelector('[data-volunteer-matrix-shift-filter]');
+  const volunteerMatrixActivityFilter = document.querySelector('[data-volunteer-matrix-activity-filter]');
+  const volunteerMatrixExportPdf = document.querySelector('[data-volunteer-matrix-export-pdf]');
   const confirmationChanges = document.querySelector('[data-confirmation-changes]');
   const confirmationLinkStatus = document.querySelector('[data-confirmation-link-status]');
   const personCatalog = document.querySelector('[data-person-catalog]');
@@ -1384,6 +1388,17 @@
       .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
     setSelectOptions(activityReportShiftFilter, reportShifts, 'Tutti');
     setSelectOptions(shiftBoardShiftFilter, reportShifts, 'Tutti');
+
+    const matrixActivities = volunteerMatrixActivityCatalog()
+      .map((item) => ({ value: item.key, label: item.label }));
+    setSelectOptions(volunteerMatrixActivityFilter, matrixActivities, 'Tutte');
+
+    const matrixRelevantShiftIds = volunteerMatrixRelevantShiftIds();
+    const matrixShifts = [...(snapshot?.shifts || [])]
+      .filter((shift) => matrixRelevantShiftIds.has(shift.id))
+      .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999))
+      .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
+    setSelectOptions(volunteerMatrixShiftFilter, matrixShifts, 'Tutti');
 
     const planningShifts = [...new Map(requirements()
       .filter((row) => row.shiftId)
@@ -5284,6 +5299,151 @@
       : '<p class="empty-state">Nessun turno corrisponde ai filtri.</p>';
   }
 
+  function volunteerMatrixActivityMeta(value) {
+    const key = prettifyActivityName(value || '').trim();
+    const normalized = key.toLocaleLowerCase('it-IT');
+
+    if (normalized.startsWith('responsabile c1x')) return { key, label: 'Responsabile C1x', rank: 10 };
+    if (normalized.startsWith('tutor c1x')) return { key, label: 'Tutor C1x', rank: 20 };
+    if (normalized.startsWith('movimentazione c1x')) return { key, label: 'Movimentazione C1x', rank: 30 };
+    if (normalized.startsWith('responsabile c2x')) return { key, label: 'Responsabile C2x', rank: 40 };
+    if (normalized.startsWith('tutor c2x')) return { key, label: 'Tutor C2x', rank: 50 };
+    if (normalized.startsWith('movimentazione c2x')) return { key, label: 'Movimentazione C2x', rank: 60 };
+    if (normalized.startsWith('responsabile c4x')) return { key, label: 'Responsabile C4x+', rank: 70 };
+    if (normalized.startsWith('tutor c4x')) return { key, label: 'Tutor C4x+', rank: 80 };
+    if (normalized.startsWith('movimentazione c4x')) return { key, label: 'Movimentazione C4x', rank: 90 };
+    if (normalized.includes('addetti ai rientri')) return { key, label: 'Addetti ai rientri', rank: 100 };
+    return null;
+  }
+
+  function volunteerMatrixActivityCatalog() {
+    const byKey = new Map();
+    const activityValues = [
+      ...requirements().map((row) => row.activity),
+      ...(snapshot?.assignments || []).map((row) => displayActivity(row))
+    ];
+
+    for (const value of activityValues) {
+      const meta = volunteerMatrixActivityMeta(value);
+      if (!meta || byKey.has(meta.key)) continue;
+      byKey.set(meta.key, meta);
+    }
+
+    return [...byKey.values()].sort((a, b) =>
+      a.rank - b.rank || a.label.localeCompare(b.label, 'it')
+    );
+  }
+
+  function volunteerMatrixRelevantShiftIds() {
+    const shiftIds = new Set();
+    for (const row of requirements()) {
+      if (row.shiftId && volunteerMatrixActivityMeta(row.activity)) shiftIds.add(row.shiftId);
+    }
+    for (const row of snapshot?.assignments || []) {
+      if (row.shiftId && volunteerMatrixActivityMeta(displayActivity(row))) shiftIds.add(row.shiftId);
+    }
+    return shiftIds;
+  }
+
+  function volunteerMatrixData() {
+    const selectedShiftIds = selectedFilterValues(volunteerMatrixShiftFilter);
+    const selectedActivities = selectedFilterValues(volunteerMatrixActivityFilter);
+    const relevantShiftIds = volunteerMatrixRelevantShiftIds();
+
+    const shifts = [...(snapshot?.shifts || [])]
+      .filter((shift) =>
+        relevantShiftIds.has(shift.id)
+        && filterMatches(selectedShiftIds, shift.id)
+      )
+      .sort((a, b) =>
+        Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)
+        || String(a.day_label || '').localeCompare(String(b.day_label || ''), 'it')
+        || String(a.shift_label || '').localeCompare(String(b.shift_label || ''), 'it')
+      );
+
+    const activities = volunteerMatrixActivityCatalog()
+      .filter((item) => filterMatches(selectedActivities, item.key));
+
+    const peopleByCell = new Map();
+    for (const row of snapshot?.assignments || []) {
+      const meta = volunteerMatrixActivityMeta(displayActivity(row));
+      if (!meta || !row.shiftId) continue;
+      if (!shifts.some((shift) => shift.id === row.shiftId)) continue;
+      if (!activities.some((item) => item.key === meta.key)) continue;
+
+      const cellKey = `${meta.key}|||${row.shiftId}`;
+      if (!peopleByCell.has(cellKey)) peopleByCell.set(cellKey, new Map());
+      peopleByCell.get(cellKey).set(row.personId || row.personName, row.personName || '—');
+    }
+
+    const rows = activities.map((activity) => ({
+      ...activity,
+      peopleByShift: new Map(shifts.map((shift) => {
+        const people = [...(peopleByCell.get(`${activity.key}|||${shift.id}`) || new Map()).values()]
+          .sort((a, b) => String(a).localeCompare(String(b), 'it'));
+        return [shift.id, people];
+      }))
+    }));
+
+    return { shifts, rows };
+  }
+
+  function renderVolunteerMatrixReport() {
+    if (!volunteerMatrixReport) return;
+    const { shifts, rows } = volunteerMatrixData();
+
+    if (!shifts.length || !rows.length) {
+      volunteerMatrixReport.innerHTML = '<p class="empty-state">Nessun dato corrisponde ai filtri.</p>';
+      return;
+    }
+
+    const head = shifts.map((shift) =>
+      `<th class="volunteer-matrix-shift-head"><strong>${escapeHtml(shift.day_label || '')}</strong><span>${escapeHtml(shift.shift_label || '')}</span></th>`
+    ).join('');
+
+    volunteerMatrixReport.innerHTML = `<table class="admin-table volunteer-matrix-table">
+      <thead><tr><th class="volunteer-matrix-activity-head">Attività</th>${head}</tr></thead>
+      <tbody>${rows.map((row) => `
+        <tr>
+          <th scope="row" class="volunteer-matrix-activity-cell">${escapeHtml(row.label)}</th>
+          ${shifts.map((shift) => {
+            const people = row.peopleByShift.get(shift.id) || [];
+            return `<td class="volunteer-matrix-people-cell ${people.length ? '' : 'is-empty'}">${people.length
+              ? people.map((name) => `<span>${escapeHtml(name)}</span>`).join('')
+              : '<span class="volunteer-matrix-empty">—</span>'}</td>`;
+          }).join('')}
+        </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function exportVolunteerMatrixPdf() {
+    const { shifts, rows } = volunteerMatrixData();
+    if (!shifts.length || !rows.length) {
+      alert('Nessun dato da esportare con i filtri correnti.');
+      return;
+    }
+
+    const columns = [
+      { key: 'activity', label: 'Attività' },
+      ...shifts.map((shift, index) => ({
+        key: `shift${index}`,
+        label: `${shift.day_label || ''} · ${shift.shift_label || ''}`
+      }))
+    ];
+    const exportRows = rows.map((row) => {
+      const result = { activity: row.label };
+      shifts.forEach((shift, index) => {
+        result[`shift${index}`] = (row.peopleByShift.get(shift.id) || []).join('\n');
+      });
+      return result;
+    });
+
+    exportPdf('Matrice volontari - turni e attività', columns, exportRows, {
+      pageSize: 'A4 landscape',
+      fontSize: '7.5px'
+    });
+  }
+
   function xmlEscape(value) {
     return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   }
@@ -6693,6 +6853,7 @@
     if (!document.getElementById('confirmation-changes-content')?.hidden) renderConfirmationChanges();
     if (!document.getElementById('person-report-content')?.hidden) renderPersonReport();
     if (!document.getElementById('person-path-content')?.hidden) renderPersonPathChart();
+    if (!document.getElementById('volunteer-matrix-content')?.hidden) renderVolunteerMatrixReport();
     if (!document.getElementById('person-catalog-content')?.hidden) renderPersonCatalog();
     if (!document.getElementById('planning-catalog-content')?.hidden) {
       renderRequirementCatalog();
@@ -7358,6 +7519,9 @@
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
+  [volunteerMatrixShiftFilter, volunteerMatrixActivityFilter]
+    .forEach((filter) => filter?.addEventListener('change', renderVolunteerMatrixReport));
+  volunteerMatrixExportPdf?.addEventListener('click', exportVolunteerMatrixPdf);
   [requirementShiftFilter, requirementActivityFilter, requirementUnderstaffedFilter]
     .forEach((filter) => filter?.addEventListener('change', renderRequirementCatalog));
   racePersonFilter?.addEventListener('change', renderRaceProgram);
@@ -7377,6 +7541,7 @@
         if (target.id === 'confirmation-changes-content') renderConfirmationChanges();
         else if (target.id === 'person-report-content') renderPersonReport();
         else if (target.id === 'person-path-content') renderPersonPathChart();
+        else if (target.id === 'volunteer-matrix-content') renderVolunteerMatrixReport();
         else if (target.id === 'person-catalog-content') renderPersonCatalog();
         else if (target.id === 'planning-catalog-content') {
           renderRequirementCatalog();
