@@ -1400,15 +1400,12 @@
     setSelectOptions(activityReportShiftFilter, reportShifts, 'Tutti');
     setSelectOptions(shiftBoardShiftFilter, reportShifts, 'Tutti');
 
-    const matrixActivities = volunteerMatrixActivityCatalog()
-      .map((item) => ({ value: item.key, label: item.label }));
-    setSelectOptions(volunteerMatrixActivityFilter, matrixActivities, 'Tutte');
-
     const matrixGroups = [
       ...activityGroups().map((group) => ({ value: group.id, label: group.name })),
       { value: '__ungrouped__', label: 'Senza gruppo' }
     ];
     setSelectOptions(volunteerMatrixGroupFilter, matrixGroups, 'Tutti');
+    populateVolunteerMatrixActivityFilter();
 
     const matrixShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999))
@@ -5526,6 +5523,15 @@
     return ordered;
   }
 
+  function populateVolunteerMatrixActivityFilter() {
+    if (!volunteerMatrixActivityFilter) return;
+    const selectedGroupIds = selectedFilterValues(volunteerMatrixGroupFilter);
+    const options = volunteerMatrixActivityCatalog()
+      .filter((item) => filterMatches(selectedGroupIds, item.groupId || '__ungrouped__'))
+      .map((item) => ({ value: item.key, label: item.label }));
+    setSelectOptions(volunteerMatrixActivityFilter, options, 'Tutte');
+  }
+
   function reorderVolunteerMatrixActivity(sourceKey, targetKey, placeAfter = false) {
     if (!sourceKey || !targetKey || sourceKey === targetKey) return;
 
@@ -5575,8 +5581,11 @@
       );
 
     const activities = volunteerMatrixActivityCatalog()
-      .filter((item) => filterMatches(selectedGroupIds, item.groupId || '__ungrouped__'))
-      .filter((item) => filterMatches(selectedActivities, item.key));
+      .filter((item) => {
+        const matchesGroup = filterMatches(selectedGroupIds, item.groupId || '__ungrouped__');
+        const matchesActivity = filterMatches(selectedActivities, item.key);
+        return matchesGroup && matchesActivity;
+      });
 
     const peopleByCell = new Map();
     const visibleActivityKeys = new Set(activities.map((item) => item.key));
@@ -7827,8 +7836,12 @@
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
-  [volunteerMatrixShiftFilter, volunteerMatrixGroupFilter, volunteerMatrixActivityFilter]
+  [volunteerMatrixShiftFilter, volunteerMatrixActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderVolunteerMatrixReport));
+  volunteerMatrixGroupFilter?.addEventListener('change', () => {
+    populateVolunteerMatrixActivityFilter();
+    renderVolunteerMatrixReport();
+  });
   volunteerMatrixExportPdf?.addEventListener('click', exportVolunteerMatrixPdf);
 
   volunteerMatrixReport?.addEventListener('click', (event) => {
