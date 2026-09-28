@@ -29,6 +29,14 @@
   const accessTokenInput = document.querySelector('[data-access-token]');
   const accessStatus = document.querySelector('[data-access-status]');
   const app = document.querySelector('[data-app]');
+  const pageTitle = document.querySelector('[data-page-title]');
+  const pageIntro = document.querySelector('[data-page-intro]');
+  const summaryPersonPicker = document.querySelector('[data-summary-person-picker]');
+  const summaryPersonSelect = document.querySelector('[data-summary-person-select]');
+  const surveyPersonPicker = document.querySelector('[data-survey-person-picker]');
+  const personPickerEyebrow = document.querySelector('[data-person-picker-eyebrow]');
+  const personPickerTitle = document.querySelector('[data-person-picker-title]');
+  const personPickerIntro = document.querySelector('[data-person-picker-intro]');
   const actorNameInput = document.querySelector('[data-actor-name]');
   const actorStatus = document.querySelector('[data-actor-status]');
   const continueActor = document.querySelector('[data-continue-actor]');
@@ -65,6 +73,10 @@
   const readonlyEmailInput = document.querySelector('[data-readonly-email]');
   const readonlyEmailStatus = document.querySelector('[data-readonly-email-status]');
   const readonlyEmailSubmit = document.querySelector('[data-readonly-email-submit]');
+  const programPersonName = document.querySelector('[data-program-person-name]');
+  const programPdfButton = document.querySelector('[data-download-program-pdf]');
+  const programPdfStatus = document.querySelector('[data-program-pdf-status]');
+  const changeSummaryPersonButton = document.querySelector('[data-change-summary-person]');
   const tshirtSection = document.querySelector('[data-tshirt-section]');
   const tshirtSizeInput = document.querySelector('[data-tshirt-size]');
   const tshirtStatus = document.querySelector('[data-tshirt-status]');
@@ -172,7 +184,8 @@
     if (typeof body.tshirtSizeAvailable === 'boolean') {
       state.tshirtSizeAvailable = body.tshirtSizeAvailable;
     }
-    renderPeople();
+    if (state.mode === 'summary') populateSummaryPersonSelect();
+    else renderPeople();
   }
 
   function sortLabel(person) {
@@ -193,6 +206,59 @@
 
   function displayActivityName(value) {
     return String(value || '').trim().replace(/^(Gestione barche in spiaggia|Barche noleggiate)-\s*/i, '$1 - ');
+  }
+
+  function formatProgramRaceDay(value) {
+    const text = String(value || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return text || 'Giorno da definire';
+    try {
+      const formatted = new Intl.DateTimeFormat('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Europe/Rome'
+      }).format(new Date(`${text}T12:00:00Z`));
+      return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    } catch {
+      return text;
+    }
+  }
+
+  function formatProgramRaceTime(value) {
+    const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, '0')}:${match[2]}` : 'orario da definire';
+  }
+
+  function configureSummaryModeUi() {
+    const isSummary = state.mode === 'summary';
+    if (summaryPersonPicker) summaryPersonPicker.hidden = !isSummary;
+    if (surveyPersonPicker) surveyPersonPicker.hidden = isSummary;
+    if (pageTitle) pageTitle.textContent = isSummary ? 'Le mie attività' : 'Disponibilità volontari';
+    if (pageIntro) {
+      pageIntro.textContent = isSummary
+        ? 'Seleziona il tuo nominativo per vedere la situazione aggiornata delle attività di supporto e delle gare.'
+        : 'Controlla le richieste che richiedono una risposta e le disponibilità che ci hai già comunicato.';
+    }
+    if (personPickerEyebrow) personPickerEyebrow.textContent = isSummary ? 'Programma personale' : 'Persona interessata';
+    if (personPickerTitle) personPickerTitle.textContent = isSummary ? 'Seleziona il tuo nominativo' : 'Seleziona il nominativo';
+    if (personPickerIntro) {
+      personPickerIntro.textContent = isSummary
+        ? 'Scegli il tuo nome e cognome dal menu per aprire il programma aggiornato.'
+        : 'Cerca la persona per cui vuoi controllare o aggiornare le disponibilità.';
+    }
+  }
+
+  function populateSummaryPersonSelect() {
+    if (!summaryPersonSelect) return;
+    const selected = state.selectedPerson?.id || summaryPersonSelect.value || '';
+    const sorted = [...state.people].sort((a, b) => sortLabel(a).localeCompare(sortLabel(b), 'it'));
+    summaryPersonSelect.innerHTML = [
+      '<option value="">Seleziona il tuo nome e cognome</option>',
+      ...sorted.map((person) =>
+        `<option value="${escapeHtml(person.id)}">${escapeHtml(sortLabel(person))}</option>`
+      )
+    ].join('');
+    if (selected && sorted.some((person) => person.id === selected)) summaryPersonSelect.value = selected;
   }
 
   function sortShiftsChronologically(items = []) {
@@ -360,36 +426,147 @@
   }
 
   function renderReadOnlySummary() {
-    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
     if (!readonlySummary) return;
 
-    if (!assignments.length) {
-      readonlySummary.innerHTML = `${tshirtSummaryHtml()}<p class="summary-empty">Non risultano attività assegnate.</p>`;
+    const assignments = sortShiftsChronologically(state.personState?.assignments || []);
+    const races = [...(state.personState?.races || [])].sort((a, b) =>
+      String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+      || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+      || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+    );
+
+    if (programPersonName) {
+      programPersonName.textContent = state.selectedPerson?.display_name
+        || state.personState?.person?.display_name
+        || 'Le mie attività';
+    }
+
+    const handoverByAssignment = new Map(
+      (state.personState?.handovers || []).map((row) => [row.assignmentId, row])
+    );
+
+    const byDay = new Map();
+    const ensureDay = (day, order) => {
+      if (!byDay.has(day)) byDay.set(day, { day, order, assignments: [], races: [] });
+      const current = byDay.get(day);
+      if (Number(order) < Number(current.order)) current.order = order;
+      return current;
+    };
+
+    assignments.forEach((row) => {
+      const day = row.day || 'Giorno da definire';
+      ensureDay(day, Number(row.sortOrder ?? 9999)).assignments.push(row);
+    });
+
+    races.forEach((race) => {
+      const day = formatProgramRaceDay(race.raceDate);
+      const raceStamp = Date.parse(`${race.raceDate || ''}T${formatProgramRaceTime(race.raceTime)}:00`);
+      ensureDay(day, Number.isFinite(raceStamp) ? raceStamp : 9999999999999).races.push(race);
+    });
+
+    const days = [...byDay.values()].sort((a, b) => Number(a.order) - Number(b.order)
+      || a.day.localeCompare(b.day, 'it'));
+
+    if (!days.length) {
+      readonlySummary.innerHTML = '<p class="summary-empty">Non risultano attività di supporto o gare da mostrare.</p>';
       return;
     }
 
     readonlySummary.innerHTML = `
-      ${tshirtSummaryHtml()}
-      <div class="summary-items summary-items--unified">
-        ${assignments.map((item) => {
-          const confirmed = item.currentResponse === 'confirmed'
-            || (item.assignedFromAvailability && item.currentResponse !== 'declined');
-          const declined = item.currentResponse === 'declined';
-          const kind = declined ? 'declined' : confirmed ? 'confirmed' : 'pending';
-          const status = declined ? 'Rifiutata' : confirmed ? 'Confermata' : 'Da rispondere';
-          return `
-            <article class="summary-item summary-item--${kind}">
-              <div class="summary-item__top">
-                <strong class="summary-item__when">${escapeHtml(item.day)} · ${escapeHtml(item.shift)}</strong>
-              </div>
-              <span class="summary-item__activity">${escapeHtml(displayActivityName(item.activity || 'Attività'))}</span>
-              <span class="summary-item__status">${escapeHtml(status)}</span>
-            </article>
-          `;
-        }).join('')}
+      <div class="volunteer-program__days">
+        ${days.map((day) => `
+          <section class="volunteer-program__day">
+            <h3>${escapeHtml(day.day)}</h3>
+            <div class="volunteer-program__items">
+              ${day.assignments.map((item) => {
+                const handover = handoverByAssignment.get(item.id) || null;
+                return `
+                  <article class="volunteer-program__item is-assignment">
+                    <span class="volunteer-program__kind">Attività di supporto</span>
+                    <strong class="volunteer-program__time">${escapeHtml(item.shift || '')}</strong>
+                    <span class="volunteer-program__activity">${escapeHtml(displayActivityName(item.activity || 'Attività'))}</span>
+                    ${handover?.successors?.length ? `
+                      <div class="volunteer-program__handover">
+                        <strong>Chi viene dopo di me · ${escapeHtml(handover.toShift || '')}</strong>
+                        <span>${escapeHtml(handover.successors.join(', '))}</span>
+                      </div>` : ''}
+                  </article>`;
+              }).join('')}
+              ${day.races.map((race) => `
+                <article class="volunteer-program__item is-race">
+                  <span class="volunteer-program__kind">Gara</span>
+                  <strong class="volunteer-program__time">${escapeHtml(formatProgramRaceTime(race.raceTime))}</strong>
+                  <span class="volunteer-program__activity">${escapeHtml(race.crewLabel || 'Gara')}</span>
+                  ${race.crewMembers?.length ? `
+                    <span class="volunteer-program__crew"><strong>Equipaggio:</strong> ${escapeHtml(race.crewMembers.join(', '))}</span>
+                  ` : ''}
+                </article>
+              `).join('')}
+            </div>
+          </section>
+        `).join('')}
       </div>
+      <aside class="volunteer-program__remember">
+        <strong>Ricorda</strong>
+        <span>Questa pagina mostra la situazione aggiornata. Nel PDF troverai anche i riferimenti per tornare sempre a <strong>Le mie attività</strong>.</span>
+        <span>Verifica sempre gli orari delle gare nel <a href="https://www.canottaggio.org/" target="_blank" rel="noopener">sito ufficiale della FIC</a>.</span>
+      </aside>
     `;
   }
+
+  async function downloadProgramPdf() {
+    const personId = state.selectedPerson?.id || '';
+    if (!personId) {
+      setStatus(programPdfStatus, 'Seleziona prima il nominativo.', 'error');
+      return;
+    }
+
+    const oldText = programPdfButton?.textContent || 'Scarica PDF';
+    if (programPdfButton) {
+      programPdfButton.disabled = true;
+      programPdfButton.textContent = 'Preparazione PDF…';
+    }
+    setStatus(programPdfStatus, '');
+
+    try {
+      const response = await fetch(api, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'download-program-pdf', personId }),
+        cache: 'no-store'
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || 'Non è stato possibile preparare il PDF.');
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/i);
+      const filename = match?.[1] || 'programma-attivita.pdf';
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus(programPdfStatus, 'PDF pronto.', 'success');
+    } catch (error) {
+      setStatus(programPdfStatus, error.message, 'error');
+    } finally {
+      if (programPdfButton) {
+        programPdfButton.disabled = false;
+        programPdfButton.textContent = oldText;
+      }
+    }
+  }
+
 
   async function selectPerson(person, loadedDetail = null) {
     state.selectedPerson = person;
@@ -411,13 +588,9 @@
       initializePersonState(detail);
       setStatus(personSelection, '');
       if (state.mode === 'summary') {
-        if (state.tshirtSizeAvailable) {
-          renderReadOnlyTshirtStep();
-          showStep(6);
-        } else {
-          renderReadOnlySummary();
-          showStep(5);
-        }
+        if (summaryPersonSelect) summaryPersonSelect.value = person.id;
+        renderReadOnlySummary();
+        showStep(5);
       } else {
         renderWorkspace();
         showStep(3);
@@ -950,12 +1123,12 @@
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          action: 'email-assignment-summary',
+          action: 'email-program-pdf',
           personId,
           email
         })
       });
-      setStatus(readonlyEmailStatus, 'Riepilogo inviato.', 'success');
+      setStatus(readonlyEmailStatus, 'PDF inviato.', 'success');
       readonlyEmailForm.reset();
     } catch (error) {
       setStatus(readonlyEmailStatus, error.message, 'error');
@@ -1014,6 +1187,28 @@
     if (!manualField) return;
     manualField.hidden = !manualField.hidden;
     if (!manualField.hidden) manualSurnameInput?.focus();
+  });
+
+  summaryPersonSelect?.addEventListener('change', () => {
+    const personId = summaryPersonSelect.value || '';
+    if (!personId) {
+      state.selectedPerson = null;
+      state.personState = null;
+      return;
+    }
+    const person = state.people.find((item) => item.id === personId);
+    if (person) selectPerson(person);
+  });
+
+  programPdfButton?.addEventListener('click', downloadProgramPdf);
+
+  changeSummaryPersonButton?.addEventListener('click', () => {
+    state.selectedPerson = null;
+    state.personState = null;
+    if (summaryPersonSelect) summaryPersonSelect.value = '';
+    setStatus(personSelection, '');
+    showStep(2);
+    summaryPersonSelect?.focus();
   });
 
   continueActor?.addEventListener('click', continueWithActor);
@@ -1100,9 +1295,33 @@
 
     try {
       await loadPeople();
+      configureSummaryModeUi();
       showApp();
-      showStep(1);
-      actorNameInput?.focus();
+
+      if (state.mode === 'summary') {
+        if (state.requestedPersonId) {
+          try {
+            const detail = await apiRequest(`${api}?view=person&id=${encodeURIComponent(state.requestedPersonId)}`);
+            const listedPerson = state.people.find((person) => person.id === state.requestedPersonId);
+            const person = listedPerson || detail?.person || null;
+            if (person) {
+              await selectPerson(person, detail);
+            } else {
+              showStep(2);
+              setStatus(personSelection, 'Il nominativo del link non è disponibile: selezionalo dal menu.', 'error');
+            }
+          } catch {
+            showStep(2);
+            setStatus(personSelection, 'Il nominativo del link non è disponibile: selezionalo dal menu.', 'error');
+          }
+        } else {
+          showStep(2);
+          summaryPersonSelect?.focus();
+        }
+      } else {
+        showStep(1);
+        actorNameInput?.focus();
+      }
     } catch (error) {
       if (error.status === 401) {
         clearSession();
