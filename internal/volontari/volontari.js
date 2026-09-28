@@ -68,6 +68,9 @@
   const tshirtSection = document.querySelector('[data-tshirt-section]');
   const tshirtSizeInput = document.querySelector('[data-tshirt-size]');
   const tshirtStatus = document.querySelector('[data-tshirt-status]');
+  const readonlyTshirtSizeInput = document.querySelector('[data-readonly-tshirt-size]');
+  const readonlyTshirtStatus = document.querySelector('[data-readonly-tshirt-status]');
+  const readonlyTshirtSaveButton = document.querySelector('[data-save-readonly-tshirt]');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -296,6 +299,56 @@
     });
   }
 
+  function renderReadOnlyTshirtStep() {
+    if (readonlyTshirtSizeInput) readonlyTshirtSizeInput.value = state.tshirtSize || '';
+    setStatus(readonlyTshirtStatus, '');
+  }
+
+  async function saveReadOnlyTshirt() {
+    const personId = state.selectedPerson?.id || '';
+    const value = String(readonlyTshirtSizeInput?.value || '').trim().toUpperCase();
+
+    if (!personId) {
+      setStatus(readonlyTshirtStatus, 'Seleziona prima il nominativo.', 'error');
+      return;
+    }
+    if (!['S', 'M', 'L', 'XL'].includes(value)) {
+      setStatus(readonlyTshirtStatus, 'Seleziona la taglia della T-shirt.', 'error');
+      readonlyTshirtSizeInput?.focus();
+      return;
+    }
+
+    const oldText = readonlyTshirtSaveButton?.textContent || 'Salva e continua';
+    if (readonlyTshirtSaveButton) {
+      readonlyTshirtSaveButton.disabled = true;
+      readonlyTshirtSaveButton.textContent = 'Salvataggio…';
+    }
+    setStatus(readonlyTshirtStatus, 'Salvataggio in corso…');
+
+    try {
+      await apiRequest(api, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save-tshirt-size',
+          personId,
+          tshirtSize: value
+        })
+      });
+      state.tshirtSize = value;
+      if (state.personState?.person) state.personState.person.tshirt_size = value;
+      renderReadOnlySummary();
+      showStep(5);
+    } catch (error) {
+      setStatus(readonlyTshirtStatus, error.message, 'error');
+    } finally {
+      if (readonlyTshirtSaveButton) {
+        readonlyTshirtSaveButton.disabled = false;
+        readonlyTshirtSaveButton.textContent = oldText;
+      }
+    }
+  }
+
   function tshirtSummaryHtml() {
     if (!state.tshirtSizeAvailable || !state.tshirtSize) return '';
     return `
@@ -358,8 +411,13 @@
       initializePersonState(detail);
       setStatus(personSelection, '');
       if (state.mode === 'summary') {
-        renderReadOnlySummary();
-        showStep(5);
+        if (state.tshirtSizeAvailable) {
+          renderReadOnlyTshirtStep();
+          showStep(6);
+        } else {
+          renderReadOnlySummary();
+          showStep(5);
+        }
       } else {
         renderWorkspace();
         showStep(3);
@@ -995,6 +1053,7 @@
   });
 
   submitButton?.addEventListener('click', submit);
+  readonlyTshirtSaveButton?.addEventListener('click', saveReadOnlyTshirt);
   summaryEmailForm?.addEventListener('submit', sendSummaryEmail);
   readonlyEmailForm?.addEventListener('submit', sendReadOnlySummaryEmail);
 
