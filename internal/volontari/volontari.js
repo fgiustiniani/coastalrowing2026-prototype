@@ -184,8 +184,7 @@
     if (typeof body.tshirtSizeAvailable === 'boolean') {
       state.tshirtSizeAvailable = body.tshirtSizeAvailable;
     }
-    if (state.mode === 'summary') populateSummaryPersonSelect();
-    else renderPeople();
+    renderPeople();
   }
 
   function sortLabel(person) {
@@ -237,19 +236,21 @@
 
   function configureSummaryModeUi() {
     const isSummary = state.mode === 'summary';
-    if (summaryPersonPicker) summaryPersonPicker.hidden = !isSummary;
-    if (surveyPersonPicker) surveyPersonPicker.hidden = isSummary;
+    // Anche in modalità riepilogo usiamo la ricerca incrementale: non esponiamo mai
+    // un menu apribile con l'intera anagrafica dei volontari.
+    if (summaryPersonPicker) summaryPersonPicker.hidden = true;
+    if (surveyPersonPicker) surveyPersonPicker.hidden = false;
     if (pageTitle) pageTitle.textContent = isSummary ? 'Le mie attività' : 'Disponibilità volontari';
     if (pageIntro) {
       pageIntro.textContent = isSummary
-        ? 'Seleziona il tuo nominativo per vedere la situazione aggiornata delle attività di supporto e delle gare.'
+        ? 'Cerca il tuo nominativo per vedere la situazione aggiornata delle attività di supporto e delle gare.'
         : 'Controlla le richieste che richiedono una risposta e le disponibilità che ci hai già comunicato.';
     }
     if (personPickerEyebrow) personPickerEyebrow.textContent = isSummary ? 'Programma personale' : 'Persona interessata';
-    if (personPickerTitle) personPickerTitle.textContent = isSummary ? 'Seleziona il tuo nominativo' : 'Seleziona il nominativo';
+    if (personPickerTitle) personPickerTitle.textContent = isSummary ? 'Cerca il tuo nominativo' : 'Seleziona il nominativo';
     if (personPickerIntro) {
       personPickerIntro.textContent = isSummary
-        ? 'Scegli il tuo nome e cognome dal menu per aprire il programma aggiornato.'
+        ? 'Digita almeno due lettere del tuo nome o cognome e seleziona il suggerimento corretto.'
         : 'Cerca la persona per cui vuoi controllare o aggiornare le disponibilità.';
     }
   }
