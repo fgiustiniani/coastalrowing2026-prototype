@@ -588,8 +588,10 @@
     if (manualField) manualField.hidden = true;
     if (manualBox) manualBox.hidden = true;
     if (personSearch) personSearch.value = sortLabel(person);
-    state.people = [];
-    renderPeople();
+    if (state.mode !== 'summary') {
+      state.people = [];
+      renderPeople();
+    }
     setStatus(personSelection, 'Caricamento…');
 
     try {
