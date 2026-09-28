@@ -478,17 +478,20 @@
     const days = [...byDay.values()].sort((a, b) => Number(a.order) - Number(b.order)
       || a.day.localeCompare(b.day, 'it'));
 
-    if (!days.length) {
-      readonlySummary.innerHTML = '<p class="summary-empty">Non risultano attività di supporto o gare da mostrare.</p>';
-      return;
-    }
-
-    readonlySummary.innerHTML = `
+    const rememberHtml = `
       <aside class="volunteer-program__remember volunteer-program__remember--top">
         <strong>Ricorda</strong>
         <span>Questa pagina mostra la situazione aggiornata. Nel PDF troverai anche i riferimenti per tornare sempre a <strong>Le mie attività</strong>.</span>
         <span>Verifica sempre gli orari delle gare nel <a href="https://www.canottaggio.org/" target="_blank" rel="noopener">sito ufficiale della FIC</a>.</span>
-      </aside>
+      </aside>`;
+
+    if (!days.length) {
+      readonlySummary.innerHTML = `${rememberHtml}<p class="summary-empty">Non risultano attività di supporto o gare da mostrare.</p>`;
+      return;
+    }
+
+    readonlySummary.innerHTML = `
+      ${rememberHtml}
       <div class="volunteer-program__days">
         ${days.map((day) => `
           <section class="volunteer-program__day">
