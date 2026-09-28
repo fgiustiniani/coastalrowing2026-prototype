@@ -109,9 +109,9 @@ export async function buildVolunteerProgramPdf({
   ficUrl = 'https://www.canottaggio.org/'
 }) {
   const doc = await PDFDocument.create();
-  doc.setTitle('Il programma delle tue attivita');
+  doc.setTitle('Il programma delle tue attività');
   doc.setSubject('Campionati Italiani Coastal Rowing 2026 - programma volontario');
-  doc.setCreator('Societa Canottieri Pesaro ASD');
+  doc.setCreator('Società Canottieri Pesaro ASD');
 
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -167,7 +167,7 @@ export async function buildVolunteerProgramPdf({
         color: COLORS.ink
       });
       y -= 34;
-      page.drawText('Il programma delle tue attivita', {
+      page.drawText('Il programma delle tue attività', {
         x: MARGIN,
         y: y - 13,
         size: 12,
@@ -178,7 +178,7 @@ export async function buildVolunteerProgramPdf({
 
       const introLines = [
         'Qui per ogni giorno trovi:',
-        '- le attivita di supporto dove nel riquadro "Chi viene dopo di me" trovi le persone che ti daranno il cambio;',
+        '- le attività di supporto dove nel riquadro "Chi viene dopo di me" trovi le persone che ti daranno il cambio;',
         '- le gare a cui parteciperai con il tuo equipaggio.'
       ];
       const wrapped = introLines.flatMap((line) => wrapText(regular, line, 9.3, CONTENT_WIDTH - 24));
@@ -205,7 +205,7 @@ export async function buildVolunteerProgramPdf({
       }
       y -= introHeight + 20;
     } else {
-      page.drawText(personName + ' - Il programma delle tue attivita', {
+      page.drawText(personName + ' - Il programma delle tue attività', {
         x: MARGIN,
         y: y - 12,
         size: 10,
@@ -240,7 +240,7 @@ export async function buildVolunteerProgramPdf({
   }
 
   function drawAssignment(row) {
-    const activity = safeText(row.activity || 'Attivita di supporto');
+    const activity = safeText(row.activity || 'Attività di supporto');
     const activityLines = wrapText(bold, activity, 10.6, CONTENT_WIDTH - 28);
     const handover = handoverByAssignment.get(row.id) || null;
     const successorText = handover?.successors?.length
@@ -263,7 +263,7 @@ export async function buildVolunteerProgramPdf({
       borderWidth: 0.8
     });
 
-    page.drawText('ATTIVITA DI SUPPORTO', {
+    page.drawText('ATTIVITÀ DI SUPPORTO', {
       x: MARGIN + 12,
       y: y - 15,
       size: 7.3,
@@ -383,8 +383,8 @@ export async function buildVolunteerProgramPdf({
   }
 
   function drawRememberBox() {
-    const line1a = 'Questa e una stampa. La situazione aggiornata la trovi sempre qui: ';
-    const link1 = 'Le mie attivita';
+    const line1a = 'Questa è una stampa. La situazione aggiornata la trovi sempre qui: ';
+    const link1 = 'Le mie attività';
     const line2a = 'Verifica sempre gli orari delle gare nel ';
     const link2 = 'sito ufficiale della FIC';
     const rememberHeight = 82;
@@ -430,7 +430,7 @@ export async function buildVolunteerProgramPdf({
   addPage(true);
 
   if (!dayLabels.length) {
-    page.drawText('Non risultano attivita o gare da mostrare.', {
+    page.drawText('Non risultano attività o gare da mostrare.', {
       x: MARGIN,
       y: y - 12,
       size: 10,
