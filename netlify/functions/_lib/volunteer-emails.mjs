@@ -100,6 +100,7 @@ export async function sendVolunteerSummaryEmail({
   }
 
   const personName = clean(personState?.person?.display_name || 'Volontario', 160);
+  const tshirtSize = clean(personState?.person?.tshirt_size || '', 4).toUpperCase();
   const message = clean(accompanyingMessage, 4000);
   const submissionId = clean(currentSubmissionId, 60);
 
@@ -292,6 +293,7 @@ export async function sendVolunteerSummaryEmail({
   const text = [
     assignmentsOnly ? `Riepilogo attività assegnate di ${personName}` : `Riepilogo disponibilità di ${personName}`,
     '',
+    ...(tshirtSize ? [`Taglia T-shirt: ${tshirtSize}`, ''] : []),
     ...(message ? [message, ''] : []),
     rowText,
     '',
@@ -303,7 +305,8 @@ export async function sendVolunteerSummaryEmail({
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#263f48;line-height:1.45;max-width:680px;margin:0 auto;">
       <h2 style="margin:0 0 6px 0;font-size:22px;line-height:1.25;">${assignmentsOnly ? 'Riepilogo attività assegnate' : 'Riepilogo disponibilità'}</h2>
-      <p style="margin:0 0 18px 0;"><strong>${escapeHtml(personName)}</strong></p>
+      <p style="margin:0 0 8px 0;"><strong>${escapeHtml(personName)}</strong></p>
+      ${tshirtSize ? `<p style="margin:0 0 18px 0;"><strong>Taglia T-shirt:</strong> ${escapeHtml(tshirtSize)}</p>` : ''}
       ${message ? `<p style="margin:0 0 18px 0;">${escapeHtml(message).replace(/\n/g, '<br>')}</p>` : ''}
       <div style="margin:0 0 18px 0;">${summaryHtml}</div>
       <p style="margin:16px 0 0 0;color:#60757d;font-size:12px;">Questo messaggio riepiloga l’ultima compilazione registrata.</p>
