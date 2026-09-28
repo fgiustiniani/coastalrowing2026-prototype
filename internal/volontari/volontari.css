@@ -764,6 +764,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
   font-size: .72rem;
   letter-spacing: .04em;
 }
+.volunteer-program__remember--top {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
 .volunteer-program__remember a {
   color: var(--accent-dark);
   font-weight: 800;
