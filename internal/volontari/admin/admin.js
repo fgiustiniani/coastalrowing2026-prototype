@@ -783,8 +783,14 @@
   }
 
   function unavailableRowsForShift(shiftId) {
+    const currentlyConfirmedPeople = new Set(
+      (snapshot?.assignments || [])
+        .filter((row) => row.shiftId === shiftId && effectiveAssignmentResponse(row) === 'confirmed')
+        .map((row) => row.personId)
+        .filter(Boolean)
+    );
     return (snapshot?.declinedRemovals || [])
-      .filter((row) => row.shiftId === shiftId)
+      .filter((row) => row.shiftId === shiftId && !currentlyConfirmedPeople.has(row.personId))
       .sort((a, b) =>
         String(a.personName || '').localeCompare(String(b.personName || ''), 'it')
         || String(a.activity || '').localeCompare(String(b.activity || ''), 'it')
@@ -872,7 +878,7 @@
       const remainder = Math.max(0, activities.length - shown.length);
       warnings.push({
         type: 'declined',
-        text: `Ha rifiutato in questo turno: ${shown.join(' · ')}${remainder ? ` · +${remainder} ${remainder === 1 ? 'altra attività' : 'altre attività'}` : ''}`
+        text: `${effectiveAssignmentResponse(candidate) === 'confirmed' ? 'Rifiuto precedente nello stesso turno' : 'Ha rifiutato in questo turno'}: ${shown.join(' · ')}${remainder ? ` · +${remainder} ${remainder === 1 ? 'altra attività' : 'altre attività'}` : ''}`
       });
     }
 
@@ -1728,7 +1734,15 @@
   function boardResponseMeta(row) {
     const value = boardEffectiveResponse(row);
     if (value === 'availability') return { className: 'is-availability', label: 'Disponibile', mark: '+' };
-    if (value === 'confirmed') return { className: 'is-confirmed', label: row.isReleasedConfirmed ? 'Confermata in precedenza · disponibile' : (row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata'), mark: '✓' };
+    if (value === 'confirmed') return {
+      className: 'is-confirmed',
+      label: row.currentResponseSource === 'admin_manual'
+        ? 'Confermata manualmente'
+        : (row.isReleasedConfirmed
+          ? 'Confermata in precedenza · disponibile'
+          : (row.assignedFromAvailability && !row.currentResponse ? 'Assegnato da disponibilità aggiuntiva' : 'Confermata')),
+      mark: '✓'
+    };
     if (value === 'declined') return { className: 'is-declined', label: 'Non può', mark: '×' };
     return { className: 'is-pending', label: 'Da rispondere', mark: '•' };
   }
