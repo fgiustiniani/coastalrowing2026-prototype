@@ -5714,3 +5714,120 @@ tr.is-busy button.is-busy {
     min-width: 140px;
   }
 }
+
+
+/* Report per persona: layout leggibile desktop */
+#person-report-content .person-report-filters {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+#person-report-content .table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+#person-report-content .person-report-table {
+  width: 100%;
+  min-width: 1520px;
+  max-width: none;
+  table-layout: fixed;
+}
+
+#person-report-content .person-report-table th,
+#person-report-content .person-report-table td {
+  padding: 10px 10px;
+  vertical-align: top;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+#person-report-content .person-report-table th:nth-child(1),
+#person-report-content .person-report-table td:nth-child(1) { width: 180px; }
+
+#person-report-content .person-report-table th:nth-child(2),
+#person-report-content .person-report-table td:nth-child(2) { width: 90px; }
+
+#person-report-content .person-report-table th:nth-child(3),
+#person-report-content .person-report-table td:nth-child(3) { width: 150px; }
+
+#person-report-content .person-report-table th:nth-child(4),
+#person-report-content .person-report-table td:nth-child(4) { width: 455px; }
+
+#person-report-content .person-report-table th:nth-child(5),
+#person-report-content .person-report-table td:nth-child(5),
+#person-report-content .person-report-table th:nth-child(6),
+#person-report-content .person-report-table td:nth-child(6) {
+  width: 82px;
+  text-align: center;
+}
+
+#person-report-content .person-report-table th:nth-child(7),
+#person-report-content .person-report-table td:nth-child(7) { width: 145px; }
+
+#person-report-content .person-report-table th:nth-child(8),
+#person-report-content .person-report-table td:nth-child(8) {
+  width: 58px;
+  text-align: center;
+}
+
+#person-report-content .person-report-table th:nth-child(9),
+#person-report-content .person-report-table td:nth-child(9) { width: 278px; }
+
+#person-report-content .person-report-table thead th {
+  z-index: 3;
+}
+
+#person-report-content .person-report-table tbody td:first-child strong {
+  display: block;
+  line-height: 1.3;
+}
+
+#person-report-content .person-report-table .status-badge {
+  max-width: none;
+  white-space: nowrap;
+  text-align: left;
+}
+
+#person-report-content .person-report-table .activity-report-list,
+#person-report-content .person-report-table .availability-report-list {
+  gap: 7px;
+}
+
+#person-report-content .person-report-table .person-report-activity {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+#person-report-content .person-report-table .person-report-activity > span:first-child {
+  min-width: 0;
+  line-height: 1.35;
+}
+
+#person-report-content .person-report-table .availability-report-line strong,
+#person-report-content .person-report-table .availability-report-line small {
+  line-height: 1.35;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+#person-report-content .person-report-table .person-report-submission-actions {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 1000px) {
+  #person-report-content .person-report-filters {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  #person-report-content .person-report-filters {
+    grid-template-columns: 1fr;
+  }
+}
