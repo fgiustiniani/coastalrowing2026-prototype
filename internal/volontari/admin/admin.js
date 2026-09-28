@@ -1393,9 +1393,7 @@
       .map((item) => ({ value: item.key, label: item.label }));
     setSelectOptions(volunteerMatrixActivityFilter, matrixActivities, 'Tutte');
 
-    const matrixRelevantShiftIds = volunteerMatrixRelevantShiftIds();
     const matrixShifts = [...(snapshot?.shifts || [])]
-      .filter((shift) => matrixRelevantShiftIds.has(shift.id))
       .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999))
       .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
     setSelectOptions(volunteerMatrixShiftFilter, matrixShifts, 'Tutti');
@@ -5348,13 +5346,9 @@
   function volunteerMatrixData() {
     const selectedShiftIds = selectedFilterValues(volunteerMatrixShiftFilter);
     const selectedActivities = selectedFilterValues(volunteerMatrixActivityFilter);
-    const relevantShiftIds = volunteerMatrixRelevantShiftIds();
 
     const shifts = [...(snapshot?.shifts || [])]
-      .filter((shift) =>
-        relevantShiftIds.has(shift.id)
-        && filterMatches(selectedShiftIds, shift.id)
-      )
+      .filter((shift) => filterMatches(selectedShiftIds, shift.id))
       .sort((a, b) =>
         Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999)
         || String(a.day_label || '').localeCompare(String(b.day_label || ''), 'it')
