@@ -131,6 +131,32 @@
           </div>
         </article>
 
+        <article class="card admin-section shift-status-report-section" data-shift-board-report-section>
+          <div class="section-head">
+            <div><p class="eyebrow">Report</p><h2>Per giorno e turno</h2></div>
+            <div class="section-actions">
+              <button class="button button--secondary" type="button" data-shift-board-export-pdf>PDF</button>
+              <button class="button button--secondary" type="button" data-shift-board-export-excel>Excel</button>
+              <button class="button button--secondary collapse-button" type="button" data-collapse-target="shift-board-report-content" aria-expanded="false">Espandi</button>
+            </div>
+          </div>
+          <div id="shift-board-report-content" data-collapsible-content hidden>
+            <p class="intro">Per ogni giorno e turno mostra le attività e le persone attualmente assegnate, ciascuna con il proprio stato operativo.</p>
+            <div class="filter-grid filter-grid--report shift-board-report-filters">
+              <label class="field compact-field"><span>Turno</span><select data-shift-board-shift-filter multiple><option value="">Tutti</option></select></label>
+              <label class="field compact-field"><span>Attività</span><select data-shift-board-activity-filter multiple><option value="">Tutte</option></select></label>
+              <label class="field compact-field"><span>Persona</span><select data-shift-board-person-filter multiple><option value="">Tutte</option></select></label>
+            </div>
+            <div class="shift-status-legend" aria-hidden="true">
+              <span><i class="status-badge is-confirmed">Confermata</i></span>
+              <span><i class="status-badge is-pending">Da rispondere</i></span>
+              <span><i class="status-badge is-declined">Non può</i></span>
+              <span><i class="status-badge is-availability">Disp.+</i> assegnata da disponibilità aggiuntiva</span>
+            </div>
+            <div class="shift-board-wrap shift-status-board-wrap" data-shift-board-report></div>
+          </div>
+        </article>
+
         <article class="card admin-section" data-person-path-section>
           <div class="section-head">
             <div><p class="eyebrow">Report</p><h2>Percorso attività</h2></div>
