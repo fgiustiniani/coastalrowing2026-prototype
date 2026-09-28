@@ -6380,6 +6380,48 @@
     personActivitiesDialog.showModal();
   }
 
+  async function confirmPersonAssignmentManually(assignmentId, button) {
+    const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
+    const rowNode = button?.closest('[data-person-assignment-row]');
+    const noteInput = rowNode?.querySelector('[data-person-manual-confirm-note]');
+    const note = String(noteInput?.value || '').trim();
+    const statusNode = personActivitiesContent?.querySelector('[data-person-activities-status]');
+
+    if (!row) {
+      setStatus(statusNode, 'Assegnazione non più disponibile. Aggiorna la pagina.', 'error');
+      return;
+    }
+    if (note.length < 2) {
+      setStatus(statusNode, 'Inserisci una nota per la conferma manuale.', 'error');
+      noteInput?.focus();
+      return;
+    }
+
+    await withButtonBusy(button, 'Conferma…', async () => {
+      try {
+        await api(API, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'confirm-assignment-manually',
+            assignmentId,
+            note
+          })
+        });
+        const personId = row.personId;
+        await loadSnapshot();
+        showPersonActivitiesPopup(personId, assignmentId);
+        setStatus(
+          personActivitiesContent?.querySelector('[data-person-activities-status]'),
+          'Conferma manuale registrata. Il rifiuto precedente resta nello storico.',
+          'success'
+        );
+      } catch (error) {
+        setStatus(statusNode, error.message, 'error');
+      }
+    });
+  }
+
   async function movePersonAssignmentFromPopup(assignmentId, button) {
     const row = (snapshot?.assignments || []).find((item) => item.id === assignmentId);
     const rowNode = button?.closest('[data-person-assignment-row]');
@@ -9076,6 +9118,38 @@
       const statusNode = personActivitiesContent.querySelector('[data-person-activities-status]');
       const ok = await updateBoardResponsible(assignmentId, next, responsible, statusNode);
       if (ok) showPersonActivitiesPopup(row.personId, assignmentId);
+      return;
+    }
+
+    const manualOpen = event.target.closest('[data-person-manual-confirm-open]');
+    if (manualOpen) {
+      const assignmentId = manualOpen.dataset.personManualConfirmOpen || '';
+      const form = personActivitiesContent.querySelector(`[data-person-manual-confirm-form="${CSS.escape(assignmentId)}"]`);
+      if (form) {
+        form.hidden = false;
+        manualOpen.hidden = true;
+        form.querySelector('[data-person-manual-confirm-note]')?.focus();
+      }
+      return;
+    }
+
+    const manualCancel = event.target.closest('[data-person-manual-confirm-cancel]');
+    if (manualCancel) {
+      const assignmentId = manualCancel.dataset.personManualConfirmCancel || '';
+      const form = personActivitiesContent.querySelector(`[data-person-manual-confirm-form="${CSS.escape(assignmentId)}"]`);
+      const open = personActivitiesContent.querySelector(`[data-person-manual-confirm-open="${CSS.escape(assignmentId)}"]`);
+      if (form) {
+        form.hidden = true;
+        const input = form.querySelector('[data-person-manual-confirm-note]');
+        if (input) input.value = '';
+      }
+      if (open) open.hidden = false;
+      return;
+    }
+
+    const manualSave = event.target.closest('[data-person-manual-confirm-save]');
+    if (manualSave) {
+      await confirmPersonAssignmentManually(manualSave.dataset.personManualConfirmSave || '', manualSave);
       return;
     }
 
