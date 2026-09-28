@@ -5656,8 +5656,8 @@ tr.is-busy button.is-busy {
 }
 .volunteer-matrix-activity-head,
 .volunteer-matrix-activity-cell {
-  width: 185px;
-  min-width: 185px;
+  width: 240px;
+  min-width: 240px;
   position: sticky;
   left: 0;
   z-index: 2;
@@ -5670,6 +5670,67 @@ tr.is-busy button.is-busy {
   color: var(--accent-dark);
   font-size: .8rem;
   font-weight: 850;
+  white-space: normal !important;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+.volunteer-matrix-activity-layout {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 7px;
+  width: 100%;
+}
+.volunteer-matrix-activity-label {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.volunteer-matrix-drag-handle,
+.volunteer-matrix-order-buttons button {
+  border: 1px solid #c7d6da;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+}
+.volunteer-matrix-drag-handle {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: grab;
+  line-height: 24px;
+}
+.volunteer-matrix-drag-handle:active {
+  cursor: grabbing;
+}
+.volunteer-matrix-order-buttons {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.volunteer-matrix-order-buttons button {
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  line-height: 20px;
+}
+.volunteer-matrix-order-buttons button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+.volunteer-matrix-row.is-dragging {
+  opacity: .45;
+}
+.volunteer-matrix-row.is-drop-before > * {
+  border-top: 3px solid var(--accent) !important;
+}
+.volunteer-matrix-row.is-drop-after > * {
+  border-bottom: 3px solid var(--accent) !important;
 }
 .volunteer-matrix-shift-head {
   min-width: 155px;
@@ -5706,8 +5767,8 @@ tr.is-busy button.is-busy {
   }
   .volunteer-matrix-activity-head,
   .volunteer-matrix-activity-cell {
-    width: 155px;
-    min-width: 155px;
+    width: 210px;
+    min-width: 210px;
   }
   .volunteer-matrix-shift-head,
   .volunteer-matrix-people-cell {
