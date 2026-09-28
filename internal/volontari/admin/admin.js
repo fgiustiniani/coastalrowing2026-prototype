@@ -52,6 +52,7 @@
   const personReport = document.querySelector('[data-person-report]');
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
+  const personReportShiftFilter = document.querySelector('[data-person-report-shift-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const personReportStatusFilter = document.querySelector('[data-person-report-status-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
@@ -1386,6 +1387,7 @@
     const reportShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999))
       .map((shift) => ({ value: shift.id, label: `${shift.day_label} · ${shift.shift_label}` }));
+    setSelectOptions(personReportShiftFilter, reportShifts, 'Tutti');
     setSelectOptions(activityReportShiftFilter, reportShifts, 'Tutti');
     setSelectOptions(shiftBoardShiftFilter, reportShifts, 'Tutti');
 
@@ -4649,9 +4651,13 @@
         ...openRequests.map(() => 'pending')
       ])];
 
-      const notes = reportRows
+      const noteRows = reportRows
         .filter((row) => String(row.currentNote || '').trim())
-        .map((row) => `${displayActivity(row)}: ${String(row.currentNote).trim()}`);
+        .map((row) => ({
+          shiftId: row.shiftId || '',
+          text: `${displayActivity(row)}: ${String(row.currentNote).trim()}`
+        }));
+      const notes = noteRows.map((row) => row.text);
 
       const sortedRows = [...reportRows].sort((a, b) =>
         (shiftOrderById.get(a.shiftId) ?? 9999) - (shiftOrderById.get(b.shiftId) ?? 9999)
@@ -4662,6 +4668,7 @@
         ...sortedRows.map((row) => {
           const response = effectiveAssignmentResponse(row) || 'pending';
           return {
+            shiftId: row.shiftId || '',
             label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
             response,
             responseLabel: responseLabel(response),
@@ -4669,12 +4676,14 @@
           };
         }),
         ...campaignResponses.map((row) => ({
+          shiftId: row.shiftId || '',
           label: `${row.day}-${row.shift} ${row.activity} · ${row.campaignName}`,
           response: row.response,
           responseLabel: responseLabel(row.response),
           sortOrder: Number(row.sortOrder ?? 9999)
         })),
         ...openRequests.map((row) => ({
+          shiftId: row.shiftId || '',
           label: `${row.day}-${row.shift} ${row.activity} · nuova richiesta`,
           response: 'pending',
           responseLabel: 'Da rispondere',
@@ -4700,6 +4709,7 @@
         statusKeys,
         tshirtSize: String(person?.tshirt_size || '').trim().toUpperCase(),
         notes: notes.join('; '),
+        noteRows,
         availability,
         activityRows,
         activities: activityRows.map((row) => row.label),
@@ -4713,14 +4723,49 @@
   function filteredPersonReportRows() {
     const personIds = selectedFilterValues(personReportPersonFilter);
     const groups = selectedFilterValues(personReportGroupFilter);
+    const shiftIds = selectedFilterValues(personReportShiftFilter);
     const answers = selectedFilterValues(personReportResponseFilter);
     const statuses = selectedFilterValues(personReportStatusFilter);
-    return personReportRows().filter((item) =>
-      filterMatches(personIds, item.id)
-      && filterMatches(groups, item.group || '')
-      && filterMatches(answers, item.answered ? 'yes' : 'no')
-      && (!statuses.length || statuses.some((status) => item.statusKeys?.includes(status)))
-    );
+
+    return personReportRows()
+      .map((item) => {
+        if (!shiftIds.length) return item;
+
+        const activityRows = (item.activityRows || [])
+          .filter((row) => shiftIds.includes(row.shiftId));
+        const availability = (item.availability || [])
+          .filter((row) => shiftIds.includes(row.shiftId));
+
+        if (!activityRows.length && !availability.length) return null;
+
+        const confirmed = activityRows.filter((row) => row.response === 'confirmed').length;
+        const declined = activityRows.filter((row) => row.response === 'declined').length;
+        const pending = activityRows.filter((row) => !['confirmed', 'declined'].includes(row.response)).length;
+        const noteRows = (item.noteRows || []).filter((row) => shiftIds.includes(row.shiftId));
+
+        return {
+          ...item,
+          confirmed,
+          declined,
+          pending,
+          notes: noteRows.map((row) => row.text).join('; '),
+          noteRows,
+          availability,
+          activityRows,
+          activities: activityRows.map((row) => row.label),
+          activitiesText: activityRows.map((row) => `${row.label} — ${row.responseLabel}`).join('\n'),
+          availabilityText: availability.map((row) =>
+            `${row.day} ${row.shift} — ${row.availabilityLabel}${row.note ? ` - ${row.note}` : ''}`
+          ).join('\n')
+        };
+      })
+      .filter(Boolean)
+      .filter((item) =>
+        filterMatches(personIds, item.id)
+        && filterMatches(groups, item.group || '')
+        && filterMatches(answers, item.answered ? 'yes' : 'no')
+        && (!statuses.length || statuses.some((status) => item.statusKeys?.includes(status)))
+      );
   }
 
   function renderPersonReport() {
@@ -7495,7 +7540,7 @@
   [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentStatusFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
-  [personReportPersonFilter, personReportGroupFilter, personReportResponseFilter, personReportStatusFilter]
+  [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportResponseFilter, personReportStatusFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
