@@ -1218,9 +1218,12 @@
     state.selectedPerson = null;
     state.personState = null;
     if (summaryPersonSelect) summaryPersonSelect.value = '';
+    if (personSearch) personSearch.value = '';
+    state.people = [];
+    renderPeople();
     setStatus(personSelection, '');
     showStep(2);
-    summaryPersonSelect?.focus();
+    personSearch?.focus();
   });
 
   continueActor?.addEventListener('click', continueWithActor);
@@ -1320,15 +1323,15 @@
               await selectPerson(person, detail);
             } else {
               showStep(2);
-              setStatus(personSelection, 'Il nominativo del link non è disponibile: selezionalo dal menu.', 'error');
+              setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo digitando almeno due lettere.', 'error');
             }
           } catch {
             showStep(2);
-            setStatus(personSelection, 'Il nominativo del link non è disponibile: selezionalo dal menu.', 'error');
+            setStatus(personSelection, 'Il nominativo del link non è disponibile: cercalo digitando almeno due lettere.', 'error');
           }
         } else {
           showStep(2);
-          summaryPersonSelect?.focus();
+          personSearch?.focus();
         }
       } else {
         showStep(1);
