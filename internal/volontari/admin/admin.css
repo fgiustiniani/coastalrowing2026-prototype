@@ -1731,6 +1731,57 @@ tr.is-busy button.is-busy {
   color: var(--ink);
   font-size: .8rem;
 }
+.person-response-stack {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+.person-manual-confirm-open {
+  font-size: .72rem;
+}
+.person-manual-confirm-form {
+  display: grid;
+  gap: 6px;
+  width: min(260px, 100%);
+}
+.person-manual-confirm-form input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-size: .75rem;
+}
+.person-manual-confirm-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.person-manual-confirm-actions .table-link {
+  font-size: .72rem;
+}
+.person-manual-confirm-actions .is-muted {
+  color: var(--muted);
+}
+.manual-confirmation-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e7f4ea;
+  color: #2d6a3d;
+  font-size: .67rem;
+  font-weight: 850;
+}
+.manual-confirmation-note {
+  max-width: 250px;
+  color: var(--muted);
+  font-size: .7rem;
+  line-height: 1.3;
+}
+
 .person-activity-warning .warning-stack {
   margin-top: 0;
 }
