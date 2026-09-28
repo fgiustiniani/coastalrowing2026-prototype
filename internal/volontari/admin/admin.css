@@ -1703,8 +1703,8 @@ tr.is-busy button.is-busy {
 }
 .person-activities-table th:nth-child(2),
 .person-activities-table td:nth-child(2) {
-  width: 12%;
-  min-width: 120px;
+  width: 18%;
+  min-width: 210px;
 }
 .person-activities-table th:nth-child(3),
 .person-activities-table td:nth-child(3) {
