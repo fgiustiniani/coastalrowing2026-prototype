@@ -71,6 +71,26 @@
       <section class="card volunteer-workspace" data-step="3" hidden>
         <div class="volunteer-overview" data-person-intro></div>
 
+        <section class="volunteer-section volunteer-tshirt-section" data-tshirt-section hidden>
+          <div class="volunteer-section__head">
+            <div>
+              <h2>Taglia T-shirt</h2>
+            </div>
+          </div>
+          <p class="muted">Indica la misura della T-shirt dello staff. La scelta è obbligatoria.</p>
+          <label class="field">
+            <span>Misura</span>
+            <select data-tshirt-size required>
+              <option value="">Seleziona la misura</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+            </select>
+          </label>
+          <p class="status" data-tshirt-status aria-live="polite"></p>
+        </section>
+
         <section class="volunteer-section" data-request-section>
           <div class="volunteer-section__head">
             <div>
