@@ -140,7 +140,7 @@ async function adminReadRequirements() {
 }
 
 async function adminSnapshot() {
-  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, raceProgram, requirements, responseCampaigns, openRequestResponses] = await Promise.all([
+  const [peopleResult, shifts, activities, activityGroups, assignments, assignmentHistory, assignmentResponsibilities, submissions, responses, availability, assignmentAvailabilityAudit, assignmentDeactivationAudit, manualConfirmationAudit, raceProgram, requirements, responseCampaigns, openRequestResponses] = await Promise.all([
     adminReadPeople(),
     adminRead('turni', 'volunteer_shifts', {
       query: {
@@ -206,6 +206,14 @@ async function adminSnapshot() {
         order: 'created_at.asc'
       }
     }),
+    adminRead('conferme manuali assegnazioni', 'volunteer_audit_log', {
+      query: {
+        select: 'id,actor_name,person_id,entity_id,previous_value,new_value,note,created_at',
+        action_type: 'eq.assignment_manual_confirmation',
+        entity_type: 'eq.assignment',
+        order: 'created_at.asc'
+      }
+    }),
     adminReadOptional('programma gare', 'volunteer_race_program', {
       query: {
         select: 'id,person_id,person_code,person_name,crew_label,race_date,race_time,source_type,source_row,active,created_at,updated_at',
@@ -245,6 +253,7 @@ async function adminSnapshot() {
   const availabilityRows = rows(availability);
   const assignmentAvailabilityAuditRows = rows(assignmentAvailabilityAudit);
   const assignmentDeactivationAuditRows = rows(assignmentDeactivationAudit);
+  const manualConfirmationAuditRows = rows(manualConfirmationAudit);
   const raceRows = rows(raceProgram);
   const requirementRows = rows(requirements?.data);
   const requirementResponseLabelAvailable = requirements?.responseLabelAvailable === true;
@@ -286,6 +295,19 @@ async function adminSnapshot() {
   }
 
   const assignmentHistoryById = new Map(assignmentHistoryRows.map((row) => [row.id, row]));
+  const latestManualConfirmationByAssignment = new Map();
+  const manuallyConfirmedPersonShiftKeys = new Set();
+  for (const event of manualConfirmationAuditRows) {
+    if (!event?.entity_id) continue;
+    const current = latestManualConfirmationByAssignment.get(event.entity_id);
+    if (!current || String(event.created_at || '').localeCompare(String(current.created_at || '')) > 0) {
+      latestManualConfirmationByAssignment.set(event.entity_id, event);
+    }
+    const assignment = assignmentHistoryById.get(event.entity_id) || null;
+    const shiftId = event?.new_value?.shiftId || assignment?.shift_id || null;
+    const personId = event.person_id || assignment?.person_id || null;
+    if (personId && shiftId) manuallyConfirmedPersonShiftKeys.add(`${personId}|${shiftId}`);
+  }
 
   const sameAssignmentTurn = (current, previous) => {
     if (!current || !previous) return false;
@@ -311,6 +333,46 @@ async function adminSnapshot() {
       current = previous;
     }
     return null;
+  };
+
+  const manualConfirmationForAssignment = (assignment) => {
+    if (!assignment?.id) return null;
+    let current = assignment;
+    const seen = new Set();
+    let latest = null;
+
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      const event = latestManualConfirmationByAssignment.get(current.id) || null;
+      if (event && (!latest || String(event.created_at || '').localeCompare(String(latest.created_at || '')) > 0)) {
+        latest = event;
+      }
+      if (!current.supersedes_assignment_id) break;
+      const previous = assignmentHistoryById.get(current.supersedes_assignment_id) || null;
+      if (!previous || !sameAssignmentTurn(current, previous)) break;
+      current = previous;
+    }
+    return latest;
+  };
+
+  const currentStateForAssignment = (assignment) => {
+    const response = responseForAssignment(assignment);
+    const manual = manualConfirmationForAssignment(assignment);
+    const responseAt = response?.stamp || response?.created_at || '';
+    const manualAt = manual?.created_at || '';
+
+    if (manual && (!response || String(manualAt).localeCompare(String(responseAt)) > 0)) {
+      return {
+        response: 'confirmed',
+        note: manual.note || manual?.new_value?.note || '',
+        stamp: manualAt,
+        actorName: manual.actor_name || '',
+        source: 'admin_manual'
+      };
+    }
+
+    if (!response) return null;
+    return { ...response, source: 'volunteer' };
   };
 
   const availabilityBySubmission = new Map();
@@ -352,7 +414,7 @@ async function adminSnapshot() {
     const person = personById.get(assignment.person_id) || null;
     const shift = shiftById.get(assignment.shift_id) || null;
     const activity = activityById.get(assignment.activity_id) || null;
-    const current = responseForAssignment(assignment);
+    const current = currentStateForAssignment(assignment);
     return {
       id: assignment.id,
       personId: assignment.person_id,
@@ -381,7 +443,8 @@ async function adminSnapshot() {
       currentResponse: current?.response || null,
       currentNote: current?.note || '',
       currentResponseAt: current?.stamp || null,
-      currentActorName: current?.actorName || ''
+      currentActorName: current?.actorName || '',
+      currentResponseSource: current?.source || null
     };
   });
 
@@ -459,7 +522,7 @@ async function adminSnapshot() {
       .filter(Boolean)
   );
 
-  const confirmedPersonShiftKeys = new Set();
+  const confirmedPersonShiftKeys = new Set(manuallyConfirmedPersonShiftKeys);
   for (const [assignmentId, response] of latestResponseByAssignment.entries()) {
     if (response?.response !== 'confirmed') continue;
     const assignment = assignmentHistoryById.get(assignmentId) || null;
