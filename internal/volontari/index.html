@@ -14,8 +14,8 @@
       <img src="../../assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 – Pesaro">
       <div>
         <p class="eyebrow">Area organizzazione</p>
-        <h1>Disponibilità volontari</h1>
-        <p class="intro">Controlla le richieste che richiedono una risposta e le disponibilità che ci hai già comunicato.</p>
+        <h1 data-page-title>Disponibilità volontari</h1>
+        <p class="intro" data-page-intro>Controlla le richieste che richiedono una risposta e le disponibilità che ci hai già comunicato.</p>
       </div>
     </header>
 
@@ -41,27 +41,39 @@
       </section>
 
       <section class="card step" data-step="2" hidden>
-        <p class="eyebrow">Persona interessata</p>
-        <h2>Seleziona il nominativo</h2>
-        <p class="muted">Cerca la persona per cui vuoi controllare o aggiornare le disponibilità.</p>
-        <label class="field">
-          <span>Cerca per cognome o nome</span>
-          <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
-        </label>
-        <div id="person-results" class="person-results" data-person-results role="listbox" aria-label="Risultati ricerca nominativo"></div>
-        <div class="manual-box" data-manual-box hidden>
-          <button class="link-button" type="button" data-manual-toggle>Non trovi il tuo nominativo? Inseriscilo manualmente</button>
-          <div class="manual-fields" data-manual-field hidden>
-            <label class="field">
-              <span>Cognome</span>
-              <input data-manual-surname maxlength="80" autocomplete="family-name" placeholder="Es. Rossi">
-            </label>
-            <label class="field">
-              <span>Nome</span>
-              <input data-manual-given-name maxlength="80" autocomplete="given-name" placeholder="Es. Mario">
-            </label>
-            <div class="actions actions--end">
-              <button class="button button--primary" type="button" data-continue-manual>Continua</button>
+        <p class="eyebrow" data-person-picker-eyebrow>Persona interessata</p>
+        <h2 data-person-picker-title>Seleziona il nominativo</h2>
+        <p class="muted" data-person-picker-intro>Cerca la persona per cui vuoi controllare o aggiornare le disponibilità.</p>
+
+        <div data-summary-person-picker hidden>
+          <label class="field">
+            <span>Il tuo nominativo</span>
+            <select data-summary-person-select>
+              <option value="">Seleziona il tuo nome e cognome</option>
+            </select>
+          </label>
+        </div>
+
+        <div data-survey-person-picker>
+          <label class="field">
+            <span>Cerca per cognome o nome</span>
+            <input data-person-search type="search" autocomplete="off" placeholder="Inizia a scrivere il tuo nome o cognome" aria-autocomplete="list" aria-controls="person-results">
+          </label>
+          <div id="person-results" class="person-results" data-person-results role="listbox" aria-label="Risultati ricerca nominativo"></div>
+          <div class="manual-box" data-manual-box hidden>
+            <button class="link-button" type="button" data-manual-toggle>Non trovi il tuo nominativo? Inseriscilo manualmente</button>
+            <div class="manual-fields" data-manual-field hidden>
+              <label class="field">
+                <span>Cognome</span>
+                <input data-manual-surname maxlength="80" autocomplete="family-name" placeholder="Es. Rossi">
+              </label>
+              <label class="field">
+                <span>Nome</span>
+                <input data-manual-given-name maxlength="80" autocomplete="given-name" placeholder="Es. Mario">
+              </label>
+              <div class="actions actions--end">
+                <button class="button button--primary" type="button" data-continue-manual>Continua</button>
+              </div>
             </div>
           </div>
         </div>
@@ -153,23 +165,31 @@
         </div>
       </section>
 
-      <section class="card volunteer-readonly-summary" data-step="5" hidden>
-        <div class="volunteer-overview">
-          <p class="eyebrow">Riepilogo personale</p>
-          <h2>Attività assegnate</h2>
-          <p class="muted">Qui trovi la situazione aggiornata delle attività che ti sono state assegnate.</p>
+      <section class="card volunteer-readonly-summary volunteer-program" data-step="5" hidden>
+        <div class="volunteer-overview volunteer-program__head">
+          <p class="eyebrow">Situazione aggiornata</p>
+          <h2 data-program-person-name>Le mie attività</h2>
+          <p class="muted">Qui trovi le attività di supporto che ti sono assegnate e le gare a cui parteciperai.</p>
         </div>
+
         <div data-readonly-summary></div>
+
+        <div class="volunteer-program__actions">
+          <button class="button button--primary" type="button" data-download-program-pdf>Scarica PDF</button>
+          <button class="button button--secondary" type="button" data-change-summary-person>Cambia nominativo</button>
+        </div>
+        <p class="status" data-program-pdf-status aria-live="polite"></p>
+
         <div class="success-delivery readonly-summary-email">
-          <h3>Vuoi ricevere il riepilogo?</h3>
-          <p class="muted">Puoi inviarlo al tuo indirizzo email.</p>
+          <h3>Vuoi ricevere il PDF via email?</h3>
+          <p class="muted">Inserisci il tuo indirizzo: riceverai lo stesso programma disponibile per il download.</p>
           <form data-readonly-email-form>
             <label class="field">
               <span>Email</span>
               <input type="email" data-readonly-email autocomplete="email" maxlength="254" placeholder="nome@esempio.it" required>
             </label>
             <p class="status" data-readonly-email-status aria-live="polite"></p>
-            <button class="button button--secondary" type="submit" data-readonly-email-submit>Invia riepilogo via email</button>
+            <button class="button button--secondary" type="submit" data-readonly-email-submit>Ricevi PDF via email</button>
           </form>
         </div>
       </section>
