@@ -69,6 +69,7 @@
   const shiftBoardShiftFilter = document.querySelector('[data-shift-board-shift-filter]');
   const volunteerMatrixReport = document.querySelector('[data-volunteer-matrix-report]');
   const volunteerMatrixShiftFilter = document.querySelector('[data-volunteer-matrix-shift-filter]');
+  const volunteerMatrixGroupFilter = document.querySelector('[data-volunteer-matrix-group-filter]');
   const volunteerMatrixActivityFilter = document.querySelector('[data-volunteer-matrix-activity-filter]');
   const volunteerMatrixExportPdf = document.querySelector('[data-volunteer-matrix-export-pdf]');
   const confirmationChanges = document.querySelector('[data-confirmation-changes]');
@@ -1402,6 +1403,12 @@
     const matrixActivities = volunteerMatrixActivityCatalog()
       .map((item) => ({ value: item.key, label: item.label }));
     setSelectOptions(volunteerMatrixActivityFilter, matrixActivities, 'Tutte');
+
+    const matrixGroups = [
+      ...activityGroups().map((group) => ({ value: group.id, label: group.name })),
+      { value: '__ungrouped__', label: 'Senza gruppo' }
+    ];
+    setSelectOptions(volunteerMatrixGroupFilter, matrixGroups, 'Tutti');
 
     const matrixShifts = [...(snapshot?.shifts || [])]
       .sort((a, b) => Number(a.sort_order ?? 9999) - Number(b.sort_order ?? 9999))
@@ -5444,23 +5451,44 @@
 
   function volunteerMatrixBaseActivityCatalog() {
     const byKey = new Map();
+    const activitySources = snapshot?.activityCatalog || snapshot?.activities || [];
 
-    for (const activity of snapshot?.activities || []) {
+    for (const activity of activitySources) {
+      if (activity.active === false) continue;
       const label = prettifyActivityName(activity.name || '').trim();
       if (!label) continue;
       const key = volunteerMatrixActivityKey(label);
       if (!key || byKey.has(key)) continue;
-      byKey.set(key, { key, label });
+      byKey.set(key, {
+        key,
+        label,
+        groupId: activity.group_id || activity.groupId || ''
+      });
     }
 
-    for (const value of [
-      ...requirements().map((row) => row.activity),
-      ...(snapshot?.assignments || []).map((row) => displayActivity(row))
-    ]) {
-      const label = prettifyActivityName(value || '').trim();
+    for (const requirement of requirements()) {
+      const label = prettifyActivityName(requirement.activity || '').trim();
+      const key = volunteerMatrixActivityKey(label);
+      if (!key) continue;
+      const current = byKey.get(key);
+      const groupId = requirement.activityGroupId || '';
+      if (!current) {
+        byKey.set(key, { key, label, groupId });
+      } else if (!current.groupId && groupId) {
+        current.groupId = groupId;
+      }
+    }
+
+    for (const row of snapshot?.assignments || []) {
+      const label = prettifyActivityName(displayActivity(row) || '').trim();
       const key = volunteerMatrixActivityKey(label);
       if (!key || byKey.has(key)) continue;
-      byKey.set(key, { key, label });
+      const activity = activitySources.find((item) => item.id === row.activityId) || null;
+      byKey.set(key, {
+        key,
+        label,
+        groupId: activity?.group_id || activity?.groupId || ''
+      });
     }
 
     return [...byKey.values()].sort((a, b) =>
@@ -5535,6 +5563,7 @@
 
   function volunteerMatrixData() {
     const selectedShiftIds = selectedFilterValues(volunteerMatrixShiftFilter);
+    const selectedGroupIds = selectedFilterValues(volunteerMatrixGroupFilter);
     const selectedActivities = selectedFilterValues(volunteerMatrixActivityFilter);
 
     const shifts = [...(snapshot?.shifts || [])]
@@ -5546,6 +5575,7 @@
       );
 
     const activities = volunteerMatrixActivityCatalog()
+      .filter((item) => filterMatches(selectedGroupIds, item.groupId || '__ungrouped__'))
       .filter((item) => filterMatches(selectedActivities, item.key));
 
     const peopleByCell = new Map();
@@ -7797,7 +7827,7 @@
   personPathFilter?.addEventListener('change', renderPersonPathChart);
   personPathGroupFilter?.addEventListener('change', renderPersonPathChart);
   personPathExportPdf?.addEventListener('click', exportPersonPathPdf);
-  [volunteerMatrixShiftFilter, volunteerMatrixActivityFilter]
+  [volunteerMatrixShiftFilter, volunteerMatrixGroupFilter, volunteerMatrixActivityFilter]
     .forEach((filter) => filter?.addEventListener('change', renderVolunteerMatrixReport));
   volunteerMatrixExportPdf?.addEventListener('click', exportVolunteerMatrixPdf);
 
