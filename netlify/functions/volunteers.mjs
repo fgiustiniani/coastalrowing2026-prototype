@@ -927,7 +927,7 @@ export default async (request) => {
           await supabaseRequest('volunteer_people', {
             method: 'PATCH',
             query: { id: `eq.${resolvedPersonId}` },
-            body: { tshirt_size: tshirtSize },
+            body: { tshirt_size: tshirtSize, updated_at: new Date().toISOString() },
             prefer: 'return=minimal'
           });
           currentState.person.tshirt_size = tshirtSize;
