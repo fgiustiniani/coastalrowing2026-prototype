@@ -727,6 +727,30 @@ export default async (request) => {
 
       const session = requireVolunteerSession(request);
 
+      if (action === 'save-tshirt-size') {
+        if (session.mode !== 'summary') {
+          throw new ApiError('Questa operazione è disponibile dal link riepilogo.', 403, 'SUMMARY_LINK_REQUIRED');
+        }
+
+        const personId = clean(body.personId, 60);
+        if (!isUuid(personId)) throw new ApiError('Persona non valida.', 400, 'INVALID_PERSON');
+
+        const state = await personState(personId);
+        if (state.tshirtSizeAvailable !== true) {
+          throw new ApiError('Il campo taglia T-shirt non è ancora disponibile.', 503, 'TSHIRT_FIELD_UNAVAILABLE');
+        }
+
+        const tshirtSize = normalizeTshirtSize(body.tshirtSize, true);
+        await supabaseRequest('volunteer_people', {
+          method: 'PATCH',
+          query: { id: `eq.${personId}` },
+          body: { tshirt_size: tshirtSize, updated_at: new Date().toISOString() },
+          prefer: 'return=minimal'
+        });
+
+        return json({ ok: true, tshirtSize });
+      }
+
       if (action === 'email-assignment-summary') {
         if (session.mode !== 'summary') {
           throw new ApiError('Questo link non è abilitato al riepilogo in sola lettura.', 403, 'SUMMARY_LINK_REQUIRED');
