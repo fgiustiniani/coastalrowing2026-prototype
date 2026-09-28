@@ -4530,6 +4530,13 @@
 
     const personById = new Map(peopleRows.map((row) => [row.id, row]));
     const shiftOrderById = new Map((snapshot?.shifts || []).map((shift) => [shift.id, Number(shift.sort_order ?? 9999)]));
+    const adminActionLabel = (value) => ({
+      assignment_manual_confirmation: 'Conferma manuale assegnazione',
+      assignment_deactivated: 'Rimozione assegnazione',
+      assignment_from_availability: 'Assegnazione da disponibilità aggiuntiva',
+      assignment_from_confirmed_availability: 'Assegnazione con conferma precedente'
+    }[value] || value || 'Modifica amministrativa');
+
     const responseLabel = (value) => value === 'confirmed'
       ? 'Confermata'
       : value === 'declined'
@@ -6879,7 +6886,7 @@
     const otherAuditRows = auditRows.filter((row) => !row.submission_id && row.action_type !== 'summary_email_admin_sent');
     const otherHtml = otherAuditRows.length
       ? `<details class="submission-history__other"><summary>Altre modifiche amministrative (${otherAuditRows.length})</summary><div class="audit-list">${otherAuditRows.map((row) => `
-          <article class="audit-item"><div><strong>${escapeHtml(row.action_type)}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div><p><strong>Operatore:</strong> ${escapeHtml(row.actor_name || '—')}</p>${row.note ? `<p><strong>Nota:</strong> ${escapeHtml(row.note)}</p>` : ''}<details><summary>Dettaglio</summary><pre>${escapeHtml(JSON.stringify({ precedente: row.previous_value, nuovo: row.new_value }, null, 2))}</pre></details></article>`).join('')}</div></details>`
+          <article class="audit-item"><div><strong>${escapeHtml(adminActionLabel(row.action_type))}</strong><span>${escapeHtml(formatDateTime(row.created_at))}</span></div><p><strong>Operatore:</strong> ${escapeHtml(row.actor_name || '—')}</p>${row.note ? `<p><strong>Nota:</strong> ${escapeHtml(row.note)}</p>` : ''}<details><summary>Dettaglio</summary><pre>${escapeHtml(JSON.stringify({ precedente: row.previous_value, nuovo: row.new_value }, null, 2))}</pre></details></article>`).join('')}</div></details>`
       : '';
 
     auditList.innerHTML = submissionCards
