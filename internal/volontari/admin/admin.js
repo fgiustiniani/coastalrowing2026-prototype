@@ -53,6 +53,7 @@
   const personReportPersonFilter = document.querySelector('[data-person-report-person-filter]');
   const personReportGroupFilter = document.querySelector('[data-person-report-group-filter]');
   const personReportShiftFilter = document.querySelector('[data-person-report-shift-filter]');
+  const personReportActivityFilter = document.querySelector('[data-person-report-activity-filter]');
   const personReportResponseFilter = document.querySelector('[data-person-report-response-filter]');
   const personReportStatusFilter = document.querySelector('[data-person-report-status-filter]');
   const personPathChart = document.querySelector('[data-person-path-chart]');
@@ -1373,6 +1374,15 @@
       .sort((a, b) => a.label.localeCompare(b.label, 'it'));
     setSelectOptions(personReportPersonFilter, reportPeople, 'Tutte');
     setSelectOptions(personReportGroupFilter, personGroups, 'Tutti');
+    const personReportActivities = [...new Set(
+      personReportRows()
+        .flatMap((item) => item.activityRows || [])
+        .map((row) => String(row.activity || '').trim())
+        .filter(Boolean)
+    )]
+      .sort((a, b) => a.localeCompare(b, 'it'))
+      .map((value) => ({ value, label: value }));
+    setSelectOptions(personReportActivityFilter, personReportActivities, 'Tutte');
     setSelectOptions(activityReportActivityFilter, reportActivities, 'Tutte');
     setSelectOptions(shiftBoardActivityFilter, reportActivities, 'Tutte');
 
@@ -4667,6 +4677,7 @@
         .filter((row) => String(row.currentNote || '').trim())
         .map((row) => ({
           shiftId: row.shiftId || '',
+          activity: displayActivity(row),
           text: `${displayActivity(row)}: ${String(row.currentNote).trim()}`
         }));
       const notes = noteRows.map((row) => row.text);
@@ -4681,23 +4692,29 @@
           const response = effectiveAssignmentResponse(row) || 'pending';
           return {
             shiftId: row.shiftId || '',
+            activity: displayActivity(row),
             label: `${row.day}-${row.shift} ${displayActivity(row)}${row.isResponsible ? ' · Responsabile' : ''}${row.historical ? ' · storico' : ''}`,
             response,
+            statusKey: assignmentStatusKey(row),
             responseLabel: responseLabel(response),
             sortOrder: shiftOrderById.get(row.shiftId) ?? 9999
           };
         }),
         ...campaignResponses.map((row) => ({
           shiftId: row.shiftId || '',
+          activity: prettifyActivityName(row.activity || ''),
           label: `${row.day}-${row.shift} ${row.activity} · ${row.campaignName}`,
           response: row.response,
+          statusKey: row.response === 'declined' ? 'declined' : 'confirmed',
           responseLabel: responseLabel(row.response),
           sortOrder: Number(row.sortOrder ?? 9999)
         })),
         ...openRequests.map((row) => ({
           shiftId: row.shiftId || '',
+          activity: prettifyActivityName(row.activity || ''),
           label: `${row.day}-${row.shift} ${row.activity} · nuova richiesta`,
           response: 'pending',
+          statusKey: 'pending',
           responseLabel: 'Da rispondere',
           sortOrder: Number(row.sortOrder ?? 9999)
         }))
@@ -4736,30 +4753,52 @@
     const personIds = selectedFilterValues(personReportPersonFilter);
     const groups = selectedFilterValues(personReportGroupFilter);
     const shiftIds = selectedFilterValues(personReportShiftFilter);
+    const activities = selectedFilterValues(personReportActivityFilter);
     const answers = selectedFilterValues(personReportResponseFilter);
     const statuses = selectedFilterValues(personReportStatusFilter);
 
     return personReportRows()
       .map((item) => {
-        if (!shiftIds.length) return item;
-
         const activityRows = (item.activityRows || [])
-          .filter((row) => shiftIds.includes(row.shiftId));
-        const availability = (item.availability || [])
-          .filter((row) => shiftIds.includes(row.shiftId));
+          .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId))
+          .filter((row) => !activities.length || activities.includes(String(row.activity || '')));
 
-        if (!activityRows.length && !availability.length) return null;
+        const availability = (item.availability || [])
+          .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId));
+
+        if (activities.length) {
+          if (!activityRows.length) return null;
+        } else if (shiftIds.length && !activityRows.length && !availability.length) {
+          return null;
+        }
 
         const confirmed = activityRows.filter((row) => row.response === 'confirmed').length;
         const declined = activityRows.filter((row) => row.response === 'declined').length;
         const pending = activityRows.filter((row) => !['confirmed', 'declined'].includes(row.response)).length;
-        const noteRows = (item.noteRows || []).filter((row) => shiftIds.includes(row.shiftId));
+
+        const noteRows = (item.noteRows || [])
+          .filter((row) => !shiftIds.length || shiftIds.includes(row.shiftId))
+          .filter((row) => !activities.length || activities.includes(String(row.activity || '')));
+
+        const statusKeys = [...new Set([
+          ...activityRows.map((row) => row.statusKey || row.response || 'pending'),
+          ...(!activities.length ? availability.map((row) => assignmentStatusKey(row)) : [])
+        ])];
+
+        let responseState = { key: 'pending', label: 'Non ha risposto' };
+        if (item.answered && declined > 0 && confirmed > 0) responseState = { key: 'declined', label: 'Conferme + rifiuti' };
+        else if (item.answered && declined > 0) responseState = { key: 'declined', label: 'Ha rifiutato' };
+        else if (item.answered && confirmed > 0 && pending === 0) responseState = { key: 'confirmed', label: 'Ha confermato' };
+        else if (item.answered && pending > 0) responseState = { key: 'pending', label: 'Da completare' };
+        else if (item.answered) responseState = { key: 'confirmed', label: 'Ha risposto' };
 
         return {
           ...item,
           confirmed,
           declined,
           pending,
+          responseState,
+          statusKeys,
           notes: noteRows.map((row) => row.text).join('; '),
           noteRows,
           availability,
@@ -7827,7 +7866,7 @@
   [assignmentSort, assignmentPersonFilter, assignmentGroupFilter, assignmentShiftFilter, assignmentActivityFilter, assignmentResponseFilter, assignmentStatusFilter, assignmentWarningFilter, assignmentCoverageFilter, assignmentResponsibleFilter]
     .forEach((filter) => filter?.addEventListener('change', scheduleAssignmentRender));
   assignmentClearFilters?.addEventListener('click', clearAssignmentFilters);
-  [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportResponseFilter, personReportStatusFilter]
+  [personReportPersonFilter, personReportGroupFilter, personReportShiftFilter, personReportActivityFilter, personReportResponseFilter, personReportStatusFilter]
     .forEach((filter) => filter?.addEventListener('change', renderPersonReport));
   [shiftBoardPersonFilter, shiftBoardActivityFilter, shiftBoardShiftFilter]
     .forEach((filter) => filter?.addEventListener('change', renderShiftBoardReport));
