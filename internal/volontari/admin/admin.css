@@ -5641,6 +5641,7 @@ tr.is-busy button.is-busy {
   grid-column: 1 / -1;
 }
 .volunteer-matrix-filters {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
   margin-bottom: 12px;
 }
 .volunteer-matrix-wrap {
@@ -5760,6 +5761,11 @@ tr.is-busy button.is-busy {
 }
 .volunteer-matrix-empty {
   color: #9aa9ad;
+}
+@media (max-width: 900px) {
+  .volunteer-matrix-filters {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 700px) {
   .volunteer-matrix-table {
