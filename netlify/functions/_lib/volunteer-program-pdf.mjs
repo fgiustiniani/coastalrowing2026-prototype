@@ -106,7 +106,7 @@ function addLink(page, doc, x, y, width, height, url) {
 export async function buildVolunteerProgramPdf({
   personState,
   programUrl = '',
-  ficUrl = 'https://www.canottaggio.org/'
+  ficUrl = 'https://canottaggioservice.canottaggio.net/menu_nazionali_cal.php?manif=003907&&k1=C&sta_ag=2026'
 }) {
   const doc = await PDFDocument.create();
   doc.setTitle('Il programma delle tue attività');
