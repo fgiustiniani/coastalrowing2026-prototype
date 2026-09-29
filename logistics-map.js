@@ -143,8 +143,18 @@
     }
   }
 
+  function clearTransientHighlights() {
+    [...hotspots, ...legendHotspots].forEach((button) => {
+      button.classList.remove('is-hovered');
+      if (button === document.activeElement && typeof button.blur === 'function') {
+        button.blur();
+      }
+    });
+  }
+
   function clearActivePoint() {
     activePoint = null;
+    clearTransientHighlights();
     hotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
     legendHotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
     closePopover();
@@ -170,6 +180,7 @@
     const mapButton = mapHotspot(number);
     if (!mapButton) return;
 
+    clearTransientHighlights();
     hotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === mapButton)));
     legendHotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === legendHotspot(number))));
     showPopover(number);
@@ -451,6 +462,11 @@
 
     event.preventDefault();
     event.stopPropagation();
+
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    clearTransientHighlights();
 
     if (hit.number && hit.distance <= hitRadius) {
       activatePoint(hit.number);
