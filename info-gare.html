@@ -213,7 +213,7 @@
               <button class="logistics-map-interactive__button logistics-map-interactive__button--icon" type="button" data-logistics-zoom-in aria-label="Ingrandisci mappa">+</button>
               <button class="logistics-map-interactive__button" type="button" data-logistics-reset>Mappa intera</button>
               <button class="logistics-map-interactive__button" type="button" data-logistics-legend>Legenda</button>
-              <a class="logistics-map-interactive__link logistics-map-interactive__button--primary" href="assets/maps/mappa-interattiva.webp?v=1" target="_blank" rel="noopener noreferrer">Apri a tutto schermo</a>
+              <button class="logistics-map-interactive__button logistics-map-interactive__button--primary" type="button" data-logistics-fullscreen-open>Apri a tutto schermo</button>
             </div>
             <p class="logistics-map-interactive__hint">Seleziona un numero nella legenda per evidenziare il punto sulla mappa e aprire le indicazioni stradali.</p>
           </div>
@@ -263,6 +263,14 @@
             </div>
           </div>
           <p class="logistics-map-interactive__status" data-logistics-status aria-live="polite">Mappa completa.</p>
+          <div class="logistics-map-interactive__fullscreen" data-logistics-fullscreen hidden role="dialog" aria-modal="true" aria-label="Mappa logistica a tutto schermo">
+            <div class="logistics-map-interactive__fullscreen-toolbar">
+              <strong>Mappa logistica</strong>
+              <span class="logistics-map-interactive__fullscreen-hint">Pizzica con due dita per ingrandire · trascina per spostarti</span>
+              <button class="logistics-map-interactive__fullscreen-close" type="button" data-logistics-fullscreen-close>Chiudi</button>
+            </div>
+            <div class="logistics-map-interactive__fullscreen-host" data-logistics-fullscreen-host></div>
+          </div>
         </div>
       </section>
 
