@@ -467,6 +467,13 @@ body.logistics-map-fullscreen-open {
   }
 }
 
+@media (pointer: coarse) {
+  .logistics-map-interactive__fullscreen:not([hidden]) .logistics-map-interactive__hotspot,
+  .logistics-map-interactive__fullscreen:not([hidden]) .logistics-map-interactive__legend-hotspot {
+    pointer-events: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .logistics-map-interactive__button,
   .logistics-map-interactive__link,
