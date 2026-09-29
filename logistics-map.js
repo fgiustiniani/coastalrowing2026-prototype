@@ -288,20 +288,37 @@
   }
 
   function nearestFullscreenTarget(clientX, clientY) {
+    const rect = viewport.getBoundingClientRect();
     let nearestNumber = null;
     let nearestDistance = Infinity;
 
-    [...hotspots, ...legendHotspots].forEach((button) => {
-      const rect = button.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
+    hotspots.forEach((button) => {
+      const x = Number(button.dataset.mapX);
+      const y = Number(button.dataset.mapY);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+      const centerX = rect.left + tx + x * rect.width * scale;
+      const centerY = rect.top + ty + y * rect.height * scale;
       const distance = Math.hypot(clientX - centerX, clientY - centerY);
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        nearestNumber = button.dataset.logisticsPoint || button.dataset.logisticsTarget || null;
+        nearestNumber = button.dataset.logisticsPoint || null;
+      }
+    });
+
+    legendHotspots.forEach((button) => {
+      const x = parseFloat(button.style.getPropertyValue('--legend-x')) / 100;
+      const y = parseFloat(button.style.getPropertyValue('--legend-y')) / 100;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+      const centerX = rect.left + tx + x * rect.width * scale;
+      const centerY = rect.top + ty + y * rect.height * scale;
+      const distance = Math.hypot(clientX - centerX, clientY - centerY);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestNumber = button.dataset.logisticsTarget || null;
       }
     });
 
