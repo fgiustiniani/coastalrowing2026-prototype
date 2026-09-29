@@ -15,6 +15,10 @@
   const popoverTitle = root.querySelector('[data-logistics-popover-title]');
   const popoverClose = root.querySelector('[data-logistics-popover-close]');
   const directionsLink = root.querySelector('[data-logistics-directions]');
+  const fullscreenOpenButton = root.querySelector('[data-logistics-fullscreen-open]');
+  const fullscreen = root.querySelector('[data-logistics-fullscreen]');
+  const fullscreenHost = root.querySelector('[data-logistics-fullscreen-host]');
+  const fullscreenCloseButton = root.querySelector('[data-logistics-fullscreen-close]');
 
   if (!viewport || !stage) return;
 
@@ -53,6 +57,13 @@
   let dragMoved = false;
   let lastDragEnd = -Infinity;
   let activePoint = null;
+  let fullscreenOpen = false;
+  let pinchStartDistance = 0;
+  let pinchStartScale = 1;
+  let pinchMapX = 0;
+  let pinchMapY = 0;
+  const viewportHome = viewport.parentNode;
+  const viewportHomeNextSibling = viewport.nextSibling;
 
   function dimensions() {
     const rect = viewport.getBoundingClientRect();
@@ -213,6 +224,51 @@
     announce(message);
   }
 
+  function openFullscreenMap() {
+    if (!fullscreen || !fullscreenHost || fullscreenOpen) return;
+
+    fullscreenOpen = true;
+    fullscreen.hidden = false;
+    document.body.classList.add('logistics-map-fullscreen-open');
+    fullscreenHost.appendChild(viewport);
+
+    window.requestAnimationFrame(() => {
+      render();
+      fullscreenCloseButton?.focus();
+    });
+  }
+
+  function closeFullscreenMap() {
+    if (!fullscreen || !fullscreenOpen) return;
+
+    fullscreenOpen = false;
+    if (viewportHomeNextSibling && viewportHomeNextSibling.parentNode === viewportHome) {
+      viewportHome.insertBefore(viewport, viewportHomeNextSibling);
+    } else {
+      viewportHome.appendChild(viewport);
+    }
+
+    fullscreen.hidden = true;
+    document.body.classList.remove('logistics-map-fullscreen-open');
+
+    window.requestAnimationFrame(() => {
+      render();
+      fullscreenOpenButton?.focus();
+    });
+  }
+
+  function touchDistance(touchA, touchB) {
+    return Math.hypot(touchB.clientX - touchA.clientX, touchB.clientY - touchA.clientY);
+  }
+
+  function touchCenter(touchA, touchB) {
+    const rect = viewport.getBoundingClientRect();
+    return {
+      x: ((touchA.clientX + touchB.clientX) / 2) - rect.left,
+      y: ((touchA.clientY + touchB.clientY) / 2) - rect.top
+    };
+  }
+
   hotspots.forEach((button) => {
     const number = button.dataset.logisticsPoint;
     bindHover(button, number);
@@ -273,6 +329,49 @@
   directionsLink?.addEventListener('click', (event) => {
     event.stopPropagation();
   });
+
+  fullscreenOpenButton?.addEventListener('click', openFullscreenMap);
+  fullscreenCloseButton?.addEventListener('click', closeFullscreenMap);
+
+  viewport.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 2) return;
+
+    event.preventDefault();
+    const [touchA, touchB] = event.touches;
+    const center = touchCenter(touchA, touchB);
+
+    pinchStartDistance = touchDistance(touchA, touchB);
+    pinchStartScale = scale;
+    pinchMapX = (center.x - tx) / scale;
+    pinchMapY = (center.y - ty) / scale;
+    dragging = false;
+    pointerId = null;
+    viewport.classList.remove('is-dragging');
+  }, { passive: false });
+
+  viewport.addEventListener('touchmove', (event) => {
+    if (event.touches.length !== 2 || pinchStartDistance <= 0) return;
+
+    event.preventDefault();
+    const [touchA, touchB] = event.touches;
+    const center = touchCenter(touchA, touchB);
+    const ratio = touchDistance(touchA, touchB) / pinchStartDistance;
+    const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, pinchStartScale * ratio));
+
+    scale = nextScale;
+    tx = center.x - pinchMapX * scale;
+    ty = center.y - pinchMapY * scale;
+    render();
+    announce(`Zoom ${Math.round(scale * 100)}%.`);
+  }, { passive: false });
+
+  viewport.addEventListener('touchend', (event) => {
+    if (event.touches.length < 2) pinchStartDistance = 0;
+  }, { passive: true });
+
+  viewport.addEventListener('touchcancel', () => {
+    pinchStartDistance = 0;
+  }, { passive: true });
 
   zoomInButton?.addEventListener('click', () => {
     setScale(scale * STEP);
@@ -355,6 +454,13 @@
 
     closePopover(true);
     announce('Selezione chiusa.');
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && fullscreenOpen) {
+      event.preventDefault();
+      closeFullscreenMap();
+    }
   });
 
   viewport.addEventListener('keydown', (event) => {
