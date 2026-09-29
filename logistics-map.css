@@ -288,6 +288,76 @@
   line-height: 1.4;
 }
 
+
+body.logistics-map-fullscreen-open {
+  overflow: hidden;
+}
+
+.logistics-map-interactive__fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 25, 46, 0.97);
+}
+
+.logistics-map-interactive__fullscreen[hidden] {
+  display: none;
+}
+
+.logistics-map-interactive__fullscreen-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+}
+
+.logistics-map-interactive__fullscreen-toolbar strong {
+  font-size: 1rem;
+}
+
+.logistics-map-interactive__fullscreen-hint {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.8rem;
+}
+
+.logistics-map-interactive__fullscreen-close {
+  appearance: none;
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: #fff;
+  color: #123b52;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logistics-map-interactive__fullscreen-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.logistics-map-interactive__fullscreen-host .logistics-map-interactive__viewport {
+  width: min(100%, calc((100vh - 80px) * 16 / 9));
+  width: min(100%, calc((100dvh - 80px) * 16 / 9));
+  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
+  border-radius: 12px;
+  touch-action: none;
+  background: #dfe8ec;
+}
+
 @media (max-width: 760px) {
   .logistics-map-interactive__toolbar {
     align-items: stretch;
@@ -312,6 +382,39 @@
 
   .logistics-map-interactive__viewport {
     border-radius: 14px;
+  }
+
+  .logistics-map-interactive__fullscreen {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .logistics-map-interactive__fullscreen-toolbar {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .logistics-map-interactive__fullscreen-toolbar strong {
+    flex: 1 1 auto;
+  }
+
+  .logistics-map-interactive__fullscreen-hint {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    font-size: 0.74rem;
+  }
+
+  .logistics-map-interactive__fullscreen-close {
+    min-height: 36px;
+    padding: 6px 11px;
+  }
+
+  .logistics-map-interactive__fullscreen-host .logistics-map-interactive__viewport {
+    width: 100%;
+    max-height: calc(100vh - 92px);
+    max-height: calc(100dvh - 92px);
+    touch-action: none;
   }
 
   .logistics-map-interactive__hotspot {
