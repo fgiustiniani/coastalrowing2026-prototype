@@ -252,21 +252,9 @@ export async function buildVolunteerProgramPdf({
     addLink(page, doc, tx, y1 - 2, w1, 11, programUrl);
 
     const y2 = y - 35;
-    const line2a = 'Verifica sempre gli orari delle gare nel ';
-    page.drawText(line2a, { x, y: y2, size, font: regular, color: COLORS.ink });
-    const x2 = x + regular.widthOfTextAtSize(line2a, size);
-    const link2 = 'sito ufficiale della FIC';
-    page.drawText(link2, { x: x2, y: y2, size, font: bold, color: COLORS.teal });
-    const w2 = bold.widthOfTextAtSize(link2, size);
-    page.drawLine({
-      start: { x: x2, y: y2 - 1 },
-      end: { x: x2 + w2, y: y2 - 1 },
-      thickness: 0.4,
-      color: COLORS.teal
-    });
-    addLink(page, doc, x2, y2 - 2, w2, 11, ficUrl);
-    page.drawText('.', {
-      x: x2 + w2,
+    const provisionalRaceNote = 'Gli orari delle gare si basano sul programma provvisorio e non sono ancora quelli definitivi.';
+    page.drawText(provisionalRaceNote, {
+      x,
       y: y2,
       size,
       font: regular,
