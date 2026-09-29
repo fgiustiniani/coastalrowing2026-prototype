@@ -23,21 +23,21 @@
   const STEP = 1.35;
 
   const pointData = {
-    '1': { label: 'Parcheggio autovetture', href: 'https://maps.app.goo.gl/mgaSRyb9ETSPAWWn8' },
-    '2': { label: 'Area imbarcazioni', href: 'https://maps.app.goo.gl/8ouoP92AmxmiMSpV9' },
-    '3': { label: 'Remoergometri', href: 'https://maps.app.goo.gl/gnsDZq8upJsce1rUA' },
-    '4': { label: 'Spogliatoi', href: 'https://maps.app.goo.gl/Q9oqx5rz3vjTvsRQ8' },
-    '5': { label: 'Area premiazioni', href: 'https://maps.app.goo.gl/TysJzh64PogUqsWE7' },
-    '6': { label: 'Riunione capitani', href: 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7' },
-    '7': { label: 'Punto ristoro', href: 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7' },
-    '8': { label: 'Soccorso', href: 'https://maps.app.goo.gl/9geUCNftSE8A1F6h6' },
-    '9': { label: 'Servizi', href: 'https://maps.app.goo.gl/Pc8ofT7eu1EyEWMEA' },
-    '10': { label: 'Food truck e maxischermo', href: 'https://maps.app.goo.gl/Sv7j2GNW8ATJ5t3U6' },
-    '11': { label: 'Giudici e Segreteria gare', href: 'https://maps.app.goo.gl/oWVCbN2UQYbQTa9b7' },
-    '12': { label: 'Parcheggio carrelli', href: 'https://maps.app.goo.gl/z9TCStLaTCEJsKgJA' },
-    '13': { label: 'Carico/Scarico imbarcazioni', href: 'https://maps.app.goo.gl/bBBGfXqxEwEJKKPU8' },
-    '14': { label: 'Stand', href: 'https://maps.app.goo.gl/dGQSvVoBD2UCh7CQ9' },
-    'water': { label: 'Water refill', href: 'https://maps.app.goo.gl/BpdJzzSwQpwoyeGV8' }
+     '1': { label: 'Parcheggio autovetture', href: '/api/walking-directions?point=1' },
+     '2': { label: 'Area imbarcazioni', href: '/api/walking-directions?point=2' },
+     '3': { label: 'Remoergometri', href: '/api/walking-directions?point=3' },
+     '4': { label: 'Spogliatoi', href: '/api/walking-directions?point=4' },
+     '5': { label: 'Area premiazioni', href: '/api/walking-directions?point=5' },
+     '6': { label: 'Riunione capitani', href: '/api/walking-directions?point=6' },
+     '7': { label: 'Punto ristoro', href: '/api/walking-directions?point=7' },
+     '8': { label: 'Soccorso', href: '/api/walking-directions?point=8' },
+     '9': { label: 'Servizi', href: '/api/walking-directions?point=9' },
+     '10': { label: 'Food truck e maxischermo', href: '/api/walking-directions?point=10' },
+     '11': { label: 'Giudici e Segreteria gare', href: '/api/walking-directions?point=11' },
+     '12': { label: 'Parcheggio carrelli', href: '/api/walking-directions?point=12' },
+     '13': { label: 'Carico/Scarico imbarcazioni', href: '/api/walking-directions?point=13' },
+     '14': { label: 'Stand', href: '/api/walking-directions?point=14' },
+     'water': { label: 'Water refill', href: '/api/walking-directions?point=water' }
   };
 
   let scale = 1;
