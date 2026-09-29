@@ -76,6 +76,9 @@
   const programPersonName = document.querySelector('[data-program-person-name]');
   const programPdfButton = document.querySelector('[data-download-program-pdf]');
   const programPdfStatus = document.querySelector('[data-program-pdf-status]');
+  const programHead = document.querySelector('.volunteer-program__head');
+  const programActions = document.querySelector('.volunteer-program__actions');
+  const readonlySummaryEmail = document.querySelector('.readonly-summary-email');
   const tshirtSection = document.querySelector('[data-tshirt-section]');
   const tshirtSizeInput = document.querySelector('[data-tshirt-size]');
   const tshirtStatus = document.querySelector('[data-tshirt-status]');
@@ -484,8 +487,20 @@
         <span>Gli orari delle gare si basano sul programma provvisorio e non sono ancora quelli definitivi.</span>
       </aside>`;
 
-    if (!days.length) {
-      readonlySummary.innerHTML = `${rememberHtml}<p class="summary-empty">Non risultano attività di supporto o gare da mostrare.</p>`;
+    const isEmptyProgram = !days.length;
+    if (programHead) programHead.hidden = isEmptyProgram;
+    if (programActions) programActions.hidden = isEmptyProgram;
+    if (programPdfStatus) programPdfStatus.hidden = isEmptyProgram;
+    if (readonlySummaryEmail) readonlySummaryEmail.hidden = isEmptyProgram;
+
+    if (isEmptyProgram) {
+      readonlySummary.innerHTML = `
+        <section class="volunteer-program__empty" aria-live="polite">
+          <h2>Per ora non hai attività in programma</h2>
+          <p>Ci vediamo al campo gara per vivere insieme quest’evento.</p>
+          <p>E se durante le giornate avrai voglia di dare una mano, il tuo supporto sarà naturalmente benvenuto.</p>
+        </section>
+      `;
       return;
     }
 
