@@ -131,7 +131,8 @@
   border-radius: 50%;
   background: transparent;
   color: transparent;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--hotspot-inverse-scale, 1));
+  transform-origin: center;
   pointer-events: auto;
   cursor: pointer;
   transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
@@ -186,7 +187,8 @@
   border-radius: 50%;
   background: transparent;
   color: transparent;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--hotspot-inverse-scale, 1));
+  transform-origin: center;
   pointer-events: auto;
   cursor: pointer;
 }
