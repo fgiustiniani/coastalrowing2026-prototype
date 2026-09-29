@@ -24,6 +24,8 @@
   let startY = 0;
   let startTx = 0;
   let startTy = 0;
+  let dragMoved = false;
+  let lastDragEnd = -Infinity;
 
   function dimensions() {
     const rect = viewport.getBoundingClientRect();
@@ -163,6 +165,7 @@
     if (event.target.closest?.('[data-logistics-point]')) return;
     if (scale <= 1.001 || event.button !== 0) return;
     dragging = true;
+    dragMoved = false;
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
@@ -174,6 +177,9 @@
 
   viewport.addEventListener('pointermove', (event) => {
     if (!dragging || event.pointerId !== pointerId) return;
+    if (Math.hypot(event.clientX - startX, event.clientY - startY) > 6) {
+      dragMoved = true;
+    }
     tx = startTx + event.clientX - startX;
     ty = startTy + event.clientY - startY;
     render();
@@ -182,6 +188,7 @@
   function endDrag(event) {
     if (!dragging || (event && event.pointerId !== pointerId)) return;
     dragging = false;
+    if (dragMoved) lastDragEnd = performance.now();
     viewport.classList.remove('is-dragging');
     if (pointerId !== null) {
       try {
@@ -196,6 +203,35 @@
   viewport.addEventListener('pointerup', endDrag);
   viewport.addEventListener('pointercancel', endDrag);
   viewport.addEventListener('lostpointercapture', () => endDrag());
+
+  viewport.addEventListener('click', (event) => {
+    if (event.target.closest?.('[data-logistics-point]')) return;
+    if (performance.now() - lastDragEnd < 250) return;
+
+    const rect = viewport.getBoundingClientRect();
+    let nearestButton = null;
+    let nearestDistance = Infinity;
+
+    hotspots.forEach((button) => {
+      const x = Number(button.dataset.mapX);
+      const y = Number(button.dataset.mapY);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+      const screenX = rect.left + tx + x * rect.width * scale;
+      const screenY = rect.top + ty + y * rect.height * scale;
+      const distance = Math.hypot(event.clientX - screenX, event.clientY - screenY);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestButton = button;
+      }
+    });
+
+    const hitRadius = 46 * Math.min(1.65, Math.max(1, scale));
+    if (nearestButton && nearestDistance <= hitRadius) {
+      focusPoint(nearestButton);
+    }
+  });
 
   viewport.addEventListener('keydown', (event) => {
     const key = event.key.toLowerCase();
