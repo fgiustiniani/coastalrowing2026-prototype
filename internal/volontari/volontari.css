@@ -803,3 +803,29 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); box-sha
 .readonly-summary-email {
   margin-top: 20px;
 }
+
+.volunteer-program__empty {
+  max-width: 620px;
+  margin: 14px auto;
+  padding: 34px 28px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--soft);
+  text-align: center;
+}
+.volunteer-program__empty h2 {
+  margin: 0 0 18px;
+  color: var(--accent-dark);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.2;
+}
+.volunteer-program__empty p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.volunteer-program__empty p + p {
+  margin-top: 12px;
+  font-weight: 700;
+}
