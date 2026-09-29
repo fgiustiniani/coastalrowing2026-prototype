@@ -127,28 +127,43 @@
   top: var(--map-y);
   width: clamp(44px, 4.6vw, 64px);
   aspect-ratio: 1;
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 50%;
   background: transparent;
   color: transparent;
-  transform: translate(-50%, -50%) scale(var(--hotspot-inverse-scale, 1));
+  transform: translate(-50%, -50%);
   transform-origin: center;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.logistics-map-interactive__hotspot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  transform: scale(var(--hotspot-inverse-scale, 1));
+  transform-origin: center;
+  pointer-events: none;
   transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
 }
 
-.logistics-map-interactive__hotspot:hover,
-.logistics-map-interactive__hotspot:focus-visible,
-.logistics-map-interactive__hotspot.is-hovered,
-.logistics-map-interactive__hotspot[aria-pressed="true"] {
+.logistics-map-interactive__hotspot:hover::after,
+.logistics-map-interactive__hotspot:focus-visible::after,
+.logistics-map-interactive__hotspot.is-hovered::after,
+.logistics-map-interactive__hotspot[aria-pressed="true"]::after {
   border-color: #fff;
   background: rgba(11, 107, 136, 0.18);
   box-shadow: 0 0 0 4px rgba(0, 25, 46, 0.55);
+}
+
+.logistics-map-interactive__hotspot:focus-visible {
   outline: none;
 }
 
-.logistics-map-interactive__hotspot[aria-pressed="true"] {
+.logistics-map-interactive__hotspot[aria-pressed="true"]::after {
   border-color: #fff;
   background: rgba(11, 107, 136, 0.26);
   box-shadow:
@@ -183,22 +198,36 @@
   top: var(--legend-y);
   width: clamp(30px, 2.4vw, 44px);
   aspect-ratio: 1;
-  border: 2px solid transparent;
+  border: 0;
   border-radius: 50%;
   background: transparent;
   color: transparent;
-  transform: translate(-50%, -50%) scale(var(--hotspot-inverse-scale, 1));
+  transform: translate(-50%, -50%);
   transform-origin: center;
   pointer-events: auto;
   cursor: pointer;
 }
 
-.logistics-map-interactive__legend-hotspot:hover,
-.logistics-map-interactive__legend-hotspot:focus-visible,
-.logistics-map-interactive__legend-hotspot.is-hovered,
-.logistics-map-interactive__legend-hotspot[aria-pressed="true"] {
+.logistics-map-interactive__legend-hotspot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  transform: scale(var(--hotspot-inverse-scale, 1));
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.logistics-map-interactive__legend-hotspot:hover::after,
+.logistics-map-interactive__legend-hotspot:focus-visible::after,
+.logistics-map-interactive__legend-hotspot.is-hovered::after,
+.logistics-map-interactive__legend-hotspot[aria-pressed="true"]::after {
   border-color: rgba(255, 255, 255, 0.96);
   box-shadow: 0 0 0 3px rgba(0, 25, 46, 0.55);
+}
+
+.logistics-map-interactive__legend-hotspot:focus-visible {
   outline: none;
 }
 
@@ -351,10 +380,13 @@ body.logistics-map-fullscreen-open {
 }
 
 .logistics-map-interactive__fullscreen-host .logistics-map-interactive__viewport {
-  width: min(100%, calc((100vh - 80px) * 16 / 9));
-  width: min(100%, calc((100dvh - 80px) * 16 / 9));
-  max-height: calc(100vh - 80px);
-  max-height: calc(100dvh - 80px);
+  flex: 0 0 auto;
+  width: auto;
+  height: min(calc(100vh - 80px), calc((100vw - 20px) * 9 / 16));
+  height: min(calc(100dvh - 80px), calc((100vw - 20px) * 9 / 16));
+  max-width: 100%;
+  max-height: none;
+  aspect-ratio: 16 / 9;
   border-radius: 12px;
   touch-action: none;
   background: #dfe8ec;
@@ -413,9 +445,12 @@ body.logistics-map-fullscreen-open {
   }
 
   .logistics-map-interactive__fullscreen-host .logistics-map-interactive__viewport {
-    width: 100%;
-    max-height: calc(100vh - 92px);
-    max-height: calc(100dvh - 92px);
+    width: auto;
+    height: min(calc(100vh - 104px), calc((100vw - 12px) * 9 / 16));
+    height: min(calc(100dvh - 104px), calc((100vw - 12px) * 9 / 16));
+    max-width: 100%;
+    max-height: none;
+    aspect-ratio: 16 / 9;
     touch-action: none;
   }
 
@@ -440,7 +475,7 @@ body.logistics-map-fullscreen-open {
     transition: none;
   }
 
-  .logistics-map-interactive__hotspot[aria-pressed="true"] {
+  .logistics-map-interactive__hotspot[aria-pressed="true"]::after {
     animation: none;
   }
 }
