@@ -125,7 +125,7 @@
   position: absolute;
   left: var(--map-x);
   top: var(--map-y);
-  width: clamp(25px, 2.8vw, 38px);
+  width: clamp(44px, 4.6vw, 64px);
   aspect-ratio: 1;
   border: 2px solid transparent;
   border-radius: 50%;
@@ -181,7 +181,7 @@
   }
 
   .logistics-map-interactive__hotspot {
-    width: clamp(28px, 6vw, 38px);
+    width: clamp(44px, 9vw, 60px);
   }
 }
 
