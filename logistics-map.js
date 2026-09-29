@@ -13,7 +13,6 @@
   const legendButton = root.querySelector('[data-logistics-legend]');
   const popover = root.querySelector('[data-logistics-popover]');
   const popoverTitle = root.querySelector('[data-logistics-popover-title]');
-  const popoverNote = root.querySelector('[data-logistics-popover-note]');
   const popoverClose = root.querySelector('[data-logistics-popover-close]');
   const directionsLink = root.querySelector('[data-logistics-directions]');
 
@@ -22,24 +21,23 @@
   const MIN_SCALE = 1;
   const MAX_SCALE = 4;
   const STEP = 1.35;
-  const EVENT_ACCESS = 'Società Canottieri Pesaro, Calata Caio Duilio 101, Pesaro';
-  const INTERNAL_NOTE = 'Google Maps porta all’accesso stradale dell’area evento; il punto esatto è quello evidenziato sulla mappa.';
 
   const pointData = {
-    '1': { label: 'Parcheggio autovetture', destination: 'Parcheggio Villa Marina, Pesaro' },
-    '2': { label: 'Area imbarcazioni', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '3': { label: 'Remoergometri', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '4': { label: 'Spogliatoi', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '5': { label: 'Area premiazioni', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '6': { label: 'Riunione capitani', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '7': { label: 'Punto ristoro', destination: 'RistoranTino Pesaro' },
-    '8': { label: 'Soccorso', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '9': { label: 'Servizi', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '10': { label: 'Food truck e maxischermo', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '11': { label: 'Giudici e Segreteria gare', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '12': { label: 'Parcheggio carrelli', destination: 'Strada Tra I Due Porti, Pesaro' },
-    '13': { label: 'Carico/Scarico imbarcazioni', destination: EVENT_ACCESS },
-    '14': { label: 'Stand', destination: EVENT_ACCESS, note: INTERNAL_NOTE }
+    '1': { label: 'Parcheggio autovetture', href: 'https://maps.app.goo.gl/mgaSRyb9ETSPAWWn8' },
+    '2': { label: 'Area imbarcazioni', href: 'https://maps.app.goo.gl/8ouoP92AmxmiMSpV9' },
+    '3': { label: 'Remoergometri', href: 'https://maps.app.goo.gl/gnsDZq8upJsce1rUA' },
+    '4': { label: 'Spogliatoi', href: 'https://maps.app.goo.gl/Q9oqx5rz3vjTvsRQ8' },
+    '5': { label: 'Area premiazioni', href: 'https://maps.app.goo.gl/TysJzh64PogUqsWE7' },
+    '6': { label: 'Riunione capitani', href: 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7' },
+    '7': { label: 'Punto ristoro', href: 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7' },
+    '8': { label: 'Soccorso', href: 'https://maps.app.goo.gl/9geUCNftSE8A1F6h6' },
+    '9': { label: 'Servizi', href: 'https://maps.app.goo.gl/Pc8ofT7eu1EyEWMEA' },
+    '10': { label: 'Food truck e maxischermo', href: 'https://maps.app.goo.gl/Sv7j2GNW8ATJ5t3U6' },
+    '11': { label: 'Giudici e Segreteria gare', href: 'https://maps.app.goo.gl/oWVCbN2UQYbQTa9b7' },
+    '12': { label: 'Parcheggio carrelli', href: 'https://maps.app.goo.gl/z9TCStLaTCEJsKgJA' },
+    '13': { label: 'Carico/Scarico imbarcazioni', href: 'https://maps.app.goo.gl/bBBGfXqxEwEJKKPU8' },
+    '14': { label: 'Stand', href: 'https://maps.app.goo.gl/dGQSvVoBD2UCh7CQ9' },
+    'water': { label: 'Water refill', href: 'https://maps.app.goo.gl/BpdJzzSwQpwoyeGV8' }
   };
 
   let scale = 1;
@@ -79,8 +77,9 @@
     return legendHotspots.find((button) => button.dataset.logisticsTarget === String(number));
   }
 
-  function mapsDirectionsUrl(destination) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  function setHover(number, hovered) {
+    mapHotspot(number)?.classList.toggle('is-hovered', hovered);
+    legendHotspot(number)?.classList.toggle('is-hovered', hovered);
   }
 
   function updatePopoverPosition() {
@@ -96,13 +95,13 @@
     const { width, height } = dimensions();
     const screenX = tx + x * width * scale;
     const screenY = ty + y * height * scale;
-    const halfWidth = Math.min(135, Math.max(92, width / 2 - 12));
+    const halfWidth = Math.min(150, Math.max(90, width / 2 - 10));
     const clampedX = Math.max(halfWidth, Math.min(width - halfWidth, screenX));
-    const clampedY = Math.max(12, Math.min(height - 12, screenY));
+    const clampedY = Math.max(10, Math.min(height - 10, screenY));
 
     popover.style.left = `${clampedX}px`;
     popover.style.top = `${clampedY}px`;
-    popover.classList.toggle('logistics-map-interactive__popover--below', screenY < 135);
+    popover.classList.toggle('logistics-map-interactive__popover--below', screenY < 100);
   }
 
   function render() {
@@ -142,40 +141,34 @@
     if (!data || !popover) return;
 
     activePoint = String(number);
-
     if (popoverTitle) popoverTitle.textContent = data.label;
 
-    if (popoverNote) {
-      popoverNote.textContent = data.note || '';
-      popoverNote.hidden = !data.note;
-    }
-
     if (directionsLink) {
-      directionsLink.href = mapsDirectionsUrl(data.destination);
-      directionsLink.setAttribute('aria-label', `Apri Google Maps con indicazioni per ${data.label}`);
+      directionsLink.href = data.href;
+      directionsLink.setAttribute('aria-label', `Portami a ${data.label} con Google Maps`);
     }
 
     popover.hidden = false;
     updatePopoverPosition();
   }
 
-  function activatePoint(number, { resetView = false } = {}) {
+  function activatePoint(number) {
     const mapButton = mapHotspot(number);
     if (!mapButton) return;
 
     hotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === mapButton)));
     legendHotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === legendHotspot(number))));
-
-    if (resetView) {
-      scale = 1;
-      tx = 0;
-      ty = 0;
-      render();
-    }
-
     showPopover(number);
+
     const label = pointData[String(number)]?.label || `Punto ${number}`;
     announce(`${label} selezionato.`);
+  }
+
+  function bindHover(button, number) {
+    button.addEventListener('mouseenter', () => setHover(number, true));
+    button.addEventListener('mouseleave', () => setHover(number, false));
+    button.addEventListener('focus', () => setHover(number, true));
+    button.addEventListener('blur', () => setHover(number, false));
   }
 
   function setScale(nextScale, centerX, centerY) {
@@ -220,6 +213,9 @@
   }
 
   hotspots.forEach((button) => {
+    const number = button.dataset.logisticsPoint;
+    bindHover(button, number);
+
     button.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
     });
@@ -227,11 +223,14 @@
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      activatePoint(button.dataset.logisticsPoint);
+      activatePoint(number);
     });
   });
 
   legendHotspots.forEach((button) => {
+    const number = button.dataset.logisticsTarget;
+    bindHover(button, number);
+
     button.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
     });
@@ -239,7 +238,7 @@
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      activatePoint(button.dataset.logisticsTarget, { resetView: true });
+      activatePoint(number);
     });
   });
 
@@ -352,7 +351,7 @@
       }
     });
 
-    const hitRadius = 46 * Math.min(1.65, Math.max(1, scale));
+    const hitRadius = 42 * Math.min(1.65, Math.max(1, scale));
     if (nearestButton && nearestDistance <= hitRadius) {
       activatePoint(nearestButton.dataset.logisticsPoint);
     }
