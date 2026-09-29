@@ -134,7 +134,7 @@
 
   legendButton?.addEventListener('click', () => {
     clearActivePoint();
-    focusNormalized(0.67, 0.48, 1.75, 'Legenda della mappa.');
+    focusNormalized(0.775, 0.415, 1.75, 'Legenda della mappa.');
   });
 
   viewport.addEventListener('wheel', (event) => {
@@ -219,7 +219,7 @@
     if (key === 'l') {
       event.preventDefault();
       clearActivePoint();
-      focusNormalized(0.67, 0.48, 1.75, 'Legenda della mappa.');
+      focusNormalized(0.775, 0.415, 1.75, 'Legenda della mappa.');
       return;
     }
 
