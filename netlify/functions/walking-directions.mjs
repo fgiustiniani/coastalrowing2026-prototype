@@ -1,15 +1,15 @@
 const POINT_LINKS = {
   '1': 'https://maps.app.goo.gl/mgaSRyb9ETSPAWWn8',
-  '2': 'https://maps.app.goo.gl/8ouoP92AmxmiMSpV9',
-  '3': 'https://maps.app.goo.gl/gnsDZq8upJsce1rUA',
-  '4': 'https://maps.app.goo.gl/Q9oqx5rz3vjTvsRQ8',
-  '5': 'https://maps.app.goo.gl/TysJzh64PogUqsWE7',
-  '6': 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7',
-  '7': 'https://maps.app.goo.gl/DGfSHpoN7i3Wt4RC7',
+  '2': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '3': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '4': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '5': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '6': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '7': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
   '8': 'https://maps.app.goo.gl/9geUCNftSE8A1F6h6',
   '9': 'https://maps.app.goo.gl/Pc8ofT7eu1EyEWMEA',
   '10': 'https://maps.app.goo.gl/Sv7j2GNW8ATJ5t3U6',
-  '11': 'https://maps.app.goo.gl/oWVCbN2UQYbQTa9b7',
+  '11': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
   '12': 'https://maps.app.goo.gl/z9TCStLaTCEJsKgJA',
   '13': 'https://maps.app.goo.gl/bBBGfXqxEwEJKKPU8',
   '14': 'https://maps.app.goo.gl/dGQSvVoBD2UCh7CQ9',
@@ -105,7 +105,10 @@ export default async (request) => {
     // Se Google non consente la risoluzione server-side, manteniamo il link esatto fornito.
   }
 
-  return Response.redirect(shortUrl, 302);
+  return new Response(
+    'Impossibile generare il percorso pedonale per questo punto. Riprova tra poco.',
+    { status: 502, headers: { 'content-type': 'text/plain; charset=utf-8' } }
+  );
 };
 
 export const config = {
