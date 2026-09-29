@@ -121,6 +121,7 @@
     tx = clamped.x;
     ty = clamped.y;
     stage.style.transform = `matrix(${scale}, 0, 0, ${scale}, ${tx}, ${ty})`;
+    stage.style.setProperty('--hotspot-inverse-scale', String(1 / scale));
     viewport.classList.toggle('is-zoomed', scale > 1.001);
 
     if (zoomOutButton) zoomOutButton.disabled = scale <= MIN_SCALE + 0.001;
@@ -227,6 +228,12 @@
   function openFullscreenMap() {
     if (!fullscreen || !fullscreenHost || fullscreenOpen) return;
 
+    scale = 1;
+    tx = 0;
+    ty = 0;
+    pinchStartDistance = 0;
+    clearActivePoint();
+
     fullscreenOpen = true;
     fullscreen.hidden = false;
     document.body.classList.add('logistics-map-fullscreen-open');
@@ -242,6 +249,12 @@
     if (!fullscreen || !fullscreenOpen) return;
 
     fullscreenOpen = false;
+    scale = 1;
+    tx = 0;
+    ty = 0;
+    pinchStartDistance = 0;
+    clearActivePoint();
+
     if (viewportHomeNextSibling && viewportHomeNextSibling.parentNode === viewportHome) {
       viewportHome.insertBefore(viewport, viewportHomeNextSibling);
     } else {
