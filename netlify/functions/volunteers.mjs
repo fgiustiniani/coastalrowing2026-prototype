@@ -943,7 +943,7 @@ export default async (request) => {
         const pdfBytes = await buildVolunteerProgramPdf({
           personState: state,
           programUrl,
-          ficUrl: 'https://www.canottaggio.org/'
+          ficUrl: 'https://canottaggioservice.canottaggio.net/menu_nazionali_cal.php?manif=003907&&k1=C&sta_ag=2026'
         });
 
         return new Response(Buffer.from(pdfBytes), {
@@ -973,7 +973,7 @@ export default async (request) => {
         const pdfBytes = await buildVolunteerProgramPdf({
           personState: state,
           programUrl,
-          ficUrl: 'https://www.canottaggio.org/'
+          ficUrl: 'https://canottaggioservice.canottaggio.net/menu_nazionali_cal.php?manif=003907&&k1=C&sta_ag=2026'
         });
         await sendVolunteerProgramEmail({
           email,
