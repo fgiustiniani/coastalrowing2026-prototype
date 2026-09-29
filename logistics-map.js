@@ -62,6 +62,7 @@
   let pinchStartScale = 1;
   let pinchMapX = 0;
   let pinchMapY = 0;
+  let lastPinchEnd = -Infinity;
   const viewportHome = viewport.parentNode;
   const viewportHomeNextSibling = viewport.nextSibling;
 
@@ -282,6 +283,31 @@
     };
   }
 
+  function isTouchFullscreen() {
+    return fullscreenOpen && window.matchMedia?.('(pointer: coarse)').matches;
+  }
+
+  function nearestFullscreenTarget(clientX, clientY) {
+    let nearestNumber = null;
+    let nearestDistance = Infinity;
+
+    [...hotspots, ...legendHotspots].forEach((button) => {
+      const rect = button.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.hypot(clientX - centerX, clientY - centerY);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestNumber = button.dataset.logisticsPoint || button.dataset.logisticsTarget || null;
+      }
+    });
+
+    return { number: nearestNumber, distance: nearestDistance };
+  }
+
   hotspots.forEach((button) => {
     const number = button.dataset.logisticsPoint;
     bindHover(button, number);
@@ -379,12 +405,43 @@
   }, { passive: false });
 
   viewport.addEventListener('touchend', (event) => {
-    if (event.touches.length < 2) pinchStartDistance = 0;
+    if (event.touches.length < 2 && pinchStartDistance > 0) {
+      pinchStartDistance = 0;
+      lastPinchEnd = performance.now();
+    }
   }, { passive: true });
 
   viewport.addEventListener('touchcancel', () => {
+    if (pinchStartDistance > 0) lastPinchEnd = performance.now();
     pinchStartDistance = 0;
   }, { passive: true });
+
+  viewport.addEventListener('click', (event) => {
+    if (!isTouchFullscreen()) return;
+    if (event.target.closest?.('[data-logistics-popover]')) return;
+
+    if (
+      performance.now() - lastDragEnd < 320 ||
+      performance.now() - lastPinchEnd < 320
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    const hit = nearestFullscreenTarget(event.clientX, event.clientY);
+    const hitRadius = 48;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (hit.number && hit.distance <= hitRadius) {
+      activatePoint(hit.number);
+    } else {
+      closePopover(true);
+      announce('Selezione chiusa.');
+    }
+  }, true);
 
   zoomInButton?.addEventListener('click', () => {
     setScale(scale * STEP);
