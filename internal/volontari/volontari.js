@@ -153,6 +153,9 @@
     document.querySelectorAll('[data-step]').forEach((node) => {
       node.hidden = Number(node.dataset.step) !== step;
     });
+    if (pageIntro) {
+      pageIntro.hidden = state.mode === 'summary' ? Number(step) !== 2 : false;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
