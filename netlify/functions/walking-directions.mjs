@@ -13,7 +13,8 @@ const POINT_LINKS = {
   '12': 'https://maps.app.goo.gl/z9TCStLaTCEJsKgJA',
   '13': 'https://maps.app.goo.gl/bBBGfXqxEwEJKKPU8',
   '14': 'https://maps.app.goo.gl/dGQSvVoBD2UCh7CQ9',
-  water: 'https://maps.app.goo.gl/BpdJzzSwQpwoyeGV8'
+  water: 'https://maps.app.goo.gl/BpdJzzSwQpwoyeGV8',
+  ingresso: 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8'
 };
 
 function validCoordinates(lat, lng) {
