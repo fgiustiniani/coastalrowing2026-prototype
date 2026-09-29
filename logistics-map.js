@@ -37,7 +37,8 @@
      '12': { label: 'Parcheggio carrelli', href: '/api/walking-directions?point=12' },
      '13': { label: 'Carico/Scarico imbarcazioni', href: '/api/walking-directions?point=13' },
      '14': { label: 'Stand', href: '/api/walking-directions?point=14' },
-     'water': { label: 'Water refill', href: '/api/walking-directions?point=water' }
+     'water': { label: 'Water refill', href: '/api/walking-directions?point=water' },
+    'ingresso': { label: 'Ingresso campo gara', href: '/api/walking-directions?point=ingresso' }
   };
 
   let scale = 1;
@@ -227,6 +228,25 @@
     });
   });
 
+  function nearestLegendButton(event) {
+    let nearest = null;
+    let nearestDistance = Infinity;
+
+    legendHotspots.forEach((button) => {
+      const rect = button.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.hypot(event.clientX - centerX, event.clientY - centerY);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = button;
+      }
+    });
+
+    return nearest;
+  }
+
   legendHotspots.forEach((button) => {
     const number = button.dataset.logisticsTarget;
     bindHover(button, number);
@@ -238,7 +258,8 @@
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      activatePoint(number);
+      const nearest = nearestLegendButton(event) || button;
+      activatePoint(nearest.dataset.logisticsTarget);
     });
   });
 
@@ -332,29 +353,8 @@
     if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
     if (performance.now() - lastDragEnd < 250) return;
 
-    const rect = viewport.getBoundingClientRect();
-    let nearestButton = null;
-    let nearestDistance = Infinity;
-
-    hotspots.forEach((button) => {
-      const x = Number(button.dataset.mapX);
-      const y = Number(button.dataset.mapY);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-
-      const screenX = tx + x * rect.width * scale;
-      const screenY = ty + y * rect.height * scale;
-      const distance = Math.hypot(event.clientX - rect.left - screenX, event.clientY - rect.top - screenY);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestButton = button;
-      }
-    });
-
-    const hitRadius = 42 * Math.min(1.65, Math.max(1, scale));
-    if (nearestButton && nearestDistance <= hitRadius) {
-      activatePoint(nearestButton.dataset.logisticsPoint);
-    }
+    closePopover(true);
+    announce('Selezione chiusa.');
   });
 
   viewport.addEventListener('keydown', (event) => {
