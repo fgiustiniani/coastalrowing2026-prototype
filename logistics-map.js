@@ -112,7 +112,12 @@
   }
 
   hotspots.forEach((button) => {
+    button.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+    });
+
     button.addEventListener('click', (event) => {
+      event.preventDefault();
       event.stopPropagation();
       focusPoint(button);
     });
@@ -155,6 +160,7 @@
   });
 
   viewport.addEventListener('pointerdown', (event) => {
+    if (event.target.closest?.('[data-logistics-point]')) return;
     if (scale <= 1.001 || event.button !== 0) return;
     dragging = true;
     pointerId = event.pointerId;
