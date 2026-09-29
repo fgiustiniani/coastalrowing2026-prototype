@@ -76,7 +76,6 @@
   const programPersonName = document.querySelector('[data-program-person-name]');
   const programPdfButton = document.querySelector('[data-download-program-pdf]');
   const programPdfStatus = document.querySelector('[data-program-pdf-status]');
-  const changeSummaryPersonButton = document.querySelector('[data-change-summary-person]');
   const tshirtSection = document.querySelector('[data-tshirt-section]');
   const tshirtSizeInput = document.querySelector('[data-tshirt-size]');
   const tshirtStatus = document.querySelector('[data-tshirt-status]');
@@ -1216,18 +1215,6 @@
   });
 
   programPdfButton?.addEventListener('click', downloadProgramPdf);
-
-  changeSummaryPersonButton?.addEventListener('click', () => {
-    state.selectedPerson = null;
-    state.personState = null;
-    if (summaryPersonSelect) summaryPersonSelect.value = '';
-    if (personSearch) personSearch.value = '';
-    state.people = [];
-    renderPeople();
-    setStatus(personSelection, '');
-    showStep(2);
-    personSearch?.focus();
-  });
 
   continueActor?.addEventListener('click', continueWithActor);
   actorNameInput?.addEventListener('keydown', (event) => {
