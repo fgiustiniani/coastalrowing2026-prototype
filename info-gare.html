@@ -215,7 +215,7 @@
               <button class="logistics-map-interactive__button" type="button" data-logistics-legend>Legenda</button>
               <a class="logistics-map-interactive__link logistics-map-interactive__button--primary" href="assets/maps/mappa-interattiva.webp?v=1" target="_blank" rel="noopener noreferrer">Apri a tutto schermo</a>
             </div>
-            <p class="logistics-map-interactive__hint">Ingrandisci e trascina la mappa. Puoi anche cliccare direttamente sui punti numerati.</p>
+            <p class="logistics-map-interactive__hint">Seleziona un numero nella legenda per evidenziare il punto sulla mappa e aprire le indicazioni stradali.</p>
           </div>
           <div class="logistics-map-interactive__viewport" data-logistics-viewport tabindex="0" aria-label="Mappa logistica interattiva. Usa i controlli per ingrandire e trascinare la mappa.">
             <div class="logistics-map-interactive__stage" data-logistics-stage>
@@ -236,7 +236,33 @@
               <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="13" data-map-x="0.164063" data-map-y="0.321296" aria-label="Ingrandisci il punto 13" aria-pressed="false" style="--map-x:16.406%;--map-y:32.130%">13</button>
               <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="14" data-map-x="0.243750" data-map-y="0.456481" aria-label="Ingrandisci il punto 14" aria-pressed="false" style="--map-x:24.375%;--map-y:45.648%">14</button>
               </div>
+              <div class="logistics-map-interactive__legend-hotspots" aria-label="Legenda interattiva">
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="1" data-logistics-target="1" aria-label="Parcheggio autovetture: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:20.9%;">1</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="2" data-logistics-target="2" aria-label="Area imbarcazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:25.0%;">2</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="3" data-logistics-target="3" aria-label="Remoergometri: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:29.0%;">3</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="4" data-logistics-target="4" aria-label="Spogliatoi: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:33.1%;">4</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="5" data-logistics-target="5" aria-label="Area premiazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:37.1%;">5</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="6" data-logistics-target="6" aria-label="Riunione capitani: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:41.2%;">6</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="7" data-logistics-target="7" aria-label="Punto ristoro: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:45.3%;">7</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="8" data-logistics-target="8" aria-label="Soccorso: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:66%;--legend-y:49.3%;">8</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="9" data-logistics-target="9" aria-label="Servizi: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:20.9%;">9</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="10" data-logistics-target="10" aria-label="Food truck e maxischermo: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:25.0%;">10</button>
+                <button class="logistics-map-interactive__legend-hotspot logistics-map-interactive__legend-hotspot--tall" type="button" data-logistics-legend-point="11" data-logistics-target="11" aria-label="Giudici e Segreteria gare: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:30.8%;">11</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="12" data-logistics-target="12" aria-label="Parcheggio carrelli: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:37.0%;">12</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="13" data-logistics-target="13" aria-label="Carico e scarico imbarcazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:41.2%;">13</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="14" data-logistics-target="14" aria-label="Stand: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:85.3%;--legend-y:45.3%;">14</button>
+              </div>
             </div>
+          </div>
+          <div class="logistics-map-interactive__selection" data-logistics-selection hidden>
+            <div class="logistics-map-interactive__selection-copy">
+              <span class="logistics-map-interactive__selection-number" data-logistics-selection-number aria-hidden="true"></span>
+              <div>
+                <strong data-logistics-selection-title></strong>
+                <p data-logistics-selection-note></p>
+              </div>
+            </div>
+            <a class="logistics-map-interactive__directions" data-logistics-directions href="#" target="_blank" rel="noopener noreferrer">Indicazioni su Google Maps</a>
           </div>
           <p class="logistics-map-interactive__status" data-logistics-status aria-live="polite">Mappa completa.</p>
         </div>
