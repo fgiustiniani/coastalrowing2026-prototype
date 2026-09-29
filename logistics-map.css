@@ -146,6 +146,138 @@
   outline: none;
 }
 
+.logistics-map-interactive__hotspot[aria-pressed="true"] {
+  border-color: #fff;
+  background: rgba(11, 107, 136, 0.26);
+  box-shadow:
+    0 0 0 4px #fff,
+    0 0 0 10px rgba(11, 107, 136, 0.94);
+  animation: logistics-map-point-pulse 1.35s ease-in-out infinite;
+}
+
+@keyframes logistics-map-point-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px #fff,
+      0 0 0 9px rgba(11, 107, 136, 0.9);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px #fff,
+      0 0 0 14px rgba(11, 107, 136, 0.32);
+  }
+}
+
+.logistics-map-interactive__legend-hotspots {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.logistics-map-interactive__legend-hotspot {
+  position: absolute;
+  left: var(--legend-x);
+  top: var(--legend-y);
+  width: 17.4%;
+  height: 4.2%;
+  min-height: 24px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: transparent;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.logistics-map-interactive__legend-hotspot--tall {
+  height: 7%;
+}
+
+.logistics-map-interactive__legend-hotspot:hover,
+.logistics-map-interactive__legend-hotspot:focus-visible,
+.logistics-map-interactive__legend-hotspot[aria-pressed="true"] {
+  border-color: rgba(255, 255, 255, 0.92);
+  background: rgba(11, 107, 136, 0.11);
+  box-shadow: 0 0 0 3px rgba(0, 25, 46, 0.52);
+  outline: none;
+}
+
+.logistics-map-interactive__selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 75, 102, 0.18);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.logistics-map-interactive__selection[hidden] {
+  display: none;
+}
+
+.logistics-map-interactive__selection-copy {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.logistics-map-interactive__selection-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #0b6b88;
+  color: #fff;
+  font-weight: 900;
+}
+
+.logistics-map-interactive__selection-copy strong {
+  display: block;
+  color: #123b52;
+  line-height: 1.25;
+}
+
+.logistics-map-interactive__selection-copy p {
+  margin: 3px 0 0;
+  color: #5d6b73;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.logistics-map-interactive__directions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  background: #0b6b88;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.logistics-map-interactive__directions:hover,
+.logistics-map-interactive__directions:focus-visible {
+  background: #07566e;
+  outline: 3px solid rgba(11, 107, 136, 0.25);
+  outline-offset: 2px;
+}
+
 .logistics-map-interactive__status {
   min-height: 1.4em;
   margin: 9px 2px 0;
@@ -183,12 +315,31 @@
   .logistics-map-interactive__hotspot {
     width: clamp(44px, 9vw, 60px);
   }
+
+  .logistics-map-interactive__legend-hotspot {
+    width: 18.5%;
+    min-height: 28px;
+  }
+
+  .logistics-map-interactive__selection {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .logistics-map-interactive__directions {
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .logistics-map-interactive__button,
   .logistics-map-interactive__link,
-  .logistics-map-interactive__hotspot {
+  .logistics-map-interactive__hotspot,
+  .logistics-map-interactive__legend-hotspot {
     transition: none;
+  }
+
+  .logistics-map-interactive__hotspot[aria-pressed="true"] {
+    animation: none;
   }
 }
