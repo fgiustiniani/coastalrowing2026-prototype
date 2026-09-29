@@ -481,7 +481,7 @@
       <aside class="volunteer-program__remember volunteer-program__remember--top">
         <strong>Ricorda</strong>
         <span>Questa pagina mostra la situazione aggiornata. Nel PDF troverai anche i riferimenti per tornare sempre a <strong>Le mie attività</strong>.</span>
-        <span>Verifica sempre gli orari delle gare nel <a href="https://canottaggioservice.canottaggio.net/menu_nazionali_cal.php?manif=003907&&k1=C&sta_ag=2026" target="_blank" rel="noopener">sito ufficiale della FIC</a>.</span>
+        <span>Gli orari delle gare si basano sul programma provvisorio e non sono ancora quelli definitivi.</span>
       </aside>`;
 
     if (!days.length) {
