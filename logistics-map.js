@@ -11,10 +11,10 @@
   const zoomOutButton = root.querySelector('[data-logistics-zoom-out]');
   const resetButton = root.querySelector('[data-logistics-reset]');
   const legendButton = root.querySelector('[data-logistics-legend]');
-  const selection = root.querySelector('[data-logistics-selection]');
-  const selectionNumber = root.querySelector('[data-logistics-selection-number]');
-  const selectionTitle = root.querySelector('[data-logistics-selection-title]');
-  const selectionNote = root.querySelector('[data-logistics-selection-note]');
+  const popover = root.querySelector('[data-logistics-popover]');
+  const popoverTitle = root.querySelector('[data-logistics-popover-title]');
+  const popoverNote = root.querySelector('[data-logistics-popover-note]');
+  const popoverClose = root.querySelector('[data-logistics-popover-close]');
   const directionsLink = root.querySelector('[data-logistics-directions]');
 
   if (!viewport || !stage) return;
@@ -23,7 +23,7 @@
   const MAX_SCALE = 4;
   const STEP = 1.35;
   const EVENT_ACCESS = 'Società Canottieri Pesaro, Calata Caio Duilio 101, Pesaro';
-  const INTERNAL_NOTE = 'Google Maps porta all’accesso stradale dell’area evento; il punto esatto è evidenziato sulla mappa.';
+  const INTERNAL_NOTE = 'Google Maps porta all’accesso stradale dell’area evento; il punto esatto è quello evidenziato sulla mappa.';
 
   const pointData = {
     '1': { label: 'Parcheggio autovetture', destination: 'Parcheggio Villa Marina, Pesaro' },
@@ -32,12 +32,12 @@
     '4': { label: 'Spogliatoi', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
     '5': { label: 'Area premiazioni', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
     '6': { label: 'Riunione capitani', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '7': { label: 'Punto ristoro', destination: 'RistoranTino, Viale Trieste 296, Pesaro' },
+    '7': { label: 'Punto ristoro', destination: 'RistoranTino Pesaro' },
     '8': { label: 'Soccorso', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
     '9': { label: 'Servizi', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
     '10': { label: 'Food truck e maxischermo', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
     '11': { label: 'Giudici e Segreteria gare', destination: EVENT_ACCESS, note: INTERNAL_NOTE },
-    '12': { label: 'Parcheggio carrelli', destination: 'Strada Tra I Due Porti 48, Pesaro' },
+    '12': { label: 'Parcheggio carrelli', destination: 'Strada Tra I Due Porti, Pesaro' },
     '13': { label: 'Carico/Scarico imbarcazioni', destination: EVENT_ACCESS },
     '14': { label: 'Stand', destination: EVENT_ACCESS, note: INTERNAL_NOTE }
   };
@@ -53,6 +53,7 @@
   let startTy = 0;
   let dragMoved = false;
   let lastDragEnd = -Infinity;
+  let activePoint = null;
 
   function dimensions() {
     const rect = viewport.getBoundingClientRect();
@@ -70,6 +71,40 @@
     };
   }
 
+  function mapHotspot(number) {
+    return hotspots.find((button) => button.dataset.logisticsPoint === String(number));
+  }
+
+  function legendHotspot(number) {
+    return legendHotspots.find((button) => button.dataset.logisticsTarget === String(number));
+  }
+
+  function mapsDirectionsUrl(destination) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  }
+
+  function updatePopoverPosition() {
+    if (!popover || popover.hidden || !activePoint) return;
+
+    const button = mapHotspot(activePoint);
+    if (!button) return;
+
+    const x = Number(button.dataset.mapX);
+    const y = Number(button.dataset.mapY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+    const { width, height } = dimensions();
+    const screenX = tx + x * width * scale;
+    const screenY = ty + y * height * scale;
+    const halfWidth = Math.min(135, Math.max(92, width / 2 - 12));
+    const clampedX = Math.max(halfWidth, Math.min(width - halfWidth, screenX));
+    const clampedY = Math.max(12, Math.min(height - 12, screenY));
+
+    popover.style.left = `${clampedX}px`;
+    popover.style.top = `${clampedY}px`;
+    popover.classList.toggle('logistics-map-interactive__popover--below', screenY < 135);
+  }
+
   function render() {
     const clamped = clampTranslation(tx, ty, scale);
     tx = clamped.x;
@@ -79,44 +114,40 @@
 
     if (zoomOutButton) zoomOutButton.disabled = scale <= MIN_SCALE + 0.001;
     if (zoomInButton) zoomInButton.disabled = scale >= MAX_SCALE - 0.001;
+    updatePopoverPosition();
   }
 
   function announce(message) {
     if (status) status.textContent = message;
   }
 
-  function mapsDirectionsUrl(destination) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  function closePopover(clearSelection = false) {
+    if (popover) popover.hidden = true;
+    if (clearSelection) {
+      activePoint = null;
+      hotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
+      legendHotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
+    }
   }
 
-  function mapHotspot(number) {
-    return hotspots.find((button) => button.dataset.logisticsPoint === String(number));
-  }
-
-  function legendHotspot(number) {
-    return legendHotspots.find((button) => button.dataset.logisticsTarget === String(number));
-  }
-
-  function hideSelection() {
-    if (selection) selection.hidden = true;
-  }
-
-  function clearActivePoint({ hideCard = true } = {}) {
+  function clearActivePoint() {
+    activePoint = null;
     hotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
     legendHotspots.forEach((button) => button.setAttribute('aria-pressed', 'false'));
-    if (hideCard) hideSelection();
+    closePopover();
   }
 
-  function showSelection(number) {
+  function showPopover(number) {
     const data = pointData[String(number)];
-    if (!data || !selection) return;
+    if (!data || !popover) return;
 
-    if (selectionNumber) selectionNumber.textContent = String(number);
-    if (selectionTitle) selectionTitle.textContent = data.label;
+    activePoint = String(number);
 
-    if (selectionNote) {
-      selectionNote.textContent = data.note || '';
-      selectionNote.hidden = !data.note;
+    if (popoverTitle) popoverTitle.textContent = data.label;
+
+    if (popoverNote) {
+      popoverNote.textContent = data.note || '';
+      popoverNote.hidden = !data.note;
     }
 
     if (directionsLink) {
@@ -124,19 +155,27 @@
       directionsLink.setAttribute('aria-label', `Apri Google Maps con indicazioni per ${data.label}`);
     }
 
-    selection.hidden = false;
+    popover.hidden = false;
+    updatePopoverPosition();
   }
 
-  function activatePoint(number) {
+  function activatePoint(number, { resetView = false } = {}) {
     const mapButton = mapHotspot(number);
-    const legendButtonForPoint = legendHotspot(number);
-    if (!mapButton) return null;
+    if (!mapButton) return;
 
-    clearActivePoint({ hideCard: false });
-    mapButton.setAttribute('aria-pressed', 'true');
-    legendButtonForPoint?.setAttribute('aria-pressed', 'true');
-    showSelection(number);
-    return mapButton;
+    hotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === mapButton)));
+    legendHotspots.forEach((button) => button.setAttribute('aria-pressed', String(button === legendHotspot(number))));
+
+    if (resetView) {
+      scale = 1;
+      tx = 0;
+      ty = 0;
+      render();
+    }
+
+    showPopover(number);
+    const label = pointData[String(number)]?.label || `Punto ${number}`;
+    announce(`${label} selezionato.`);
   }
 
   function setScale(nextScale, centerX, centerY) {
@@ -175,33 +214,9 @@
     scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, targetScale));
     tx = width / 2 - x * width * scale;
     ty = height / 2 - y * height * scale;
+    clearActivePoint();
     render();
     announce(message);
-  }
-
-  function focusPoint(button) {
-    const x = Number(button.dataset.mapX);
-    const y = Number(button.dataset.mapY);
-    const number = button.dataset.logisticsPoint;
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-
-    activatePoint(number);
-    const label = pointData[number]?.label || `Punto ${number}`;
-    focusNormalized(x, y, 2.45, `${label} selezionato.`);
-  }
-
-  function selectFromLegend(button) {
-    const number = button.dataset.logisticsTarget;
-    const mapButton = activatePoint(number);
-    if (!mapButton) return;
-
-    scale = 1;
-    tx = 0;
-    ty = 0;
-    render();
-
-    const label = pointData[number]?.label || `Punto ${number}`;
-    announce(`${label} evidenziato sulla mappa.`);
   }
 
   hotspots.forEach((button) => {
@@ -212,7 +227,7 @@
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      focusPoint(button);
+      activatePoint(button.dataset.logisticsPoint);
     });
   });
 
@@ -224,8 +239,19 @@
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      selectFromLegend(button);
+      activatePoint(button.dataset.logisticsTarget, { resetView: true });
     });
+  });
+
+  popoverClose?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closePopover(true);
+    announce('Selezione chiusa.');
+  });
+
+  directionsLink?.addEventListener('click', (event) => {
+    event.stopPropagation();
   });
 
   zoomInButton?.addEventListener('click', () => {
@@ -253,6 +279,7 @@
   }, { passive: false });
 
   viewport.addEventListener('dblclick', (event) => {
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     setScale(scale < 2 ? 2 : Math.min(MAX_SCALE, scale * 1.35), event.clientX - rect.left, event.clientY - rect.top);
@@ -260,7 +287,7 @@
   });
 
   viewport.addEventListener('pointerdown', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
     if (scale <= 1.001 || event.button !== 0) return;
     dragging = true;
     dragMoved = false;
@@ -303,7 +330,7 @@
   viewport.addEventListener('lostpointercapture', () => endDrag());
 
   viewport.addEventListener('click', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
     if (performance.now() - lastDragEnd < 250) return;
 
     const rect = viewport.getBoundingClientRect();
@@ -315,9 +342,9 @@
       const y = Number(button.dataset.mapY);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-      const screenX = rect.left + tx + x * rect.width * scale;
-      const screenY = rect.top + ty + y * rect.height * scale;
-      const distance = Math.hypot(event.clientX - screenX, event.clientY - screenY);
+      const screenX = tx + x * rect.width * scale;
+      const screenY = ty + y * rect.height * scale;
+      const distance = Math.hypot(event.clientX - rect.left - screenX, event.clientY - rect.top - screenY);
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
@@ -327,7 +354,7 @@
 
     const hitRadius = 46 * Math.min(1.65, Math.max(1, scale));
     if (nearestButton && nearestDistance <= hitRadius) {
-      focusPoint(nearestButton);
+      activatePoint(nearestButton.dataset.logisticsPoint);
     }
   });
 
