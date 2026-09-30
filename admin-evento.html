@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Gestione Home Evento · Coastal Rowing 2026</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets-overrides.css">
+  <link rel="stylesheet" href="site-polish.css">
+  <link rel="stylesheet" href="event-admin.css">
+</head>
+<body class="page-model page-model--operational">
+  <div class="site-frame">
+    <header class="site-header" id="top">
+      <div class="site-header__top">
+        <a href="index.html" aria-label="Campionati Italiani Coastal Rowing 2026, Pesaro">
+          <img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+        </a>
+      </div>
+      <nav class="site-nav" aria-label="Navigazione principale">
+        <a href="index.html">Home</a>
+        <a href="info-gare.html">Info per chi gareggia</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+    </header>
+
+    <main class="event-admin-page">
+      <section class="event-admin-hero">
+        <p class="section-kicker">Area riservata</p>
+        <h1>Gestione home evento</h1>
+        <p>Cambia lo stato della hero senza fare deploy. Le quattro modalità sono esclusive e la home recepisce le modifiche entro circa 30 secondi.</p>
+      </section>
+
+      <section class="event-admin-panel" aria-labelledby="current-state-title">
+        <div class="event-admin-panel__heading">
+          <div>
+            <p class="section-kicker">Stato pubblicato</p>
+            <h2 id="current-state-title">Situazione attuale</h2>
+          </div>
+          <span class="event-admin-current" data-event-admin-current>Caricamento…</span>
+        </div>
+        <p class="event-admin-updated" data-event-admin-updated></p>
+      </section>
+
+      <section class="event-admin-panel" aria-labelledby="admin-access-title">
+        <div class="event-admin-panel__heading">
+          <div>
+            <p class="section-kicker">Controllo</p>
+            <h2 id="admin-access-title">Imposta la home</h2>
+          </div>
+        </div>
+
+        <form class="event-admin-login" data-event-admin-login>
+          <label>
+            <span>Utente</span>
+            <input type="text" name="username" autocomplete="username" required>
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="current-password" required>
+          </label>
+          <button class="button button--dark" type="submit">Accedi</button>
+          <p class="event-admin-status" data-event-admin-login-status aria-live="polite"></p>
+        </form>
+
+        <form class="event-admin-controls" data-event-admin-controls hidden>
+          <fieldset>
+            <legend>Stato della home</legend>
+            <div class="event-admin-states">
+              <label class="event-admin-state">
+                <input type="radio" name="state" value="pre" required>
+                <span><strong>Pre-gara</strong><small>Foto, 62 società, 430 atleti e pass parcheggio.</small></span>
+              </label>
+              <label class="event-admin-state">
+                <input type="radio" name="state" value="live" required>
+                <span><strong>Live</strong><small>Player YouTube con autoplay muto e audio attivabile.</small></span>
+              </label>
+              <label class="event-admin-state">
+                <input type="radio" name="state" value="pause" required>
+                <span><strong>Pausa</strong><small>Messaggio di pausa e accesso al programma gare.</small></span>
+              </label>
+              <label class="event-admin-state">
+                <input type="radio" name="state" value="post" required>
+                <span><strong>Post-gara</strong><small>Numeri dell’evento e link ai replay di sabato e domenica.</small></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="event-admin-stream" data-event-admin-stream>
+            <span>Diretta da utilizzare</span>
+            <select name="stream">
+              <option value="sabato">Sabato 3 ottobre</option>
+              <option value="domenica">Domenica 4 ottobre</option>
+            </select>
+            <small>La scelta viene conservata anche quando la home non è in modalità Live.</small>
+          </label>
+
+          <div class="event-admin-actions">
+            <button class="button button--dark" type="submit" data-event-admin-save>Salva stato</button>
+            <a class="button button--light" href="index.html" target="_blank" rel="noopener noreferrer">Apri la home</a>
+            <button class="event-admin-logout" type="button" data-event-admin-logout>Esci</button>
+          </div>
+          <p class="event-admin-status" data-event-admin-status aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="event-admin-note">
+        <strong>Contesto separato</strong>
+        <p>Lo stato salvato su Branch Deploy e Deploy Preview è separato da quello della produzione. Questa pagina usa le credenziali amministrative già configurate per le news.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>Campionati Italiani Coastal Rowing 2026</strong>
+        <p>Pesaro · 3–4 ottobre 2026</p>
+      </div>
+      <div class="site-footer__links">
+        <a href="index.html">Home</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="event-admin.js" defer></script>
+</body>
+</html>

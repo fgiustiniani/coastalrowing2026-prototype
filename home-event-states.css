@@ -1,0 +1,131 @@
+/* Stati dinamici della hero gestiti da /api/event-state. */
+
+.event-hero__mode-card {
+  position: absolute;
+  z-index: 4;
+  left: clamp(28px, 5vw, 64px);
+  top: 50%;
+  width: min(620px, calc(100% - 56px));
+  padding: 28px 30px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 24px;
+  background: rgba(4,17,31,.72);
+  color: #fff;
+  box-shadow: 0 22px 48px rgba(4,17,31,.28);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  transform: translateY(-50%);
+}
+
+.event-hero__mode-card[hidden] {
+  display: none;
+}
+
+.event-hero__mode-kicker {
+  margin: 0 0 8px;
+  color: var(--sand-300);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.event-hero__mode-card h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2.25rem, 4.8vw, 4.6rem);
+  line-height: .98;
+  letter-spacing: -.04em;
+}
+
+.event-hero__mode-copy {
+  max-width: 48ch;
+  margin: 16px 0 0;
+  color: rgba(255,255,255,.84);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.event-hero__mode-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.event-hero__mode-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 1px solid rgba(255,255,255,.32);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-size: .88rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.event-hero__mode-link--primary {
+  background: #fff;
+  color: var(--navy-940);
+}
+
+.hero--event.is-pause .event-hero__shade,
+.hero--event.is-post .event-hero__shade {
+  background:
+    linear-gradient(90deg, rgba(4,17,31,.58), rgba(4,17,31,.20) 66%, rgba(4,17,31,.08)),
+    linear-gradient(180deg, rgba(4,17,31,.05), rgba(4,17,31,.26));
+}
+
+.hero--event.is-post .event-hero__mode-card {
+  left: auto;
+  right: clamp(28px, 5vw, 64px);
+  width: min(540px, calc(100% - 360px));
+}
+
+.hero--event.is-post .event-hero__stamps {
+  opacity: 1;
+}
+
+@media (max-width: 720px) {
+  .event-hero__mode-card,
+  .hero--event.is-post .event-hero__mode-card {
+    left: 14px;
+    right: 14px;
+    top: auto;
+    bottom: 18px;
+    width: auto;
+    padding: 20px;
+    border-radius: 20px;
+    transform: none;
+  }
+
+  .event-hero__mode-card h2 {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .event-hero__mode-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .event-hero__mode-link {
+    width: 100%;
+  }
+
+  .hero--event.is-post {
+    min-height: 610px;
+    padding-bottom: 220px;
+  }
+
+  .hero--event.is-post .event-hero__stamps {
+    bottom: 230px;
+  }
+
+  .hero--event.is-pause {
+    min-height: 560px;
+  }
+}
