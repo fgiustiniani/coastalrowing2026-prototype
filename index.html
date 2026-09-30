@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="assets-overrides.css">
   <link rel="stylesheet" href="home-overrides.css">
+  <link rel="stylesheet" href="home-event.css">
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="contact-form.css">
 </head>
@@ -39,15 +40,76 @@
     </header>
 
     <main>
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero__content">
-          <p class="eyebrow">Campionati Italiani</p>
-          <h1 id="hero-title">Coastal Rowing 2026</h1>
-          <p class="hero__subtitle">Pesaro · 3–4 ottobre 2026</p>
-          <p class="hero__claim">Il mare di Pesaro assegna il Tricolore.</p>
+      <section class="event-pass" data-event-pass aria-label="Pass parcheggio">
+        <div class="event-pass__copy">
+          <span class="event-pass__kicker">Informazione per società e accompagnatori</span>
+          <strong>Pass parcheggio</strong>
+          <span>Scarica il pass da esporre sul veicolo per accedere al parcheggio dedicato.</span>
         </div>
-        <p class="hero__statement">Sport, mare e città si incontrano in un evento nazionale da vivere dentro e fuori dall’acqua.</p>
+        <a class="event-pass__action" href="assets/downloads/Parcheggio.pdf" target="_blank" rel="noopener noreferrer" download>Scarica il pass</a>
       </section>
+
+      <section class="hero hero--event" aria-labelledby="hero-title" data-event-hero>
+        <div class="event-hero__layout">
+          <div class="hero__content">
+            <p class="eyebrow">Campionati Italiani</p>
+            <h1 id="hero-title">Coastal Rowing 2026</h1>
+            <p class="hero__subtitle">Pesaro · 3–4 ottobre 2026</p>
+
+            <div class="event-hero__metrics" aria-label="Numeri della manifestazione">
+              <div class="event-hero__metric">
+                <strong>62</strong>
+                <span>società</span>
+              </div>
+              <div class="event-hero__metric">
+                <strong>430</strong>
+                <span>atleti</span>
+              </div>
+            </div>
+
+            <p class="hero__claim">Il mare di Pesaro assegna il Tricolore.</p>
+          </div>
+
+          <div class="event-hero__media" data-event-media>
+            <div class="event-hero__photo" data-event-photo>
+              <img src="assets/images/hero-pesaro-coastal-rowing-2026.webp" alt="Coastal rowing sul mare di Pesaro">
+              <span class="event-hero__media-badge" data-event-media-badge>Pesaro · 3–4 ottobre</span>
+            </div>
+
+            <div class="event-hero__video" data-event-video hidden>
+              <div class="event-hero__video-frame">
+                <iframe
+                  data-event-youtube
+                  title="Diretta YouTube Campionati Italiani Coastal Rowing 2026"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowfullscreen></iframe>
+              </div>
+              <div class="event-hero__video-meta">
+                <span class="event-hero__live-dot" aria-hidden="true"></span>
+                <strong data-event-live-label>Diretta YouTube</strong>
+                <a data-event-youtube-link href="#" target="_blank" rel="noopener noreferrer">Apri su YouTube</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="event-shortcuts" aria-label="Accessi rapidi all'evento">
+        <a href="info-gare.html#programma">
+          <strong>Programma gare</strong>
+          <span>Orari e programma delle attività</span>
+        </a>
+        <a href="info-gare.html#logistica">
+          <strong>Mappa logistica</strong>
+          <span>Aree operative, accessi e servizi</span>
+        </a>
+        <a href="info-gare.html">
+          <strong>Info per chi gareggia</strong>
+          <span>Tutte le informazioni per società e atleti</span>
+        </a>
+      </nav>
 
       <section class="paths" id="percorsi" aria-labelledby="paths-title">
         <div class="section-heading section-heading--branded">
@@ -246,6 +308,7 @@
       </div>
     </dialog>
   </div>
+  <script src="home-event.js" defer></script>
   <script src="contact-form.js" defer></script>
   <script src="nav-submenu.js" defer></script>
 </body>
