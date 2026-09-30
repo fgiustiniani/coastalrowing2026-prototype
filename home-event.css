@@ -209,26 +209,36 @@
   line-height: 1.2;
 }
 
-.event-hero__glass-action {
+.event-hero__pass-action {
+  position: absolute;
+  z-index: 5;
+  right: 28px;
+  bottom: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: stretch;
-  min-width: 220px;
-  padding: 15px 22px;
-  border-left: 1px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.12);
-  color: #fff;
-  font-size: .84rem;
-  font-weight: 800;
-  line-height: 1.25;
+  min-width: 310px;
+  min-height: 72px;
+  padding: 18px 28px;
+  border: 1px solid rgba(255,255,255,.72);
+  border-radius: 20px;
+  background: rgba(255,255,255,.94);
+  color: var(--navy-940);
+  box-shadow: 0 18px 38px rgba(4,17,31,.24);
+  font-size: clamp(1.08rem,1.5vw,1.32rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -.015em;
   text-align: center;
-  transition: background 160ms ease;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-.event-hero__glass-action:hover,
-.event-hero__glass-action:focus-visible {
-  background: rgba(255,255,255,.22);
+.event-hero__pass-action:hover,
+.event-hero__pass-action:focus-visible {
+  transform: translateY(-3px);
+  background: #fff;
+  box-shadow: 0 22px 46px rgba(4,17,31,.30);
 }
 
 .hero--event.is-live {
@@ -247,7 +257,9 @@
 
 .hero--event.is-live .event-hero__glass {
   top: 22px;
+  right: auto;
   bottom: auto;
+  width: min(620px, calc(100% - 260px));
   background: rgba(4,17,31,.70);
 }
 
@@ -256,9 +268,8 @@
 }
 
 .hero--event.is-live .event-hero__glass {
-  grid-template-columns: minmax(0,1fr) auto;
+  grid-template-columns: minmax(0,1fr);
   left: 22px;
-  right: 22px;
   min-height: 64px;
 }
 
@@ -279,8 +290,14 @@
   vertical-align: 1px;
 }
 
-.hero--event.is-live .event-hero__glass-action {
-  min-width: 180px;
+.hero--event.is-live .event-hero__pass-action {
+  top: 22px;
+  right: 22px;
+  bottom: auto;
+  min-width: 190px;
+  min-height: 64px;
+  padding: 14px 20px;
+  font-size: 1rem;
 }
 
 .event-shortcuts {
@@ -361,21 +378,19 @@
     margin-left: -18px;
   }
 
-  .event-hero__glass-action {
-    grid-column: 1 / -1;
-    min-height: 48px;
-    border-top: 1px solid rgba(255,255,255,.16);
-    border-left: 0;
+  .event-hero__glass {
+    width: min(560px, calc(100% - 310px));
+  }
+
+  .event-hero__pass-action {
+    min-width: 260px;
+    min-height: 66px;
+    padding: 16px 20px;
+    font-size: 1.05rem;
   }
 
   .hero--event.is-live .event-hero__glass {
-    grid-template-columns: minmax(0,1fr) auto;
-  }
-
-  .hero--event.is-live .event-hero__glass-action {
-    grid-column: auto;
-    border-top: 0;
-    border-left: 1px solid rgba(255,255,255,.16);
+    width: min(520px, calc(100% - 230px));
   }
 }
 
@@ -409,7 +424,8 @@
   .event-hero__glass {
     left: 12px;
     right: 12px;
-    bottom: 12px;
+    bottom: 78px;
+    width: auto;
     grid-template-columns: repeat(2,minmax(0,1fr));
     border-radius: 18px;
   }
@@ -449,12 +465,15 @@
     text-align: center;
   }
 
-  .event-hero__glass-action {
-    grid-column: 1 / -1;
+  .event-hero__pass-action {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
     min-width: 0;
-    min-height: 46px;
-    border-left: 0;
-    border-top: 1px solid rgba(255,255,255,.14);
+    min-height: 54px;
+    padding: 13px 16px;
+    border-radius: 16px;
+    font-size: 1.02rem;
   }
 
   .hero--event.is-live {
@@ -466,8 +485,9 @@
   .hero--event.is-live .event-hero__glass {
     top: 10px;
     left: 10px;
-    right: 10px;
+    right: 150px;
     bottom: auto;
+    width: auto;
     display: flex;
     min-height: 0;
   }
@@ -484,13 +504,16 @@
     display: none;
   }
 
-  .hero--event.is-live .event-hero__glass-action {
-    flex: 0 0 auto;
-    min-height: 0;
-    padding: 9px 12px;
-    border-top: 0;
-    border-left: 1px solid rgba(255,255,255,.16);
-    font-size: .74rem;
+  .hero--event.is-live .event-hero__pass-action {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    left: auto;
+    min-width: 132px;
+    min-height: 44px;
+    padding: 9px 10px;
+    border-radius: 14px;
+    font-size: .78rem;
   }
 
   .event-shortcuts {
