@@ -66,23 +66,29 @@
           <p class="hero__claim">Il mare di Pesaro assegna il Tricolore.</p>
         </div>
 
-        <div class="event-hero__glass" data-event-banner>
-          <div class="event-hero__glass-item event-hero__glass-item--number">
+        <div class="event-hero__stamps" data-event-stamps aria-label="Numeri della manifestazione">
+          <div class="event-hero__stamp event-hero__stamp--clubs">
             <strong>62</strong>
             <span>società</span>
           </div>
-          <div class="event-hero__glass-item event-hero__glass-item--number">
+          <div class="event-hero__stamp event-hero__stamp--athletes">
             <strong>430</strong>
             <span>atleti</span>
           </div>
-          <div class="event-hero__glass-item event-hero__glass-item--date">
-            <strong data-event-status>Pesaro</strong>
-            <span data-event-status-detail>3–4 ottobre 2026</span>
+        </div>
+
+        <div class="event-hero__live-status" data-event-live-status hidden>
+          <span class="event-hero__live-dot" aria-hidden="true"></span>
+          <div>
+            <strong data-event-status>In diretta</strong>
+            <span data-event-status-detail>Campionati Italiani Coastal Rowing 2026</span>
           </div>
         </div>
 
         <a class="event-hero__pass-action" data-event-action href="assets/downloads/Parcheggio.pdf" target="_blank" rel="noopener noreferrer" download>
-          Scarica il pass parcheggio
+          <span class="event-hero__action-icon event-hero__action-icon--parking" data-event-parking-icon aria-hidden="true">P</span>
+          <span class="event-hero__action-icon event-hero__action-icon--play" data-event-live-icon aria-hidden="true" hidden>▶</span>
+          <span data-event-action-label>Scarica il pass parcheggio</span>
         </a>
       </section>
 

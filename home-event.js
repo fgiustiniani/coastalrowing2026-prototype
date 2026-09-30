@@ -6,6 +6,10 @@
   const video = hero.querySelector('[data-event-video]');
   const iframe = hero.querySelector('[data-event-youtube]');
   const action = hero.querySelector('[data-event-action]');
+  const actionLabel = hero.querySelector('[data-event-action-label]');
+  const parkingIcon = hero.querySelector('[data-event-parking-icon]');
+  const liveIcon = hero.querySelector('[data-event-live-icon]');
+  const liveStatus = hero.querySelector('[data-event-live-status]');
   const status = hero.querySelector('[data-event-status]');
   const statusDetail = hero.querySelector('[data-event-status-detail]');
 
@@ -60,30 +64,31 @@
     return ['pre', 'sabato', 'domenica', 'post'].includes(requested) ? requested : null;
   }
 
-  function showPhoto(state) {
+  function showPhoto() {
     hero.classList.remove('is-live');
     if (photo) photo.hidden = false;
     if (video) video.hidden = true;
     if (iframe) iframe.removeAttribute('src');
-
-    if (status) status.textContent = state === 'post' ? 'Pesaro 2026' : 'Pesaro';
-    if (statusDetail) statusDetail.textContent = state === 'post' ? 'Campionati Italiani Coastal Rowing' : '3–4 ottobre 2026';
+    if (liveStatus) liveStatus.hidden = true;
 
     if (action) {
       action.href = parkingPdf;
-      action.textContent = 'Scarica il pass parcheggio';
       action.setAttribute('download', '');
       action.setAttribute('target', '_blank');
     }
+    if (actionLabel) actionLabel.textContent = 'Scarica il pass parcheggio';
+    if (parkingIcon) parkingIcon.hidden = false;
+    if (liveIcon) liveIcon.hidden = true;
   }
 
   function showStream(day) {
     const stream = streams[day];
-    if (!stream) return showPhoto('pre');
+    if (!stream) return showPhoto();
 
     hero.classList.add('is-live');
     if (photo) photo.hidden = true;
     if (video) video.hidden = false;
+    if (liveStatus) liveStatus.hidden = false;
 
     if (iframe) {
       iframe.src = `https://www.youtube-nocookie.com/embed/${stream.id}?rel=0&modestbranding=1`;
@@ -95,10 +100,12 @@
 
     if (action) {
       action.href = stream.url;
-      action.textContent = 'Apri su YouTube';
       action.removeAttribute('download');
       action.setAttribute('target', '_blank');
     }
+    if (actionLabel) actionLabel.textContent = 'Apri su YouTube';
+    if (parkingIcon) parkingIcon.hidden = true;
+    if (liveIcon) liveIcon.hidden = false;
   }
 
   const state = requestedState() || scheduledState();
@@ -107,6 +114,6 @@
   if (state === 'sabato' || state === 'domenica') {
     showStream(state);
   } else {
-    showPhoto(state);
+    showPhoto();
   }
 })();
