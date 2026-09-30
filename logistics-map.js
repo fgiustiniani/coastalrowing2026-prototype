@@ -15,7 +15,7 @@
   const popoverTitle = root.querySelector('[data-logistics-popover-title]');
   const popoverClose = root.querySelector('[data-logistics-popover-close]');
   const directionsLink = root.querySelector('[data-logistics-directions]');
-  const passDownloadLink = root.querySelector('[data-logistics-pass-download]');
+  const parkingPassLink = root.querySelector('[data-logistics-parking-pass]');
   const fullscreenOpenButton = root.querySelector('[data-logistics-fullscreen-open]');
   const fullscreen = root.querySelector('[data-logistics-fullscreen]');
   const fullscreenHost = root.querySelector('[data-logistics-fullscreen-host]');
@@ -28,7 +28,7 @@
   const STEP = 1.35;
 
   const pointData = {
-     '1': { label: 'Parcheggio autovetture', href: '/api/walking-directions?point=1', passHref: 'assets/downloads/Parcheggio.pdf' },
+     '1': { label: 'Parcheggio autovetture', href: '/api/walking-directions?point=1' },
      '2': { label: 'Area imbarcazioni', href: '/api/walking-directions?point=2' },
      '3': { label: 'Remoergometri', href: '/api/walking-directions?point=3' },
      '4': { label: 'Spogliatoi', href: '/api/walking-directions?point=4' },
@@ -171,16 +171,6 @@
     if (directionsLink) {
       directionsLink.href = data.href;
       directionsLink.setAttribute('aria-label', `Portami a ${data.label} con Google Maps`);
-    }
-
-    if (passDownloadLink) {
-      const hasPass = Boolean(data.passHref);
-      passDownloadLink.hidden = !hasPass;
-      if (hasPass) {
-        passDownloadLink.href = data.passHref;
-        passDownloadLink.setAttribute('aria-label', 'Scarica il pass per il parcheggio autovetture');
-      }
-      popover.classList.toggle('logistics-map-interactive__popover--with-pass', hasPass);
     }
 
     popover.hidden = false;
@@ -408,7 +398,11 @@
     event.stopPropagation();
   });
 
-  passDownloadLink?.addEventListener('click', (event) => {
+  parkingPassLink?.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+  });
+
+  parkingPassLink?.addEventListener('click', (event) => {
     event.stopPropagation();
   });
 
@@ -461,7 +455,7 @@
 
   viewport.addEventListener('click', (event) => {
     if (!isTouchFullscreen()) return;
-    if (event.target.closest?.('[data-logistics-popover]')) return;
+    if (event.target.closest?.('[data-logistics-popover], [data-logistics-parking-pass]')) return;
 
     if (
       performance.now() - lastDragEnd < 320 ||
@@ -516,7 +510,7 @@
   }, { passive: false });
 
   viewport.addEventListener('dblclick', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     setScale(scale < 2 ? 2 : Math.min(MAX_SCALE, scale * 1.35), event.clientX - rect.left, event.clientY - rect.top);
@@ -524,7 +518,7 @@
   });
 
   viewport.addEventListener('pointerdown', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
     if (scale <= 1.001 || event.button !== 0) return;
     dragging = true;
     dragMoved = false;
@@ -567,7 +561,7 @@
   viewport.addEventListener('lostpointercapture', () => endDrag());
 
   viewport.addEventListener('click', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
     if (performance.now() - lastDragEnd < 250) return;
 
     closePopover(true);
