@@ -2,14 +2,17 @@ import { getStore } from '@netlify/blobs';
 import { Buffer } from 'node:buffer';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-const STORE_KEY = 'current';
-const DEFAULT_CONFIG = Object.freeze({
-  state: 'pre',
-  stream: 'sabato',
-  updatedAt: null
-});
-const VALID_STATES = new Set(['pre', 'live', 'pause', 'post']);
-const VALID_STREAMS = new Set(['sabato', 'domenica']);
+function defaultConfig() {
+  return { state: 'pre', stream: 'sabato', updatedAt: null };
+}
+
+function validStates() {
+  return new Set(['pre', 'live', 'pause', 'post']);
+}
+
+function validStreams() {
+  return new Set(['sabato', 'domenica']);
+}
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -52,8 +55,8 @@ function readBasicAuth(request) {
 }
 
 function isAuthorized(request) {
-  const expectedUser = process.env.EVENT_ADMIN_USER || process.env.NEWS_ADMIN_USER;
-  const expectedPassword = process.env.EVENT_ADMIN_PASSWORD || process.env.NEWS_ADMIN_PASSWORD;
+  const expectedUser = Netlify.env.get('EVENT_ADMIN_USER') || Netlify.env.get('NEWS_ADMIN_USER');
+  const expectedPassword = Netlify.env.get('EVENT_ADMIN_PASSWORD') || Netlify.env.get('NEWS_ADMIN_PASSWORD');
 
   if (!expectedUser || !expectedPassword) {
     return { configured: false, valid: false };
@@ -79,7 +82,7 @@ function sanitizeStoreSuffix(value) {
 }
 
 function resolveStoreName(requestUrl) {
-  const configuredStore = String(process.env.EVENT_STATE_STORE_NAME || '').trim();
+  const configuredStore = String(Netlify.env.get('EVENT_STATE_STORE_NAME') || '').trim();
   if (configuredStore) return configuredStore;
 
   const hostname = requestUrl.hostname.toLowerCase();
@@ -92,27 +95,28 @@ function resolveStoreName(requestUrl) {
 }
 
 function normalizeConfig(value) {
-  const state = VALID_STATES.has(value?.state) ? value.state : DEFAULT_CONFIG.state;
-  const stream = VALID_STREAMS.has(value?.stream) ? value.stream : DEFAULT_CONFIG.stream;
+  const defaults = defaultConfig();
+  const state = validStates().has(value?.state) ? value.state : defaults.state;
+  const stream = validStreams().has(value?.stream) ? value.stream : defaults.stream;
   const updatedAt = typeof value?.updatedAt === 'string' ? value.updatedAt : null;
   return { state, stream, updatedAt };
 }
 
 async function readConfig(store) {
-  const stored = await store.get(STORE_KEY, { type: 'json' });
-  return normalizeConfig(stored || DEFAULT_CONFIG);
+  const stored = await store.get('current', { type: 'json' });
+  return normalizeConfig(stored || defaultConfig());
 }
 
 export default async (request) => {
   const requestUrl = new URL(request.url);
-  const store = getStore(resolveStoreName(requestUrl));
+  const store = getStore(resolveStoreName(requestUrl), { consistency: 'strong' });
 
   if (request.method === 'GET') {
     try {
       return json(await readConfig(store));
     } catch (error) {
       console.error('Errore lettura stato evento:', error);
-      return json(DEFAULT_CONFIG);
+      return json(defaultConfig());
     }
   }
 
@@ -154,10 +158,10 @@ export default async (request) => {
   const state = clean(payload.state, 20);
   const stream = clean(payload.stream, 20);
 
-  if (!VALID_STATES.has(state)) {
+  if (!validStates().has(state)) {
     return json({ error: 'Stato evento non valido.' }, 400);
   }
-  if (!VALID_STREAMS.has(stream)) {
+  if (!validStreams().has(stream)) {
     return json({ error: 'Diretta YouTube non valida.' }, 400);
   }
 
@@ -168,7 +172,7 @@ export default async (request) => {
   };
 
   try {
-    await store.setJSON(STORE_KEY, config);
+    await store.setJSON('current', config);
     return json({ ok: true, ...config });
   } catch (error) {
     console.error('Errore salvataggio stato evento:', error);
