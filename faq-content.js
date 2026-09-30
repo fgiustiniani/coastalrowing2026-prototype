@@ -16,7 +16,7 @@
         },
         {
           q: 'È prevista una riunione dei capitani?',
-          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 17.30 presso la sede della Società Canottieri Pesaro, in Calata Caio Duilio 101. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://maps.app.goo.gl/LcJoWwYg3U4TrYb8A" target="_blank" rel="noopener noreferrer">apri la sede su Google Maps</a>.'
+          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 17.30 presso la <strong>Sala Bagni Tino</strong>, nell’area del campo gara. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://maps.app.goo.gl/NqFt3R8zN4KV8hw97" target="_blank" rel="noopener noreferrer">apri Bagni Tino su Google Maps</a>.'
         }
       ]
     },
@@ -37,7 +37,7 @@
         },
         {
           q: 'Saranno disponibili imbarcazioni per le prove?',
-          a: 'No.'
+          a: 'Sì. Venerdì 2 ottobre, dalle ore 14.00 alle 18.00, saranno disponibili imbarcazioni per le prove su prenotazione. Per prenotare vai in <a href="info-gare.html#programma">Info per chi gareggia → Programma delle attività</a>, apri la giornata di <strong>Venerdì 02/10/2026</strong> e seleziona <strong>“Prenota le barche per le prove”</strong>. Puoi anche accedere direttamente alla <a href="prenotazione-barche.html">pagina di prenotazione</a>.'
         }
       ]
     },
