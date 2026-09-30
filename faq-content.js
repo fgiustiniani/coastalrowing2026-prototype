@@ -54,7 +54,7 @@
         },
         {
           q: 'Sono previsti parcheggi riservati per società e accompagnatori?',
-          a: 'Sì. Saranno previste aree di parcheggio dedicate, indicate nella <a href="info-gare.html#logistica">mappa logistica</a>. Per accedere sarà necessario esporre l’apposito pass, rilasciato su richiesta dall’organizzazione.'
+          a: 'Sì. Sono previste aree di parcheggio dedicate, indicate nella <a href="info-gare.html#logistica">mappa logistica</a>. Per accedere è necessario esporre l’apposito pass. <a class="faq-pass-download" href="assets/downloads/Parcheggio.pdf" download><span aria-hidden="true">P</span>Scarica il pass parcheggio</a>'
         },
         {
           q: 'Dove si trovano spogliatoi e servizi igienici?',
