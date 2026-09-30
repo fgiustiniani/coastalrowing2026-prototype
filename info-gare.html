@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="info-gare-overrides.css">
   <link rel="stylesheet" href="info-gare-polish.css">
   <link rel="stylesheet" href="race-course-map.css">
+  <link rel="stylesheet" href="logistics-map.css">
 </head>
 <body>
   <div class="site-frame">
@@ -205,10 +206,70 @@
           </div>
           <img class="section-event-logo info-section__event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
         </div>
-        <div class="race-map logistics-map">
-          <a class="race-map__image-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer"><img src="assets/maps/mappa-logistica-evento.svg?v=3" alt="Mappa logistica delle aree operative"></a>
-          <div class="race-map__actions race-map__actions--end">
-            <a class="race-map__logistics-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer">Apri a tutto schermo →</a>
+        <div class="logistics-map-interactive" data-logistics-map>
+          <div class="logistics-map-interactive__toolbar">
+            <div class="logistics-map-interactive__controls" role="group" aria-label="Controlli mappa logistica">
+              <button class="logistics-map-interactive__button logistics-map-interactive__button--icon" type="button" data-logistics-zoom-out aria-label="Riduci mappa">−</button>
+              <button class="logistics-map-interactive__button logistics-map-interactive__button--icon" type="button" data-logistics-zoom-in aria-label="Ingrandisci mappa">+</button>
+              <button class="logistics-map-interactive__button" type="button" data-logistics-reset>Mappa intera</button>
+              <button class="logistics-map-interactive__button" type="button" data-logistics-legend>Legenda</button>
+              <button class="logistics-map-interactive__button logistics-map-interactive__button--primary" type="button" data-logistics-fullscreen-open>Apri a tutto schermo</button>
+            </div>
+            <p class="logistics-map-interactive__hint">Seleziona un numero nella legenda per evidenziare il punto sulla mappa e aprire le indicazioni stradali.</p>
+          </div>
+          <div class="logistics-map-interactive__viewport" data-logistics-viewport tabindex="0" aria-label="Mappa logistica interattiva. Usa i controlli per ingrandire e trascinare la mappa.">
+            <div class="logistics-map-interactive__stage" data-logistics-stage>
+              <img class="logistics-map-interactive__image" src="assets/maps/mappa-interattiva.webp?v=1" alt="Mappa logistica dei Campionati Italiani Coastal Rowing 2026 con punti numerati e legenda" draggable="false">
+              <div class="logistics-map-interactive__hotspots" aria-label="Punti della mappa">
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="1" data-map-x="0.920833" data-map-y="0.816667" aria-label="Seleziona il punto 1" aria-pressed="false" style="--map-x:92.083%;--map-y:81.667%">1</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="2" data-map-x="0.425521" data-map-y="0.454630" aria-label="Seleziona il punto 2" aria-pressed="false" style="--map-x:42.552%;--map-y:45.463%">2</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="3" data-map-x="0.347917" data-map-y="0.541667" aria-label="Seleziona il punto 3" aria-pressed="false" style="--map-x:34.792%;--map-y:54.167%">3</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="4" data-map-x="0.388021" data-map-y="0.596296" aria-label="Seleziona il punto 4" aria-pressed="false" style="--map-x:38.802%;--map-y:59.630%">4</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="5" data-map-x="0.435938" data-map-y="0.509259" aria-label="Seleziona il punto 5" aria-pressed="false" style="--map-x:43.594%;--map-y:50.926%">5</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="6" data-map-x="0.451042" data-map-y="0.600000" aria-label="Seleziona il punto 6" aria-pressed="false" style="--map-x:45.104%;--map-y:60.000%">6</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="7" data-map-x="0.425521" data-map-y="0.647222" aria-label="Seleziona il punto 7" aria-pressed="false" style="--map-x:42.552%;--map-y:64.722%">7</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="8" data-map-x="0.208333" data-map-y="0.501852" aria-label="Seleziona il punto 8" aria-pressed="false" style="--map-x:20.833%;--map-y:50.185%">8</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="9" data-map-x="0.236979" data-map-y="0.503704" aria-label="Seleziona il punto 9" aria-pressed="false" style="--map-x:23.698%;--map-y:50.370%">9</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="10" data-map-x="0.181771" data-map-y="0.465741" aria-label="Seleziona il punto 10" aria-pressed="false" style="--map-x:18.177%;--map-y:46.574%">10</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="11" data-map-x="0.351042" data-map-y="0.462037" aria-label="Seleziona il punto 11" aria-pressed="false" style="--map-x:35.104%;--map-y:46.204%">11</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="12" data-map-x="0.092708" data-map-y="0.258333" aria-label="Seleziona il punto 12" aria-pressed="false" style="--map-x:9.271%;--map-y:25.833%">12</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="13" data-map-x="0.164063" data-map-y="0.321296" aria-label="Seleziona il punto 13" aria-pressed="false" style="--map-x:16.406%;--map-y:32.130%">13</button>
+              <button class="logistics-map-interactive__hotspot" type="button" data-logistics-point="14" data-map-x="0.243750" data-map-y="0.456481" aria-label="Seleziona il punto 14" aria-pressed="false" style="--map-x:24.375%;--map-y:45.648%">14</button>
+              <button class="logistics-map-interactive__hotspot logistics-map-interactive__hotspot--water" type="button" data-logistics-point="water" data-map-x="0.174000" data-map-y="0.394000" aria-label="Seleziona Water refill" aria-pressed="false" style="--map-x:17.400%;--map-y:39.400%">Water refill</button>
+              <button class="logistics-map-interactive__hotspot logistics-map-interactive__hotspot--ingresso" type="button" data-logistics-point="ingresso" data-map-x="0.388500" data-map-y="0.765000" aria-label="Seleziona Ingresso campo gara" aria-pressed="false" style="--map-x:38.850%;--map-y:76.500%">Ingresso campo gara</button>
+              </div>
+              <div class="logistics-map-interactive__legend-hotspots" aria-label="Legenda interattiva">
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="1" data-logistics-target="1" aria-label="Parcheggio autovetture: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:24.13%;">1</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="2" data-logistics-target="2" aria-label="Area imbarcazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:28.96%;">2</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="3" data-logistics-target="3" aria-label="Remoergometri: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:33.64%;">3</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="4" data-logistics-target="4" aria-label="Spogliatoi: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:38.31%;">4</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="5" data-logistics-target="5" aria-label="Area premiazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:42.99%;">5</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="6" data-logistics-target="6" aria-label="Riunione capitani: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:47.96%;">6</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="7" data-logistics-target="7" aria-label="Punto ristoro: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:52.49%;">7</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="8" data-logistics-target="8" aria-label="Soccorso: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:59.35%;--legend-y:57.16%;">8</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="9" data-logistics-target="9" aria-label="Servizi: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:24.13%;">9</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="10" data-logistics-target="10" aria-label="Food truck e maxischermo: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:28.96%;">10</button>
+                <button class="logistics-map-interactive__legend-hotspot logistics-map-interactive__legend-hotspot--tall" type="button" data-logistics-legend-point="11" data-logistics-target="11" aria-label="Giudici e Segreteria gare: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:34.24%;">11</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="12" data-logistics-target="12" aria-label="Parcheggio carrelli: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:42.84%;">12</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="13" data-logistics-target="13" aria-label="Carico e scarico imbarcazioni: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:47.81%;">13</button>
+                <button class="logistics-map-interactive__legend-hotspot" type="button" data-logistics-legend-point="14" data-logistics-target="14" aria-label="Stand: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:52.64%;">14</button>
+                <button class="logistics-map-interactive__legend-hotspot logistics-map-interactive__legend-hotspot--water" type="button" data-logistics-legend-point="water" data-logistics-target="water" aria-label="Water refill: evidenzia sulla mappa" aria-pressed="false" style="--legend-x:78.70%;--legend-y:57.47%;">Water refill</button>
+              </div>
+            </div>
+            <div class="logistics-map-interactive__popover" data-logistics-popover hidden>
+              <button class="logistics-map-interactive__popover-close" type="button" data-logistics-popover-close aria-label="Chiudi">×</button>
+              <strong data-logistics-popover-title></strong>
+              <a class="logistics-map-interactive__directions" data-logistics-directions href="#" target="_blank" rel="noopener noreferrer">Portami lì</a>
+            </div>
+          </div>
+          <p class="logistics-map-interactive__status" data-logistics-status aria-live="polite">Mappa completa.</p>
+          <div class="logistics-map-interactive__fullscreen" data-logistics-fullscreen hidden role="dialog" aria-modal="true" aria-label="Mappa logistica a tutto schermo">
+            <div class="logistics-map-interactive__fullscreen-toolbar">
+              <strong>Mappa logistica</strong>
+              <span class="logistics-map-interactive__fullscreen-hint">Pizzica con due dita per ingrandire · trascina per spostarti</span>
+              <button class="logistics-map-interactive__fullscreen-close" type="button" data-logistics-fullscreen-close>Chiudi</button>
+            </div>
+            <div class="logistics-map-interactive__fullscreen-host" data-logistics-fullscreen-host></div>
           </div>
         </div>
       </section>
@@ -226,7 +287,7 @@
             <small>Dove</small>
             <strong>Segreteria gare</strong>
             <p><b>Società Canottieri Pesaro</b><br>Calata Caio Duilio 101, Pesaro</p>
-            <a class="race-office__map-link" href="assets/maps/mappa-logistica-evento.svg?v=3" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt="">Vedi mappa</a>
+            <a class="race-office__map-link" href="assets/maps/mappa-interattiva.webp?v=1" target="_blank" rel="noopener noreferrer"><img src="assets/logos/mappa.svg" alt="">Vedi mappa</a>
           </article>
           <article>
             <small>Orari</small>
@@ -375,6 +436,7 @@
     <a class="back-home" href="#top" aria-label="Torna all’inizio della pagina">↑ <span>Vai su</span></a>
   </div>
   <script src="race-course-map.js" defer></script>
+  <script src="logistics-map.js" defer></script>
   <script src="nav-submenu.js" defer></script>
 </body>
 </html>
