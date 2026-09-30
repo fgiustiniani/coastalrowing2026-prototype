@@ -1,0 +1,551 @@
+/* Home evento: hero fotografica, timbri numerici e player live. */
+
+.event-shortcuts {
+  width: min(100%, var(--section-width));
+  margin-inline: auto;
+}
+
+.page-model--home .hero.hero--event {
+  position: relative;
+  min-height: 650px;
+  display: flex;
+  align-items: flex-start;
+  padding: 58px 64px 150px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--navy-980);
+}
+
+.event-hero__media,
+.event-hero__photo,
+.event-hero__video,
+.event-hero__shade {
+  position: absolute;
+  inset: 0;
+}
+
+.event-hero__media {
+  z-index: -2;
+  background: #06131f;
+}
+
+.event-hero__photo,
+.event-hero__video {
+  width: 100%;
+  height: 100%;
+}
+
+.event-hero__photo[hidden],
+.event-hero__video[hidden],
+.event-hero__live-status[hidden],
+.event-hero__action-icon[hidden] {
+  display: none;
+}
+
+.event-hero__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 52%;
+}
+
+.event-hero__video {
+  background: #000;
+}
+
+.event-hero__video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.event-hero__shade {
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(4,17,31,.60) 0%, rgba(4,17,31,.34) 42%, rgba(4,17,31,.08) 72%, rgba(4,17,31,.02) 100%),
+    linear-gradient(180deg, rgba(4,17,31,.06) 52%, rgba(4,17,31,.30) 100%);
+  transition: opacity 180ms ease;
+}
+
+.page-model--home .hero.hero--event .hero__content {
+  position: relative;
+  z-index: 2;
+  max-width: 790px;
+  width: auto;
+  transform: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.page-model--home .hero.hero--event #hero-title {
+  max-width: none;
+  white-space: nowrap;
+  font-size: clamp(4rem, 6.5vw, 6.2rem);
+  line-height: .92;
+  letter-spacing: -.045em;
+}
+
+.page-model--home .hero.hero--event .hero__claim {
+  max-width: 20ch;
+  margin-top: 18px;
+  font-size: clamp(1.45rem,2.5vw,2.25rem);
+}
+
+/* I due numeri sono timbri liberi sulla fotografia, senza pannello di fondo. */
+.event-hero__stamps {
+  position: absolute;
+  z-index: 4;
+  left: 38px;
+  bottom: 30px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  pointer-events: none;
+}
+
+.event-hero__stamp {
+  --stamp-rotate: -6deg;
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border: 4px solid rgba(255,255,255,.94);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255,255,255,.35), transparent 24%),
+    linear-gradient(145deg, rgba(197,163,101,.98), rgba(151,113,50,.96));
+  box-shadow:
+    0 18px 34px rgba(4,17,31,.34),
+    inset 0 0 0 5px rgba(4,17,31,.14),
+    inset 0 0 0 8px rgba(255,255,255,.26);
+  transform: rotate(var(--stamp-rotate));
+  animation: eventStampIn 620ms cubic-bezier(.18,.88,.28,1.12) both;
+}
+
+.event-hero__stamp::before,
+.event-hero__stamp::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.event-hero__stamp::before {
+  inset: 10px;
+  border: 1px dashed rgba(255,255,255,.68);
+}
+
+.event-hero__stamp::after {
+  inset: 18px;
+  border: 1px solid rgba(4,17,31,.16);
+}
+
+.event-hero__stamp--athletes {
+  --stamp-rotate: 5deg;
+  z-index: 2;
+  width: 160px;
+  height: 160px;
+  margin-left: -24px;
+  margin-bottom: 2px;
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255,255,255,.30), transparent 25%),
+    linear-gradient(145deg, rgba(78,169,202,.98), rgba(29,94,132,.98));
+  animation-delay: 90ms;
+}
+
+.event-hero__stamp strong,
+.event-hero__stamp span {
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+
+.event-hero__stamp strong {
+  color: #fff;
+  font-size: clamp(3rem,4.4vw,4.7rem);
+  line-height: .82;
+  letter-spacing: -.065em;
+  text-shadow: 0 2px 8px rgba(4,17,31,.20);
+}
+
+.event-hero__stamp span {
+  margin-top: 7px;
+  color: rgba(255,255,255,.94);
+  font-size: .70rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+/* CTA autonoma del pass: il segnale P rende immediata la funzione. */
+.event-hero__pass-action {
+  position: absolute;
+  z-index: 5;
+  right: 28px;
+  bottom: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 330px;
+  min-height: 76px;
+  padding: 16px 26px 16px 18px;
+  border: 1px solid rgba(255,255,255,.74);
+  border-radius: 20px;
+  background: rgba(255,255,255,.95);
+  color: var(--navy-940);
+  box-shadow: 0 18px 38px rgba(4,17,31,.24);
+  font-size: clamp(1.10rem,1.55vw,1.34rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -.015em;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.event-hero__action-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 12px;
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.event-hero__action-icon--parking {
+  background: #176f9f;
+  color: #fff;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.22);
+}
+
+.event-hero__action-icon--play {
+  background: #e33d3d;
+  color: #fff;
+  font-size: 1.15rem;
+  padding-left: 3px;
+}
+
+.event-hero__pass-action:hover,
+.event-hero__pass-action:focus-visible {
+  transform: translateY(-3px);
+  background: #fff;
+  box-shadow: 0 22px 46px rgba(4,17,31,.30);
+}
+
+.event-hero__live-status {
+  position: absolute;
+  z-index: 5;
+  top: 22px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  max-width: min(620px, calc(100% - 260px));
+  padding: 12px 20px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 18px;
+  background: rgba(4,17,31,.72);
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(4,17,31,.24);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.event-hero__live-status strong,
+.event-hero__live-status span {
+  display: block;
+}
+
+.event-hero__live-status strong {
+  font-size: 1rem;
+}
+
+.event-hero__live-status span {
+  margin-top: 3px;
+  color: rgba(255,255,255,.75);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.event-hero__live-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #ed4c4c;
+  box-shadow: 0 0 0 5px rgba(237,76,76,.16);
+}
+
+.hero--event.is-live {
+  min-height: 650px;
+  padding: 0;
+}
+
+.hero--event.is-live .hero__content,
+.hero--event.is-live .event-hero__stamps {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hero--event.is-live .event-hero__shade {
+  opacity: 0;
+}
+
+.hero--event.is-live .event-hero__pass-action {
+  top: 22px;
+  right: 22px;
+  bottom: auto;
+  min-width: 210px;
+  min-height: 64px;
+  padding: 10px 18px 10px 12px;
+  font-size: 1rem;
+}
+
+.hero--event.is-live .event-hero__action-icon {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
+.event-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.event-shortcuts a {
+  display: grid;
+  gap: 5px;
+  min-height: 82px;
+  padding: 17px 19px;
+  border: 1px solid rgba(16,34,53,.1);
+  border-radius: 18px;
+  background: rgba(255,255,255,.86);
+  box-shadow: 0 12px 28px rgba(4,17,31,.06);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.event-shortcuts a:hover,
+.event-shortcuts a:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(31,99,135,.24);
+  box-shadow: 0 16px 34px rgba(4,17,31,.09);
+}
+
+.event-shortcuts strong {
+  color: var(--navy-940);
+  font-size: 1rem;
+}
+
+.event-shortcuts span {
+  color: var(--muted);
+  font-size: .84rem;
+  line-height: 1.35;
+}
+
+@keyframes eventStampIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(.74) rotate(calc(var(--stamp-rotate) - 5deg));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(var(--stamp-rotate));
+  }
+}
+
+@media (max-width: 900px) {
+  .page-model--home .hero.hero--event {
+    min-height: 600px;
+    padding: 42px 34px 160px;
+  }
+
+  .page-model--home .hero.hero--event #hero-title {
+    white-space: normal;
+    font-size: clamp(3.4rem,9vw,5rem);
+  }
+
+  .event-hero__stamps {
+    left: 28px;
+    bottom: 26px;
+  }
+
+  .event-hero__stamp {
+    width: 132px;
+    height: 132px;
+  }
+
+  .event-hero__stamp--athletes {
+    width: 140px;
+    height: 140px;
+    margin-left: -20px;
+  }
+
+  .event-hero__pass-action {
+    right: 24px;
+    bottom: 24px;
+    min-width: 270px;
+    min-height: 68px;
+    padding: 13px 20px 13px 14px;
+    font-size: 1.05rem;
+  }
+
+  .event-hero__action-icon {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .hero--event.is-live {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-model--home .hero.hero--event {
+    min-height: 600px;
+    display: flex;
+    padding: 30px 20px 190px;
+    border-radius: 26px;
+  }
+
+  .page-model--home .hero.hero--event #hero-title {
+    max-width: 8.5ch;
+    font-size: clamp(3rem,14vw,4.2rem);
+  }
+
+  .page-model--home .hero.hero--event .hero__subtitle {
+    margin-top: 13px;
+  }
+
+  .page-model--home .hero.hero--event .hero__claim {
+    margin-top: 12px;
+    font-size: 1.02rem;
+    line-height: 1.4;
+  }
+
+  .event-hero__photo img {
+    object-position: 62% center;
+  }
+
+  .event-hero__stamps {
+    left: 18px;
+    bottom: 82px;
+  }
+
+  .event-hero__stamp {
+    width: 108px;
+    height: 108px;
+    border-width: 3px;
+  }
+
+  .event-hero__stamp--athletes {
+    width: 116px;
+    height: 116px;
+    margin-left: -16px;
+  }
+
+  .event-hero__stamp::before {
+    inset: 8px;
+  }
+
+  .event-hero__stamp::after {
+    inset: 14px;
+  }
+
+  .event-hero__stamp strong {
+    font-size: 2.85rem;
+  }
+
+  .event-hero__stamp span {
+    margin-top: 4px;
+    font-size: .59rem;
+  }
+
+  .event-hero__pass-action {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 8px 16px 8px 10px;
+    border-radius: 16px;
+    font-size: 1.02rem;
+  }
+
+  .event-hero__action-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    border-radius: 10px;
+    font-size: 1.35rem;
+  }
+
+  .hero--event.is-live {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+  }
+
+  .hero--event.is-live .event-hero__live-status {
+    top: 10px;
+    left: 10px;
+    max-width: calc(100% - 160px);
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 14px;
+  }
+
+  .hero--event.is-live .event-hero__live-status span {
+    display: none;
+  }
+
+  .hero--event.is-live .event-hero__pass-action {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    left: auto;
+    min-width: 136px;
+    min-height: 44px;
+    padding: 6px 9px;
+    border-radius: 14px;
+    gap: 7px;
+    font-size: .76rem;
+  }
+
+  .hero--event.is-live .event-hero__action-icon {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+    border-radius: 8px;
+    font-size: .88rem;
+  }
+
+  .event-shortcuts {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  .event-shortcuts a {
+    min-height: 0;
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-hero__stamp {
+    animation: none;
+  }
+}
