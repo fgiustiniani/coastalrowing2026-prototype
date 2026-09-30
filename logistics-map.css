@@ -311,6 +311,70 @@
   outline-offset: 2px;
 }
 
+
+.logistics-map-interactive__pass-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid rgba(11, 107, 136, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #07566e;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.logistics-map-interactive__pass-download[hidden] {
+  display: none;
+}
+
+.logistics-map-interactive__pass-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #0b6b88;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.logistics-map-interactive__pass-download:hover,
+.logistics-map-interactive__pass-download:focus-visible {
+  background: #edf7fa;
+  outline: 3px solid rgba(11, 107, 136, 0.2);
+  outline-offset: 2px;
+}
+
+.logistics-map-interactive__popover--with-pass {
+  max-width: min(430px, calc(100% - 20px));
+}
+
+@media (max-width: 760px) {
+  .logistics-map-interactive__popover--with-pass {
+    width: min(280px, calc(100% - 20px));
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    border-radius: 18px;
+    white-space: normal;
+  }
+
+  .logistics-map-interactive__popover--with-pass strong {
+    flex: 1 1 100%;
+    max-width: none;
+    padding-right: 18px;
+  }
+}
+
 .logistics-map-interactive__status {
   min-height: 1.4em;
   margin: 9px 2px 0;

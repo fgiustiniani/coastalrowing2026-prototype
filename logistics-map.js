@@ -15,6 +15,7 @@
   const popoverTitle = root.querySelector('[data-logistics-popover-title]');
   const popoverClose = root.querySelector('[data-logistics-popover-close]');
   const directionsLink = root.querySelector('[data-logistics-directions]');
+  const passDownloadLink = root.querySelector('[data-logistics-pass-download]');
   const fullscreenOpenButton = root.querySelector('[data-logistics-fullscreen-open]');
   const fullscreen = root.querySelector('[data-logistics-fullscreen]');
   const fullscreenHost = root.querySelector('[data-logistics-fullscreen-host]');
@@ -27,7 +28,7 @@
   const STEP = 1.35;
 
   const pointData = {
-     '1': { label: 'Parcheggio autovetture', href: '/api/walking-directions?point=1' },
+     '1': { label: 'Parcheggio autovetture', href: '/api/walking-directions?point=1', passHref: 'assets/downloads/Parcheggio.pdf' },
      '2': { label: 'Area imbarcazioni', href: '/api/walking-directions?point=2' },
      '3': { label: 'Remoergometri', href: '/api/walking-directions?point=3' },
      '4': { label: 'Spogliatoi', href: '/api/walking-directions?point=4' },
@@ -170,6 +171,16 @@
     if (directionsLink) {
       directionsLink.href = data.href;
       directionsLink.setAttribute('aria-label', `Portami a ${data.label} con Google Maps`);
+    }
+
+    if (passDownloadLink) {
+      const hasPass = Boolean(data.passHref);
+      passDownloadLink.hidden = !hasPass;
+      if (hasPass) {
+        passDownloadLink.href = data.passHref;
+        passDownloadLink.setAttribute('aria-label', 'Scarica il pass per il parcheggio autovetture');
+      }
+      popover.classList.toggle('logistics-map-interactive__popover--with-pass', hasPass);
     }
 
     popover.hidden = false;
@@ -394,6 +405,10 @@
   });
 
   directionsLink?.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
+  passDownloadLink?.addEventListener('click', (event) => {
     event.stopPropagation();
   });
 

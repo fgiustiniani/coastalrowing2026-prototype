@@ -107,3 +107,42 @@
     padding: 0 16px 18px;
   }
 }
+
+
+.faq-item__answer .faq-pass-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  padding: 7px 11px 7px 7px;
+  border: 1px solid rgba(31, 99, 135, .18);
+  border-radius: 999px;
+  background: rgba(31, 99, 135, .08);
+  color: var(--navy-820);
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.faq-item__answer .faq-pass-download span {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--navy-820);
+  color: #fff;
+  font-size: .82rem;
+  line-height: 1;
+}
+
+.faq-item__answer .faq-pass-download:hover,
+.faq-item__answer .faq-pass-download:focus-visible {
+  background: rgba(31, 99, 135, .14);
+}
+
+@media (max-width: 560px) {
+  .faq-item__answer .faq-pass-download {
+    margin: 10px 0 0;
+  }
+}
