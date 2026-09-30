@@ -2,24 +2,24 @@
   const hero = document.querySelector('[data-event-hero]');
   if (!hero) return;
 
-  const parkingPass = document.querySelector('[data-event-pass]');
   const photo = hero.querySelector('[data-event-photo]');
   const video = hero.querySelector('[data-event-video]');
   const iframe = hero.querySelector('[data-event-youtube]');
-  const youtubeLink = hero.querySelector('[data-event-youtube-link]');
-  const liveLabel = hero.querySelector('[data-event-live-label]');
-  const mediaBadge = hero.querySelector('[data-event-media-badge]');
+  const action = hero.querySelector('[data-event-action]');
+  const status = hero.querySelector('[data-event-status]');
+  const statusDetail = hero.querySelector('[data-event-status-detail]');
 
+  const parkingPdf = 'assets/downloads/Parcheggio.pdf';
   const streams = {
     sabato: {
       id: 'SUP06-ZePvk',
       url: 'https://www.youtube.com/watch?v=SUP06-ZePvk',
-      label: 'Diretta YouTube · Sabato 3 ottobre'
+      label: 'In diretta · Sabato 3 ottobre'
     },
     domenica: {
       id: 'XartJQ5lG5I',
       url: 'https://www.youtube.com/watch?v=XartJQ5lG5I',
-      label: 'Diretta YouTube · Domenica 4 ottobre'
+      label: 'In diretta · Domenica 4 ottobre'
     }
   };
 
@@ -47,22 +47,11 @@
     const minutes = now.hour * 60 + now.minute;
     const startMinutes = 7 * 60 + 45;
 
-    if (ymd < 20261003 || (ymd === 20261003 && minutes < startMinutes)) {
-      return 'pre';
-    }
-
-    if (ymd === 20261003) {
-      return 'sabato';
-    }
-
-    if (ymd === 20261004 && minutes < startMinutes) {
-      return 'between';
-    }
-
-    if (ymd === 20261004) {
-      return 'domenica';
-    }
-
+    if (ymd < 20261003) return 'pre';
+    if (ymd === 20261003 && minutes < startMinutes) return 'pre';
+    if (ymd === 20261003) return 'sabato';
+    if (ymd === 20261004 && minutes < startMinutes) return 'pre';
+    if (ymd === 20261004) return 'domenica';
     return 'post';
   }
 
@@ -71,20 +60,28 @@
     return ['pre', 'sabato', 'domenica', 'post'].includes(requested) ? requested : null;
   }
 
-  function showPhoto() {
+  function showPhoto(state) {
+    hero.classList.remove('is-live');
     if (photo) photo.hidden = false;
     if (video) video.hidden = true;
     if (iframe) iframe.removeAttribute('src');
-    if (mediaBadge) mediaBadge.textContent = 'Pesaro · 3–4 ottobre';
+
+    if (status) status.textContent = state === 'post' ? 'Pesaro 2026' : 'Pesaro';
+    if (statusDetail) statusDetail.textContent = state === 'post' ? 'Campionati Italiani Coastal Rowing' : '3–4 ottobre 2026';
+
+    if (action) {
+      action.href = parkingPdf;
+      action.textContent = 'Scarica il pass parcheggio';
+      action.setAttribute('download', '');
+      action.setAttribute('target', '_blank');
+    }
   }
 
   function showStream(day) {
     const stream = streams[day];
-    if (!stream) {
-      showPhoto();
-      return;
-    }
+    if (!stream) return showPhoto('pre');
 
+    hero.classList.add('is-live');
     if (photo) photo.hidden = true;
     if (video) video.hidden = false;
 
@@ -93,20 +90,23 @@
       iframe.title = stream.label;
     }
 
-    if (youtubeLink) youtubeLink.href = stream.url;
-    if (liveLabel) liveLabel.textContent = stream.label;
+    if (status) status.textContent = stream.label;
+    if (statusDetail) statusDetail.textContent = 'Campionati Italiani Coastal Rowing 2026';
+
+    if (action) {
+      action.href = stream.url;
+      action.textContent = 'Apri su YouTube';
+      action.removeAttribute('download');
+      action.setAttribute('target', '_blank');
+    }
   }
 
   const state = requestedState() || scheduledState();
   document.documentElement.dataset.eventView = state;
 
-  if (parkingPass) {
-    parkingPass.hidden = state !== 'pre';
-  }
-
   if (state === 'sabato' || state === 'domenica') {
     showStream(state);
   } else {
-    showPhoto();
+    showPhoto(state);
   }
 })();

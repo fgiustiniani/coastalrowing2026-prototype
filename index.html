@@ -40,59 +40,48 @@
     </header>
 
     <main>
-      <section class="event-pass" data-event-pass aria-label="Pass parcheggio">
-        <div class="event-pass__copy">
-          <span class="event-pass__kicker">Informazione per società e accompagnatori</span>
-          <strong>Pass parcheggio</strong>
-          <span>Scarica il pass da esporre sul veicolo per accedere al parcheggio dedicato.</span>
-        </div>
-        <a class="event-pass__action" href="assets/downloads/Parcheggio.pdf" target="_blank" rel="noopener noreferrer" download>Scarica il pass</a>
-      </section>
-
       <section class="hero hero--event" aria-labelledby="hero-title" data-event-hero>
-        <div class="event-hero__layout">
-          <div class="hero__content">
-            <p class="eyebrow">Campionati Italiani</p>
-            <h1 id="hero-title">Coastal Rowing 2026</h1>
-            <p class="hero__subtitle">Pesaro · 3–4 ottobre 2026</p>
-
-            <div class="event-hero__metrics" aria-label="Numeri della manifestazione">
-              <div class="event-hero__metric">
-                <strong>62</strong>
-                <span>società</span>
-              </div>
-              <div class="event-hero__metric">
-                <strong>430</strong>
-                <span>atleti</span>
-              </div>
-            </div>
-
-            <p class="hero__claim">Il mare di Pesaro assegna il Tricolore.</p>
+        <div class="event-hero__media" aria-label="Immagine e diretta dell'evento">
+          <div class="event-hero__photo" data-event-photo>
+            <img src="assets/images/hero-pesaro-coastal-rowing-2026.webp" alt="Coastal rowing sul mare di Pesaro">
           </div>
 
-          <div class="event-hero__media" data-event-media>
-            <div class="event-hero__photo" data-event-photo>
-              <img src="assets/images/hero-pesaro-coastal-rowing-2026.webp" alt="Coastal rowing sul mare di Pesaro">
-              <span class="event-hero__media-badge" data-event-media-badge>Pesaro · 3–4 ottobre</span>
-            </div>
-
-            <div class="event-hero__video" data-event-video hidden>
-              <div class="event-hero__video-frame">
-                <iframe
-                  data-event-youtube
-                  title="Diretta YouTube Campionati Italiani Coastal Rowing 2026"
-                  loading="lazy"
-                  referrerpolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen></iframe>
-              </div>
-              <div class="event-hero__video-meta">
-                <span class="event-hero__live-dot" aria-hidden="true"></span>
-                <strong data-event-live-label>Diretta YouTube</strong>
-                <a data-event-youtube-link href="#" target="_blank" rel="noopener noreferrer">Apri su YouTube</a>
-              </div>
-            </div>
+          <div class="event-hero__video" data-event-video hidden>
+            <iframe
+              data-event-youtube
+              title="Diretta YouTube Campionati Italiani Coastal Rowing 2026"
+              loading="lazy"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen></iframe>
           </div>
+
+          <div class="event-hero__shade" aria-hidden="true"></div>
+        </div>
+
+        <div class="hero__content">
+          <p class="eyebrow">Campionati Italiani</p>
+          <h1 id="hero-title">Coastal Rowing 2026</h1>
+          <p class="hero__subtitle">Pesaro · 3–4 ottobre 2026</p>
+          <p class="hero__claim">Il mare di Pesaro assegna il Tricolore.</p>
+        </div>
+
+        <div class="event-hero__glass" data-event-banner>
+          <div class="event-hero__glass-item event-hero__glass-item--number">
+            <strong>62</strong>
+            <span>società</span>
+          </div>
+          <div class="event-hero__glass-item event-hero__glass-item--number">
+            <strong>430</strong>
+            <span>atleti</span>
+          </div>
+          <div class="event-hero__glass-item event-hero__glass-item--date">
+            <strong data-event-status>Pesaro</strong>
+            <span data-event-status-detail>3–4 ottobre 2026</span>
+          </div>
+          <a class="event-hero__glass-action" data-event-action href="assets/downloads/Parcheggio.pdf" target="_blank" rel="noopener noreferrer" download>
+            Scarica il pass parcheggio
+          </a>
         </div>
       </section>
 
