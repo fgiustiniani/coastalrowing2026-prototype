@@ -20,7 +20,7 @@
   const newsCancel = document.querySelector('[data-event-news-cancel]');
 
   let credentials = null;
-  let config = { state: 'pre', stream: 'sabato', updatedAt: null };
+  let config = { state: 'pre', stream: 'sabato', clubs: 62, athletes: 430, updatedAt: null };
   let newsItems = [];
 
   const labels = {
@@ -85,9 +85,13 @@
   }
 
   function renderConfig(next) {
+    const clubs = Number(next?.clubs);
+    const athletes = Number(next?.athletes);
     config = {
       state: ['pre','live','pause','post'].includes(next?.state) ? next.state : 'pre',
       stream: ['sabato','domenica'].includes(next?.stream) ? next.stream : 'sabato',
+      clubs: Number.isInteger(clubs) && clubs >= 0 && clubs <= 99999 ? clubs : 62,
+      athletes: Number.isInteger(athletes) && athletes >= 0 && athletes <= 99999 ? athletes : 430,
       updatedAt: next?.updatedAt || null
     };
 
@@ -103,6 +107,10 @@
     });
     const streamSelect = controls?.querySelector('select[name="stream"]');
     if (streamSelect) streamSelect.value = config.stream;
+    const clubsInput = controls?.querySelector('input[name="clubs"]');
+    const athletesInput = controls?.querySelector('input[name="athletes"]');
+    if (clubsInput) clubsInput.value = String(config.clubs);
+    if (athletesInput) athletesInput.value = String(config.athletes);
   }
 
   async function loadConfig() {
@@ -292,7 +300,9 @@
     const payload = {
       action: 'set',
       state: String(data.get('state') || ''),
-      stream: String(data.get('stream') || '')
+      stream: String(data.get('stream') || ''),
+      clubs: Number(data.get('clubs')),
+      athletes: Number(data.get('athletes'))
     };
 
     if (saveButton) {
@@ -310,7 +320,7 @@
     } finally {
       if (saveButton) {
         saveButton.disabled = false;
-        saveButton.textContent = 'Salva stato';
+        saveButton.textContent = 'Salva home';
       }
     }
   });
