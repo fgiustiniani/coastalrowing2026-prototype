@@ -24,24 +24,23 @@
       <p>Gestisci lo stato della home e le news pubblicate sul sito da un’unica area riservata.</p>
     </section>
 
-    <section class="event-admin-panel" aria-labelledby="current-state-title">
-      <div class="event-admin-panel__heading">
-        <div>
-          <p class="section-kicker">Stato pubblicato</p>
-          <h2 id="current-state-title">Situazione attuale</h2>
-        </div>
-        <span class="event-admin-current" data-event-admin-current>Caricamento…</span>
-      </div>
-      <p class="event-admin-updated" data-event-admin-updated></p>
-    </section>
+    <details class="event-admin-panel event-admin-collapsible" open aria-labelledby="admin-access-title">
+      <summary class="event-admin-collapsible__summary">
+        <span class="event-admin-collapsible__heading">
+          <span class="section-kicker">Controllo</span>
+          <span class="event-admin-collapsible__title" id="admin-access-title">Imposta la home</span>
+        </span>
+        <span class="event-admin-collapsible__meta">
+          <span class="event-admin-current" data-event-admin-current>Caricamento…</span>
+          <span class="event-admin-collapsible__chevron" aria-hidden="true"></span>
+        </span>
+      </summary>
 
-    <section class="event-admin-panel" aria-labelledby="admin-access-title">
-      <div class="event-admin-panel__heading">
-        <div>
-          <p class="section-kicker">Controllo</p>
-          <h2 id="admin-access-title">Imposta la home</h2>
+      <div class="event-admin-collapsible__content">
+        <div class="event-admin-current-row">
+          <strong>Situazione attuale</strong>
+          <p class="event-admin-updated" data-event-admin-updated></p>
         </div>
-      </div>
 
       <form class="event-admin-login" data-event-admin-login>
         <label>
@@ -95,17 +94,23 @@
         </div>
         <p class="event-admin-status" data-event-admin-status aria-live="polite"></p>
       </form>
-    </section>
-
-    <section class="event-admin-panel event-admin-news-panel" data-event-admin-news-panel hidden aria-labelledby="news-admin-title">
-      <div class="event-admin-panel__heading">
-        <div>
-          <p class="section-kicker">Comunicazioni</p>
-          <h2 id="news-admin-title">Gestione news</h2>
-          <p class="event-admin-panel__intro">Pubblica, modifica o elimina le news mostrate nella pagina News e FAQ.</p>
-        </div>
-        <a class="button button--light" href="faq.html#news" target="_blank" rel="noopener noreferrer">Apri le news</a>
       </div>
+    </details>
+
+    <details class="event-admin-panel event-admin-news-panel event-admin-collapsible" data-event-admin-news-panel hidden open aria-labelledby="news-admin-title">
+      <summary class="event-admin-collapsible__summary">
+        <span class="event-admin-collapsible__heading">
+          <span class="section-kicker">Comunicazioni</span>
+          <span class="event-admin-collapsible__title" id="news-admin-title">Gestione news</span>
+        </span>
+        <span class="event-admin-collapsible__chevron" aria-hidden="true"></span>
+      </summary>
+
+      <div class="event-admin-collapsible__content">
+        <div class="event-admin-news-toolbar">
+          <p class="event-admin-panel__intro">Pubblica, modifica o elimina le news mostrate nella pagina News e FAQ.</p>
+          <a class="button button--light" href="faq.html#news" target="_blank" rel="noopener noreferrer">Apri le news</a>
+        </div>
 
       <form class="event-admin-news-form" data-event-news-form>
         <input type="hidden" name="id">
@@ -148,7 +153,9 @@
           <p class="event-admin-status">Caricamento news…</p>
         </div>
       </div>
-    </section>
+
+      </div>
+    </details>
 
     <section class="event-admin-note">
       <strong>Contesto separato</strong>
