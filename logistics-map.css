@@ -344,6 +344,35 @@
   cursor: pointer;
 }
 
+.logistics-map-interactive__ristorantino-hitarea::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 9px);
+  min-width: max-content;
+  max-width: 220px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: rgba(4, 17, 31, 0.94);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 25, 46, 0.22);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px) scale(var(--hotspot-inverse-scale, 1));
+  transform-origin: center bottom;
+  transition: opacity .14s ease, transform .14s ease;
+}
+
+.logistics-map-interactive__ristorantino-hitarea:hover::after,
+.logistics-map-interactive__ristorantino-hitarea:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(var(--hotspot-inverse-scale, 1));
+}
+
 .logistics-map-interactive__ristorantino-hitarea:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 2px;
