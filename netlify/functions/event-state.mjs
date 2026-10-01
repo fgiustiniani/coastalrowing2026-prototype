@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 function defaultConfig() {
-  return { state: 'pre', stream: 'sabato', updatedAt: null };
+  return { state: 'pre', stream: 'sabato', clubs: 62, athletes: 430, updatedAt: null };
 }
 
 function validStates() {
@@ -94,12 +94,19 @@ function resolveStoreName(requestUrl) {
   return 'coastal-event-state';
 }
 
+function normalizeCount(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 && number <= 99999 ? number : fallback;
+}
+
 function normalizeConfig(value) {
   const defaults = defaultConfig();
   const state = validStates().has(value?.state) ? value.state : defaults.state;
   const stream = validStreams().has(value?.stream) ? value.stream : defaults.stream;
+  const clubs = normalizeCount(value?.clubs, defaults.clubs);
+  const athletes = normalizeCount(value?.athletes, defaults.athletes);
   const updatedAt = typeof value?.updatedAt === 'string' ? value.updatedAt : null;
-  return { state, stream, updatedAt };
+  return { state, stream, clubs, athletes, updatedAt };
 }
 
 async function readConfig(store) {
@@ -157,6 +164,8 @@ export default async (request) => {
 
   const state = clean(payload.state, 20);
   const stream = clean(payload.stream, 20);
+  const clubs = Number(payload.clubs);
+  const athletes = Number(payload.athletes);
 
   if (!validStates().has(state)) {
     return json({ error: 'Stato evento non valido.' }, 400);
@@ -164,10 +173,18 @@ export default async (request) => {
   if (!validStreams().has(stream)) {
     return json({ error: 'Diretta YouTube non valida.' }, 400);
   }
+  if (!Number.isInteger(clubs) || clubs < 0 || clubs > 99999) {
+    return json({ error: 'Numero società non valido.' }, 400);
+  }
+  if (!Number.isInteger(athletes) || athletes < 0 || athletes > 99999) {
+    return json({ error: 'Numero atleti non valido.' }, 400);
+  }
 
   const config = {
     state,
     stream,
+    clubs,
+    athletes,
     updatedAt: new Date().toISOString()
   };
 
