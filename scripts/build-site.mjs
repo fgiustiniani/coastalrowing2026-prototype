@@ -37,6 +37,7 @@ const pageModels = new Map([
 ]);
 
 const sharedStylesheets = ['page-system.css', 'visual-cleanup.css', 'mobile-polish.css', 'interaction-fixes.css'];
+const standalonePages = new Set(['admin-evento.html']);
 
 const excludedEntries = new Set([
   '.git',
@@ -109,19 +110,24 @@ function addPageAssets(fileName, source) {
 }
 
 function buildPage(fileName, source) {
-  if (!headerPattern.test(source)) {
-    throw new Error(`Header non trovato in ${fileName}`);
-  }
-  if (!footerPattern.test(source)) {
-    throw new Error(`Footer non trovato in ${fileName}`);
-  }
   if (!bodyPattern.test(source)) {
     throw new Error(`Elemento body non trovato in ${fileName}`);
   }
 
-  let output = source
-    .replace(headerPattern, renderHeader(fileName))
-    .replace(footerPattern, footerTemplate);
+  let output = source;
+
+  if (!standalonePages.has(fileName)) {
+    if (!headerPattern.test(source)) {
+      throw new Error(`Header non trovato in ${fileName}`);
+    }
+    if (!footerPattern.test(source)) {
+      throw new Error(`Footer non trovato in ${fileName}`);
+    }
+
+    output = output
+      .replace(headerPattern, renderHeader(fileName))
+      .replace(footerPattern, footerTemplate);
+  }
 
   output = addPageModel(fileName, output);
   output = addSharedStyles(output);

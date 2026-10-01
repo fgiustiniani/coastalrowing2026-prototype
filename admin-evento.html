@@ -11,169 +11,150 @@
   <link rel="stylesheet" href="event-admin.css">
   <link rel="stylesheet" href="news-list.css">
 </head>
-<body class="page-model page-model--operational">
-  <div class="site-frame">
-    <header class="site-header" id="top">
-      <div class="site-header__top">
-        <a href="index.html" aria-label="Campionati Italiani Coastal Rowing 2026, Pesaro">
-          <img class="event-logo" src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
-        </a>
+<body class="event-admin-body">
+  <div class="event-admin-shell">
+    <a class="event-admin-brand" href="index.html" aria-label="Vai alla home dei Campionati Italiani Coastal Rowing 2026">
+      <img src="assets/logos/SCP-Campionati2026-logo-orizzontale.svg" alt="Campionati Italiani Coastal Rowing 2026 - Pesaro">
+    </a>
+
+  <main class="event-admin-page">
+    <section class="event-admin-hero">
+      <p class="section-kicker">Area riservata</p>
+      <h1>Gestione evento</h1>
+      <p>Gestisci lo stato della home e le news pubblicate sul sito da un’unica area riservata.</p>
+    </section>
+
+    <section class="event-admin-panel" aria-labelledby="current-state-title">
+      <div class="event-admin-panel__heading">
+        <div>
+          <p class="section-kicker">Stato pubblicato</p>
+          <h2 id="current-state-title">Situazione attuale</h2>
+        </div>
+        <span class="event-admin-current" data-event-admin-current>Caricamento…</span>
       </div>
-      <nav class="site-nav" aria-label="Navigazione principale">
-        <a href="index.html">Home</a>
-        <a href="info-gare.html">Info per chi gareggia</a>
-        <a href="faq.html">FAQ</a>
-      </nav>
-    </header>
+      <p class="event-admin-updated" data-event-admin-updated></p>
+    </section>
 
-    <main class="event-admin-page">
-      <section class="event-admin-hero">
-        <p class="section-kicker">Area riservata</p>
-        <h1>Gestione evento</h1>
-        <p>Gestisci lo stato della home e le news pubblicate sul sito da un’unica area riservata.</p>
-      </section>
-
-      <section class="event-admin-panel" aria-labelledby="current-state-title">
-        <div class="event-admin-panel__heading">
-          <div>
-            <p class="section-kicker">Stato pubblicato</p>
-            <h2 id="current-state-title">Situazione attuale</h2>
-          </div>
-          <span class="event-admin-current" data-event-admin-current>Caricamento…</span>
+    <section class="event-admin-panel" aria-labelledby="admin-access-title">
+      <div class="event-admin-panel__heading">
+        <div>
+          <p class="section-kicker">Controllo</p>
+          <h2 id="admin-access-title">Imposta la home</h2>
         </div>
-        <p class="event-admin-updated" data-event-admin-updated></p>
-      </section>
+      </div>
 
-      <section class="event-admin-panel" aria-labelledby="admin-access-title">
-        <div class="event-admin-panel__heading">
-          <div>
-            <p class="section-kicker">Controllo</p>
-            <h2 id="admin-access-title">Imposta la home</h2>
-          </div>
-        </div>
+      <form class="event-admin-login" data-event-admin-login>
+        <label>
+          <span>Utente</span>
+          <input type="text" name="username" autocomplete="username" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button class="button button--dark" type="submit">Accedi</button>
+        <p class="event-admin-status" data-event-admin-login-status aria-live="polite"></p>
+      </form>
 
-        <form class="event-admin-login" data-event-admin-login>
-          <label>
-            <span>Utente</span>
-            <input type="text" name="username" autocomplete="username" required>
-          </label>
-          <label>
-            <span>Password</span>
-            <input type="password" name="password" autocomplete="current-password" required>
-          </label>
-          <button class="button button--dark" type="submit">Accedi</button>
-          <p class="event-admin-status" data-event-admin-login-status aria-live="polite"></p>
-        </form>
-
-        <form class="event-admin-controls" data-event-admin-controls hidden>
-          <fieldset>
-            <legend>Stato della home</legend>
-            <div class="event-admin-states">
-              <label class="event-admin-state">
-                <input type="radio" name="state" value="pre" required>
-                <span><strong>Pre-gara</strong><small>Foto, 62 società, 430 atleti e pass parcheggio.</small></span>
-              </label>
-              <label class="event-admin-state">
-                <input type="radio" name="state" value="live" required>
-                <span><strong>Live</strong><small>Player YouTube con autoplay muto e audio attivabile.</small></span>
-              </label>
-              <label class="event-admin-state">
-                <input type="radio" name="state" value="pause" required>
-                <span><strong>Pausa</strong><small>Messaggio di pausa e accesso al programma gare.</small></span>
-              </label>
-              <label class="event-admin-state">
-                <input type="radio" name="state" value="post" required>
-                <span><strong>Post-gara</strong><small>Numeri dell’evento e link ai replay di sabato e domenica.</small></span>
-              </label>
-            </div>
-          </fieldset>
-
-          <label class="event-admin-stream" data-event-admin-stream>
-            <span>Diretta da utilizzare</span>
-            <select name="stream">
-              <option value="sabato">Sabato 3 ottobre</option>
-              <option value="domenica">Domenica 4 ottobre</option>
-            </select>
-            <small>La scelta viene conservata anche quando la home non è in modalità Live.</small>
-          </label>
-
-          <div class="event-admin-actions">
-            <button class="button button--dark" type="submit" data-event-admin-save>Salva stato</button>
-            <a class="button button--light" href="index.html" target="_blank" rel="noopener noreferrer">Apri la home</a>
-            <button class="event-admin-logout" type="button" data-event-admin-logout>Esci</button>
-          </div>
-          <p class="event-admin-status" data-event-admin-status aria-live="polite"></p>
-        </form>
-      </section>
-
-      <section class="event-admin-panel event-admin-news-panel" data-event-admin-news-panel hidden aria-labelledby="news-admin-title">
-        <div class="event-admin-panel__heading">
-          <div>
-            <p class="section-kicker">Comunicazioni</p>
-            <h2 id="news-admin-title">Gestione news</h2>
-            <p class="event-admin-panel__intro">Pubblica, modifica o elimina le news mostrate nella pagina News e FAQ.</p>
-          </div>
-          <a class="button button--light" href="faq.html#news" target="_blank" rel="noopener noreferrer">Apri le news</a>
-        </div>
-
-        <form class="event-admin-news-form" data-event-news-form>
-          <input type="hidden" name="id">
-          <input type="hidden" name="linkUrl">
-          <input type="hidden" name="linkLabel">
-
-          <div class="event-admin-news-form__grid">
-            <label>
-              <span>Titolo *</span>
-              <input type="text" name="title" maxlength="160" required>
+      <form class="event-admin-controls" data-event-admin-controls hidden>
+        <fieldset>
+          <legend>Stato della home</legend>
+          <div class="event-admin-states">
+            <label class="event-admin-state">
+              <input type="radio" name="state" value="pre" required>
+              <span><strong>Pre-gara</strong><small>Foto, 62 società, 430 atleti e pass parcheggio.</small></span>
             </label>
-            <label>
-              <span>Data *</span>
-              <input type="date" name="date" required>
+            <label class="event-admin-state">
+              <input type="radio" name="state" value="live" required>
+              <span><strong>Live</strong><small>Player YouTube con autoplay muto e audio attivabile.</small></span>
+            </label>
+            <label class="event-admin-state">
+              <input type="radio" name="state" value="pause" required>
+              <span><strong>Pausa</strong><small>Messaggio di pausa e accesso al programma gare.</small></span>
+            </label>
+            <label class="event-admin-state">
+              <input type="radio" name="state" value="post" required>
+              <span><strong>Post-gara</strong><small>Numeri dell’evento e link ai replay di sabato e domenica.</small></span>
             </label>
           </div>
+        </fieldset>
 
-          <label>
-            <span>Sintesi *</span>
-            <textarea name="summary" rows="3" maxlength="600" required></textarea>
-          </label>
+        <label class="event-admin-stream" data-event-admin-stream>
+          <span>Diretta da utilizzare</span>
+          <select name="stream">
+            <option value="sabato">Sabato 3 ottobre</option>
+            <option value="domenica">Domenica 4 ottobre</option>
+          </select>
+          <small>La scelta viene conservata anche quando la home non è in modalità Live.</small>
+        </label>
 
-          <label>
-            <span>Testo completo</span>
-            <textarea name="body" rows="7" maxlength="5000" placeholder="Puoi inserire più link nel testo, ad esempio: [Programma gare](assets/documents/documento.pdf)"></textarea>
-          </label>
-
-          <p class="event-admin-news-help"><strong>Link nel testo:</strong> usa il formato <code>[testo del link](indirizzo)</code>. Sono accettati link <code>https://…</code> e percorsi interni <code>assets/…</code>.</p>
-
-          <div class="event-admin-news-form__actions">
-            <button class="button button--dark" type="submit" data-event-news-submit>Pubblica news</button>
-            <button class="event-admin-news-cancel" type="button" data-event-news-cancel hidden>Annulla modifica</button>
-          </div>
-          <p class="event-admin-status" data-event-news-status aria-live="polite"></p>
-        </form>
-
-        <div class="event-admin-news-list-wrap">
-          <h3>News pubblicate</h3>
-          <div class="news-list" data-event-news-list aria-live="polite">
-            <p class="event-admin-status">Caricamento news…</p>
-          </div>
+        <div class="event-admin-actions">
+          <button class="button button--dark" type="submit" data-event-admin-save>Salva stato</button>
+          <a class="button button--light" href="index.html" target="_blank" rel="noopener noreferrer">Apri la home</a>
+          <button class="event-admin-logout" type="button" data-event-admin-logout>Esci</button>
         </div>
-      </section>
+        <p class="event-admin-status" data-event-admin-status aria-live="polite"></p>
+      </form>
+    </section>
 
-      <section class="event-admin-note">
-        <strong>Contesto separato</strong>
-        <p>Lo stato salvato su Branch Deploy e Deploy Preview è separato da quello della produzione. Questa pagina usa le credenziali amministrative già configurate per le news.</p>
-      </section>
-    </main>
+    <section class="event-admin-panel event-admin-news-panel" data-event-admin-news-panel hidden aria-labelledby="news-admin-title">
+      <div class="event-admin-panel__heading">
+        <div>
+          <p class="section-kicker">Comunicazioni</p>
+          <h2 id="news-admin-title">Gestione news</h2>
+          <p class="event-admin-panel__intro">Pubblica, modifica o elimina le news mostrate nella pagina News e FAQ.</p>
+        </div>
+        <a class="button button--light" href="faq.html#news" target="_blank" rel="noopener noreferrer">Apri le news</a>
+      </div>
 
-    <footer class="site-footer">
-      <div>
-        <strong>Campionati Italiani Coastal Rowing 2026</strong>
-        <p>Pesaro · 3–4 ottobre 2026</p>
+      <form class="event-admin-news-form" data-event-news-form>
+        <input type="hidden" name="id">
+        <input type="hidden" name="linkUrl">
+        <input type="hidden" name="linkLabel">
+
+        <div class="event-admin-news-form__grid">
+          <label>
+            <span>Titolo *</span>
+            <input type="text" name="title" maxlength="160" required>
+          </label>
+          <label>
+            <span>Data *</span>
+            <input type="date" name="date" required>
+          </label>
+        </div>
+
+        <label>
+          <span>Sintesi *</span>
+          <textarea name="summary" rows="3" maxlength="600" required></textarea>
+        </label>
+
+        <label>
+          <span>Testo completo</span>
+          <textarea name="body" rows="7" maxlength="5000" placeholder="Puoi inserire più link nel testo, ad esempio: [Programma gare](assets/documents/documento.pdf)"></textarea>
+        </label>
+
+        <p class="event-admin-news-help"><strong>Link nel testo:</strong> usa il formato <code>[testo del link](indirizzo)</code>. Sono accettati link <code>https://…</code> e percorsi interni <code>assets/…</code>.</p>
+
+        <div class="event-admin-news-form__actions">
+          <button class="button button--dark" type="submit" data-event-news-submit>Pubblica news</button>
+          <button class="event-admin-news-cancel" type="button" data-event-news-cancel hidden>Annulla modifica</button>
+        </div>
+        <p class="event-admin-status" data-event-news-status aria-live="polite"></p>
+      </form>
+
+      <div class="event-admin-news-list-wrap">
+        <h3>News pubblicate</h3>
+        <div class="news-list" data-event-news-list aria-live="polite">
+          <p class="event-admin-status">Caricamento news…</p>
+        </div>
       </div>
-      <div class="site-footer__links">
-        <a href="index.html">Home</a>
-      </div>
-    </footer>
+    </section>
+
+    <section class="event-admin-note">
+      <strong>Contesto separato</strong>
+      <p>Lo stato salvato su Branch Deploy e Deploy Preview è separato da quello della produzione. Questa pagina usa le credenziali amministrative già configurate per le news.</p>
+    </section>
+  </main>
   </div>
 
   <script src="event-admin.js" defer></script>
