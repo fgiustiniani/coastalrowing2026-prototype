@@ -24,6 +24,8 @@
   const modeCopy = hero.querySelector('[data-event-mode-copy]');
   const modePrimary = hero.querySelector('[data-event-mode-primary]');
   const modeSecondary = hero.querySelector('[data-event-mode-secondary]');
+  const clubsCount = hero.querySelector('[data-event-clubs-count]');
+  const athletesCount = hero.querySelector('[data-event-athletes-count]');
 
   const streams = {
     sabato: {
@@ -40,6 +42,8 @@
 
   let currentStateKey = '';
   let currentStreamKey = '';
+  let currentClubs = null;
+  let currentAthletes = null;
 
   function setVisible(element, visible) {
     if (!element) return;
@@ -199,14 +203,31 @@
     });
   }
 
+  function normalizeCount(value, fallback) {
+    const number = Number(value);
+    return Number.isInteger(number) && number >= 0 && number <= 99999 ? number : fallback;
+  }
+
   function applyConfig(config) {
     const state = ['pre', 'live', 'pause', 'post'].includes(config?.state) ? config.state : 'pre';
     const stream = ['sabato', 'domenica'].includes(config?.stream) ? config.stream : 'sabato';
+    const clubs = normalizeCount(config?.clubs, 62);
+    const athletes = normalizeCount(config?.athletes, 430);
 
-    if (state === currentStateKey && (state !== 'live' || stream === currentStreamKey)) return;
+    if (clubsCount) clubsCount.textContent = String(clubs);
+    if (athletesCount) athletesCount.textContent = String(athletes);
+
+    if (
+      state === currentStateKey &&
+      (state !== 'live' || stream === currentStreamKey) &&
+      clubs === currentClubs &&
+      athletes === currentAthletes
+    ) return;
 
     currentStateKey = state;
     currentStreamKey = stream;
+    currentClubs = clubs;
+    currentAthletes = athletes;
     document.documentElement.dataset.eventView = state;
     document.documentElement.dataset.eventStream = stream;
 
@@ -226,11 +247,11 @@
       if (!response.ok) throw new Error(result.error || 'Stato evento non disponibile.');
       applyConfig(result);
     } catch (_) {
-      if (!currentStateKey) applyConfig({ state: 'pre', stream: 'sabato' });
+      if (!currentStateKey) applyConfig({ state: 'pre', stream: 'sabato', clubs: 62, athletes: 430 });
     }
   }
 
-  applyConfig({ state: 'pre', stream: 'sabato' });
+  applyConfig({ state: 'pre', stream: 'sabato', clubs: 62, athletes: 430 });
   loadState();
   window.setInterval(loadState, pollingMs);
 })();
