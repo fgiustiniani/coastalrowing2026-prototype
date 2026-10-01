@@ -1836,6 +1836,10 @@
     const shiftEndMinutes = localTimeMinutes(shift.ends_at);
     if (![raceMinutes, shiftStartMinutes, shiftEndMinutes].every(Number.isFinite)) return false;
 
+    if (raceMinutes < shiftStartMinutes && (shiftStartMinutes - raceMinutes) < 60) {
+      return true;
+    }
+
     if (raceMinutes <= 14 * 60) {
       return shiftStartMinutes <= raceMinutes;
     }
