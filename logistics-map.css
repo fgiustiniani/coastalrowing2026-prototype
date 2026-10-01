@@ -331,6 +331,25 @@
   box-shadow: 0 0 0 6px rgba(11, 107, 136, 0.72);
 }
 
+.logistics-map-interactive__ristorantino-hitarea {
+  position: absolute;
+  z-index: 5;
+  left: var(--ristorantino-left);
+  top: var(--ristorantino-top);
+  width: var(--ristorantino-width);
+  height: var(--ristorantino-height);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.logistics-map-interactive__ristorantino-hitarea:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(11, 107, 136, 0.72);
+}
+
 .logistics-map-interactive__status {
   min-height: 1.4em;
   margin: 9px 2px 0;

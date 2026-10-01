@@ -406,6 +406,16 @@
     event.stopPropagation();
   });
 
+  const ristorantinoLink = root.querySelector('[data-logistics-ristorantino]');
+
+  ristorantinoLink?.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+  });
+
+  ristorantinoLink?.addEventListener('click', (event) => {
+    event.stopPropagation();
+  });
+
   fullscreenOpenButton?.addEventListener('click', openFullscreenMap);
   fullscreenCloseButton?.addEventListener('click', closeFullscreenMap);
 
@@ -455,7 +465,7 @@
 
   viewport.addEventListener('click', (event) => {
     if (!isTouchFullscreen()) return;
-    if (event.target.closest?.('[data-logistics-popover], [data-logistics-parking-pass]')) return;
+    if (event.target.closest?.('[data-logistics-popover], [data-logistics-parking-pass], [data-logistics-ristorantino]')) return;
 
     if (
       performance.now() - lastDragEnd < 320 ||
@@ -510,7 +520,7 @@
   }, { passive: false });
 
   viewport.addEventListener('dblclick', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass], [data-logistics-ristorantino]')) return;
     event.preventDefault();
     const rect = viewport.getBoundingClientRect();
     setScale(scale < 2 ? 2 : Math.min(MAX_SCALE, scale * 1.35), event.clientX - rect.left, event.clientY - rect.top);
@@ -518,7 +528,7 @@
   });
 
   viewport.addEventListener('pointerdown', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass], [data-logistics-ristorantino]')) return;
     if (scale <= 1.001 || event.button !== 0) return;
     dragging = true;
     dragMoved = false;
@@ -561,7 +571,7 @@
   viewport.addEventListener('lostpointercapture', () => endDrag());
 
   viewport.addEventListener('click', (event) => {
-    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass]')) return;
+    if (event.target.closest?.('[data-logistics-point], [data-logistics-legend-point], [data-logistics-popover], [data-logistics-parking-pass], [data-logistics-ristorantino]')) return;
     if (performance.now() - lastDragEnd < 250) return;
 
     closePopover(true);
