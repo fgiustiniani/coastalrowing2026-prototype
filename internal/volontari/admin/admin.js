@@ -1883,7 +1883,7 @@
     };
   }
 
-  function boardAvailabilityHoverBadgesHtml(personId, shiftId, { includeLoad = true } = {}) {
+  function boardAvailabilityHoverBadgesHtml(personId, shiftId, { includeLoad = true, includeAssignments = true } = {}) {
     const assignmentRows = (snapshot?.assignments || [])
       .filter((item) => item.personId === personId)
       .sort((a, b) => {
@@ -1913,7 +1913,7 @@
     const hasRaceConflict = conflictingRaceIds.size > 0;
     const adjacentLoad = adjacentAssignedShiftLoad(personId, shiftId);
 
-    const assignmentBadge = assignmentRows.length
+    const assignmentBadge = includeAssignments && assignmentRows.length
       ? `<span class="assignment-board__availability-hover" tabindex="0" aria-label="${assignmentRows.length} attività già assegnate">
           <span class="assignment-board__availability-hover-chip">A${assignmentRows.length}</span>
           <span class="assignment-board__availability-popover">
@@ -2015,7 +2015,9 @@
             title="Vedi tutte le attività di ${escapeHtml(row.personName)}">
             ${escapeHtml(row.personName)}
           </button>
-          ${row.isAvailability ? boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId) : ''}
+          ${row.isAvailability
+            ? boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId)
+            : boardAvailabilityHoverBadgesHtml(row.personId, row.shiftId, { includeLoad: false, includeAssignments: false })}
           ${(row.isReleasedConfirmed || row.retainedConfirmation) ? '<span class="assignment-board__status-icon is-retained" tabindex="0" data-tooltip="Conferma mantenuta da una precedente assegnazione nello stesso turno" aria-label="Conferma precedente mantenuta">↺</span>' : ''}
           ${row.assignedFromAvailability ? '<span class="assignment-board__status-icon is-additional" tabindex="0" data-tooltip="Assegnato in seguito a disponibilità aggiuntiva" aria-label="Assegnato da disponibilità aggiuntiva">+</span>' : ''}
           ${showResponseBadge ? (effectiveResponse === 'confirmed'
