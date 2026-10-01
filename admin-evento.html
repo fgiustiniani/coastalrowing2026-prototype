@@ -61,7 +61,7 @@
           <div class="event-admin-states">
             <label class="event-admin-state">
               <input type="radio" name="state" value="pre" required>
-              <span><strong>Pre-gara</strong><small>Foto, 62 società, 430 atleti e pass parcheggio.</small></span>
+              <span><strong>Pre-gara</strong><small>Foto, numeri dell’evento e pass parcheggio.</small></span>
             </label>
             <label class="event-admin-state">
               <input type="radio" name="state" value="live" required>
@@ -78,6 +78,21 @@
           </div>
         </fieldset>
 
+        <fieldset class="event-admin-metrics">
+          <legend>Numeri della manifestazione</legend>
+          <div class="event-admin-metrics__grid">
+            <label>
+              <span>Società</span>
+              <input type="number" name="clubs" min="0" max="99999" step="1" inputmode="numeric" required>
+            </label>
+            <label>
+              <span>Atleti</span>
+              <input type="number" name="athletes" min="0" max="99999" step="1" inputmode="numeric" required>
+            </label>
+          </div>
+          <small>Questi valori vengono mostrati nei bolli della home e possono essere aggiornati senza deploy.</small>
+        </fieldset>
+
         <label class="event-admin-stream" data-event-admin-stream>
           <span>Diretta da utilizzare</span>
           <select name="stream">
@@ -88,7 +103,7 @@
         </label>
 
         <div class="event-admin-actions">
-          <button class="button button--dark" type="submit" data-event-admin-save>Salva stato</button>
+          <button class="button button--dark" type="submit" data-event-admin-save>Salva home</button>
           <a class="button button--light" href="index.html" target="_blank" rel="noopener noreferrer">Apri la home</a>
           <button class="event-admin-logout" type="button" data-event-admin-logout>Esci</button>
         </div>
