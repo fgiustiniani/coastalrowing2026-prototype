@@ -46,9 +46,6 @@
             <h2 id="news-title">News</h2>
             <p>Qui saranno pubblicate le comunicazioni organizzative e gli aggiornamenti relativi ai Campionati.</p>
           </div>
-          <button class="news-admin-trigger" type="button" data-open-news-admin aria-label="Gestisci le news" title="Gestisci le news">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.36a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1.03-1.56V3h4v.08A1.7 1.7 0 0 0 15 4.64a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.56 1.03H21v4h-.08A1.7 1.7 0 0 0 19.4 15z"></path></svg>
-          </button>
         </div>
         <div class="news-list" id="news-list" aria-live="polite">
           <article class="news-empty">
@@ -101,43 +98,6 @@
       </article>
     </dialog>
 
-    <dialog class="news-admin-dialog" id="news-admin-dialog" aria-labelledby="news-admin-title">
-      <div class="news-admin-dialog__panel">
-        <button class="news-admin-dialog__close" type="button" data-close-news-admin aria-label="Chiudi">×</button>
-        <div class="news-admin-dialog__heading">
-          <p class="section-kicker">Area riservata</p>
-          <h2 id="news-admin-title">Gestione news</h2>
-          <p>Accedi con le credenziali amministrative per pubblicare, modificare o eliminare gli aggiornamenti.</p>
-        </div>
-
-        <form class="news-admin-form" id="news-login-form">
-          <label><span>Utente</span><input type="text" name="username" autocomplete="username" required></label>
-          <label><span>Password</span><input type="password" name="password" autocomplete="current-password" required></label>
-          <button class="button button--dark" type="submit">Accedi</button>
-          <p class="news-admin-status" id="news-login-status" aria-live="polite"></p>
-        </form>
-
-        <form class="news-admin-form" id="news-editor-form" hidden>
-          <input type="hidden" name="id">
-          <label><span>Titolo *</span><input type="text" name="title" maxlength="160" required></label>
-          <label><span>Data *</span><input type="date" name="date" required></label>
-          <label><span>Sintesi *</span><textarea name="summary" rows="3" maxlength="600" required></textarea></label>
-          <label>
-            <span>Testo completo</span>
-            <textarea name="body" rows="9" maxlength="5000" placeholder="Puoi inserire più link nel testo, ad esempio: [Programma gare provvisorio](assets/documents/Programma_gare_provvisorio_Pesaro_2026.pdf)"></textarea>
-          </label>
-          <p class="news-admin-help news-admin-help--links"><strong>Link nel testo:</strong> usa il formato <code>[testo del link](indirizzo)</code>. Puoi inserirne quanti vuoi, anche nello stesso paragrafo. Sono accettati link <code>https://…</code> e percorsi interni <code>assets/…</code>.</p>
-          <input type="hidden" name="linkUrl">
-          <input type="hidden" name="linkLabel">
-          <div class="news-admin-form__actions">
-            <button class="button button--dark" type="submit" data-news-submit>Pubblica news</button>
-            <button class="button news-admin-form__cancel" type="button" data-cancel-news-edit hidden>Annulla modifica</button>
-          </div>
-          <p class="news-admin-help">Dopo l’accesso, usa i pulsanti “Modifica” ed “Elimina” che compaiono accanto alle news nell’elenco.</p>
-          <p class="news-admin-status" id="news-editor-status" aria-live="polite"></p>
-        </form>
-      </div>
-    </dialog>
   </div>
   <script src="nav-submenu.js" defer></script>
   <script src="news-admin.js" defer></script>

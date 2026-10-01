@@ -4,11 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>Gestione Home Evento · Coastal Rowing 2026</title>
+  <title>Gestione Evento · Coastal Rowing 2026</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="assets-overrides.css">
   <link rel="stylesheet" href="site-polish.css">
   <link rel="stylesheet" href="event-admin.css">
+  <link rel="stylesheet" href="news-list.css">
 </head>
 <body class="page-model page-model--operational">
   <div class="site-frame">
@@ -28,8 +29,8 @@
     <main class="event-admin-page">
       <section class="event-admin-hero">
         <p class="section-kicker">Area riservata</p>
-        <h1>Gestione home evento</h1>
-        <p>Cambia lo stato della hero senza fare deploy. Le quattro modalità sono esclusive e la home recepisce le modifiche entro circa 30 secondi.</p>
+        <h1>Gestione evento</h1>
+        <p>Gestisci lo stato della home e le news pubblicate sul sito da un’unica area riservata.</p>
       </section>
 
       <section class="event-admin-panel" aria-labelledby="current-state-title">
@@ -103,6 +104,59 @@
           </div>
           <p class="event-admin-status" data-event-admin-status aria-live="polite"></p>
         </form>
+      </section>
+
+      <section class="event-admin-panel event-admin-news-panel" data-event-admin-news-panel hidden aria-labelledby="news-admin-title">
+        <div class="event-admin-panel__heading">
+          <div>
+            <p class="section-kicker">Comunicazioni</p>
+            <h2 id="news-admin-title">Gestione news</h2>
+            <p class="event-admin-panel__intro">Pubblica, modifica o elimina le news mostrate nella pagina News e FAQ.</p>
+          </div>
+          <a class="button button--light" href="faq.html#news" target="_blank" rel="noopener noreferrer">Apri le news</a>
+        </div>
+
+        <form class="event-admin-news-form" data-event-news-form>
+          <input type="hidden" name="id">
+          <input type="hidden" name="linkUrl">
+          <input type="hidden" name="linkLabel">
+
+          <div class="event-admin-news-form__grid">
+            <label>
+              <span>Titolo *</span>
+              <input type="text" name="title" maxlength="160" required>
+            </label>
+            <label>
+              <span>Data *</span>
+              <input type="date" name="date" required>
+            </label>
+          </div>
+
+          <label>
+            <span>Sintesi *</span>
+            <textarea name="summary" rows="3" maxlength="600" required></textarea>
+          </label>
+
+          <label>
+            <span>Testo completo</span>
+            <textarea name="body" rows="7" maxlength="5000" placeholder="Puoi inserire più link nel testo, ad esempio: [Programma gare](assets/documents/documento.pdf)"></textarea>
+          </label>
+
+          <p class="event-admin-news-help"><strong>Link nel testo:</strong> usa il formato <code>[testo del link](indirizzo)</code>. Sono accettati link <code>https://…</code> e percorsi interni <code>assets/…</code>.</p>
+
+          <div class="event-admin-news-form__actions">
+            <button class="button button--dark" type="submit" data-event-news-submit>Pubblica news</button>
+            <button class="event-admin-news-cancel" type="button" data-event-news-cancel hidden>Annulla modifica</button>
+          </div>
+          <p class="event-admin-status" data-event-news-status aria-live="polite"></p>
+        </form>
+
+        <div class="event-admin-news-list-wrap">
+          <h3>News pubblicate</h3>
+          <div class="news-list" data-event-news-list aria-live="polite">
+            <p class="event-admin-status">Caricamento news…</p>
+          </div>
+        </div>
       </section>
 
       <section class="event-admin-note">

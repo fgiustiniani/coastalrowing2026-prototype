@@ -253,3 +253,130 @@
     text-align: center;
   }
 }
+
+
+/* Gestione news integrata nell'area admin evento. */
+.event-admin-news-panel[hidden] {
+  display: none;
+}
+
+.event-admin-panel__intro {
+  max-width: 620px;
+  margin: 9px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.event-admin-news-form {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid rgba(16,34,53,.09);
+  border-radius: 20px;
+  background: rgba(255,255,255,.72);
+}
+
+.event-admin-news-form__grid {
+  display: grid;
+  grid-template-columns: minmax(0,2fr) minmax(180px,1fr);
+  gap: 14px;
+}
+
+.event-admin-news-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.event-admin-news-form label > span {
+  color: var(--navy-900);
+  font-size: .88rem;
+  font-weight: 900;
+}
+
+.event-admin-news-form input,
+.event-admin-news-form textarea {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid rgba(16,34,53,.16);
+  border-radius: 13px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.event-admin-news-form textarea {
+  resize: vertical;
+}
+
+.event-admin-news-help {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 13px;
+  color: var(--muted);
+  background: rgba(79,169,202,.08);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.event-admin-news-help code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  color: var(--navy-900);
+  background: rgba(16,34,53,.07);
+}
+
+.event-admin-news-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.event-admin-news-cancel {
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid rgba(16,34,53,.15);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy-900);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.event-admin-news-list-wrap {
+  margin-top: 28px;
+}
+
+.event-admin-news-list-wrap h3 {
+  margin: 0 0 12px;
+  color: var(--navy-940);
+  font-size: 1.25rem;
+}
+
+.event-admin-news-panel .news-row__open {
+  cursor: default;
+}
+
+.event-admin-news-panel .news-row__open:hover .news-row__arrow {
+  transform: none;
+}
+
+.event-admin-news-panel .news-row__arrow {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .event-admin-news-form {
+    padding: 18px;
+  }
+
+  .event-admin-news-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-admin-news-form__actions,
+  .event-admin-news-form__actions .button,
+  .event-admin-news-cancel {
+    width: 100%;
+  }
+}
