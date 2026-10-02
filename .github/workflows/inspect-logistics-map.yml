@@ -170,6 +170,21 @@ jobs:
           if not ok: raise SystemExit('encode failed')
           print('MAPJPEG_B64 '+base64.b64encode(buf.tobytes()).decode('ascii'))
           PY
+      - name: Emit map crops
+        run: |
+          python - <<'PY'
+          import cv2, base64
+          im=cv2.imread('assets/maps/mappa-interattiva.webp')
+          crops={
+            'MAP_TOP': im[300:650,0:920],
+            'MAP_BOTTOM': im[600:950,0:920],
+          }
+          for name,crop in crops.items():
+              crop=cv2.resize(crop,(460,175),interpolation=cv2.INTER_AREA)
+              ok,buf=cv2.imencode('.jpg',crop,[int(cv2.IMWRITE_JPEG_QUALITY),45])
+              if not ok: raise SystemExit('encode failed')
+              print(name+'_B64 '+base64.b64encode(buf.tobytes()).decode('ascii'))
+          PY
       - name: OCR numeric markers
         run: |
           sudo apt-get update -qq
