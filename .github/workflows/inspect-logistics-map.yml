@@ -1,0 +1,107 @@
+name: Inspect logistics map calibration
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/inspect-logistics-map.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare old map
+        run: git show 1eb9f6b4035e7b0a2a30c807e947d372f12e1825:assets/maps/mappa-interattiva.webp > /tmp/old-map.webp
+      - name: Install image tools
+        run: python -m pip install --quiet pillow numpy opencv-python-headless
+      - name: Compare maps
+        run: |
+          python - <<'PY'
+          import cv2, numpy as np, json
+          old_path='/tmp/old-map.webp'
+          new_path='assets/maps/mappa-interattiva.webp'
+          old=cv2.imread(old_path, cv2.IMREAD_COLOR)
+          new=cv2.imread(new_path, cv2.IMREAD_COLOR)
+          if old is None or new is None:
+              raise SystemExit('Unable to read one of the maps')
+          ho,wo=old.shape[:2]; hn,wn=new.shape[:2]
+          print('OLD_SIZE',wo,ho)
+          print('NEW_SIZE',wn,hn)
+
+          # ORB registration old -> new
+          g1=cv2.cvtColor(old,cv2.COLOR_BGR2GRAY)
+          g2=cv2.cvtColor(new,cv2.COLOR_BGR2GRAY)
+          orb=cv2.ORB_create(nfeatures=8000, scaleFactor=1.15, nlevels=8)
+          k1,d1=orb.detectAndCompute(g1,None)
+          k2,d2=orb.detectAndCompute(g2,None)
+          if d1 is None or d2 is None:
+              raise SystemExit('No descriptors')
+          bf=cv2.BFMatcher(cv2.NORM_HAMMING)
+          pairs=bf.knnMatch(d1,d2,k=2)
+          good=[a for a,b in pairs if a.distance < 0.72*b.distance]
+          print('ORB_KEYPOINTS',len(k1),len(k2),'GOOD_MATCHES',len(good))
+          if len(good)<12:
+              raise SystemExit('Not enough good matches')
+          src=np.float32([k1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
+          dst=np.float32([k2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+          H,mask=cv2.findHomography(src,dst,cv2.RANSAC,4.0)
+          if H is None:
+              raise SystemExit('Homography failed')
+          inliers=int(mask.sum()) if mask is not None else 0
+          print('HOMOGRAPHY_INLIERS',inliers)
+          print('HOMOGRAPHY',json.dumps(H.tolist()))
+
+          # Project all previous interactive centers.
+          points={
+            '1':(.920833,.816667),'2':(.425521,.454630),'3':(.347917,.541667),
+            '4':(.388021,.596296),'5':(.435938,.509259),'6_old':(.451042,.600000),
+            '7':(.425521,.647222),'8':(.221875,.388889),'9':(.236979,.503704),
+            '10':(.181771,.465741),'11':(.351042,.462037),'12':(.092708,.258333),
+            '13':(.164063,.321296),'14':(.277604,.392593),'water':(.174,.394),
+            'ingresso':(.3885,.765)
+          }
+          print('PROJECTED_POINTS_BEGIN')
+          for key,(x,y) in points.items():
+              p=np.array([[[x*wo,y*ho]]],dtype=np.float32)
+              q=cv2.perspectiveTransform(p,H)[0,0]
+              print(key,round(float(q[0]/wn),6),round(float(q[1]/hn),6),round(float(q[0]),1),round(float(q[1]),1))
+          print('PROJECTED_POINTS_END')
+
+          legend={
+            '1':(.5935,.2413),'2':(.5935,.2896),'3':(.5935,.3364),'4':(.5935,.3831),
+            '5':(.5935,.4299),'6':(.5935,.4796),'7':(.5935,.5249),'8':(.5935,.5716),
+            '9':(.787,.2413),'10':(.787,.2896),'11':(.787,.3424),'12':(.787,.4284),
+            '13':(.787,.4781),'14':(.787,.5264),'water':(.787,.5747)
+          }
+          print('PROJECTED_LEGEND_BEGIN')
+          for key,(x,y) in legend.items():
+              p=np.array([[[x*wo,y*ho]]],dtype=np.float32)
+              q=cv2.perspectiveTransform(p,H)[0,0]
+              print(key,round(float(q[0]/wn),6),round(float(q[1]/hn),6))
+          print('PROJECTED_LEGEND_END')
+
+          # Warp old into new coordinate frame and detect changed regions.
+          warped=cv2.warpPerspective(old,H,(wn,hn))
+          diff=cv2.absdiff(new,warped)
+          gray=cv2.cvtColor(diff,cv2.COLOR_BGR2GRAY)
+          gray=cv2.GaussianBlur(gray,(5,5),0)
+          _,th=cv2.threshold(gray,38,255,cv2.THRESH_BINARY)
+          th=cv2.morphologyEx(th,cv2.MORPH_OPEN,np.ones((3,3),np.uint8))
+          th=cv2.dilate(th,np.ones((5,5),np.uint8),iterations=2)
+          n,labels,stats,cent=cv2.connectedComponentsWithStats(th,8)
+          comps=[]
+          for i in range(1,n):
+              x,y,w,h,area=stats[i]
+              if area>=120 and w<=400 and h<=400:
+                  comps.append((int(area),int(x),int(y),int(w),int(h),float(cent[i][0]),float(cent[i][1])))
+          comps.sort(reverse=True)
+          print('CHANGE_COMPONENTS_BEGIN')
+          for c in comps[:40]:
+              area,x,y,w,h,cx,cy=c
+              print(area,x,y,w,h,round(cx,1),round(cy,1),round(cx/wn,6),round(cy/hn,6))
+          print('CHANGE_COMPONENTS_END')
+          PY
