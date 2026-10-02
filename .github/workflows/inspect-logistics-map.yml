@@ -160,6 +160,35 @@ jobs:
           lc.sort(reverse=True)
           print('LEGEND6_BEST',*[round(x,5) if isinstance(x,float) else x for x in lc[0]])
           PY
+      - name: OCR numeric markers
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr
+          python -m pip install --quiet pytesseract
+          python - <<'PY'
+          import cv2, pytesseract
+          from pytesseract import Output
+          for name,path in [('OLD','/tmp/old-map.webp'),('NEW','assets/maps/mappa-interattiva.webp')]:
+              im=cv2.imread(path)
+              # upscale to improve OCR of the small numbered markers
+              im=cv2.resize(im,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
+              gray=cv2.cvtColor(im,cv2.COLOR_BGR2GRAY)
+              data=pytesseract.image_to_data(
+                  gray,
+                  config='--psm 11 -c tessedit_char_whitelist=0123456789',
+                  output_type=Output.DICT
+              )
+              print(name+'_OCR_BEGIN')
+              for i,t in enumerate(data['text']):
+                  t=t.strip()
+                  if not t: continue
+                  conf=float(data['conf'][i])
+                  if conf < 15: continue
+                  x=data['left'][i]/2; y=data['top'][i]/2
+                  w=data['width'][i]/2; h=data['height'][i]/2
+                  print(t,round(conf,1),round(x+w/2,1),round(y+h/2,1),round(x,1),round(y,1),round(w,1),round(h,1))
+              print(name+'_OCR_END')
+          PY
       - name: Refine point 6 marker
         run: |
           python - <<'PY'
