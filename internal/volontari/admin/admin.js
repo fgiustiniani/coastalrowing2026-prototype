@@ -5657,6 +5657,147 @@
     );
   }
 
+  function volunteerMatrixRaceMeta(personId, shiftId) {
+    const targetShift = (snapshot?.shifts || []).find((shift) => shift.id === shiftId) || null;
+    const races = snapshot?.raceProgramAvailable
+      ? (snapshot?.raceProgram || [])
+          .filter((race) => race.personId === personId)
+          .sort((a, b) =>
+            String(a.raceDate || '').localeCompare(String(b.raceDate || ''))
+            || String(a.raceTime || '').localeCompare(String(b.raceTime || ''))
+            || String(a.crewLabel || '').localeCompare(String(b.crewLabel || ''), 'it')
+          )
+      : [];
+    const conflictingIds = new Set(
+      targetShift
+        ? races.filter((race) => raceConflictsWithShiftRule(race, targetShift)).map((race) => race.id)
+        : []
+    );
+    const title = races.map((race) => {
+      const prefix = conflictingIds.has(race.id) ? 'CONFLITTO · ' : '';
+      return `${prefix}${formatRaceDateShort(race.raceDate)} · ${race.raceTime || 'orario da definire'} · ${race.crewLabel || 'Gara'}`;
+    }).join('\n');
+    return { races, conflictingIds, hasConflict: conflictingIds.size > 0, title };
+  }
+
+  function volunteerMatrixAssignmentSummary(personId) {
+    return (snapshot?.assignments || [])
+      .filter((row) => row.personId === personId)
+      .sort((a, b) => assignmentShiftOrder(a) - assignmentShiftOrder(b)
+        || displayActivity(a).localeCompare(displayActivity(b), 'it'));
+  }
+
+  function volunteerMatrixBadgeHtml(label, title, className = '') {
+    return `<span class="volunteer-matrix-badge ${className}" tabindex="0" title="${escapeHtml(title || '')}" aria-label="${escapeHtml(title || label)}">${escapeHtml(label)}</span>`;
+  }
+
+  function volunteerMatrixPersonHtml(row, { availability = false } = {}) {
+    const effectiveResponse = boardEffectiveResponse(row);
+    const response = boardResponseMeta(row);
+    const raceMeta = volunteerMatrixRaceMeta(row.personId, row.shiftId);
+    const badges = [];
+
+    if (row.isResponsible) {
+      badges.push(volunteerMatrixBadgeHtml('★', 'Responsabile', 'is-responsible'));
+    }
+
+    if (availability) {
+      const assignedRows = volunteerMatrixAssignmentSummary(row.personId);
+      if (assignedRows.length) {
+        const title = assignedRows.map((item) =>
+          `${item.day || '—'} · ${item.shift || '—'} · ${displayActivity(item)}`
+        ).join('\n');
+        badges.push(volunteerMatrixBadgeHtml(`A${assignedRows.length}`, title, 'is-assignments'));
+      }
+    }
+
+    if (raceMeta.races.length) {
+      badges.push(volunteerMatrixBadgeHtml(
+        `G${raceMeta.races.length}`,
+        raceMeta.title,
+        `is-race${raceMeta.hasConflict ? ' is-conflict' : ''}`
+      ));
+    }
+
+    if (availability) {
+      const load = adjacentAssignedShiftLoad(row.personId, row.shiftId);
+      if (load.before.length) {
+        const title = load.before.map((shift) => `${shift.day_label || '—'} · ${shift.shift_label || '—'}`).join('\n');
+        badges.push(volunteerMatrixBadgeHtml('←2', `Due turni consecutivi già assegnati prima:\n${title}`, 'is-load'));
+      }
+      if (load.after.length) {
+        const title = load.after.map((shift) => `${shift.day_label || '—'} · ${shift.shift_label || '—'}`).join('\n');
+        badges.push(volunteerMatrixBadgeHtml('2→', `Due turni consecutivi già assegnati dopo:\n${title}`, 'is-load'));
+      }
+    }
+
+    if (row.isReleasedConfirmed || row.retainedConfirmation) {
+      badges.push(volunteerMatrixBadgeHtml('↺', 'Conferma mantenuta da una precedente assegnazione nello stesso turno', 'is-retained'));
+    }
+
+    if (row.assignedFromAvailability) {
+      badges.push(volunteerMatrixBadgeHtml('+', 'Assegnato da disponibilità aggiuntiva', 'is-additional'));
+    } else if (availability && !row.isReleasedConfirmed) {
+      badges.push(volunteerMatrixBadgeHtml('+', 'Disponibilità aggiuntiva', 'is-additional'));
+    }
+
+    const showResponseBadge = !(row.assignedFromAvailability && !row.currentResponse);
+    if (availability && row.isReleasedConfirmed) {
+      badges.push(volunteerMatrixBadgeHtml('✓', response.label || 'Confermata', 'is-confirmed'));
+    } else if (!availability && showResponseBadge) {
+      if (effectiveResponse === 'confirmed') {
+        badges.push(volunteerMatrixBadgeHtml('✓', response.label || 'Confermata', 'is-confirmed'));
+      } else if (effectiveResponse === 'declined') {
+        badges.push(volunteerMatrixBadgeHtml('×', response.label || 'Non può', 'is-declined'));
+      } else {
+        badges.push(volunteerMatrixBadgeHtml('•', response.label || 'Da rispondere', 'is-pending'));
+      }
+    }
+
+    if (row.note) {
+      badges.push(volunteerMatrixBadgeHtml('N', row.note, 'is-note'));
+    }
+
+    return `<span class="volunteer-matrix-person ${availability ? 'is-availability' : ''}">
+      <span class="volunteer-matrix-person__name">${escapeHtml(row.personName || '—')}</span>
+      <span class="volunteer-matrix-person__badges">${badges.join('')}</span>
+    </span>`;
+  }
+
+  function volunteerMatrixPersonText(row, { availability = false } = {}) {
+    const parts = [row.isResponsible ? '★' : '', row.personName || '—'].filter(Boolean);
+    const markers = [];
+    const raceMeta = volunteerMatrixRaceMeta(row.personId, row.shiftId);
+
+    if (availability) {
+      const assignedRows = volunteerMatrixAssignmentSummary(row.personId);
+      if (assignedRows.length) markers.push(`A${assignedRows.length}`);
+    }
+
+    if (raceMeta.races.length) markers.push(`${raceMeta.hasConflict ? 'G!' : 'G'}${raceMeta.races.length}`);
+
+    if (availability) {
+      const load = adjacentAssignedShiftLoad(row.personId, row.shiftId);
+      if (load.before.length) markers.push('←2');
+      if (load.after.length) markers.push('2→');
+    }
+
+    if (row.isReleasedConfirmed || row.retainedConfirmation) markers.push('↺');
+    if (row.assignedFromAvailability || (availability && !row.isReleasedConfirmed)) markers.push('+');
+
+    const effectiveResponse = boardEffectiveResponse(row);
+    const showResponseBadge = !(row.assignedFromAvailability && !row.currentResponse);
+    if (availability && row.isReleasedConfirmed) markers.push('✓');
+    else if (!availability && showResponseBadge) {
+      if (effectiveResponse === 'confirmed') markers.push('✓');
+      else if (effectiveResponse === 'declined') markers.push('×');
+      else markers.push('•');
+    }
+
+    if (row.note) markers.push('N');
+    return `${parts.join(' ')}${markers.length ? ` · ${markers.join(' ')}` : ''}`;
+  }
+
   function volunteerMatrixData() {
     const selectedShiftIds = selectedFilterValues(volunteerMatrixShiftFilter);
     const selectedGroupIds = selectedFilterValues(volunteerMatrixGroupFilter);
@@ -5687,26 +5828,36 @@
 
       const cellKey = `${activityKey}|||${row.shiftId}`;
       if (!peopleByCell.has(cellKey)) peopleByCell.set(cellKey, new Map());
-      peopleByCell.get(cellKey).set(row.personId || row.personName, row.personName || '—');
+      peopleByCell.get(cellKey).set(row.personId || row.personName, row);
     }
 
     const rows = activities.map((activity) => ({
       ...activity,
       peopleByShift: new Map(shifts.map((shift) => {
         const people = [...(peopleByCell.get(`${activity.key}|||${shift.id}`) || new Map()).values()]
-          .sort((a, b) => String(a).localeCompare(String(b), 'it'));
+          .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'));
         return [shift.id, people];
       }))
     }));
 
-    return { shifts, rows };
+    const availabilityByShift = new Map(
+      shifts.map((shift) => [
+        shift.id,
+        unassignedAvailabilityRows()
+          .filter((row) => row.shiftId === shift.id)
+          .sort((a, b) => String(a.personName || '').localeCompare(String(b.personName || ''), 'it'))
+      ])
+    );
+
+    return { shifts, rows, availabilityByShift };
   }
 
   function renderVolunteerMatrixReport() {
     if (!volunteerMatrixReport) return;
-    const { shifts, rows } = volunteerMatrixData();
+    const { shifts, rows, availabilityByShift } = volunteerMatrixData();
+    const hasAvailability = [...availabilityByShift.values()].some((people) => people.length);
 
-    if (!shifts.length || !rows.length) {
+    if (!shifts.length || (!rows.length && !hasAvailability)) {
       volunteerMatrixReport.innerHTML = '<p class="empty-state">Nessun dato corrisponde ai filtri.</p>';
       return;
     }
@@ -5715,48 +5866,76 @@
       `<th class="volunteer-matrix-shift-head"><strong>${escapeHtml(shift.day_label || '')}</strong><span>${escapeHtml(shift.shift_label || '')}</span></th>`
     ).join('');
 
-    volunteerMatrixReport.innerHTML = `<table class="admin-table volunteer-matrix-table">
-      <thead><tr><th class="volunteer-matrix-activity-head">Attività</th>${head}</tr></thead>
-      <tbody>${rows.map((row, rowIndex) => `
-        <tr class="volunteer-matrix-row" data-volunteer-matrix-row="${escapeHtml(row.key)}">
-          <th scope="row" class="volunteer-matrix-activity-cell">
-            <div class="volunteer-matrix-activity-layout">
+    const legend = `<div class="volunteer-matrix-legend" aria-label="Legenda matrice">
+      <span><b>✓</b> Confermata</span>
+      <span><b>•</b> Da rispondere</span>
+      <span><b>×</b> Rifiutata</span>
+      <span><b>↺</b> Conferma precedente</span>
+      <span><b>+</b> Disp.+</span>
+      <span><b>G</b> Gara</span>
+      <span><b class="is-conflict">G</b> Conflitto gara</span>
+      <span><b>A</b> Attività già assegnate</span>
+      <span><b>←2 / 2→</b> Carico turni</span>
+      <span><b>N</b> Nota</span>
+    </div>`;
+
+    const activityRowsHtml = rows.map((row, rowIndex) => `
+      <tr class="volunteer-matrix-row" data-volunteer-matrix-row="${escapeHtml(row.key)}">
+        <th scope="row" class="volunteer-matrix-activity-cell">
+          <div class="volunteer-matrix-activity-layout">
+            <button type="button"
+              class="volunteer-matrix-drag-handle"
+              draggable="true"
+              data-volunteer-matrix-drag="${escapeHtml(row.key)}"
+              title="Trascina per riordinare"
+              aria-label="Trascina ${escapeHtml(row.label)} per riordinare">⋮⋮</button>
+            <span class="volunteer-matrix-activity-label">${escapeHtml(row.label)}</span>
+            <span class="volunteer-matrix-order-buttons">
               <button type="button"
-                class="volunteer-matrix-drag-handle"
-                draggable="true"
-                data-volunteer-matrix-drag="${escapeHtml(row.key)}"
-                title="Trascina per riordinare"
-                aria-label="Trascina ${escapeHtml(row.label)} per riordinare">⋮⋮</button>
-              <span class="volunteer-matrix-activity-label">${escapeHtml(row.label)}</span>
-              <span class="volunteer-matrix-order-buttons">
-                <button type="button"
-                  data-volunteer-matrix-move="up"
-                  data-volunteer-matrix-key="${escapeHtml(row.key)}"
-                  aria-label="Sposta ${escapeHtml(row.label)} in alto"
-                  title="Sposta in alto"
-                  ${rowIndex === 0 ? 'disabled' : ''}>↑</button>
-                <button type="button"
-                  data-volunteer-matrix-move="down"
-                  data-volunteer-matrix-key="${escapeHtml(row.key)}"
-                  aria-label="Sposta ${escapeHtml(row.label)} in basso"
-                  title="Sposta in basso"
-                  ${rowIndex === rows.length - 1 ? 'disabled' : ''}>↓</button>
-              </span>
-            </div>
-          </th>
-          ${shifts.map((shift) => {
-            const people = row.peopleByShift.get(shift.id) || [];
-            return `<td class="volunteer-matrix-people-cell ${people.length ? '' : 'is-empty'}">${people.length
-              ? people.map((name) => `<span>${escapeHtml(name)}</span>`).join('')
-              : '<span class="volunteer-matrix-empty">—</span>'}</td>`;
-          }).join('')}
-        </tr>`).join('')}</tbody>
+                data-volunteer-matrix-move="up"
+                data-volunteer-matrix-key="${escapeHtml(row.key)}"
+                aria-label="Sposta ${escapeHtml(row.label)} in alto"
+                title="Sposta in alto"
+                ${rowIndex === 0 ? 'disabled' : ''}>↑</button>
+              <button type="button"
+                data-volunteer-matrix-move="down"
+                data-volunteer-matrix-key="${escapeHtml(row.key)}"
+                aria-label="Sposta ${escapeHtml(row.label)} in basso"
+                title="Sposta in basso"
+                ${rowIndex === rows.length - 1 ? 'disabled' : ''}>↓</button>
+            </span>
+          </div>
+        </th>
+        ${shifts.map((shift) => {
+          const people = row.peopleByShift.get(shift.id) || [];
+          return `<td class="volunteer-matrix-people-cell ${people.length ? '' : 'is-empty'}">${people.length
+            ? people.map((person) => volunteerMatrixPersonHtml(person)).join('')
+            : '<span class="volunteer-matrix-empty">—</span>'}</td>`;
+        }).join('')}
+      </tr>`).join('');
+
+    const availabilityRowHtml = `<tr class="volunteer-matrix-availability-row">
+      <th scope="row" class="volunteer-matrix-activity-cell volunteer-matrix-availability-label">
+        Disponibili da assegnare
+      </th>
+      ${shifts.map((shift) => {
+        const people = availabilityByShift.get(shift.id) || [];
+        return `<td class="volunteer-matrix-people-cell volunteer-matrix-availability-cell ${people.length ? '' : 'is-empty'}">${people.length
+          ? people.map((person) => volunteerMatrixPersonHtml(person, { availability: true })).join('')
+          : '<span class="volunteer-matrix-empty">—</span>'}</td>`;
+      }).join('')}
+    </tr>`;
+
+    volunteerMatrixReport.innerHTML = `${legend}<table class="admin-table volunteer-matrix-table">
+      <thead><tr><th class="volunteer-matrix-activity-head">Attività</th>${head}</tr></thead>
+      <tbody>${activityRowsHtml}${availabilityRowHtml}</tbody>
     </table>`;
   }
 
   function exportVolunteerMatrixPdf() {
-    const { shifts, rows } = volunteerMatrixData();
-    if (!shifts.length || !rows.length) {
+    const { shifts, rows, availabilityByShift } = volunteerMatrixData();
+    const hasAvailability = [...availabilityByShift.values()].some((people) => people.length);
+    if (!shifts.length || (!rows.length && !hasAvailability)) {
       alert('Nessun dato da esportare con i filtri correnti.');
       return;
     }
@@ -5771,14 +5950,25 @@
     const exportRows = rows.map((row) => {
       const result = { activity: row.label };
       shifts.forEach((shift, index) => {
-        result[`shift${index}`] = (row.peopleByShift.get(shift.id) || []).join('\n');
+        result[`shift${index}`] = (row.peopleByShift.get(shift.id) || [])
+          .map((person) => volunteerMatrixPersonText(person))
+          .join('\n');
       });
       return result;
     });
 
+    const availabilityRow = { activity: 'Disponibili da assegnare' };
+    shifts.forEach((shift, index) => {
+      availabilityRow[`shift${index}`] = (availabilityByShift.get(shift.id) || [])
+        .map((person) => volunteerMatrixPersonText(person, { availability: true }))
+        .join('\n');
+    });
+    exportRows.push(availabilityRow);
+
     exportPdf('Matrice volontari - turni e attività', columns, exportRows, {
       pageSize: 'A4 landscape',
-      fontSize: '7.5px'
+      fontSize: '7.5px',
+      metaNote: 'Legenda: ✓ confermata · • da rispondere · × rifiutata · ↺ conferma precedente · + Disp.+ · G gara · G! conflitto gara · A# attività già assegnate · ←2/2→ carico turni · N nota.'
     });
   }
 
@@ -5830,12 +6020,15 @@
     }
     const pageSize = options.pageSize || 'A4 landscape';
     const fontSize = options.fontSize || '8px';
+    const metaNote = options.metaNote
+      ? `<p class="meta-note">${escapeHtml(options.metaNote)}</p>`
+      : '';
     const tableHead = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('');
     const tableBody = rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(row[column.key] ?? '')}</td>`).join('')}</tr>`).join('');
     popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-      @page{size:${pageSize};margin:10mm}body{font-family:Arial,sans-serif;color:#173e4b;margin:0}h1{font-size:18px;margin:0 0 4px}.meta{font-size:9px;color:#60757d;margin:0 0 12px}
+      @page{size:${pageSize};margin:10mm}body{font-family:Arial,sans-serif;color:#173e4b;margin:0}h1{font-size:18px;margin:0 0 4px}.meta{font-size:9px;color:#60757d;margin:0 0 6px}.meta-note{font-size:8px;color:#49636c;margin:0 0 10px;line-height:1.35}
       table{width:100%;border-collapse:collapse;font-size:${fontSize};table-layout:fixed}th,td{border:1px solid #cfdcdf;padding:5px;text-align:left;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere}th{background:#eaf2f4}tr:nth-child(even){background:#fafcfc}
-    </style></head><body><h1>${escapeHtml(title)}</h1><p class="meta">Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</p><table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
+    </style></head><body><h1>${escapeHtml(title)}</h1><p class="meta">Esportato il ${escapeHtml(formatDateTime(new Date().toISOString()))}</p>${metaNote}<table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
     popup.document.close();
   }
 
