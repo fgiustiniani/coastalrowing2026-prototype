@@ -160,6 +160,16 @@ jobs:
           lc.sort(reverse=True)
           print('LEGEND6_BEST',*[round(x,5) if isinstance(x,float) else x for x in lc[0]])
           PY
+      - name: Emit preview
+        run: |
+          python - <<'PY'
+          import cv2, base64
+          im=cv2.imread('assets/maps/mappa-interattiva.webp',cv2.IMREAD_COLOR)
+          preview=cv2.resize(im,(960,540),interpolation=cv2.INTER_AREA)
+          ok,buf=cv2.imencode('.jpg',preview,[int(cv2.IMWRITE_JPEG_QUALITY),70])
+          if not ok: raise SystemExit('encode failed')
+          print('MAPJPEG_B64 '+base64.b64encode(buf.tobytes()).decode('ascii'))
+          PY
       - name: OCR numeric markers
         run: |
           sudo apt-get update -qq
