@@ -16,7 +16,7 @@
         },
         {
           q: 'È prevista una riunione dei capitani?',
-          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 17.30 presso la <strong>Sala Bagni Tino</strong>, nell’area del campo gara. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://maps.app.goo.gl/NqFt3R8zN4KV8hw97" target="_blank" rel="noopener noreferrer">apri Bagni Tino su Google Maps</a>.'
+          a: 'Sì. Il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 19.00 presso la <strong>sede della Società Canottieri Pesaro</strong>, Calata Caio Duilio 101. Consulta il <a href="info-gare.html#programma">Programma delle attività</a> oppure <a href="https://www.google.com/maps/search/?api=1&query=Societ%C3%A0+Canottieri+Pesaro%2C+Calata+Caio+Duilio+101%2C+61121+Pesaro+PU" target="_blank" rel="noopener noreferrer">apri la sede su Google Maps</a>.'
         }
       ]
     },
@@ -33,7 +33,7 @@
         },
         {
           q: 'Dove trovo tutte le informazioni su accrediti e meeting dei Capitani?',
-          a: 'Orari e sedi sono raccolti nel <a href="info-gare.html#programma">Programma delle attività</a>: gli accrediti si svolgono presso la Segreteria Gare, mentre il meeting dei Capitani si svolge presso la sede della Società Canottieri Pesaro.'
+          a: 'Orari e sedi sono raccolti nel <a href="info-gare.html#programma">Programma delle attività</a>: gli accrediti si svolgono presso la Segreteria Gare, mentre il meeting dei Capitani è previsto venerdì 2 ottobre alle ore 19.00 presso la sede della Società Canottieri Pesaro.'
         },
         {
           q: 'Saranno disponibili imbarcazioni per le prove?',
