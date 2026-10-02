@@ -4,7 +4,7 @@ const POINT_LINKS = {
   '3': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
   '4': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
   '5': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
-  '6': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
+  '6': 'https://maps.app.goo.gl/hVLey2a4q3Aj1V1XA',
   '7': 'https://maps.app.goo.gl/SXdoaKsNT6KSaiXQ8',
   '8': 'https://maps.app.goo.gl/9geUCNftSE8A1F6h6',
   '9': 'https://maps.app.goo.gl/Pc8ofT7eu1EyEWMEA',
