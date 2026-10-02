@@ -32,7 +32,6 @@ jobs:
           assert 'translate(0.0285%, -15.6913%) scale(1.15696, 1.15657)' in open('logistics-map.css',encoding='utf-8').read()
           print('CALIBRATION_OK')
           PY
-          npm ci
           npm run build
       - name: Prepare old map
         run: git show 1eb9f6b4035e7b0a2a30c807e947d372f12e1825:assets/maps/mappa-interattiva.webp > /tmp/old-map.webp
