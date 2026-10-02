@@ -112,6 +112,13 @@
   object-fit: contain;
   pointer-events: none;
   -webkit-user-drag: none;
+  /*
+   * Il WebP v4 mantiene il canvas 16:9 ma è stato esportato con la grafica
+   * ridotta e traslata. Lo riportiamo al sistema di coordinate della mappa
+   * precedente, così hotspot, legenda e hit-area restano allineati.
+   */
+  transform-origin: 0 0;
+  transform: translate(0.0285%, -15.6913%) scale(1.15696, 1.15657);
 }
 
 .logistics-map-interactive__hotspots {
