@@ -105,3 +105,58 @@ jobs:
               print(area,x,y,w,h,round(cx,1),round(cy,1),round(cx/wn,6),round(cy/hn,6))
           print('CHANGE_COMPONENTS_END')
           PY
+      - name: Locate moved point 6
+        run: |
+          python - <<'PY'
+          import cv2, numpy as np
+          old=cv2.imread('/tmp/old-map.webp',cv2.IMREAD_COLOR)
+          new=cv2.imread('assets/maps/mappa-interattiva.webp',cv2.IMREAD_COLOR)
+          # Old point 6 centre: 45.1042% / 60% on 1920x1080.
+          cx,cy=866,648
+          half=32
+          templ=old[cy-half:cy+half, cx-half:cx+half]
+          gray_new=cv2.cvtColor(new,cv2.COLOR_BGR2GRAY)
+          gray_t=cv2.cvtColor(templ,cv2.COLOR_BGR2GRAY)
+          candidates=[]
+          for scale in np.linspace(.78,.94,33):
+              t=cv2.resize(gray_t,None,fx=scale,fy=scale,interpolation=cv2.INTER_AREA)
+              res=cv2.matchTemplate(gray_new,t,cv2.TM_CCOEFF_NORMED)
+              # collect peaks with simple NMS per scale
+              rr=res.copy()
+              for _ in range(12):
+                  _,v,_,loc=cv2.minMaxLoc(rr)
+                  if v<0.35: break
+                  h,w=t.shape[:2]
+                  x,y=loc
+                  candidates.append((float(v),float(scale),x+w/2,y+h/2,w,h))
+                  x0=max(0,x-w); x1=min(rr.shape[1],x+2*w)
+                  y0=max(0,y-h); y1=min(rr.shape[0],y+2*h)
+                  rr[y0:y1,x0:x1]=-1
+          # Global NMS.
+          candidates.sort(reverse=True)
+          keep=[]
+          for cand in candidates:
+              v,s,x,y,w,h=cand
+              if all((x-k[2])**2+(y-k[3])**2>45**2 for k in keep):
+                  keep.append(cand)
+              if len(keep)>=30: break
+          print('POINT6_TEMPLATE_MATCHES_BEGIN')
+          for v,s,x,y,w,h in keep:
+              print(round(v,5),round(s,4),round(x,1),round(y,1),round(x/1920,6),round(y/1080,6),w,h)
+          print('POINT6_TEMPLATE_MATCHES_END')
+
+          # Also locate the old legend 6 template to validate global registration.
+          lcx,lcy=int(round(.5935*1920)),int(round(.4796*1080))
+          half=24
+          lt=old[lcy-half:lcy+half,lcx-half:lcx+half]
+          glt=cv2.cvtColor(lt,cv2.COLOR_BGR2GRAY)
+          lc=[]
+          for scale in np.linspace(.78,.94,33):
+              t=cv2.resize(glt,None,fx=scale,fy=scale,interpolation=cv2.INTER_AREA)
+              res=cv2.matchTemplate(gray_new,t,cv2.TM_CCOEFF_NORMED)
+              _,v,_,loc=cv2.minMaxLoc(res)
+              h,w=t.shape[:2]
+              lc.append((float(v),float(scale),loc[0]+w/2,loc[1]+h/2))
+          lc.sort(reverse=True)
+          print('LEGEND6_BEST',*[round(x,5) if isinstance(x,float) else x for x in lc[0]])
+          PY
