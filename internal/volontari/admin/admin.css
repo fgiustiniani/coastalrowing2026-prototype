@@ -5763,117 +5763,36 @@ tr.is-busy button.is-busy {
   color: #9aa9ad;
 }
 
-.volunteer-matrix-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  margin: 0 0 10px;
-  padding: 8px 10px;
-  border: 1px solid #d4e1e4;
-  border-radius: 9px;
-  background: #f7fafb;
-  color: #536b73;
-  font-size: .69rem;
-}
-.volunteer-matrix-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.volunteer-matrix-legend b {
-  color: var(--accent-dark);
-}
-.volunteer-matrix-legend b.is-conflict {
-  color: #a02d2d;
-}
-
 .volunteer-matrix-person {
-  display: flex !important;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  padding: 3px 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 5px;
+  align-items: start;
+  padding: 4px 0 !important;
   border-bottom: 1px solid #edf2f3;
 }
 .volunteer-matrix-person:last-child {
   border-bottom: 0;
 }
 .volunteer-matrix-person__name {
-  flex: 1 1 78px;
   min-width: 0;
   font-weight: 700;
   line-height: 1.25;
 }
-.volunteer-matrix-person__badges {
-  display: inline-flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  padding: 0 !important;
+.volunteer-matrix-person__races {
+  grid-column: 1 / -1;
+  color: #667b82;
+  font-size: .66rem;
+  line-height: 1.25;
 }
-.volunteer-matrix-badge {
-  min-width: 18px;
-  height: 18px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0 4px !important;
-  border: 1px solid #c7d6da;
-  border-radius: 999px;
-  background: #fff;
-  color: #4b646c;
-  font-size: .62rem;
+.volunteer-matrix-person__warning {
+  grid-column: 2;
+  grid-row: 1;
+  color: #a02d2d;
+  font-size: .78rem;
   font-weight: 900;
   line-height: 1;
   cursor: help;
-}
-.volunteer-matrix-badge.is-confirmed {
-  border-color: #8fc6a1;
-  background: #edf8f0;
-  color: #2f6f44;
-}
-.volunteer-matrix-badge.is-pending {
-  border-color: #d9bd78;
-  background: #fff8e4;
-  color: #745d1b;
-}
-.volunteer-matrix-badge.is-declined,
-.volunteer-matrix-badge.is-race.is-conflict {
-  border-color: #d88c8c;
-  background: #fdeaea;
-  color: #a02d2d;
-}
-.volunteer-matrix-badge.is-race {
-  border-color: #ddc271;
-  background: #fff6dd;
-  color: #725b18;
-}
-.volunteer-matrix-badge.is-retained {
-  border-color: #8ebfc7;
-  background: #edf7f8;
-  color: #276675;
-}
-.volunteer-matrix-badge.is-additional,
-.volunteer-matrix-badge.is-assignments {
-  border-color: #9bc6a7;
-  background: #eff8f1;
-  color: #326b43;
-}
-.volunteer-matrix-badge.is-load {
-  border-color: #d9b06e;
-  background: #fff1dc;
-  color: #80551a;
-}
-.volunteer-matrix-badge.is-note {
-  border-color: #b9acd1;
-  background: #f5f0fb;
-  color: #5f4b7b;
-}
-.volunteer-matrix-badge.is-responsible {
-  border-color: #d6b545;
-  background: #fff7d7;
-  color: #805f00;
 }
 
 .volunteer-matrix-availability-row > th,
