@@ -5673,129 +5673,56 @@
         ? races.filter((race) => raceConflictsWithShiftRule(race, targetShift)).map((race) => race.id)
         : []
     );
-    const title = races.map((race) => {
-      const prefix = conflictingIds.has(race.id) ? 'CONFLITTO · ' : '';
-      return `${prefix}${formatRaceDateShort(race.raceDate)} · ${race.raceTime || 'orario da definire'} · ${race.crewLabel || 'Gara'}`;
-    }).join('\n');
-    return { races, conflictingIds, hasConflict: conflictingIds.size > 0, title };
+    return { races, conflictingIds, hasConflict: conflictingIds.size > 0 };
   }
 
-  function volunteerMatrixAssignmentSummary(personId) {
-    return (snapshot?.assignments || [])
-      .filter((row) => row.personId === personId)
-      .sort((a, b) => assignmentShiftOrder(a) - assignmentShiftOrder(b)
-        || displayActivity(a).localeCompare(displayActivity(b), 'it'));
+  function volunteerMatrixRaceText(races) {
+    return (races || []).map((race) => {
+      const time = race.raceTime ? String(race.raceTime).slice(0, 5) : 'orario da definire';
+      return `${formatRaceDayShort(race.raceDate)} ${time}`;
+    }).join(' · ');
   }
 
-  function volunteerMatrixBadgeHtml(label, title, className = '') {
-    return `<span class="volunteer-matrix-badge ${className}" tabindex="0" title="${escapeHtml(title || '')}" aria-label="${escapeHtml(title || label)}">${escapeHtml(label)}</span>`;
-  }
-
-  function volunteerMatrixPersonHtml(row, { availability = false } = {}) {
-    const effectiveResponse = boardEffectiveResponse(row);
-    const response = boardResponseMeta(row);
+  function volunteerMatrixWarnings(row, { availability = false } = {}) {
+    const warnings = availability ? [] : assignmentWarningDetails(row).map((warning) => warning.text);
     const raceMeta = volunteerMatrixRaceMeta(row.personId, row.shiftId);
-    const badges = [];
 
-    if (row.isResponsible) {
-      badges.push(volunteerMatrixBadgeHtml('★', 'Responsabile', 'is-responsible'));
-    }
-
-    if (availability) {
-      const assignedRows = volunteerMatrixAssignmentSummary(row.personId);
-      if (assignedRows.length) {
-        const title = assignedRows.map((item) =>
-          `${item.day || '—'} · ${item.shift || '—'} · ${displayActivity(item)}`
-        ).join('\n');
-        badges.push(volunteerMatrixBadgeHtml(`A${assignedRows.length}`, title, 'is-assignments'));
-      }
-    }
-
-    if (raceMeta.races.length) {
-      badges.push(volunteerMatrixBadgeHtml(
-        `G${raceMeta.races.length}`,
-        raceMeta.title,
-        `is-race${raceMeta.hasConflict ? ' is-conflict' : ''}`
-      ));
+    if (raceMeta.hasConflict && !warnings.some((warning) => /gara/i.test(warning))) {
+      warnings.push('Gara incompatibile con questo turno');
     }
 
     if (availability) {
       const load = adjacentAssignedShiftLoad(row.personId, row.shiftId);
-      if (load.before.length) {
-        const title = load.before.map((shift) => `${shift.day_label || '—'} · ${shift.shift_label || '—'}`).join('\n');
-        badges.push(volunteerMatrixBadgeHtml('←2', `Due turni consecutivi già assegnati prima:\n${title}`, 'is-load'));
-      }
-      if (load.after.length) {
-        const title = load.after.map((shift) => `${shift.day_label || '—'} · ${shift.shift_label || '—'}`).join('\n');
-        badges.push(volunteerMatrixBadgeHtml('2→', `Due turni consecutivi già assegnati dopo:\n${title}`, 'is-load'));
+      if (load.before.length || load.after.length) {
+        warnings.push('Assegnandola qui arriverebbe a 3 turni consecutivi');
       }
     }
 
-    if (row.isReleasedConfirmed || row.retainedConfirmation) {
-      badges.push(volunteerMatrixBadgeHtml('↺', 'Conferma mantenuta da una precedente assegnazione nello stesso turno', 'is-retained'));
-    }
+    return [...new Set(warnings.filter(Boolean))];
+  }
 
-    if (row.assignedFromAvailability) {
-      badges.push(volunteerMatrixBadgeHtml('+', 'Assegnato da disponibilità aggiuntiva', 'is-additional'));
-    } else if (availability && !row.isReleasedConfirmed) {
-      badges.push(volunteerMatrixBadgeHtml('+', 'Disponibilità aggiuntiva', 'is-additional'));
-    }
-
-    const showResponseBadge = !(row.assignedFromAvailability && !row.currentResponse);
-    if (availability && row.isReleasedConfirmed) {
-      badges.push(volunteerMatrixBadgeHtml('✓', response.label || 'Confermata', 'is-confirmed'));
-    } else if (!availability && showResponseBadge) {
-      if (effectiveResponse === 'confirmed') {
-        badges.push(volunteerMatrixBadgeHtml('✓', response.label || 'Confermata', 'is-confirmed'));
-      } else if (effectiveResponse === 'declined') {
-        badges.push(volunteerMatrixBadgeHtml('×', response.label || 'Non può', 'is-declined'));
-      } else {
-        badges.push(volunteerMatrixBadgeHtml('•', response.label || 'Da rispondere', 'is-pending'));
-      }
-    }
-
-    if (row.note) {
-      badges.push(volunteerMatrixBadgeHtml('N', row.note, 'is-note'));
-    }
+  function volunteerMatrixPersonHtml(row, { availability = false } = {}) {
+    const raceMeta = volunteerMatrixRaceMeta(row.personId, row.shiftId);
+    const raceText = volunteerMatrixRaceText(raceMeta.races);
+    const warnings = volunteerMatrixWarnings(row, { availability });
+    const warningText = warnings.join(' · ');
 
     return `<span class="volunteer-matrix-person ${availability ? 'is-availability' : ''}">
       <span class="volunteer-matrix-person__name">${escapeHtml(row.personName || '—')}</span>
-      <span class="volunteer-matrix-person__badges">${badges.join('')}</span>
+      ${raceText ? `<span class="volunteer-matrix-person__races">${escapeHtml(raceText)}</span>` : ''}
+      ${warnings.length ? `<span class="volunteer-matrix-person__warning" tabindex="0" title="${escapeHtml(warningText)}" aria-label="Warning: ${escapeHtml(warningText)}">⚠</span>` : ''}
     </span>`;
   }
 
   function volunteerMatrixPersonText(row, { availability = false } = {}) {
-    const parts = [row.isResponsible ? '★' : '', row.personName || '—'].filter(Boolean);
-    const markers = [];
     const raceMeta = volunteerMatrixRaceMeta(row.personId, row.shiftId);
-
-    if (availability) {
-      const assignedRows = volunteerMatrixAssignmentSummary(row.personId);
-      if (assignedRows.length) markers.push(`A${assignedRows.length}`);
-    }
-
-    if (raceMeta.races.length) markers.push(`${raceMeta.hasConflict ? 'G!' : 'G'}${raceMeta.races.length}`);
-
-    if (availability) {
-      const load = adjacentAssignedShiftLoad(row.personId, row.shiftId);
-      if (load.before.length) markers.push('←2');
-      if (load.after.length) markers.push('2→');
-    }
-
-    if (row.isReleasedConfirmed || row.retainedConfirmation) markers.push('↺');
-    if (row.assignedFromAvailability || (availability && !row.isReleasedConfirmed)) markers.push('+');
-
-    const effectiveResponse = boardEffectiveResponse(row);
-    const showResponseBadge = !(row.assignedFromAvailability && !row.currentResponse);
-    if (availability && row.isReleasedConfirmed) markers.push('✓');
-    else if (!availability && showResponseBadge) {
-      if (effectiveResponse === 'confirmed') markers.push('✓');
-      else if (effectiveResponse === 'declined') markers.push('×');
-      else markers.push('•');
-    }
-
-    if (row.note) markers.push('N');
-    return `${parts.join(' ')}${markers.length ? ` · ${markers.join(' ')}` : ''}`;
+    const raceText = volunteerMatrixRaceText(raceMeta.races);
+    const warnings = volunteerMatrixWarnings(row, { availability });
+    return [
+      row.personName || '—',
+      raceText ? `Gare: ${raceText}` : '',
+      warnings.length ? `WARNING: ${warnings.join(' · ')}` : ''
+    ].filter(Boolean).join(' · ');
   }
 
   function volunteerMatrixData() {
@@ -5866,19 +5793,6 @@
       `<th class="volunteer-matrix-shift-head"><strong>${escapeHtml(shift.day_label || '')}</strong><span>${escapeHtml(shift.shift_label || '')}</span></th>`
     ).join('');
 
-    const legend = `<div class="volunteer-matrix-legend" aria-label="Legenda matrice">
-      <span><b>✓</b> Confermata</span>
-      <span><b>•</b> Da rispondere</span>
-      <span><b>×</b> Rifiutata</span>
-      <span><b>↺</b> Conferma precedente</span>
-      <span><b>+</b> Disp.+</span>
-      <span><b>G</b> Gara</span>
-      <span><b class="is-conflict">G</b> Conflitto gara</span>
-      <span><b>A</b> Attività già assegnate</span>
-      <span><b>←2 / 2→</b> Carico turni</span>
-      <span><b>N</b> Nota</span>
-    </div>`;
-
     const activityRowsHtml = rows.map((row, rowIndex) => `
       <tr class="volunteer-matrix-row" data-volunteer-matrix-row="${escapeHtml(row.key)}">
         <th scope="row" class="volunteer-matrix-activity-cell">
@@ -5926,7 +5840,7 @@
       }).join('')}
     </tr>`;
 
-    volunteerMatrixReport.innerHTML = `${legend}<table class="admin-table volunteer-matrix-table">
+    volunteerMatrixReport.innerHTML = `<table class="admin-table volunteer-matrix-table">
       <thead><tr><th class="volunteer-matrix-activity-head">Attività</th>${head}</tr></thead>
       <tbody>${activityRowsHtml}${availabilityRowHtml}</tbody>
     </table>`;
@@ -5968,7 +5882,7 @@
     exportPdf('Matrice volontari - turni e attività', columns, exportRows, {
       pageSize: 'A4 landscape',
       fontSize: '7.5px',
-      metaNote: 'Legenda: ✓ confermata · • da rispondere · × rifiutata · ↺ conferma precedente · + Disp.+ · G gara · G! conflitto gara · A# attività già assegnate · ←2/2→ carico turni · N nota.'
+      metaNote: 'Per ogni persona sono riportati giorno e ora delle gare. WARNING segnala incompatibilità o altri vincoli operativi. La riga finale riporta le disponibilità aggiuntive da assegnare.'
     });
   }
 
