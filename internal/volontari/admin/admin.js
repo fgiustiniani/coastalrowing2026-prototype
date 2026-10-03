@@ -74,6 +74,7 @@
   const volunteerMatrixGroupFilter = document.querySelector('[data-volunteer-matrix-group-filter]');
   const volunteerMatrixActivityFilter = document.querySelector('[data-volunteer-matrix-activity-filter]');
   const volunteerMatrixExportPdf = document.querySelector('[data-volunteer-matrix-export-pdf]');
+  const volunteerMatrixExportDocx = document.querySelector('[data-volunteer-matrix-export-docx]');
   const confirmationChanges = document.querySelector('[data-confirmation-changes]');
   const confirmationLinkStatus = document.querySelector('[data-confirmation-link-status]');
   const personCatalog = document.querySelector('[data-person-catalog]');
@@ -5886,6 +5887,233 @@
     });
   }
 
+  function docxLe16(value) {
+    return new Uint8Array([value & 0xff, (value >>> 8) & 0xff]);
+  }
+
+  function docxLe32(value) {
+    return new Uint8Array([
+      value & 0xff,
+      (value >>> 8) & 0xff,
+      (value >>> 16) & 0xff,
+      (value >>> 24) & 0xff
+    ]);
+  }
+
+  function docxConcat(parts) {
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    const result = new Uint8Array(total);
+    let offset = 0;
+    for (const part of parts) {
+      result.set(part, offset);
+      offset += part.length;
+    }
+    return result;
+  }
+
+  function docxCrc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit += 1) {
+        crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+      }
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function docxDosDateTime(date = new Date()) {
+    const year = Math.max(1980, date.getFullYear());
+    return {
+      time: ((date.getHours() & 0x1f) << 11)
+        | ((date.getMinutes() & 0x3f) << 5)
+        | ((Math.floor(date.getSeconds() / 2)) & 0x1f),
+      date: (((year - 1980) & 0x7f) << 9)
+        | (((date.getMonth() + 1) & 0x0f) << 5)
+        | (date.getDate() & 0x1f)
+    };
+  }
+
+  function createStoredZip(files) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    const stamp = docxDosDateTime();
+    let localOffset = 0;
+
+    for (const file of files) {
+      const nameBytes = encoder.encode(file.name);
+      const dataBytes = typeof file.data === 'string' ? encoder.encode(file.data) : file.data;
+      const crc = docxCrc32(dataBytes);
+
+      const localHeader = docxConcat([
+        docxLe32(0x04034b50),
+        docxLe16(20),
+        docxLe16(0),
+        docxLe16(0),
+        docxLe16(stamp.time),
+        docxLe16(stamp.date),
+        docxLe32(crc),
+        docxLe32(dataBytes.length),
+        docxLe32(dataBytes.length),
+        docxLe16(nameBytes.length),
+        docxLe16(0),
+        nameBytes
+      ]);
+      localParts.push(localHeader, dataBytes);
+
+      const centralHeader = docxConcat([
+        docxLe32(0x02014b50),
+        docxLe16(20),
+        docxLe16(20),
+        docxLe16(0),
+        docxLe16(0),
+        docxLe16(stamp.time),
+        docxLe16(stamp.date),
+        docxLe32(crc),
+        docxLe32(dataBytes.length),
+        docxLe32(dataBytes.length),
+        docxLe16(nameBytes.length),
+        docxLe16(0),
+        docxLe16(0),
+        docxLe16(0),
+        docxLe16(0),
+        docxLe32(0),
+        docxLe32(localOffset),
+        nameBytes
+      ]);
+      centralParts.push(centralHeader);
+      localOffset += localHeader.length + dataBytes.length;
+    }
+
+    const centralDirectory = docxConcat(centralParts);
+    const endRecord = docxConcat([
+      docxLe32(0x06054b50),
+      docxLe16(0),
+      docxLe16(0),
+      docxLe16(files.length),
+      docxLe16(files.length),
+      docxLe32(centralDirectory.length),
+      docxLe32(localOffset),
+      docxLe16(0)
+    ]);
+
+    return new Blob(
+      [...localParts, centralDirectory, endRecord],
+      { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+    );
+  }
+
+  function docxRunXml(text, { bold = false, size = 16 } = {}) {
+    const safe = xmlEscape(text ?? '');
+    return `<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="${size}"/>${bold ? '<w:b/>' : ''}</w:rPr><w:t xml:space="preserve">${safe}</w:t></w:r>`;
+  }
+
+  function docxParagraphXml(text, options = {}) {
+    return `<w:p><w:pPr><w:spacing w:after="40" w:line="220" w:lineRule="auto"/></w:pPr>${docxRunXml(text, options)}</w:p>`;
+  }
+
+  function docxCellXml(lines, { header = false, shade = '' } = {}) {
+    const values = Array.isArray(lines) ? lines : [lines];
+    const paragraphs = (values.length ? values : ['']).map((line) =>
+      docxParagraphXml(line, { bold: header, size: header ? 15 : 14 })
+    ).join('');
+    return `<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/>${shade ? `<w:shd w:fill="${shade}"/>` : ''}<w:vAlign w:val="top"/></w:tcPr>${paragraphs}</w:tc>`;
+  }
+
+  function exportVolunteerMatrixDocx() {
+    const { shifts, rows, availabilityByShift } = volunteerMatrixData();
+    const hasAvailability = [...availabilityByShift.values()].some((people) => people.length);
+    if (!shifts.length || (!rows.length && !hasAvailability)) {
+      alert('Nessun dato da esportare con i filtri correnti.');
+      return;
+    }
+
+    const tableRows = [];
+    tableRows.push(`<w:tr>${docxCellXml('Attività', { header: true, shade: 'EAF2F4' })}${shifts.map((shift) =>
+      docxCellXml(`${shift.day_label || ''} · ${shift.shift_label || ''}`, { header: true, shade: 'EAF2F4' })
+    ).join('')}</w:tr>`);
+
+    for (const row of rows) {
+      const cells = [docxCellXml(row.label, { header: true, shade: 'F4F8F9' })];
+      for (const shift of shifts) {
+        const people = row.peopleByShift.get(shift.id) || [];
+        cells.push(docxCellXml(
+          people.length ? people.map((person) => volunteerMatrixPersonText(person)) : ['—']
+        ));
+      }
+      tableRows.push(`<w:tr>${cells.join('')}</w:tr>`);
+    }
+
+    const availabilityCells = [
+      docxCellXml('Disponibili da assegnare', { header: true, shade: 'EDF7F0' })
+    ];
+    for (const shift of shifts) {
+      const people = availabilityByShift.get(shift.id) || [];
+      availabilityCells.push(docxCellXml(
+        people.length
+          ? people.map((person) => volunteerMatrixPersonText(person, { availability: true }))
+          : ['—'],
+        { shade: 'F6FBF7' }
+      ));
+    }
+    tableRows.push(`<w:tr>${availabilityCells.join('')}</w:tr>`);
+
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${docxParagraphXml('Matrice volontari - turni e attività', { bold: true, size: 28 })}
+    ${docxParagraphXml(`Esportato il ${formatDateTime(new Date().toISOString())}`, { size: 14 })}
+    ${docxParagraphXml('Per ogni persona sono riportati giorno e ora delle gare. WARNING segnala incompatibilità o altri vincoli operativi. La riga finale riporta le disponibilità aggiuntive da assegnare.', { size: 14 })}
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="0" w:type="auto"/>
+        <w:tblLayout w:type="autofit"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="4" w:color="CFDCDF"/>
+          <w:left w:val="single" w:sz="4" w:color="CFDCDF"/>
+          <w:bottom w:val="single" w:sz="4" w:color="CFDCDF"/>
+          <w:right w:val="single" w:sz="4" w:color="CFDCDF"/>
+          <w:insideH w:val="single" w:sz="4" w:color="CFDCDF"/>
+          <w:insideV w:val="single" w:sz="4" w:color="CFDCDF"/>
+        </w:tblBorders>
+        <w:tblCellMar>
+          <w:top w:w="70" w:type="dxa"/>
+          <w:left w:w="80" w:type="dxa"/>
+          <w:bottom w:w="70" w:type="dxa"/>
+          <w:right w:w="80" w:type="dxa"/>
+        </w:tblCellMar>
+      </w:tblPr>
+      ${tableRows.join('')}
+    </w:tbl>
+    <w:sectPr>
+      <w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>
+      <w:pgMar w:top="567" w:right="567" w:bottom="567" w:left="567" w:header="360" w:footer="360" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+    const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+    const blob = createStoredZip([
+      { name: '[Content_Types].xml', data: contentTypes },
+      { name: '_rels/.rels', data: rootRels },
+      { name: 'word/document.xml', data: documentXml }
+    ]);
+
+    downloadBlob('matrice-volontari-turni-attivita.docx', blob);
+  }
+
   function xmlEscape(value) {
     return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   }
@@ -8042,6 +8270,7 @@
     renderVolunteerMatrixReport();
   });
   volunteerMatrixExportPdf?.addEventListener('click', exportVolunteerMatrixPdf);
+  volunteerMatrixExportDocx?.addEventListener('click', exportVolunteerMatrixDocx);
 
   volunteerMatrixReport?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-volunteer-matrix-move]');
